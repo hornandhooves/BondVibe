@@ -143,16 +143,7 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
       <StatusBar style={isDark ? "light" : "dark"} />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleSkip} disabled={loading}>
-          <Text
-            style={[
-              styles.backButton,
-              { color: colors.text, opacity: loading ? 0.5 : 1 },
-            ]}
-          >
-            ←
-          </Text>
-        </TouchableOpacity>
+        <View style={{ width: 50 }} />
         <Text style={[styles.headerTitle, { color: colors.text }]}>
           Choose Host Type
         </Text>
@@ -160,10 +151,10 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
           <Text
             style={[
               styles.skipButton,
-              { color: colors.textSecondary, opacity: loading ? 0.5 : 1 },
+              { color: colors.primary, opacity: loading ? 0.5 : 1 },
             ]}
           >
-            Skip
+            Free Host →
           </Text>
         </TouchableOpacity>
       </View>
@@ -330,13 +321,13 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
               <View style={styles.featureRow}>
                 <Text style={styles.featureBullet}>✓</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  Receive payments directly (95%)
+                  Receive payments directly (100%)
                 </Text>
               </View>
               <View style={styles.featureRow}>
                 <Text style={styles.featureBullet}>✓</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  BondVibe handles 5% platform fee
+                  Platform and processing fees covered by attendees
                 </Text>
               </View>
             </View>

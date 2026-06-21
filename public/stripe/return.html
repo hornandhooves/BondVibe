@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Setup Complete - BondVibe</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        padding: 20px;
+      }
+      .container {
+        text-align: center;
+        max-width: 400px;
+      }
+      .emoji {
+        font-size: 80px;
+        margin-bottom: 24px;
+      }
+      h1 {
+        font-size: 28px;
+        margin-bottom: 16px;
+        font-weight: 700;
+      }
+      p {
+        font-size: 16px;
+        color: rgba(255, 255, 255, 0.7);
+        line-height: 1.6;
+        margin-bottom: 32px;
+      }
+      .button {
+        display: inline-block;
+        background: rgba(236, 72, 153, 0.3);
+        border: 2px solid rgba(236, 72, 153, 0.6);
+        color: #ec4899;
+        padding: 16px 32px;
+        border-radius: 12px;
+        font-size: 18px;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s;
+      }
+      .button:hover {
+        background: rgba(236, 72, 153, 0.4);
+      }
+      .note {
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.5);
+        margin-top: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="emoji">✅</div>
+      <h1>Setup Complete!</h1>
+      <p>
+        Your Stripe account has been connected successfully. You can now close
+        this page and return to the BondVibe app, once in the app click "Refresh
+        Status" button in the Stripe connect screen .
+      </p>
+      <a href="bondvibe://" class="button">Open BondVibe App</a>
+      <p class="note">
+        If the button doesn't work, simply close this tab and reopen the app.
+      </p>
+    </div>
+  </body>
+</html>

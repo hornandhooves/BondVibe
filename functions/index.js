@@ -600,3 +600,112 @@ exports.deleteUserAccount = onRequest(
     }
   },
 );
+
+// ============================================
+// HOST REQUEST NOTIFICATIONS
+// ============================================
+
+/**
+ * Trigger when a new host request is created
+ * Sends push notification to all admins
+ */
+exports.onNewHostRequest = onDocumentCreated(
+  "hostRequests/{requestId}",
+  async (event) => {
+    const snapshot = event.data;
+    if (!snapshot) {
+      console.log("⚠️ No data in snapshot");
+      return;
+    }
+
+    const requestData = snapshot.data();
+    const {requestId} = event.params;
+
+    console.log("📝 New host request detected:", {
+      requestId,
+      userId: requestData.userId,
+      status: requestData.status,
+    });
+
+    // Only process pending requests
+    if (requestData.status !== "pending") {
+      console.log("⏭️ Skipping non-pending request");
+      return;
+    }
+
+    try {
+      // Get requester info
+      const requesterDoc = await db
+        .collection("users")
+        .doc(requestData.userId)
+        .get();
+      const requesterName = requesterDoc.exists ?
+        requesterDoc.data().fullName?.split(" ")[0] ||
+          requesterDoc.data().name?.split(" ")[0] ||
+          "Someone" :
+        "Someone";
+
+      // Get all admin users
+      const adminsSnapshot = await db
+        .collection("users")
+        .where("role", "==", "admin")
+        .get();
+
+      console.log("👑 Found", adminsSnapshot.size, "admin(s)");
+
+      if (adminsSnapshot.empty) {
+        console.log("⚠️ No admins found to notify");
+        return;
+      }
+
+      // Prepare notifications for all admins
+      const notifications = [];
+
+      for (const adminDoc of adminsSnapshot.docs) {
+        const adminData = adminDoc.data();
+        const pushToken = adminData.pushToken;
+
+        // Create in-app notification
+        await db.collection("notifications").add({
+          userId: adminDoc.id,
+          type: "host_request",
+          title: "New Host Request 📝",
+          message: `${requesterName} wants to become a host. Review their application!`,
+          icon: "👑",
+          read: false,
+          metadata: {
+            requestId: requestId,
+            requesterId: requestData.userId,
+          },
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        console.log("📝 Created in-app notification for admin:", adminDoc.id);
+
+        // Queue push notification if token exists
+        if (pushToken) {
+          notifications.push({
+            pushToken,
+            title: "New Host Request 👑",
+            body: `${requesterName} wants to become a host`,
+            data: {
+              type: "host_request",
+              requestId: requestId,
+            },
+          });
+          console.log("📱 Queued push notification for admin:", adminDoc.id);
+        }
+      }
+
+      // Send push notifications
+      if (notifications.length > 0) {
+        const tickets = await sendBatchPushNotifications(notifications);
+        console.log(
+          `✅ Sent ${tickets.length} push notifications to admins`,
+        );
+      }
+    } catch (error) {
+      console.error("❌ Error processing host request:", error);
+    }
+  },
+);
