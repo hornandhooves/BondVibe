@@ -19,7 +19,7 @@ import Icon, { getCategoryIcon, getLocationIcon } from "./Icon";
  * @param {string} value - Currently selected value (id)
  * @param {function} onValueChange - Callback when value changes
  * @param {array} options - Array of options: [{ id, label }]
- * @param {string} type - "category" | "location" (affects icon rendering)
+ * @param {string} type - "category" | "city" (affects icon rendering)
  */
 export default function FilterChips({
   label,
@@ -42,7 +42,7 @@ export default function FilterChips({
       return (
         <IconComponent size={iconSize} color={iconColor} strokeWidth={2} />
       );
-    } else if (type === "location") {
+    } else if (type === "city") {
       const IconComponent = getLocationIcon(option.id);
       return (
         <IconComponent size={iconSize} color={iconColor} strokeWidth={2} />

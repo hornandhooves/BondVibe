@@ -156,4 +156,5 @@ export const EVENT_LANGUAGES = [
   { id: "pl", label: "Polski" },
   { id: "it", label: "Italiano" },
   { id: "pt", label: "Português" },
+  { id: "ru", label: "Русский" },
 ];

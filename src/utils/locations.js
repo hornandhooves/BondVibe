@@ -17,6 +17,7 @@ export const normalizeLocation = (location) => {
   if (!location) return null;
 
   const normalized = location.toLowerCase().trim();
+  if (LOCATIONS.some((loc) => loc.id === normalized)) return normalized;
 
   // Map common variations to standard locations
   const locationMap = {
@@ -63,7 +64,7 @@ export const getLocationById = (id) => {
   if (!id) return null;
   const lowerId = id.toLowerCase();
   return LOCATIONS.find(
-    (loc) => loc.id === lowerId || loc.label.toLowerCase() === lowerId
+    (loc) => loc.id === lowerId || loc.label.toLowerCase() === lowerId,
   );
 };
 

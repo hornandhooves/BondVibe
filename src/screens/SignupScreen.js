@@ -39,7 +39,6 @@ export default function SignupScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  
   // Validate password strength
   const validatePassword = (pwd) => {
     const errors = [];
@@ -47,7 +46,8 @@ export default function SignupScreen({ navigation }) {
     if (!/[A-Z]/.test(pwd)) errors.push("one uppercase letter");
     if (!/[a-z]/.test(pwd)) errors.push("one lowercase letter");
     if (!/[0-9]/.test(pwd)) errors.push("one number");
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(pwd)) errors.push("one special character");
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(pwd))
+      errors.push("one special character");
     return errors;
   };
 
@@ -68,7 +68,7 @@ export default function SignupScreen({ navigation }) {
     if (passwordErrors.length > 0) {
       Alert.alert(
         "Weak Password",
-        "Password must have: " + passwordErrors.join(", ")
+        "Password must have: " + passwordErrors.join(", "),
       );
       return;
     }
@@ -85,7 +85,7 @@ export default function SignupScreen({ navigation }) {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
-        password
+        password,
       );
       const user = userCredential.user;
       console.log("✅ User account created:", user.uid);
@@ -108,9 +108,13 @@ export default function SignupScreen({ navigation }) {
         console.log(
           "📧 BEFORE sendEmailVerification - user:",
           user.uid,
-          user.email
+          user.email,
         );
-        await sendEmailVerification(user);
+        const actionCodeSettings = {
+          url: "https://bondvibe-dev.web.app",
+          handleCodeInApp: false,
+        };
+        await sendEmailVerification(user, actionCodeSettings);
         console.log("✅ Verification email sent to:", user.email);
       } catch (emailError) {
         console.error("❌ sendEmailVerification FAILED:");
@@ -136,14 +140,14 @@ export default function SignupScreen({ navigation }) {
       if (error.code === "auth/email-already-in-use") {
         Alert.alert(
           "Email Already Registered",
-          "This email is already registered. Please log in instead."
+          "This email is already registered. Please log in instead.",
         );
       } else if (error.code === "auth/invalid-email") {
         Alert.alert("Invalid Email", "Please enter a valid email address.");
       } else if (error.code === "auth/weak-password") {
         Alert.alert(
           "Weak Password",
-          "Password should be at least 6 characters."
+          "Password should be at least 6 characters.",
         );
       } else {
         Alert.alert("Signup Failed", error.message);
@@ -248,46 +252,137 @@ export default function SignupScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
 
-              
               {/* Password Requirements */}
               <View style={styles.passwordRequirements}>
                 <View style={styles.requirementRow}>
-                  <Text style={[styles.requirementIcon, { color: password.length >= 8 ? "#34C759" : colors.textTertiary }]}>
+                  <Text
+                    style={[
+                      styles.requirementIcon,
+                      {
+                        color:
+                          password.length >= 8
+                            ? "#34C759"
+                            : colors.textTertiary,
+                      },
+                    ]}
+                  >
                     {password.length >= 8 ? "✓" : "○"}
                   </Text>
-                  <Text style={[styles.requirementText, { color: password.length >= 8 ? "#34C759" : colors.textTertiary }]}>
+                  <Text
+                    style={[
+                      styles.requirementText,
+                      {
+                        color:
+                          password.length >= 8
+                            ? "#34C759"
+                            : colors.textTertiary,
+                      },
+                    ]}
+                  >
                     At least 8 characters
                   </Text>
                 </View>
                 <View style={styles.requirementRow}>
-                  <Text style={[styles.requirementIcon, { color: /[A-Z]/.test(password) ? "#34C759" : colors.textTertiary }]}>
+                  <Text
+                    style={[
+                      styles.requirementIcon,
+                      {
+                        color: /[A-Z]/.test(password)
+                          ? "#34C759"
+                          : colors.textTertiary,
+                      },
+                    ]}
+                  >
                     {/[A-Z]/.test(password) ? "✓" : "○"}
                   </Text>
-                  <Text style={[styles.requirementText, { color: /[A-Z]/.test(password) ? "#34C759" : colors.textTertiary }]}>
+                  <Text
+                    style={[
+                      styles.requirementText,
+                      {
+                        color: /[A-Z]/.test(password)
+                          ? "#34C759"
+                          : colors.textTertiary,
+                      },
+                    ]}
+                  >
                     One uppercase letter
                   </Text>
                 </View>
                 <View style={styles.requirementRow}>
-                  <Text style={[styles.requirementIcon, { color: /[a-z]/.test(password) ? "#34C759" : colors.textTertiary }]}>
+                  <Text
+                    style={[
+                      styles.requirementIcon,
+                      {
+                        color: /[a-z]/.test(password)
+                          ? "#34C759"
+                          : colors.textTertiary,
+                      },
+                    ]}
+                  >
                     {/[a-z]/.test(password) ? "✓" : "○"}
                   </Text>
-                  <Text style={[styles.requirementText, { color: /[a-z]/.test(password) ? "#34C759" : colors.textTertiary }]}>
+                  <Text
+                    style={[
+                      styles.requirementText,
+                      {
+                        color: /[a-z]/.test(password)
+                          ? "#34C759"
+                          : colors.textTertiary,
+                      },
+                    ]}
+                  >
                     One lowercase letter
                   </Text>
                 </View>
                 <View style={styles.requirementRow}>
-                  <Text style={[styles.requirementIcon, { color: /[0-9]/.test(password) ? "#34C759" : colors.textTertiary }]}>
+                  <Text
+                    style={[
+                      styles.requirementIcon,
+                      {
+                        color: /[0-9]/.test(password)
+                          ? "#34C759"
+                          : colors.textTertiary,
+                      },
+                    ]}
+                  >
                     {/[0-9]/.test(password) ? "✓" : "○"}
                   </Text>
-                  <Text style={[styles.requirementText, { color: /[0-9]/.test(password) ? "#34C759" : colors.textTertiary }]}>
+                  <Text
+                    style={[
+                      styles.requirementText,
+                      {
+                        color: /[0-9]/.test(password)
+                          ? "#34C759"
+                          : colors.textTertiary,
+                      },
+                    ]}
+                  >
                     One number
                   </Text>
                 </View>
                 <View style={styles.requirementRow}>
-                  <Text style={[styles.requirementIcon, { color: /[!@#$%^&*(),.?":{}|<>]/.test(password) ? "#34C759" : colors.textTertiary }]}>
+                  <Text
+                    style={[
+                      styles.requirementIcon,
+                      {
+                        color: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+                          ? "#34C759"
+                          : colors.textTertiary,
+                      },
+                    ]}
+                  >
                     {/[!@#$%^&*(),.?":{}|<>]/.test(password) ? "✓" : "○"}
                   </Text>
-                  <Text style={[styles.requirementText, { color: /[!@#$%^&*(),.?":{}|<>]/.test(password) ? "#34C759" : colors.textTertiary }]}>
+                  <Text
+                    style={[
+                      styles.requirementText,
+                      {
+                        color: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+                          ? "#34C759"
+                          : colors.textTertiary,
+                      },
+                    ]}
+                  >
                     One special character (!@#$%...)
                   </Text>
                 </View>
