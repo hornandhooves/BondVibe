@@ -22,10 +22,10 @@
     "public": "public",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
+      { "source": "/stripe/return", "destination": "/stripe/return.html" },
+      { "source": "/stripe/refresh", "destination": "/stripe/refresh.html" },
+      { "source": "/verify-email", "destination": "/verify-email.html" },
+      { "source": "/reset-password", "destination": "/reset-password.html" }
     ]
   }
 }

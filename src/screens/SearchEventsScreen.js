@@ -20,28 +20,24 @@ import {
   getCategoryLabel,
 } from "../utils/eventCategories";
 import { LOCATIONS, locationMatchesFilter } from "../utils/locations";
+import { EVENT_LANGUAGES } from "../utils/eventCategories";
 import { filterUpcomingEvents, isEventPast } from "../utils/eventFilters";
 import { useFocusEffect } from "@react-navigation/native";
 import Icon, { getCategoryIcon } from "../components/Icon";
 import FilterChips from "../components/FilterChips";
 import SelectDropdown from "../components/SelectDropdown";
 
+// Language filter options
+const LANGUAGE_OPTIONS = [
+  { id: "all", label: "All Languages" },
+  ...EVENT_LANGUAGES,
+];
+
 // Filter options
 const PRICE_OPTIONS = [
   { id: "all", label: "All Prices" },
   { id: "free", label: "Free" },
   { id: "paid", label: "Paid" },
-];
-
-const LANGUAGE_OPTIONS = [
-  { id: "all", label: "All Languages" },
-  { id: "es", label: "Español" },
-  { id: "en", label: "English" },
-  { id: "de", label: "Deutsch" },
-  { id: "fr", label: "Français" },
-  { id: "pl", label: "Polski" },
-  { id: "it", label: "Italiano" },
-  { id: "pt", label: "Português" },
 ];
 
 export default function SearchEventsScreen({ navigation, route }) {
@@ -59,17 +55,18 @@ export default function SearchEventsScreen({ navigation, route }) {
 
     // Find category by label and return its id
     const found = EVENT_CATEGORIES.find(
-      (c) => c.label.toLowerCase() === paramCategory.toLowerCase()
+      (c) => c.label.toLowerCase() === paramCategory.toLowerCase(),
     );
     return found?.id || "all";
   };
 
-  const [selectedCategory, setSelectedCategory] = useState(
-    getInitialCategory()
-  );
+  const [selectedCategory, setSelectedCategory] =
+    useState(getInitialCategory());
   const [selectedLocation, setSelectedLocation] = useState("all");
   const [priceFilter, setPriceFilter] = useState("all");
-  const [languageFilter, setLanguageFilter] = useState("all");
+  const [languageFilter, setLanguageFilter] = useState(
+    EVENT_LANGUAGES.map((l) => l.id),
+  );
 
   // ✅ FIX: Update selected category when route params change
   useEffect(() => {
@@ -78,7 +75,7 @@ export default function SearchEventsScreen({ navigation, route }) {
       "📂 Route category param:",
       route.params?.category,
       "-> id:",
-      newCategory
+      newCategory,
     );
     setSelectedCategory(newCategory);
   }, [route.params?.category]);
@@ -91,12 +88,19 @@ export default function SearchEventsScreen({ navigation, route }) {
     useCallback(() => {
       console.log("📱 SearchEventsScreen focused - reloading events...");
       loadEvents();
-    }, [])
+    }, []),
   );
 
   useEffect(() => {
     filterEvents();
-  }, [searchQuery, selectedCategory, selectedLocation, priceFilter, languageFilter, events]);
+  }, [
+    searchQuery,
+    selectedCategory,
+    selectedLocation,
+    priceFilter,
+    languageFilter,
+    events,
+  ]);
 
   // Sort events by date (soonest first)
   const sortEventsByDate = (eventsArray) => {
@@ -140,33 +144,36 @@ export default function SearchEventsScreen({ navigation, route }) {
         return normalizedEventCategory === selectedCategory;
       });
       console.log(
-        `🏷️ Filtering by category: ${selectedCategory}, found: ${filtered.length}`
+        `🏷️ Filtering by category: ${selectedCategory}, found: ${filtered.length}`,
       );
     }
 
     // Price filter
     if (priceFilter === "free") {
-      filtered = filtered.filter(e => !e.price || e.price === 0);
+      filtered = filtered.filter((e) => !e.price || e.price === 0);
       console.log(`💰 Filtering free events, found: ${filtered.length}`);
     } else if (priceFilter === "paid") {
-      filtered = filtered.filter(e => e.price && e.price > 0);
+      filtered = filtered.filter((e) => e.price && e.price > 0);
       console.log(`💰 Filtering paid events, found: ${filtered.length}`);
     }
 
-    // Language filter
-    if (languageFilter !== "all") {
-      filtered = filtered.filter(e => 
-        e.language === languageFilter || 
-        e.language === "both" || 
-        !e.language
+    // Language filter - skips if all languages are selected, equivalent to "All"
+    if (languageFilter.length < EVENT_LANGUAGES.length) {
+      filtered = filtered.filter(
+        (e) =>
+          Array.isArray(e.languages)
+            ? e.languages.some((lang) => languageFilter.includes(lang))
+            : true, // eventos viejos sin el campo no se excluyen
       );
-      console.log(`🌐 Filtering by language: ${languageFilter}, found: ${filtered.length}`);
+      console.log(
+        `🌐 Filtering by language: ${languageFilter}, found: ${filtered.length}`,
+      );
     }
 
     // Filter by location
     if (selectedLocation !== "all") {
       filtered = filtered.filter((event) =>
-        locationMatchesFilter(event.location, selectedLocation)
+        locationMatchesFilter(event.city, selectedLocation),
       );
     }
 
@@ -177,7 +184,7 @@ export default function SearchEventsScreen({ navigation, route }) {
         (event) =>
           event.title.toLowerCase().includes(query) ||
           event.location.toLowerCase().includes(query) ||
-          (event.category?.toLowerCase() || "").includes(query)
+          (event.category?.toLowerCase() || "").includes(query),
       );
     }
 
@@ -366,11 +373,11 @@ export default function SearchEventsScreen({ navigation, route }) {
 
         {/* Location Filter */}
         <FilterChips
-          label="Location"
+          label="City"
           value={selectedLocation}
           onValueChange={setSelectedLocation}
           options={LOCATIONS}
-          type="location"
+          type="city"
         />
 
         {/* Category Filter */}
@@ -398,9 +405,10 @@ export default function SearchEventsScreen({ navigation, route }) {
               label="Language"
               value={languageFilter}
               onValueChange={setLanguageFilter}
-              options={LANGUAGE_OPTIONS}
+              options={EVENT_LANGUAGES}
               placeholder="All Languages"
               type="language"
+              multiSelect
             />
           </View>
         </View>
@@ -568,6 +576,5 @@ function createStyles(colors) {
     filterDropdown: {
       flex: 1,
     },
-
   });
 }

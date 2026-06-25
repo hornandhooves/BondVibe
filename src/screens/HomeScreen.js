@@ -57,7 +57,7 @@ export default function HomeScreen({ navigation }) {
     const notifQuery = query(
       collection(db, "notifications"),
       where("userId", "==", auth.currentUser.uid),
-      where("read", "==", false)
+      where("read", "==", false),
     );
 
     const unsubscribe = onSnapshot(
@@ -76,7 +76,7 @@ export default function HomeScreen({ navigation }) {
       },
       (error) => {
         console.error("Error in notifications listener:", error);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -89,10 +89,14 @@ export default function HomeScreen({ navigation }) {
       }
       loadPendingRatings();
       loadUser();
-    }, [user?.role])
+    }, [user?.role]),
   );
 
   const loadUser = async () => {
+    if (!auth.currentUser) {
+      console.log("⏳ loadUser called but no currentUser yet, skipping");
+      return;
+    }
     try {
       const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
       if (userDoc.exists()) {
@@ -111,7 +115,7 @@ export default function HomeScreen({ navigation }) {
     try {
       const requestsQuery = query(
         collection(db, "hostRequests"),
-        where("status", "==", "pending")
+        where("status", "==", "pending"),
       );
       const snapshot = await getDocs(requestsQuery);
       setPendingHostRequests(snapshot.size);
@@ -136,7 +140,7 @@ export default function HomeScreen({ navigation }) {
 
   const handleRatingSuccess = () => {
     setPendingRatingEvents((prev) =>
-      prev.filter((e) => e.id !== selectedEvent.id)
+      prev.filter((e) => e.id !== selectedEvent.id),
     );
     setShowRatingModal(false);
     setSelectedEvent(null);
@@ -418,7 +422,9 @@ export default function HomeScreen({ navigation }) {
                         { backgroundColor: colors.accent },
                       ]}
                     >
-                      <Text style={styles.badgeText}>{pendingHostRequests}</Text>
+                      <Text style={styles.badgeText}>
+                        {pendingHostRequests}
+                      </Text>
                     </View>
                   )}
                 </View>

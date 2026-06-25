@@ -5,8 +5,6 @@ import { StripeProvider } from "@stripe/stripe-react-native";
 import { ThemeProvider } from "./src/contexts/ThemeContext";
 import AppNavigator from "./src/navigation/AppNavigator";
 import * as Notifications from "expo-notifications";
-import { registerPushToken } from "./src/utils/messageService";
-import { auth } from "./src/services/firebase";
 
 // Configure how notifications are handled when app is in foreground
 Notifications.setNotificationHandler({
@@ -198,16 +196,6 @@ export default function App() {
         console.log("✅ Android notification channel configured");
       }
 
-      // Register push token when user is authenticated
-      const unsubscribe = auth.onAuthStateChanged(async (user) => {
-        if (user) {
-          console.log("🔔 Registering push token for user:", user.uid);
-          await registerPushToken(user.uid);
-        }
-      });
-
-      // Cleanup
-      return () => unsubscribe();
     } catch (error) {
       console.error("❌ Error setting up push notifications:", error);
     }

@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { doc, updateDoc } from "firebase/firestore";
+import { createNotification } from "../utils/notificationService";
 import { auth, db } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import AvatarPicker, { AvatarDisplay } from "../components/AvatarPicker";
@@ -60,6 +61,14 @@ export default function ProfileSetupScreen() {
         profileCompleted: true,
         profileCompletedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+      });
+
+      // Create welcome notification
+      await createNotification(auth.currentUser.uid, {
+        type: "welcome",
+        title: "Welcome to BondVibe! 🎉",
+        message: "Hey! We're so hyped you're here. This app was built with tons of love for people like you who want real connections, not just likes. Go explore some events, meet awesome humans, and let's make some memories! You got this 💪✨",
+        icon: "🎉",
       });
 
       console.log("✅ Profile setup completed!");

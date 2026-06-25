@@ -14,7 +14,10 @@ import {
   Keyboard,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+} from "firebase/auth";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
@@ -55,19 +58,18 @@ export default function LoginScreen({ navigation }) {
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
-        password
+        password,
       );
       let user = userCredential.user;
 
       // Reload user to get fresh emailVerified status
       console.log("🔄 Reloading user to get fresh emailVerified status...");
       await user.reload();
-      user = auth.currentUser;
 
       console.log("✅ Login successful:", user.uid);
       console.log(
         "📧 Email verified in Auth (after reload):",
-        user.emailVerified
+        user.emailVerified,
       );
 
       // Sync emailVerified from Firebase Auth to Firestore
@@ -81,7 +83,7 @@ export default function LoginScreen({ navigation }) {
           if (userData.emailVerified !== user.emailVerified) {
             console.log(
               "🔄 Syncing emailVerified to Firestore:",
-              user.emailVerified
+              user.emailVerified,
             );
             await updateDoc(userDocRef, {
               emailVerified: user.emailVerified,
@@ -92,7 +94,7 @@ export default function LoginScreen({ navigation }) {
       } catch (syncError) {
         console.error(
           "⚠️ Error syncing emailVerified to Firestore:",
-          syncError
+          syncError,
         );
       }
 
@@ -155,7 +157,7 @@ export default function LoginScreen({ navigation }) {
   const handleResetPassword = async () => {
     console.log("🔑 Reset Password clicked");
     setErrorModal({ ...errorModal, visible: false });
-    
+
     if (!email.trim()) {
       setErrorModal({
         visible: true,
@@ -167,11 +169,16 @@ export default function LoginScreen({ navigation }) {
     }
 
     try {
-      await sendPasswordResetEmail(auth, email.trim());
+      const actionCodeSettings = {
+        url: "https://bondvibe-dev.web.app",
+        handleCodeInApp: false,
+      };
+      await sendPasswordResetEmail(auth, email.trim(), actionCodeSettings);
       setErrorModal({
         visible: true,
         title: "Reset Email Sent",
-        message: "Check your inbox for a link to reset your password. Don't forget to check your spam folder.",
+        message:
+          "Check your inbox for a link to reset your password. Don't forget to check your spam folder.",
         showSignup: false,
       });
     } catch (error) {
@@ -348,6 +355,22 @@ export default function LoginScreen({ navigation }) {
                   </Text>
                 </View>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.forgotPassword}
+                onPress={handleResetPassword}
+              >
+                <Text
+                  style={[
+                    styles.forgotPasswordText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  Forgot your password?{" "}
+                  <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                    Reset
+                  </Text>
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Extra padding for keyboard */}
@@ -436,7 +459,10 @@ export default function LoginScreen({ navigation }) {
                     activeOpacity={0.7}
                   >
                     <Text
-                      style={[styles.modalLinkText, { color: colors.textSecondary }]}
+                      style={[
+                        styles.modalLinkText,
+                        { color: colors.textSecondary },
+                      ]}
                     >
                       Cancel
                     </Text>
@@ -547,7 +573,12 @@ function createStyles(colors) {
     modalButtons: { flexDirection: "row", gap: 12, width: "100%" },
     modalButtonsColumn: { width: "100%", gap: 12 },
     modalFullButton: { width: "100%" },
-    modalLinkText: { fontSize: 15, fontWeight: "500", textAlign: "center", paddingVertical: 8 },
+    modalLinkText: {
+      fontSize: 15,
+      fontWeight: "500",
+      textAlign: "center",
+      paddingVertical: 8,
+    },
     forgotPassword: { alignItems: "center", marginTop: 16, marginBottom: 8 },
     forgotPasswordText: { fontSize: 14, fontWeight: "600" },
     orText: { textAlign: "center", fontSize: 14, marginVertical: 12 },

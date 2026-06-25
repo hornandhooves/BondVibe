@@ -1,9 +1,10 @@
-import React, { useState, useEffect, forwardRef } from "react";
+import React, { useState, useEffect, useRef, forwardRef } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
+import { registerPushToken } from "../utils/messageService";
 import { ActivityIndicator, View } from "react-native";
 
 // Contexts
@@ -42,16 +43,44 @@ import StripeConnectScreen from "../screens/StripeConnectScreen";
 
 const Stack = createNativeStackNavigator();
 
-// ✅ UPDATED: Use forwardRef to expose navigation ref to App.js
 const AppNavigator = forwardRef((props, ref) => {
   const { signupInProgress } = useAuthContext();
   const [initialUser, setInitialUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState("Login");
+  const [initialParams, setInitialParams] = useState({});
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [showUserNotFoundModal, setShowUserNotFoundModal] = useState(false);
   const [auth, setAuth] = useState(null);
   const [db, setDb] = useState(null);
+  const registeredPushTokenUid = useRef(null);
+
+  const AUTH_SCREENS = ["Login", "Signup"];
+
+  const navigateToRoute = (routeName, { user = null, params = {} } = {}) => {
+    setInitialUser(user);
+    setInitialRoute(routeName);
+    setInitialParams(params);
+
+    if (ref?.current?.isReady?.()) {
+      const currentRouteName = ref.current.getCurrentRoute()?.name;
+
+      if (routeName === "Login" && AUTH_SCREENS.includes(currentRouteName)) {
+        console.log(
+          `↪️ Ya en flujo de auth (${currentRouteName}), no se fuerza reset`,
+        );
+        return;
+      }
+
+      if (currentRouteName !== routeName) {
+        console.log(`🧭 Navegando imperativamente a: ${routeName}`);
+        ref.current.reset({
+          index: 0,
+          routes: [{ name: routeName, params }],
+        });
+      }
+    }
+  };
 
   // Initialize Firebase dynamically
   useEffect(() => {
@@ -83,7 +112,6 @@ const AppNavigator = forwardRef((props, ref) => {
     let unsubscribeFirestore = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      // Ignorar auth state changes durante signup
       if (signupInProgress) {
         console.log("⏭️ Signup in progress - ignoring auth state change");
         return;
@@ -91,7 +119,6 @@ const AppNavigator = forwardRef((props, ref) => {
 
       console.log("🔐 Auth state changed:", user?.uid || "null");
 
-      // Cleanup previous Firestore listener
       if (unsubscribeFirestore) {
         console.log("🧹 Cleaning up previous Firestore listener");
         unsubscribeFirestore();
@@ -101,8 +128,6 @@ const AppNavigator = forwardRef((props, ref) => {
       if (user) {
         console.log("👤 User logged in:", user.uid);
         console.log("📧 Email verified:", user.emailVerified);
-
-        // Set up real-time Firestore listener for this user
         console.log("🔄 Setting up Firestore listener for user:", user.uid);
 
         unsubscribeFirestore = onSnapshot(
@@ -117,56 +142,60 @@ const AppNavigator = forwardRef((props, ref) => {
               // 1. Verify email
               if (!user.emailVerified) {
                 console.log(
-                  "❌ Email not verified - showing modal and signing out"
+                  "❌ Email not verified - showing modal and signing out",
                 );
                 setShowVerificationModal(true);
-                setInitialRoute("Login");
-                setInitialUser(null);
+                navigateToRoute("Login");
                 auth.signOut();
               }
               // 2. Verify legal terms accepted
               else if (!userData.legalAccepted) {
                 console.log("⚖️ Legal not accepted - navigating to Legal");
-                setInitialRoute("Legal");
-                setInitialUser(user);
+                navigateToRoute("Legal", { user });
               }
               // 3. Verify profile completed
               else if (!userData.profileCompleted) {
                 console.log(
-                  "👤 Profile incomplete - navigating to ProfileSetup"
+                  "👤 Profile incomplete - navigating to ProfileSetup",
                 );
-                setInitialRoute("ProfileSetup");
-                setInitialUser(user);
+                navigateToRoute("ProfileSetup", { user });
               }
               // 4. Check if host needs to select type
-              else if (userData.role === "host" && !userData.hostConfig) {
+              else if (userData.role === "host" && (!userData.hostConfig || userData.hostConfig.type === "deferred")) {
                 console.log(
-                  "🎪 Host needs to select type - navigating to HostTypeSelection"
+                  "🎪 Host needs to select type - navigating to HostTypeSelection",
                 );
-                setInitialRoute("HostTypeSelection");
-                setInitialUser(user);
+                navigateToRoute("HostTypeSelection", {
+                  user,
+                  params: { userEmail: user.email, fullName: "Host" },
+                });
               }
               // 5. All checks passed - go to Home
               else {
                 console.log("✅ All checks passed - navigating to Home");
-                setInitialRoute("Home");
-                setInitialUser(user);
+                if (registeredPushTokenUid.current !== user.uid) {
+                  registeredPushTokenUid.current = user.uid;
+                  registerPushToken(user.uid);
+                }
+                navigateToRoute("Home", { user });
               }
             } else {
-              // Check if account is being intentionally deleted
-              AsyncStorage.getItem("@account_deleting").then((isDeletingAccount) => {
-                if (isDeletingAccount === "true") {
-                  console.log("🗑️ Account deletion completed, skipping modal");
-                  AsyncStorage.removeItem("@account_deleting");
-                } else {
-                  console.log(
-                    "❌ User doc does not exist - showing modal and signing out"
-                  );
-                  setShowUserNotFoundModal(true);
-                }
-              });
-              setInitialRoute("Login");
-              setInitialUser(null);
+              AsyncStorage.getItem("@account_deleting").then(
+                (isDeletingAccount) => {
+                  if (isDeletingAccount === "true") {
+                    console.log(
+                      "🗑️ Account deletion completed, skipping modal",
+                    );
+                    AsyncStorage.removeItem("@account_deleting");
+                  } else {
+                    console.log(
+                      "❌ User doc does not exist - showing modal and signing out",
+                    );
+                    setShowUserNotFoundModal(true);
+                  }
+                },
+              );
+              navigateToRoute("Login");
               auth.signOut();
             }
 
@@ -175,15 +204,13 @@ const AppNavigator = forwardRef((props, ref) => {
           },
           (error) => {
             console.error("❌ Error listening to user doc:", error);
-            setInitialRoute("Login");
-            setInitialUser(null);
+            navigateToRoute("Login");
             setLoading(false);
-          }
+          },
         );
       } else {
         console.log("🚪 No user, showing login");
-        setInitialRoute("Login");
-        setInitialUser(null);
+        navigateToRoute("Login");
         setLoading(false);
       }
     });
@@ -223,98 +250,55 @@ const AppNavigator = forwardRef((props, ref) => {
     );
   }
 
-  console.log(
-    "🗺️ AppNavigator rendering, initialUser:",
-    initialUser?.uid || "null"
-  );
+  console.log("🗺️ AppNavigator rendering, initialRoute:", initialRoute);
 
   return (
     <>
-      {/* ✅ UPDATED: Pass ref to NavigationContainer */}
       <NavigationContainer ref={ref}>
+        {/* ✅ Un solo Stack, todas las pantallas siempre registradas.
+            La navegación entre estados (Login/Legal/ProfileSetup/HostTypeSelection/Home)
+            se maneja con navigateToRoute() de forma imperativa, no condicionando
+            qué pantallas existen. */}
         <Stack.Navigator
           initialRouteName={initialRoute}
           screenOptions={{ headerShown: false }}
         >
-          {!initialUser ? (
-            // Auth Stack
-            <>
-              <Stack.Screen name="Login" component={LoginScreen} />
-              <Stack.Screen name="Signup" component={SignupScreen} />
-            </>
-          ) : initialRoute === "Legal" ? (
-            // Legal Stack
-            <>
-              <Stack.Screen name="Legal" component={LegalScreen} />
-            </>
-          ) : initialRoute === "ProfileSetup" ? (
-            // Profile Setup Stack
-            <>
-              <Stack.Screen
-                name="ProfileSetup"
-                component={ProfileSetupScreen}
-              />
-            </>
-          ) : initialRoute === "HostTypeSelection" ? (
-            // Host Type Selection Stack
-            <>
-              <Stack.Screen
-                name="HostTypeSelection"
-                component={HostTypeSelectionScreen}
-                initialParams={{
-                  userEmail: initialUser?.email,
-                  fullName: "Host",
-                }}
-              />
-            </>
-          ) : (
-            // Main App Stack
-            <>
-              <Stack.Screen name="Home" component={HomeScreen} />
-              <Stack.Screen
-                name="SearchEvents"
-                component={SearchEventsScreen}
-              />
-              <Stack.Screen name="EventDetail" component={EventDetailScreen} />
-              <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
-              <Stack.Screen name="EditEvent" component={EditEventScreen} />
-              <Stack.Screen name="MyEvents" component={MyEventsScreen} />
-              <Stack.Screen name="Profile" component={ProfileScreen} />
-              <Stack.Screen
-                name="PersonalityQuiz"
-                component={PersonalityQuizScreen}
-              />
-              <Stack.Screen
-                name="PersonalityResults"
-                component={PersonalityResultsScreen}
-              />
-              <Stack.Screen
-                name="Notifications"
-                component={NotificationsScreen}
-              />
-              <Stack.Screen name="EventChat" component={EventChatScreen} />
-              <Stack.Screen name="RequestHost" component={RequestHostScreen} />
-              <Stack.Screen
-                name="AdminDashboard"
-                component={AdminDashboardScreen}
-              />
-              {/* Payment Screens */}
-              <Stack.Screen name="Checkout" component={CheckoutScreen} />
-              {/* Stripe Connect Screens */}
-              <Stack.Screen
-                name="HostTypeSelection"
-                component={HostTypeSelectionScreen}
-              />
-              <Stack.Screen
-                name="StripeConnect"
-                component={StripeConnectScreen}
-              />
-            </>
-          )}
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Signup" component={SignupScreen} />
+          <Stack.Screen name="Legal" component={LegalScreen} />
+          <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
+          <Stack.Screen
+            name="HostTypeSelection"
+            component={HostTypeSelectionScreen}
+            initialParams={initialParams}
+          />
+          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="SearchEvents" component={SearchEventsScreen} />
+          <Stack.Screen name="EventDetail" component={EventDetailScreen} />
+          <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
+          <Stack.Screen name="EditEvent" component={EditEventScreen} />
+          <Stack.Screen name="MyEvents" component={MyEventsScreen} />
+          <Stack.Screen name="Profile" component={ProfileScreen} />
+          <Stack.Screen
+            name="PersonalityQuiz"
+            component={PersonalityQuizScreen}
+          />
+          <Stack.Screen
+            name="PersonalityResults"
+            component={PersonalityResultsScreen}
+          />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} />
+          <Stack.Screen name="EventChat" component={EventChatScreen} />
+          <Stack.Screen name="RequestHost" component={RequestHostScreen} />
+          <Stack.Screen
+            name="AdminDashboard"
+            component={AdminDashboardScreen}
+          />
+          <Stack.Screen name="Checkout" component={CheckoutScreen} />
+          <Stack.Screen name="StripeConnect" component={StripeConnectScreen} />
         </Stack.Navigator>
       </NavigationContainer>
 
-      {/* Email verification modal */}
       <SuccessModal
         visible={showVerificationModal}
         onClose={handleVerificationModalClose}
@@ -323,7 +307,6 @@ const AppNavigator = forwardRef((props, ref) => {
         emoji="📧"
       />
 
-      {/* User doc not found modal */}
       <SuccessModal
         visible={showUserNotFoundModal}
         onClose={handleUserNotFoundModalClose}

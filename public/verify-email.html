@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Email - BondVibe</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(180deg, #0B0F1A 0%, #150D18 50%, #0B0F1A 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 40px;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .logo {
+            margin-bottom: 24px;
+        }
+        
+        .logo svg {
+            width: 64px;
+            height: 64px;
+        }
+        
+        .status-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+        
+        .status-icon-svg {
+            margin-bottom: 20px;
+        }
+        
+        .status-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .status-message {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        
+        .success .status-title { color: #34C759; }
+        .error .status-title { color: #EF4444; }
+        .loading .status-title { color: #FFFFFF; }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #E91E8C;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="50" cy="50" r="8" fill="#E91E8C"/>
+                <circle cx="50" cy="50" r="20" stroke="#E91E8C" stroke-width="3" fill="none" opacity="0.6"/>
+                <circle cx="50" cy="50" r="32" stroke="#E91E8C" stroke-width="2" fill="none" opacity="0.4"/>
+                <circle cx="50" cy="50" r="44" stroke="#E91E8C" stroke-width="1.5" fill="none" opacity="0.2"/>
+            </svg>
+        </div>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <div class="status-title">Verifying Email</div>
+            <div class="status-message">Please wait while we verify your email address...</div>
+        </div>
+
+        <div id="success" class="success" style="display: none;">
+            <div class="status-icon-svg">
+                <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="40" cy="40" r="38" stroke="#34C759" stroke-width="3" fill="rgba(52, 199, 89, 0.15)"/>
+                    <path d="M24 40L35 51L56 30" stroke="#34C759" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div class="status-title">Email Verified!</div>
+            <div class="status-message">Your email has been successfully verified. You can now log in to BondVibe and start connecting with others.</div>
+        </div>
+
+        <div id="error" class="error" style="display: none;">
+            <div class="status-icon-svg">
+                <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="40" cy="40" r="38" stroke="#EF4444" stroke-width="3" fill="rgba(239, 68, 68, 0.15)"/>
+                    <path d="M28 28L52 52M52 28L28 52" stroke="#EF4444" stroke-width="4" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div class="status-title">Verification Failed</div>
+            <div class="status-message" id="errorMessage">This verification link is invalid or has expired.</div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyD6Da2VCEj-e-LBWJPctQ-Pwck9yahrIEQ",
+            authDomain: "bondvibe-dev.firebaseapp.com",
+            projectId: "bondvibe-dev"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        
+        const loadingEl = document.getElementById('loading');
+        const successEl = document.getElementById('success');
+        const errorEl = document.getElementById('error');
+        const errorMessageEl = document.getElementById('errorMessage');
+        
+        function showState(state, message) {
+            loadingEl.style.display = 'none';
+            successEl.style.display = 'none';
+            errorEl.style.display = 'none';
+            
+            if (state === 'loading') loadingEl.style.display = 'block';
+            if (state === 'success') successEl.style.display = 'block';
+            if (state === 'error') {
+                errorEl.style.display = 'block';
+                if (message) errorMessageEl.textContent = message;
+            }
+        }
+        
+        async function init() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const oobCode = urlParams.get('oobCode');
+            const mode = urlParams.get('mode');
+            
+            if (!oobCode) {
+                showState('error', 'Invalid verification link.');
+                return;
+            }
+            
+            if (mode === 'resetPassword') {
+                window.location.href = '/reset-password.html' + window.location.search;
+                return;
+            }
+            
+            try {
+                await firebase.auth().applyActionCode(oobCode);
+                showState('success');
+            } catch (error) {
+                console.error('Verification error:', error);
+                if (error.code === 'auth/expired-action-code') {
+                    showState('error', 'This link has expired. Please request a new one.');
+                } else if (error.code === 'auth/invalid-action-code') {
+                    showState('error', 'This link is invalid or already used.');
+                } else {
+                    showState('error', 'Verification failed. Please try again.');
+                }
+            }
+        }
+        
+        init();
+    </script>
+</body>
+</html>

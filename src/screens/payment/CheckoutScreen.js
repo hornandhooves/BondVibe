@@ -63,7 +63,7 @@ export default function CheckoutScreen({ route, navigation }) {
         console.error("❌ Payment failed:", error);
         Alert.alert(
           "Payment Failed",
-          error.message || "There was an error processing your payment"
+          error.message || "There was an error processing your payment",
         );
         setProcessing(false);
         return;
@@ -95,13 +95,13 @@ export default function CheckoutScreen({ route, navigation }) {
               });
             },
           },
-        ]
+        ],
       );
     } catch (error) {
       console.error("❌ Payment error:", error);
       Alert.alert(
         "Payment Error",
-        "There was an error processing your payment. Please try again."
+        "There was an error processing your payment. Please try again.",
       );
     } finally {
       setProcessing(false);
@@ -227,15 +227,6 @@ export default function CheckoutScreen({ route, navigation }) {
                   {formatMXN(amount)}
                 </Text>
               </View>
-
-              <Text
-                style={[
-                  styles.hostReceivesText,
-                  { color: colors.textTertiary },
-                ]}
-              >
-                Host receives: ~{formatMXN(Math.floor(amount * 0.9))} after fees
-              </Text>
             </View>
 
             {/* Card Input */}
@@ -398,11 +389,6 @@ function createStyles(colors) {
     totalValue: {
       fontSize: 20,
       fontWeight: "800",
-    },
-    hostReceivesText: {
-      fontSize: 12,
-      marginTop: 8,
-      textAlign: "center",
     },
     cardFieldContainer: {
       borderWidth: 1,
