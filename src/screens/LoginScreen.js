@@ -65,7 +65,6 @@ export default function LoginScreen({ navigation }) {
       // Reload user to get fresh emailVerified status
       console.log("🔄 Reloading user to get fresh emailVerified status...");
       await user.reload();
-      user = auth.currentUser;
 
       console.log("✅ Login successful:", user.uid);
       console.log(

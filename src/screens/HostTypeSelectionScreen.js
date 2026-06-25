@@ -54,22 +54,19 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
     };
   }, [loading]);
 
-  // Handle skip - set as Free Host by default
-  const handleSkip = async () => {
+  const handleDecideLater = async () => {
     setLoading(true);
     try {
       await updateDoc(doc(db, "users", auth.currentUser.uid), {
-        "hostConfig.type": "free",
+        "hostConfig.type": "deferred",
         "hostConfig.canCreatePaidEvents": false,
         "hostConfig.createdAt": new Date().toISOString(),
         "hostConfig.updatedAt": new Date().toISOString(),
       });
-      console.log("✅ User skipped selection, defaulted to Free Host");
-      // The onSnapshot above will detect this and stop loading
-      // Then AppNavigator's onSnapshot will navigate to Home
+      console.log("✅ User deferred host type selection");
     } catch (error) {
-      console.error("❌ Error skipping selection:", error);
-      Alert.alert("Error", "Could not skip selection. Please try again.");
+      console.error("❌ Error deferring selection:", error);
+      Alert.alert("Error", "Could not continue. Please try again.");
       setLoading(false);
     }
   };
@@ -147,16 +144,7 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
         <Text style={[styles.headerTitle, { color: colors.text }]}>
           Choose Host Type
         </Text>
-        <TouchableOpacity onPress={handleSkip} disabled={loading}>
-          <Text
-            style={[
-              styles.skipButton,
-              { color: colors.primary, opacity: loading ? 0.5 : 1 },
-            ]}
-          >
-            Free Host →
-          </Text>
-        </TouchableOpacity>
+        <View style={{ width: 50 }} />
       </View>
 
       <ScrollView
@@ -381,12 +369,20 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
           </View>
         </TouchableOpacity>
 
-        <View style={styles.noteSection}>
-          <Text style={[styles.noteText, { color: colors.textTertiary }]}>
-            💡 You can always change your host type later from your profile
-            settings.
+        <TouchableOpacity
+          onPress={handleDecideLater}
+          disabled={loading}
+          style={styles.noteSection}
+        >
+          <Text
+            style={[
+              styles.noteText,
+              { color: colors.textTertiary, opacity: loading ? 0.5 : 1 },
+            ]}
+          >
+            Decide Later
           </Text>
-        </View>
+        </TouchableOpacity>
       </ScrollView>
     </GradientBackground>
   );

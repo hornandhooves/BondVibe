@@ -202,13 +202,16 @@ export default function CreateEventScreen({ navigation }) {
       const canCreatePaid = userProfile?.hostConfig?.canCreatePaidEvents;
 
       if (!canCreatePaid) {
+        const hasStripeAccount = !!userProfile?.stripeConnect?.accountId;
         Alert.alert(
-          "Stripe Account Required",
-          "To create paid events, you need to connect your Stripe account first.",
+          hasStripeAccount ? "Stripe Verification Pending" : "Stripe Account Required",
+          hasStripeAccount
+            ? "Your Stripe account is connected but still being verified. Once approved, you'll be able to create paid events."
+            : "To create paid events, you need to connect your Stripe account first.",
           [
             { text: "Cancel", style: "cancel" },
             {
-              text: "Connect Stripe",
+              text: hasStripeAccount ? "Check Status" : "Connect Stripe",
               onPress: () => navigation.navigate("StripeConnect"),
             },
           ]
