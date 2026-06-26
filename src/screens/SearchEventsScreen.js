@@ -35,7 +35,7 @@ const LANGUAGE_OPTIONS = [
 
 // Filter options
 const PRICE_OPTIONS = [
-  { id: "all", label: "All Prices" },
+  { id: "all", label: "All type of events" },
   { id: "free", label: "Free" },
   { id: "paid", label: "Paid" },
 ];

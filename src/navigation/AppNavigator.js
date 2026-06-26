@@ -139,8 +139,9 @@ const AppNavigator = forwardRef((props, ref) => {
               const userData = docSnapshot.data();
               console.log("✅ User data:", userData);
 
-              // 1. Verify email
-              if (!user.emailVerified) {
+              // 1. Verify email — check Firestore field, not Auth token,
+              // so password reset (which sets Auth emailVerified=true) doesn't bypass this
+              if (!userData.emailVerified) {
                 console.log(
                   "❌ Email not verified - showing modal and signing out",
                 );

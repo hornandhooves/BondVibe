@@ -176,14 +176,14 @@ export default function AdminDashboardScreen({ navigation }) {
 
       console.log("✅ Host request approved");
 
-      // NEW: Show success and explain next steps
+      setPendingRequests((prev) => prev.filter((r) => r.id !== currentRequest.id));
+      setStats((prev) => ({ ...prev, pending: Math.max(0, (prev.pending || 1) - 1) }));
+
       Alert.alert(
         "Success",
-        `${currentRequest.userName} is now a host! They will need to choose their host type (Free or Paid) on their next login.`,
+        `${currentRequest.userName} is now a host! They will need to choose their host type on their next login.`,
         [{ text: "OK" }]
       );
-
-      await loadData();
     } catch (error) {
       console.error("Error approving request:", error);
       Alert.alert("Error", "Could not approve request. Please try again.");

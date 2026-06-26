@@ -190,7 +190,7 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
               <Text style={styles.optionEmoji}>🆓</Text>
               <View style={styles.optionTitleContainer}>
                 <Text style={[styles.optionTitle, { color: colors.text }]}>
-                  Free Host
+                  Hosting Free Events Only
                 </Text>
                 <Text
                   style={[
@@ -275,7 +275,7 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
               <Text style={styles.optionEmoji}>💰</Text>
               <View style={styles.optionTitleContainer}>
                 <Text style={[styles.optionTitle, { color: colors.text }]}>
-                  Paid Host
+                  Hosting Free and Paid Events
                 </Text>
                 <Text
                   style={[

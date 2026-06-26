@@ -123,6 +123,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
     
     <script>
         const firebaseConfig = {
@@ -168,6 +169,12 @@
             
             try {
                 await firebase.auth().applyActionCode(oobCode);
+                const user = firebase.auth().currentUser;
+                if (user) {
+                    await firebase.firestore().collection('users').doc(user.uid).update({
+                        emailVerified: true,
+                    });
+                }
                 showState('success');
             } catch (error) {
                 console.error('Verification error:', error);

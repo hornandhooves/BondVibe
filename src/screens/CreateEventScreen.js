@@ -906,6 +906,7 @@ export default function CreateEventScreen({ navigation }) {
                 value={maxPeople}
                 onChangeText={setMaxPeople}
                 keyboardType="numeric"
+                returnKeyType="done"
               />
             </View>
           </View>
@@ -938,6 +939,7 @@ export default function CreateEventScreen({ navigation }) {
                 value={isFree ? "0" : price}
                 onChangeText={handlePriceChange}
                 keyboardType="numeric"
+                returnKeyType="done"
                 editable={!isFree}
               />
             </View>

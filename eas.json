@@ -19,6 +19,16 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "jcpuntoduarte@gmail.com",
+        "ascAppId": "6756991364",
+        "appleTeamId": "XZA3946V5X"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./google-play-service-account.json",
+        "track": "internal"
+      }
+    }
   }
 }

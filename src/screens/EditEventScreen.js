@@ -32,6 +32,7 @@ import {
   uploadEventImages,
   deleteEventImage,
 } from "../services/storageService";
+import { EVENT_LANGUAGES } from "../utils/eventCategories";
 
 const CATEGORIES = [
   "Social",
@@ -42,11 +43,6 @@ const CATEGORIES = [
   "Adventure",
 ];
 
-const EVENT_LANGUAGES = [
-  { id: "es", label: "Español" },
-  { id: "en", label: "English" },
-  { id: "both", label: "Bilingual" },
-];
 
 export default function EditEventScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();

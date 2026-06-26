@@ -30,6 +30,11 @@ export default function CheckoutScreen({ route, navigation }) {
 
   const { eventId, eventTitle, amount } = route.params;
 
+  // Calculate fee breakdown (mirrors pricing.js on the backend)
+  const platformFee = Math.ceil(amount * 0.05);
+  const stripeFee = Math.ceil((amount + platformFee) * 0.029) + 300;
+  const totalAmount = amount + platformFee + stripeFee;
+
   const [cardComplete, setCardComplete] = useState(false);
   const [processing, setProcessing] = useState(false);
 
@@ -197,7 +202,7 @@ export default function CheckoutScreen({ route, navigation }) {
                   Platform Fee (5%)
                 </Text>
                 <Text style={[styles.breakdownValue, { color: colors.text }]}>
-                  Included
+                  {formatMXN(platformFee)}
                 </Text>
               </View>
 
@@ -211,7 +216,7 @@ export default function CheckoutScreen({ route, navigation }) {
                   Processing Fee
                 </Text>
                 <Text style={[styles.breakdownValue, { color: colors.text }]}>
-                  Included
+                  {formatMXN(stripeFee)}
                 </Text>
               </View>
 
@@ -224,7 +229,7 @@ export default function CheckoutScreen({ route, navigation }) {
                   Total
                 </Text>
                 <Text style={[styles.totalValue, { color: colors.primary }]}>
-                  {formatMXN(amount)}
+                  {formatMXN(totalAmount)}
                 </Text>
               </View>
             </View>
@@ -287,7 +292,7 @@ export default function CheckoutScreen({ route, navigation }) {
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <Text style={styles.payButtonText}>
-                  Pay {formatMXN(amount)}
+                  Pay {formatMXN(totalAmount)}
                 </Text>
               )}
             </TouchableOpacity>
