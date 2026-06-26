@@ -152,8 +152,12 @@ export default function App() {
         break;
 
       case "host_approved":
+        // Navigate to HostTypeSelection so user can choose their host type
+        console.log("📍 Navigating to HostTypeSelection (host approved)");
+        navigate("HostTypeSelection");
+        break;
+
       case "host_rejected":
-        // Navigate to Profile
         console.log("📍 Navigating to Profile");
         navigate("Profile");
         break;

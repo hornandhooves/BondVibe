@@ -234,6 +234,9 @@ export default function NotificationsScreen({ navigation }) {
         break;
 
       case "host_approved":
+        navigation.navigate("HostTypeSelection");
+        break;
+
       case "host_rejected":
         navigation.navigate("Profile");
         break;
