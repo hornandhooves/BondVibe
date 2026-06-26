@@ -21,8 +21,8 @@ service cloud.firestore {
     
     function isEventParticipant(eventId) {
       let eventData = get(/databases/$(database)/documents/events/$(eventId)).data;
-      return request.auth.uid == eventData.creatorId || 
-             request.auth.uid in eventData.attendees;
+      return request.auth.uid == eventData.creatorId ||
+             (eventData.attendees != null && request.auth.uid in eventData.attendees);
     }
     
     function onlyUpdating(allowedFields) {

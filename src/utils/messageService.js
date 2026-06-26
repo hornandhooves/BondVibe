@@ -11,6 +11,7 @@ import {
   where,
   updateDoc,
   writeBatch,
+  limit,
 } from "firebase/firestore";
 import { db } from "../services/firebase";
 import * as Notifications from "expo-notifications";
@@ -63,8 +64,8 @@ export const sendMessage = async (conversationId, senderId, text) => {
       text,
       type: "text",
       createdAt: new Date().toISOString(),
-      delivered: false,
-      read: false,
+      deliveredTo: {},  // { userId: true } — per-user delivery tracking
+      readBy: {},       // { userId: true } — per-user read tracking
     };
 
     console.log("📝 Message data:", JSON.stringify(messageData));
@@ -103,8 +104,8 @@ export const sendLocationMessage = async (
         address: address || `${latitude}, ${longitude}`,
       },
       createdAt: new Date().toISOString(),
-      delivered: false,
-      read: false,
+      deliveredTo: {},
+      readBy: {},
     };
 
     const docRef = await addDoc(messagesRef, messageData);
@@ -209,7 +210,8 @@ export const setTypingStatus = async (conversationId, userId, isTyping) => {
 };
 
 /**
- * Marcar mensajes como entregados
+ * Marcar mensajes como entregados al usuario actual.
+ * Usa mapa por usuario: deliveredTo.{userId} = true
  */
 export const markMessagesAsDelivered = async (
   conversationId,
@@ -219,20 +221,19 @@ export const markMessagesAsDelivered = async (
     const eventId = conversationId.replace("event_", "");
     const messagesRef = collection(db, "events", eventId, "messages");
 
-    const q = query(messagesRef, where("delivered", "==", false));
+    // Read last 100 messages and filter those not yet delivered to this user
+    const q = query(messagesRef, orderBy("createdAt", "desc"), limit(100));
     const snapshot = await getDocs(q);
 
-    if (snapshot.empty) {
-      return;
-    }
+    if (snapshot.empty) return;
 
     const batch = writeBatch(db);
     let count = 0;
 
     snapshot.docs.forEach((docSnap) => {
       const data = docSnap.data();
-      if (data.senderId !== currentUserId) {
-        batch.update(docSnap.ref, { delivered: true });
+      if (data.senderId !== currentUserId && !data.deliveredTo?.[currentUserId]) {
+        batch.update(docSnap.ref, { [`deliveredTo.${currentUserId}`]: true });
         count++;
       }
     });
@@ -247,24 +248,19 @@ export const markMessagesAsDelivered = async (
 };
 
 /**
- * Marcar mensajes como leídos
+ * Marcar mensajes como leídos por el usuario actual.
+ * Usa mapa por usuario: readBy.{userId} = true
  */
 export const markMessagesAsRead = async (conversationId, currentUserId) => {
   try {
-    console.log("📖 markMessagesAsRead called");
-    console.log("  - conversationId:", conversationId);
-    console.log("  - currentUserId:", currentUserId);
-
     const eventId = conversationId.replace("event_", "");
     const messagesRef = collection(db, "events", eventId, "messages");
 
-    const q = query(messagesRef, where("read", "==", false));
+    // Read last 100 messages and filter those not yet read by this user
+    const q = query(messagesRef, orderBy("createdAt", "desc"), limit(100));
     const snapshot = await getDocs(q);
 
-    console.log(`  - Found ${snapshot.size} unread messages total`);
-
     if (snapshot.empty) {
-      console.log("📭 No unread messages to mark");
       await clearEventMessageNotifications(conversationId, currentUserId);
       return;
     }
@@ -274,20 +270,18 @@ export const markMessagesAsRead = async (conversationId, currentUserId) => {
 
     snapshot.docs.forEach((docSnap) => {
       const data = docSnap.data();
-      if (data.senderId !== currentUserId) {
+      if (data.senderId !== currentUserId && !data.readBy?.[currentUserId]) {
         batch.update(docSnap.ref, {
-          read: true,
-          delivered: true,
+          [`readBy.${currentUserId}`]: true,
+          [`deliveredTo.${currentUserId}`]: true,
         });
         count++;
       }
     });
 
-    console.log(`  - Marking ${count} messages as read (from other users)`);
-
     if (count > 0) {
       await batch.commit();
-      console.log(`✅ Successfully marked ${count} messages as read`);
+      console.log(`✅ Marked ${count} messages as read`);
     }
 
     await clearEventMessageNotifications(conversationId, currentUserId);
@@ -377,6 +371,25 @@ export const registerPushToken = async (userId) => {
 
     const token = tokenData.data;
     console.log("🔔 Expo Push Token:", token);
+
+    // Clear this token from any other user document (same device, different account).
+    // Without this, old UIDs on the same device keep receiving notifications.
+    const staleSnap = await getDocs(
+      query(collection(db, "users"), where("pushToken", "==", token))
+    );
+    if (!staleSnap.empty) {
+      const cleanupBatch = writeBatch(db);
+      staleSnap.forEach((staleDoc) => {
+        if (staleDoc.id !== userId) {
+          console.log(`🧹 Removing stale push token from old user: ${staleDoc.id}`);
+          cleanupBatch.update(staleDoc.ref, {
+            pushToken: null,
+            pushTokenUpdatedAt: new Date().toISOString(),
+          });
+        }
+      });
+      await cleanupBatch.commit();
+    }
 
     const userRef = doc(db, "users", userId);
     await updateDoc(userRef, {

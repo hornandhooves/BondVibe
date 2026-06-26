@@ -1,78 +1,86 @@
-import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { useState, useEffect, useRef } from 'react';
+import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 
 export const useUnreadMessages = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadByEvent, setUnreadByEvent] = useState({});
+  const listenersRef = useRef([]);
 
   useEffect(() => {
     if (!auth.currentUser) return;
 
-    const loadUnreadMessages = async () => {
-      try {
-        // Get all events where user is attendee or host
-        const eventsSnapshot = await getDocs(collection(db, 'events'));
-        const userEvents = [];
-        
-        eventsSnapshot.forEach((doc) => {
-          const eventData = doc.data();
-          const isHost = eventData.hostId === auth.currentUser.uid;
-          const isAttendee = eventData.attendees?.some(
-            a => a.userId === auth.currentUser.uid
-          );
-          
-          if (isHost || isAttendee) {
-            userEvents.push(doc.id);
-          }
+    const userId = auth.currentUser.uid;
+
+    // Listen to the user's participated events in real-time
+    const eventsUnsub = onSnapshot(
+      collection(db, 'events'),
+      (eventsSnap) => {
+        // Clean up previous message listeners
+        listenersRef.current.forEach((unsub) => unsub());
+        listenersRef.current = [];
+
+        const userEventIds = [];
+        eventsSnap.forEach((doc) => {
+          const d = doc.data();
+          const isCreator = d.creatorId === userId;
+          const isAttendee = Array.isArray(d.attendees) &&
+            d.attendees.some((a) =>
+              typeof a === 'string' ? a === userId : a?.userId === userId
+            );
+          if (isCreator || isAttendee) userEventIds.push(doc.id);
         });
 
-        if (userEvents.length === 0) {
+        if (userEventIds.length === 0) {
           setUnreadCount(0);
+          setUnreadByEvent({});
           return;
         }
 
-        // Subscribe to unread messages count
-        const unreadMessagesQuery = query(
-          collection(db, 'eventChats'),
-          where('eventId', 'in', userEvents.slice(0, 10)) // Firestore limit
-        );
-
-        const unsubscribe = onSnapshot(unreadMessagesQuery, (snapshot) => {
-          const readMessages = JSON.parse(
-            localStorage.getItem('readMessages') || '{}'
+        // One real-time listener per event for unread messages
+        const counts = {};
+        userEventIds.forEach((eventId) => {
+          // All messages — filter unread for current user in the listener
+          const q = query(
+            collection(db, 'events', eventId, 'messages'),
+            orderBy('createdAt', 'desc'),
+            limit(100)
           );
-          
-          let totalUnread = 0;
-          const unreadByEventTemp = {};
-
-          snapshot.forEach((doc) => {
-            const message = doc.data();
-            const eventId = message.eventId;
-            const messageId = doc.id;
-            
-            // Don't count own messages
-            if (message.userId === auth.currentUser.uid) return;
-            
-            // Check if message is read
-            const eventReadMessages = readMessages[eventId] || [];
-            if (!eventReadMessages.includes(messageId)) {
-              totalUnread++;
-              unreadByEventTemp[eventId] = (unreadByEventTemp[eventId] || 0) + 1;
-            }
+          const unsub = onSnapshot(q, (msgSnap) => {
+            let count = 0;
+            msgSnap.forEach((msgDoc) => {
+              const d = msgDoc.data();
+              if (d.senderId === userId) return;
+              // New map format
+              if (d.readBy !== undefined) {
+                if (!d.readBy?.[userId]) count++;
+              } else if (!d.read) {
+                // Legacy boolean format
+                count++;
+              }
+            });
+            counts[eventId] = count;
+            const total = Object.values(counts).reduce((s, c) => s + c, 0);
+            setUnreadCount(total);
+            setUnreadByEvent({ ...counts });
+          }, () => {
+            // Permission denied for this event — skip silently
+            counts[eventId] = 0;
           });
-
-          setUnreadCount(totalUnread);
-          setUnreadByEvent(unreadByEventTemp);
+          listenersRef.current.push(unsub);
         });
-
-        return () => unsubscribe();
-      } catch (error) {
-        console.error('Error loading unread messages:', error);
+      },
+      () => {
+        setUnreadCount(0);
+        setUnreadByEvent({});
       }
-    };
+    );
 
-    loadUnreadMessages();
+    return () => {
+      eventsUnsub();
+      listenersRef.current.forEach((unsub) => unsub());
+      listenersRef.current = [];
+    };
   }, []);
 
   return { unreadCount, unreadByEvent };

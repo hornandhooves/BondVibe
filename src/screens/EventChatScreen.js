@@ -53,14 +53,33 @@ export default function EventChatScreen({ route, navigation }) {
     const initChat = async () => {
       try {
         const conversationId = `event_${eventId}`;
-
-        // Asegurar que la conversación existe
-        await ensureEventConversation(conversationId);
+        const currentUserId = auth.currentUser?.uid;
 
         // Precargar TODOS los participantes del evento
         const eventDoc = await getDoc(doc(db, "events", eventId));
         if (eventDoc.exists()) {
           const eventData = eventDoc.data();
+
+          // Verify current user is a participant before entering chat
+          const isCreator = eventData.creatorId === currentUserId;
+          const isAttendee = Array.isArray(eventData.attendees) &&
+            eventData.attendees.some((a) =>
+              typeof a === "string" ? a === currentUserId : a?.userId === currentUserId
+            );
+
+          if (!isCreator && !isAttendee) {
+            setLoading(false);
+            Alert.alert(
+              "Access Restricted",
+              "You need to join this event before you can access its chat.",
+              [{ text: "Go Back", onPress: () => navigation.goBack() }]
+            );
+            return;
+          }
+
+          // Asegurar que la conversación existe
+          await ensureEventConversation(conversationId);
+
           const participantIds = new Set();
 
           if (eventData.creatorId) {
@@ -158,6 +177,13 @@ export default function EventChatScreen({ route, navigation }) {
       } catch (error) {
         console.error("Error initializing chat:", error);
         setLoading(false);
+        if (error?.code === "permission-denied") {
+          Alert.alert(
+            "Access Restricted",
+            "You don't have permission to access this chat.",
+            [{ text: "Go Back", onPress: () => navigation.goBack() }]
+          );
+        }
       }
     };
 
@@ -333,13 +359,34 @@ export default function EventChatScreen({ route, navigation }) {
   const getMessageStatus = (message) => {
     if (message.senderId !== auth.currentUser.uid) return null;
 
-    if (message.read) {
-      return { icon: "✓✓", color: colors.primary };
-    } else if (message.delivered) {
-      return { icon: "✓✓", color: colors.textTertiary };
-    } else {
+    // Other participants (everyone loaded in the chat except the sender)
+    const otherIds = Object.keys(users).filter(
+      (uid) => uid !== auth.currentUser.uid
+    );
+
+    if (otherIds.length === 0) {
+      // Solo chat — sent tick only
       return { icon: "✓", color: colors.textTertiary };
     }
+
+    // New per-user map format
+    if (message.readBy !== undefined || message.deliveredTo !== undefined) {
+      const readBy = message.readBy || {};
+      const deliveredTo = message.deliveredTo || {};
+
+      const allRead = otherIds.every((uid) => readBy[uid]);
+      if (allRead) return { icon: "✓✓", color: colors.primary }; // blue — all read
+
+      const anyDelivered = otherIds.some((uid) => deliveredTo[uid] || readBy[uid]);
+      if (anyDelivered) return { icon: "✓✓", color: colors.textTertiary }; // grey double — delivered to some
+
+      return { icon: "✓", color: colors.textTertiary }; // grey single — sent
+    }
+
+    // Legacy boolean format fallback (old messages)
+    if (message.read) return { icon: "✓✓", color: colors.primary };
+    if (message.delivered) return { icon: "✓✓", color: colors.textTertiary };
+    return { icon: "✓", color: colors.textTertiary };
   };
 
   // ✅ HELPER: Get user display name (handles both fullName and name fields)

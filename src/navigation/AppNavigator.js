@@ -54,6 +54,10 @@ const AppNavigator = forwardRef((props, ref) => {
   const [auth, setAuth] = useState(null);
   const [db, setDb] = useState(null);
   const registeredPushTokenUid = useRef(null);
+  // Tracks whether the initial routing has been decided for the current session.
+  // After first routing, mid-session Firestore updates should NOT re-trigger
+  // routing screens like HostTypeSelection — those interruptions come via notifications.
+  const hasInitiallyRouted = useRef(false);
 
   const AUTH_SCREENS = ["Login", "Signup"];
 
@@ -139,8 +143,8 @@ const AppNavigator = forwardRef((props, ref) => {
               const userData = docSnapshot.data();
               console.log("✅ User data:", userData);
 
-              // 1. Verify email — check Firestore field, not Auth token,
-              // so password reset (which sets Auth emailVerified=true) doesn't bypass this
+              // Email verification is always enforced — even mid-session — because
+              // it's a security gate. All other routing only runs on initial load.
               if (!userData.emailVerified) {
                 console.log(
                   "❌ Email not verified - showing modal and signing out",
@@ -148,9 +152,19 @@ const AppNavigator = forwardRef((props, ref) => {
                 setShowVerificationModal(true);
                 navigateToRoute("Login");
                 auth.signOut();
+                return;
               }
+
+              // Mid-session Firestore updates (e.g. admin approves host role) should
+              // NOT interrupt the user. Only run the full routing on initial load.
+              if (hasInitiallyRouted.current) {
+                console.log("🔄 Mid-session update — routing already done, skipping");
+                return;
+              }
+              hasInitiallyRouted.current = true;
+
               // 2. Verify legal terms accepted
-              else if (!userData.legalAccepted) {
+              if (!userData.legalAccepted) {
                 console.log("⚖️ Legal not accepted - navigating to Legal");
                 navigateToRoute("Legal", { user });
               }
@@ -161,8 +175,9 @@ const AppNavigator = forwardRef((props, ref) => {
                 );
                 navigateToRoute("ProfileSetup", { user });
               }
-              // 4. Check if host needs to select type
-              else if (userData.role === "host" && (!userData.hostConfig || userData.hostConfig.type === "deferred")) {
+              // 4. Check if host needs to select type (only on initial login,
+              //    NOT triggered by mid-session role changes from admin)
+              else if (userData.role === "host" && !userData.hostConfig) {
                 console.log(
                   "🎪 Host needs to select type - navigating to HostTypeSelection",
                 );
@@ -211,6 +226,8 @@ const AppNavigator = forwardRef((props, ref) => {
         );
       } else {
         console.log("🚪 No user, showing login");
+        hasInitiallyRouted.current = false; // reset for next login session
+        registeredPushTokenUid.current = null;
         navigateToRoute("Login");
         setLoading(false);
       }

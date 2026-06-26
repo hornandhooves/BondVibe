@@ -57,6 +57,10 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
   const handleDecideLater = async () => {
     setLoading(true);
     try {
+      // Write a placeholder hostConfig so AppNavigator knows the user
+      // acknowledged the screen and won't show it again mid-session.
+      // "deferred" means they'll be prompted again on next login only
+      // if hostConfig is still absent; here it exists so they get to Home.
       await updateDoc(doc(db, "users", auth.currentUser.uid), {
         "hostConfig.type": "deferred",
         "hostConfig.canCreatePaidEvents": false,
@@ -64,6 +68,9 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
         "hostConfig.updatedAt": new Date().toISOString(),
       });
       console.log("✅ User deferred host type selection");
+      // Navigate to Home immediately — AppNavigator won't re-route because
+      // hasInitiallyRouted is already true for this session.
+      navigation.reset({ index: 0, routes: [{ name: "Home" }] });
     } catch (error) {
       console.error("❌ Error deferring selection:", error);
       Alert.alert("Error", "Could not continue. Please try again.");
