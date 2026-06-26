@@ -98,7 +98,15 @@ export default function ChatScreen({ route, navigation }) {
             backgroundColor: `${colors.primary}26`,
             borderColor: `${colors.primary}4D`
           }]}>
-            <Text style={styles.headerAvatarEmoji}>{otherUser.avatar || '😊'}</Text>
+            <Text style={styles.headerAvatarEmoji}>{
+              (() => {
+                const a = otherUser?.avatar;
+                if (!a) return otherUser?.emoji || '😊';
+                if (typeof a === 'string') return a;
+                if (a.type === 'emoji') return a.value || '😊';
+                return '😊';
+              })()
+            }</Text>
           </View>
           <Text style={[styles.headerName, { color: colors.text }]}>
             {otherUser.fullName || 'Unknown'}

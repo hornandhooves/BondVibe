@@ -348,6 +348,16 @@ export default function EventChatScreen({ route, navigation }) {
     return user.fullName || user.name || "User";
   };
 
+  // ✅ HELPER: Extract emoji string from avatar (stored as {type, value} object)
+  const getAvatarEmoji = (user) => {
+    if (!user) return "😊";
+    const avatar = user.avatar;
+    if (!avatar) return user.emoji || "😊";
+    if (typeof avatar === "string") return avatar;
+    if (avatar.type === "emoji") return avatar.value || "😊";
+    return "😊"; // photo avatars — fall back to default in chat bubbles
+  };
+
   const styles = createStyles(colors);
 
   const MessageBubble = ({ message }) => {
@@ -379,7 +389,7 @@ export default function EventChatScreen({ route, navigation }) {
                 ]}
               >
                 <Text style={styles.senderEmoji}>
-                  {user?.avatar || user?.emoji || "😊"}
+                  {getAvatarEmoji(user)}
                 </Text>
               </View>
               <Text
@@ -446,7 +456,7 @@ export default function EventChatScreen({ route, navigation }) {
               ]}
             >
               <Text style={styles.senderEmoji}>
-                {user?.avatar || user?.emoji || "😊"}
+                {getAvatarEmoji(user)}
               </Text>
             </View>
             <Text style={[styles.senderName, { color: colors.textSecondary }]}>

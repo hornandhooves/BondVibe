@@ -112,7 +112,13 @@ export default function ConversationsScreen({ navigation }) {
           ]}
         >
           <Text style={styles.avatarEmoji}>
-            {conversation.otherUser?.avatar || "😊"}
+{(() => {
+              const a = conversation.otherUser?.avatar;
+              if (!a) return "😊";
+              if (typeof a === "string") return a;
+              if (a.type === "emoji") return a.value || "😊";
+              return "😊";
+            })()}
           </Text>
         </View>
 
