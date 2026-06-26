@@ -54,10 +54,11 @@ const AppNavigator = forwardRef((props, ref) => {
   const [auth, setAuth] = useState(null);
   const [db, setDb] = useState(null);
   const registeredPushTokenUid = useRef(null);
-  // Tracks whether the initial routing has been decided for the current session.
-  // After first routing, mid-session Firestore updates should NOT re-trigger
-  // routing screens like HostTypeSelection — those interruptions come via notifications.
-  const hasInitiallyRouted = useRef(false);
+  // Set to true once the user successfully reaches Home.
+  // Prevents mid-session Firestore updates (e.g. admin approving host)
+  // from re-routing the user away from the app while they're using it.
+  // Does NOT block the sequential onboarding flow (legal → profile → home).
+  const hasReachedHome = useRef(false);
 
   const AUTH_SCREENS = ["Login", "Signup"];
 
@@ -143,9 +144,10 @@ const AppNavigator = forwardRef((props, ref) => {
               const userData = docSnapshot.data();
               console.log("✅ User data:", userData);
 
-              // Email verification is always enforced — even mid-session — because
-              // it's a security gate. All other routing only runs on initial load.
-              if (!userData.emailVerified) {
+              // 1. Email verification — use Firebase Auth token (always fresh after
+              //    user.reload() in LoginScreen), not the Firestore field, to avoid
+              //    race conditions with the Firestore sync.
+              if (!user.emailVerified) {
                 console.log(
                   "❌ Email not verified - showing modal and signing out",
                 );
@@ -155,13 +157,14 @@ const AppNavigator = forwardRef((props, ref) => {
                 return;
               }
 
-              // Mid-session Firestore updates (e.g. admin approves host role) should
-              // NOT interrupt the user. Only run the full routing on initial load.
-              if (hasInitiallyRouted.current) {
-                console.log("🔄 Mid-session update — routing already done, skipping");
+              // Once the user has reached Home, mid-session Firestore updates
+              // (e.g. admin approving host role) must NOT re-route them.
+              // The sequential onboarding flow (legal → profile → home) still
+              // works because hasReachedHome is false until Home is reached.
+              if (hasReachedHome.current) {
+                console.log("🔄 Mid-session update — user at Home, skipping routing");
                 return;
               }
-              hasInitiallyRouted.current = true;
 
               // 2. Verify legal terms accepted
               if (!userData.legalAccepted) {
@@ -175,8 +178,8 @@ const AppNavigator = forwardRef((props, ref) => {
                 );
                 navigateToRoute("ProfileSetup", { user });
               }
-              // 4. Check if host needs to select type (only on initial login,
-              //    NOT triggered by mid-session role changes from admin)
+              // 4. Host needs to select type — only shown before Home is reached,
+              //    so mid-session admin approvals won't interrupt the user.
               else if (userData.role === "host" && !userData.hostConfig) {
                 console.log(
                   "🎪 Host needs to select type - navigating to HostTypeSelection",
@@ -189,6 +192,7 @@ const AppNavigator = forwardRef((props, ref) => {
               // 5. All checks passed - go to Home
               else {
                 console.log("✅ All checks passed - navigating to Home");
+                hasReachedHome.current = true;
                 if (registeredPushTokenUid.current !== user.uid) {
                   registeredPushTokenUid.current = user.uid;
                   registerPushToken(user.uid);
@@ -226,7 +230,7 @@ const AppNavigator = forwardRef((props, ref) => {
         );
       } else {
         console.log("🚪 No user, showing login");
-        hasInitiallyRouted.current = false; // reset for next login session
+        hasReachedHome.current = false; // reset for next login session
         registeredPushTokenUid.current = null;
         navigateToRoute("Login");
         setLoading(false);
