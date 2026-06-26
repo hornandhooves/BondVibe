@@ -378,6 +378,25 @@ export const registerPushToken = async (userId) => {
     const token = tokenData.data;
     console.log("🔔 Expo Push Token:", token);
 
+    // Clear this token from any other user document (same device, different account).
+    // Without this, old UIDs on the same device keep receiving notifications.
+    const staleSnap = await getDocs(
+      query(collection(db, "users"), where("pushToken", "==", token))
+    );
+    if (!staleSnap.empty) {
+      const cleanupBatch = writeBatch(db);
+      staleSnap.forEach((staleDoc) => {
+        if (staleDoc.id !== userId) {
+          console.log(`🧹 Removing stale push token from old user: ${staleDoc.id}`);
+          cleanupBatch.update(staleDoc.ref, {
+            pushToken: null,
+            pushTokenUpdatedAt: new Date().toISOString(),
+          });
+        }
+      });
+      await cleanupBatch.commit();
+    }
+
     const userRef = doc(db, "users", userId);
     await updateDoc(userRef, {
       pushToken: token,

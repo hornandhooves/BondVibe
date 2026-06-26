@@ -7,6 +7,7 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useTheme } from "../contexts/ThemeContext";
@@ -241,10 +242,16 @@ export default function NotificationsScreen({ navigation }) {
         navigation.navigate("AdminDashboard");
         break;
 
+      case "welcome":
+        Alert.alert(
+          notification.title || "Welcome to BondVibe! 🎉",
+          notification.message || notification.body,
+          [{ text: "Let's go! 🚀", onPress: () => navigation.navigate("SearchEvents") }]
+        );
+        break;
+
       default:
-        if (notification.action) {
-          notification.action();
-        }
+        break;
     }
   };
 

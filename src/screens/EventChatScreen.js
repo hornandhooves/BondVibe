@@ -53,14 +53,33 @@ export default function EventChatScreen({ route, navigation }) {
     const initChat = async () => {
       try {
         const conversationId = `event_${eventId}`;
-
-        // Asegurar que la conversación existe
-        await ensureEventConversation(conversationId);
+        const currentUserId = auth.currentUser?.uid;
 
         // Precargar TODOS los participantes del evento
         const eventDoc = await getDoc(doc(db, "events", eventId));
         if (eventDoc.exists()) {
           const eventData = eventDoc.data();
+
+          // Verify current user is a participant before entering chat
+          const isCreator = eventData.creatorId === currentUserId;
+          const isAttendee = Array.isArray(eventData.attendees) &&
+            eventData.attendees.some((a) =>
+              typeof a === "string" ? a === currentUserId : a?.userId === currentUserId
+            );
+
+          if (!isCreator && !isAttendee) {
+            setLoading(false);
+            Alert.alert(
+              "Access Restricted",
+              "You need to join this event before you can access its chat.",
+              [{ text: "Go Back", onPress: () => navigation.goBack() }]
+            );
+            return;
+          }
+
+          // Asegurar que la conversación existe
+          await ensureEventConversation(conversationId);
+
           const participantIds = new Set();
 
           if (eventData.creatorId) {
@@ -158,6 +177,13 @@ export default function EventChatScreen({ route, navigation }) {
       } catch (error) {
         console.error("Error initializing chat:", error);
         setLoading(false);
+        if (error?.code === "permission-denied") {
+          Alert.alert(
+            "Access Restricted",
+            "You don't have permission to access this chat.",
+            [{ text: "Go Back", onPress: () => navigation.goBack() }]
+          );
+        }
       }
     };
 

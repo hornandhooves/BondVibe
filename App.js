@@ -93,10 +93,17 @@ export default function App() {
         console.log("🚀 App opened from notification (cold start)");
         const data = response.notification.request.content.data;
 
-        // Wait for navigation to be ready before navigating
-        setTimeout(() => {
-          handleNotificationNavigation(data);
-        }, 1500);
+        // Poll until navigator is ready instead of using a fixed timeout
+        const tryNavigate = (attemptsLeft) => {
+          if (navigationRef.current?.isReady()) {
+            handleNotificationNavigation(data);
+          } else if (attemptsLeft > 0) {
+            setTimeout(() => tryNavigate(attemptsLeft - 1), 300);
+          } else {
+            console.warn("⚠️ Navigator never became ready for cold-start notification");
+          }
+        };
+        tryNavigate(10); // up to 3 seconds (10 × 300ms)
       }
     } catch (error) {
       console.error("Error checking initial notification:", error);
