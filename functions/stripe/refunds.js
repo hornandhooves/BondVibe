@@ -6,6 +6,7 @@
 const functions = require("firebase-functions/v2");
 const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
+const {getAttendeeId} = require("../utils/eventHelpers");
 const db = admin.firestore();
 
 // Define Stripe secret
@@ -254,11 +255,7 @@ exports.cancelEventAttendance = functions.https.onCall(
       let attendeeIndex = -1;
 
       for (let i = 0; i < attendees.length; i++) {
-        const attendee = attendees[i];
-        if (typeof attendee === "string" && attendee === userId) {
-          attendeeIndex = i;
-          break;
-        } else if (attendee && attendee.userId === userId) {
+        if (getAttendeeId(attendees[i]) === userId) {
           attendeeIndex = i;
           break;
         }

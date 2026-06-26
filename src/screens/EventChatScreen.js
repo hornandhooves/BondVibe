@@ -28,6 +28,11 @@ import {
 } from "../utils/messageService";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../services/firebase";
+import {
+  getEventCreatorId,
+  getAttendeeIds,
+  isUserAttending,
+} from "../utils/eventHelpers";
 
 export default function EventChatScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
@@ -61,11 +66,12 @@ export default function EventChatScreen({ route, navigation }) {
           const eventData = eventDoc.data();
 
           // Verify current user is a participant before entering chat
-          const isCreator = eventData.creatorId === currentUserId;
-          const isAttendee = Array.isArray(eventData.attendees) &&
-            eventData.attendees.some((a) =>
-              typeof a === "string" ? a === currentUserId : a?.userId === currentUserId
-            );
+          const creatorId = getEventCreatorId(eventData);
+          const isCreator = creatorId === currentUserId;
+          const isAttendee = isUserAttending(
+            eventData.attendees,
+            currentUserId
+          );
 
           if (!isCreator && !isAttendee) {
             setLoading(false);
@@ -82,19 +88,13 @@ export default function EventChatScreen({ route, navigation }) {
 
           const participantIds = new Set();
 
-          if (eventData.creatorId) {
-            participantIds.add(eventData.creatorId);
+          if (creatorId) {
+            participantIds.add(creatorId);
           }
 
-          if (Array.isArray(eventData.attendees)) {
-            eventData.attendees.forEach((attendee) => {
-              if (typeof attendee === "object" && attendee?.userId) {
-                participantIds.add(attendee.userId);
-              } else if (typeof attendee === "string") {
-                participantIds.add(attendee);
-              }
-            });
-          }
+          getAttendeeIds(eventData.attendees).forEach((id) =>
+            participantIds.add(id)
+          );
 
           const usersData = {};
           for (const userId of participantIds) {
@@ -231,17 +231,10 @@ export default function EventChatScreen({ route, navigation }) {
   };
 
   // ============================================
-  // ✅ Enviar mensaje - CON LOGGING DE DIAGNÓSTICO
+  // ✅ Enviar mensaje
   // ============================================
   const handleSend = async () => {
     if (!inputText.trim() || sending) return;
-
-    // 🔍 DIAGNÓSTICO - VERIFICAR AUTH
-    console.log("🔐 ========== AUTH DIAGNOSTIC ==========");
-    console.log("🔐 auth.currentUser:", auth.currentUser ? "EXISTS" : "NULL");
-    console.log("🔐 auth.currentUser.uid:", auth.currentUser?.uid);
-    console.log("🔐 auth.currentUser.email:", auth.currentUser?.email);
-    console.log("🔐 ======================================");
 
     const text = inputText.trim();
     setInputText("");
@@ -252,8 +245,6 @@ export default function EventChatScreen({ route, navigation }) {
     }
 
     const conversationId = `event_${eventId}`;
-    console.log("📤 Sending message to:", conversationId);
-    console.log("📤 With senderId:", auth.currentUser?.uid);
 
     setTypingStatus(conversationId, auth.currentUser.uid, false);
 

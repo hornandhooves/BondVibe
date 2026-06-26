@@ -26,6 +26,7 @@ import {
   filterPastEvents,
   isEventPast,
 } from "../utils/eventFilters";
+import { isUserAttending, getEventCreatorId } from "../utils/eventHelpers";
 import { useFocusEffect } from "@react-navigation/native";
 import { Star, MapPin } from "lucide-react-native";
 import RatingModal from "../components/RatingModal";
@@ -144,25 +145,15 @@ export default function MyEventsScreen({ navigation, route }) {
           .filter((event) => {
             if (event.status === "cancelled") return false;
 
-            let isAttending = false;
+            const isAttending = isUserAttending(
+              event.attendees,
+              auth.currentUser.uid
+            );
 
-            if (Array.isArray(event.attendees)) {
-              isAttending = event.attendees.some((attendee) => {
-                if (
-                  typeof attendee === "object" &&
-                  attendee !== null &&
-                  attendee.userId
-                ) {
-                  return attendee.userId === auth.currentUser.uid;
-                }
-                if (typeof attendee === "string") {
-                  return attendee === auth.currentUser.uid;
-                }
-                return false;
-              });
-            }
-
-            return isAttending && event.creatorId !== auth.currentUser.uid;
+            return (
+              isAttending &&
+              getEventCreatorId(event) !== auth.currentUser.uid
+            );
           });
 
         console.log("🎉 Joined events:", userEvents.length);

@@ -16,6 +16,8 @@ import {
 import { db } from "../services/firebase";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
+import { getEventCreatorId, isUserAttending } from "./eventHelpers";
+import { logger } from "./logger";
 
 // ============================================
 // FUNCIONES DE CONVERSACIÓN
@@ -370,7 +372,7 @@ export const registerPushToken = async (userId) => {
     });
 
     const token = tokenData.data;
-    console.log("🔔 Expo Push Token:", token);
+    logger.log("🔔 Expo Push Token obtained");
 
     // Clear this token from any other user document (same device, different account).
     // Without this, old UIDs on the same device keep receiving notifications.
@@ -421,23 +423,9 @@ export const getUnreadMessagesCount = async (userId) => {
     for (const eventDoc of eventsSnapshot.docs) {
       const eventData = eventDoc.data();
 
-      let isParticipant = eventData.creatorId === userId;
-
-      if (!isParticipant && Array.isArray(eventData.attendees)) {
-        isParticipant = eventData.attendees.some((attendee) => {
-          if (
-            typeof attendee === "object" &&
-            attendee !== null &&
-            attendee.userId
-          ) {
-            return attendee.userId === userId;
-          }
-          if (typeof attendee === "string") {
-            return attendee === userId;
-          }
-          return false;
-        });
-      }
+      const isParticipant =
+        getEventCreatorId(eventData) === userId ||
+        isUserAttending(eventData.attendees, userId);
 
       if (!isParticipant) continue;
 

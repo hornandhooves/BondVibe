@@ -13,6 +13,7 @@ import {
 import { useTheme } from "../contexts/ThemeContext";
 import { Star } from "lucide-react-native";
 import { submitRating } from "../services/ratingService";
+import { getEventCreatorId } from "../utils/eventHelpers";
 
 export default function RatingModal({ visible, onClose, onSuccess, event }) {
   const { colors } = useTheme();
@@ -33,7 +34,7 @@ export default function RatingModal({ visible, onClose, onSuccess, event }) {
       const result = await submitRating({
         eventId: event.id,
         eventTitle: event.title,
-        hostId: event.creatorId,
+        hostId: getEventCreatorId(event),
         rating,
         comment,
       });

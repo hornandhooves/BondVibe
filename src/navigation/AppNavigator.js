@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 import { registerPushToken } from "../utils/messageService";
+import { logger } from "../utils/logger";
 import { ActivityIndicator, View } from "react-native";
 
 // Contexts
@@ -142,7 +143,7 @@ const AppNavigator = forwardRef((props, ref) => {
 
             if (docSnapshot.exists()) {
               const userData = docSnapshot.data();
-              console.log("✅ User data:", userData);
+              logger.log("✅ User data loaded for:", user.uid);
 
               // 1. Email verification — use Firebase Auth token (always fresh after
               //    user.reload() in LoginScreen), not the Firestore field, to avoid

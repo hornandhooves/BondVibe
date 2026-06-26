@@ -26,6 +26,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import { AvatarDisplay } from "../components/AvatarPicker";
 import { createNotification } from "../utils/notificationService";
+import { isUserAttending, getAttendeeIds } from "../utils/eventHelpers";
 import { pesosTocentavos } from "../services/stripeService";
 import CancelEventModal from "../components/CancelEventModal";
 import EventImageGallery from "../components/EventImageGallery";
@@ -116,7 +117,7 @@ export default function EventDetailScreen({ route, navigation }) {
           createdAt: createdAtDate,
         };
         setEvent(updatedEvent);
-        setIsJoined(data.attendees?.includes(auth.currentUser.uid));
+        setIsJoined(isUserAttending(data.attendees, auth.currentUser.uid));
         if (data.attendees && data.attendees.length > 0)
           loadAttendeesData(data.attendees);
       }
@@ -139,7 +140,9 @@ export default function EventDetailScreen({ route, navigation }) {
       if (eventDoc.exists()) {
         const eventData = { id: eventDoc.id, ...eventDoc.data() };
         setEvent(eventData);
-        setIsJoined(eventData.attendees?.includes(auth.currentUser.uid));
+        setIsJoined(
+          isUserAttending(eventData.attendees, auth.currentUser.uid)
+        );
         if (eventData.isRecurring && eventData.recurrenceGroupId) {
           setIsRecurring(true);
           setRecurrenceGroupId(eventData.recurrenceGroupId);
@@ -185,8 +188,8 @@ export default function EventDetailScreen({ route, navigation }) {
 
   const loadAttendeesData = async (attendeeIds) => {
     try {
-      const validIds = (attendeeIds || []).filter(
-        (id) => typeof id === "string" && id.trim().length > 0
+      const validIds = getAttendeeIds(attendeeIds).filter(
+        (id) => id.trim().length > 0
       );
       if (validIds.length === 0) return;
       const attendeesPromises = validIds.map(async (userId) => {

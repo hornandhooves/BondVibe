@@ -115,7 +115,7 @@ export default function SignupScreen({ navigation }) {
           handleCodeInApp: false,
         };
         await sendEmailVerification(user, actionCodeSettings);
-        console.log("✅ Verification email sent to:", user.email);
+        console.log("✅ Verification email sent");
       } catch (emailError) {
         console.error("❌ sendEmailVerification FAILED:");
         console.error("Error code:", emailError.code);

@@ -7,6 +7,7 @@
 const {onDocumentUpdated} = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 const {sendBatchPushNotifications} = require("./pushService");
+const {getAttendeeIds, getEventCreatorId} = require("../utils/eventHelpers");
 
 const db = admin.firestore();
 
@@ -27,9 +28,9 @@ exports.onEventAttendeesChanged = onDocumentUpdated(
       return null;
     }
 
-    // Get attendees arrays
-    const beforeAttendees = beforeData.attendees || [];
-    const afterAttendees = afterData.attendees || [];
+    // Get attendees arrays (normalized to UID strings)
+    const beforeAttendees = getAttendeeIds(beforeData.attendees);
+    const afterAttendees = getAttendeeIds(afterData.attendees);
 
     // Detect new attendees (joined)
     const newAttendees = afterAttendees.filter(
@@ -51,7 +52,7 @@ exports.onEventAttendeesChanged = onDocumentUpdated(
     // Process new attendees (someone joined)
     if (newAttendees.length > 0) {
       await notifyHostOfNewAttendees(
-        afterData.creatorId,
+        getEventCreatorId(afterData),
         eventId,
         afterData.title,
         afterData.price,
@@ -62,7 +63,7 @@ exports.onEventAttendeesChanged = onDocumentUpdated(
     // Process cancelled attendees (someone left)
     if (removedAttendees.length > 0) {
       await notifyHostOfCancellations(
-        afterData.creatorId,
+        getEventCreatorId(afterData),
         eventId,
         afterData.title,
         removedAttendees,

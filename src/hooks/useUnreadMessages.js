@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
+import { isUserAttending, getEventCreatorId } from '../utils/eventHelpers';
 
 export const useUnreadMessages = () => {
   const [unreadCount, setUnreadCount] = useState(0);
@@ -23,11 +24,8 @@ export const useUnreadMessages = () => {
         const userEventIds = [];
         eventsSnap.forEach((doc) => {
           const d = doc.data();
-          const isCreator = d.creatorId === userId;
-          const isAttendee = Array.isArray(d.attendees) &&
-            d.attendees.some((a) =>
-              typeof a === 'string' ? a === userId : a?.userId === userId
-            );
+          const isCreator = getEventCreatorId(d) === userId;
+          const isAttendee = isUserAttending(d.attendees, userId);
           if (isCreator || isAttendee) userEventIds.push(doc.id);
         });
 

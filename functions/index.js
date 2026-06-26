@@ -31,6 +31,9 @@ const {
 // Import push notification service
 const {sendBatchPushNotifications} = require("./notifications/pushService");
 
+// Import event helpers (attendee/creator normalization)
+const {getAttendeeIds, getEventCreatorId} = require("./utils/eventHelpers");
+
 // ============================================
 // PUSH NOTIFICATIONS
 // ============================================
@@ -91,20 +94,15 @@ exports.onNewMessage = onDocumentCreated(
       const participantIds = new Set();
 
       // Add creator
-      if (eventData.creatorId) {
-        participantIds.add(eventData.creatorId);
+      const creatorId = getEventCreatorId(eventData);
+      if (creatorId) {
+        participantIds.add(creatorId);
       }
 
-      // Add attendees (handle both formats)
-      if (Array.isArray(eventData.attendees)) {
-        eventData.attendees.forEach((attendee) => {
-          if (typeof attendee === "object" && attendee?.userId) {
-            participantIds.add(attendee.userId);
-          } else if (typeof attendee === "string") {
-            participantIds.add(attendee);
-          }
-        });
-      }
+      // Add attendees (normalized to UID strings)
+      getAttendeeIds(eventData.attendees).forEach((id) =>
+        participantIds.add(id),
+      );
 
       // Remove sender from recipients
       participantIds.delete(messageData.senderId);
@@ -259,7 +257,7 @@ exports.createEventPaymentIntent = onRequest(
       }
 
       const eventData = eventDoc.data();
-      const hostId = eventData.createdBy || eventData.creatorId;
+      const hostId = getEventCreatorId(eventData);
 
       // Get host's Stripe Connect account
       const hostDoc = await db.collection("users").doc(hostId).get();

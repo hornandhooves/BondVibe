@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { db, auth } from "./firebase";
 import { createNotification } from "../utils/notificationService";
+import { isUserAttending, getEventCreatorId } from "../utils/eventHelpers";
 
 /**
  * Convert rating number to stars string
@@ -261,8 +262,8 @@ export const getPendingRatings = async () => {
       .map((doc) => ({ id: doc.id, ...doc.data() }))
       .filter((event) => {
         // Check if user is an attendee (not creator)
-        const isAttendee = event.attendees?.includes(userId);
-        const isNotCreator = event.creatorId !== userId;
+        const isAttendee = isUserAttending(event.attendees, userId);
+        const isNotCreator = getEventCreatorId(event) !== userId;
 
         // Check if event is in the past
         const eventDate = new Date(event.date);

@@ -6,9 +6,6 @@ import { collection, getDocs } from "firebase/firestore";
 // Mock Firebase
 jest.mock("firebase/firestore");
 jest.mock("../../services/firebase");
-jest.mock("../../utils/mockEvents", () => ({
-  generateMockEvents: () => [],
-}));
 
 // Mock ThemeContext
 jest.mock("../../contexts/ThemeContext", () => ({

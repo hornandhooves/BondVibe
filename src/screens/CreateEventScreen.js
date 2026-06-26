@@ -354,7 +354,6 @@ export default function CreateEventScreen({ navigation }) {
         currency: "MXN",
         hostName: userData?.name || userData?.displayName || "Anonymous",
         creatorId: user.uid,
-        createdBy: user.uid,
         attendees: [],
         participantCount: 0,
         status: "active",

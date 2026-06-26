@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { CardField, useConfirmPayment } from "@stripe/stripe-react-native";
-import { doc, updateDoc, arrayUnion, getDoc } from "firebase/firestore";
+import { doc, updateDoc, arrayUnion, getDoc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "../../services/firebase";
 import { useTheme } from "../../contexts/ThemeContext";
 import {
@@ -23,6 +23,41 @@ import {
 } from "../../services/stripeService";
 import { savePaymentRecord } from "../../services/paymentService";
 import { createNotification } from "../../utils/notificationService";
+import { isUserAttending } from "../../utils/eventHelpers";
+
+/**
+ * Wait until the webhook adds the user to the event's attendees array.
+ * Resolves as soon as attendance is confirmed, or after timeoutMs as a
+ * fallback so the user is never stuck if the webhook is slow.
+ * @param {string} eventId
+ * @param {string} userId
+ * @param {number} timeoutMs
+ * @returns {Promise<boolean>} true if confirmed, false if timed out
+ */
+function waitForAttendance(eventId, userId, timeoutMs = 10000) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (confirmed) => {
+      if (settled) return;
+      settled = true;
+      unsubscribe();
+      clearTimeout(timer);
+      resolve(confirmed);
+    };
+
+    const unsubscribe = onSnapshot(
+      doc(db, "events", eventId),
+      (snap) => {
+        if (snap.exists() && isUserAttending(snap.data().attendees, userId)) {
+          finish(true);
+        }
+      },
+      () => finish(false)
+    );
+
+    const timer = setTimeout(() => finish(false), timeoutMs);
+  });
+}
 
 export default function CheckoutScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
@@ -81,9 +116,10 @@ export default function CheckoutScreen({ route, navigation }) {
       // - Adding user to attendees
       // - Sending push notification to host
 
-      // ⭐ Wait 2 seconds for webhook to process
-      console.log("⏳ Waiting for webhook to process...");
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // ⭐ Wait for the webhook to actually add the user to attendees,
+      // instead of guessing with a fixed delay. Falls back after 10s.
+      console.log("⏳ Waiting for webhook to confirm attendance...");
+      await waitForAttendance(eventId, auth.currentUser.uid, 10000);
 
       // Show success and navigate with reload flag
       Alert.alert(

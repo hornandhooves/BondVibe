@@ -5,9 +5,6 @@ import { getDocs } from "firebase/firestore";
 
 jest.mock("firebase/firestore");
 jest.mock("../../services/firebase");
-jest.mock("../../utils/mockEvents", () => ({
-  generateMockEvents: () => [],
-}));
 jest.mock("../../contexts/ThemeContext", () => ({
   useTheme: () => ({
     colors: {
