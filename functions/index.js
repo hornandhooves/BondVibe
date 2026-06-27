@@ -3,7 +3,7 @@
  * Payment processing with Stripe + Push Notifications
  */
 
-const {onRequest} = require("firebase-functions/v2/https");
+const {onRequest, onCall, HttpsError} = require("firebase-functions/v2/https");
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 const {defineSecret} = require("firebase-functions/params");
@@ -541,6 +541,261 @@ exports.createMembershipPaymentIntent = onRequest(
     }
   },
 );
+
+// ============================================
+// MEMBERSHIP CREDIT RESERVE / REDEEM / RELEASE
+// Credits are deducted at host check-in (not at RSVP). RSVP places a "hold"
+// (a reservation) that counts against available credits to prevent
+// over-booking; check-in redeems it; cancelling ≥ 2 h before releases it.
+// ============================================
+
+const CANCELLATION_WINDOW_HOURS = 2;
+
+/**
+ * Resolve an event's scheduled start as a JS Date.
+ * @param {object} eventData - Firestore event document data
+ * @return {Date|null}
+ */
+function eventStartDate(eventData) {
+  const d = eventData.date;
+  if (!d) return null;
+  if (d.toDate) return d.toDate();
+  return new Date(d);
+}
+
+/**
+ * Reserve a membership credit for an event (places a hold; does not deduct).
+ * data: { eventId }
+ */
+exports.reserveMembershipCredit = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const {eventId} = request.data || {};
+  if (!eventId) throw new HttpsError("invalid-argument", "Missing eventId.");
+
+  const eventSnap = await db.collection("events").doc(eventId).get();
+  if (!eventSnap.exists) throw new HttpsError("not-found", "Event not found.");
+  const eventData = eventSnap.data();
+  if (eventData.acceptsMembership === false) {
+    throw new HttpsError("failed-precondition", "This event doesn't accept memberships.");
+  }
+  const hostId = getEventCreatorId(eventData);
+  const creditCost = eventData.creditCost || 1;
+
+  // Already reserved for this event?
+  const dupe = await db
+    .collection("membershipReservations")
+    .where("eventId", "==", eventId)
+    .where("userId", "==", uid)
+    .where("status", "==", "reserved")
+    .limit(1)
+    .get();
+  if (!dupe.empty) {
+    return {success: true, reservationId: dupe.docs[0].id, alreadyReserved: true};
+  }
+
+  // Find the user's active memberships with this host.
+  const membershipsSnap = await db
+    .collection("memberships")
+    .where("userId", "==", uid)
+    .where("hostId", "==", hostId)
+    .get();
+
+  const now = Date.now();
+  const candidates = membershipsSnap.docs
+    .map((d) => ({id: d.id, ...d.data()}))
+    .filter((m) => {
+      const exp = m.expiresAt?.toMillis ? m.expiresAt.toMillis() : 0;
+      return m.status !== "cancelled" && exp > now;
+    });
+
+  if (candidates.length === 0) {
+    throw new HttpsError("failed-precondition", "No active membership with this host.");
+  }
+
+  // Prefer credit packs with available credits (minus active holds); fall back
+  // to unlimited passes.
+  let chosen = null;
+  for (const m of candidates.sort(
+    (a, b) => (a.expiresAt?.toMillis() || 0) - (b.expiresAt?.toMillis() || 0),
+  )) {
+    if (m.type === "unlimited") {
+      chosen = m;
+      break;
+    }
+    const holdsSnap = await db
+      .collection("membershipReservations")
+      .where("membershipId", "==", m.id)
+      .where("status", "==", "reserved")
+      .get();
+    const available = (m.creditsRemaining || 0) - holdsSnap.size;
+    if (available >= creditCost) {
+      chosen = m;
+      break;
+    }
+  }
+
+  if (!chosen) {
+    throw new HttpsError(
+      "failed-precondition",
+      "No credits left. Please renew your membership or pay for this class.",
+    );
+  }
+
+  const reservationRef = await db.collection("membershipReservations").add({
+    membershipId: chosen.id,
+    userId: uid,
+    hostId,
+    eventId,
+    eventTitle: eventData.title || "",
+    creditCost,
+    membershipType: chosen.type,
+    status: "reserved",
+    reservedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  // Add the user to the event attendees.
+  await db.collection("events").doc(eventId).update({
+    attendees: admin.firestore.FieldValue.arrayUnion(uid),
+  });
+
+  return {success: true, reservationId: reservationRef.id};
+});
+
+/**
+ * Redeem a reservation at check-in (host only) — deducts the credit.
+ * data: { reservationId }
+ */
+exports.redeemMembershipCredit = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const {reservationId} = request.data || {};
+  if (!reservationId) throw new HttpsError("invalid-argument", "Missing reservationId.");
+
+  const result = await db.runTransaction(async (tx) => {
+    const resRef = db.collection("membershipReservations").doc(reservationId);
+    const resSnap = await tx.get(resRef);
+    if (!resSnap.exists) throw new HttpsError("not-found", "Reservation not found.");
+    const reservation = resSnap.data();
+
+    if (reservation.hostId !== uid) {
+      throw new HttpsError("permission-denied", "Only the host can check in attendees.");
+    }
+    if (reservation.status !== "reserved") {
+      return {alreadyProcessed: true, status: reservation.status};
+    }
+
+    const memRef = db.collection("memberships").doc(reservation.membershipId);
+    const memSnap = await tx.get(memRef);
+    if (!memSnap.exists) throw new HttpsError("not-found", "Membership not found.");
+    const membership = memSnap.data();
+
+    const cost = reservation.creditCost || 1;
+    const updates = {updatedAt: admin.firestore.FieldValue.serverTimestamp()};
+    if (membership.type === "credits") {
+      const remaining = Math.max(0, (membership.creditsRemaining || 0) - cost);
+      updates.creditsRemaining = remaining;
+      if (remaining === 0) updates.status = "depleted";
+    }
+    tx.update(memRef, updates);
+
+    tx.update(resRef, {
+      status: "redeemed",
+      redeemedAt: admin.firestore.FieldValue.serverTimestamp(),
+      redeemedBy: uid,
+    });
+
+    const redemptionRef = db.collection("membershipRedemptions").doc();
+    tx.set(redemptionRef, {
+      membershipId: reservation.membershipId,
+      reservationId,
+      userId: reservation.userId,
+      hostId: reservation.hostId,
+      eventId: reservation.eventId,
+      eventTitle: reservation.eventTitle || "",
+      creditsDeducted: membership.type === "credits" ? cost : 0,
+      redeemedAt: admin.firestore.FieldValue.serverTimestamp(),
+      redeemedBy: uid,
+      status: "redeemed",
+    });
+
+    return {
+      creditsRemaining:
+        membership.type === "credits" ? updates.creditsRemaining : null,
+    };
+  });
+
+  return {success: true, ...result};
+});
+
+/**
+ * Release a reservation when an attendee cancels.
+ * ≥ 2 h before start → credit is returned (hold released).
+ * < 2 h before start → credit is forfeited (deducted as a penalty).
+ * data: { reservationId }
+ */
+exports.releaseMembershipReservation = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const {reservationId} = request.data || {};
+  if (!reservationId) throw new HttpsError("invalid-argument", "Missing reservationId.");
+
+  const resRef = db.collection("membershipReservations").doc(reservationId);
+  const resSnap = await resRef.get();
+  if (!resSnap.exists) throw new HttpsError("not-found", "Reservation not found.");
+  const reservation = resSnap.data();
+
+  if (reservation.userId !== uid && reservation.hostId !== uid) {
+    throw new HttpsError("permission-denied", "Not allowed.");
+  }
+  if (reservation.status !== "reserved") {
+    return {success: true, alreadyProcessed: true};
+  }
+
+  const eventSnap = await db.collection("events").doc(reservation.eventId).get();
+  const start = eventSnap.exists ? eventStartDate(eventSnap.data()) : null;
+  const hoursUntil = start ? (start.getTime() - Date.now()) / 3600000 : 999;
+  const forfeit = hoursUntil < CANCELLATION_WINDOW_HOURS;
+
+  if (forfeit) {
+    // Within the window: deduct the credit as a penalty.
+    await db.runTransaction(async (tx) => {
+      const memRef = db.collection("memberships").doc(reservation.membershipId);
+      const memSnap = await tx.get(memRef);
+      if (memSnap.exists) {
+        const membership = memSnap.data();
+        if (membership.type === "credits") {
+          const remaining = Math.max(
+            0,
+            (membership.creditsRemaining || 0) - (reservation.creditCost || 1),
+          );
+          const u = {
+            creditsRemaining: remaining,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          };
+          if (remaining === 0) u.status = "depleted";
+          tx.update(memRef, u);
+        }
+      }
+      tx.update(resRef, {
+        status: "forfeited",
+        releasedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+  } else {
+    await resRef.update({
+      status: "released",
+      releasedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+
+  // Remove the attendee from the event regardless.
+  await db.collection("events").doc(reservation.eventId).update({
+    attendees: admin.firestore.FieldValue.arrayRemove(reservation.userId),
+  });
+
+  return {success: true, forfeited: forfeit};
+});
 
 /**
  * Get pricing info

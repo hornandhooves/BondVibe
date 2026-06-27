@@ -22,8 +22,10 @@ import {
   query,
   where,
   orderBy,
+  limit,
   serverTimestamp,
 } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
 import { logger } from "../utils/logger";
 
@@ -304,6 +306,101 @@ export const getMembershipState = (m) => {
 export const getMembershipExpiryDate = (m) => {
   const ms = toMillis(m?.expiresAt);
   return ms ? new Date(ms) : null;
+};
+
+/**
+ * Reserve a membership credit for an event (places a hold; deducted at check-in).
+ * @param {string} eventId
+ * @returns {Promise<{success:boolean, reservationId?:string, error?:string}>}
+ */
+export const reserveMembershipCredit = async (eventId) => {
+  try {
+    const fn = httpsCallable(getFunctions(), "reserveMembershipCredit");
+    const res = await fn({ eventId });
+    return { success: true, ...res.data };
+  } catch (e) {
+    console.error("❌ reserveMembershipCredit:", e);
+    return { success: false, error: e.message };
+  }
+};
+
+/**
+ * Redeem a reservation at check-in (host only) — deducts the credit.
+ * @param {string} reservationId
+ */
+export const redeemMembershipCredit = async (reservationId) => {
+  try {
+    const fn = httpsCallable(getFunctions(), "redeemMembershipCredit");
+    const res = await fn({ reservationId });
+    return { success: true, ...res.data };
+  } catch (e) {
+    console.error("❌ redeemMembershipCredit:", e);
+    return { success: false, error: e.message };
+  }
+};
+
+/**
+ * Release a reservation when an attendee cancels (≥2h returns the credit).
+ * @param {string} reservationId
+ */
+export const releaseMembershipReservation = async (reservationId) => {
+  try {
+    const fn = httpsCallable(getFunctions(), "releaseMembershipReservation");
+    const res = await fn({ reservationId });
+    return { success: true, ...res.data };
+  } catch (e) {
+    console.error("❌ releaseMembershipReservation:", e);
+    return { success: false, error: e.message };
+  }
+};
+
+/**
+ * Get the current user's active reservation for an event (if they joined with
+ * a membership credit), else null.
+ * @param {string} eventId
+ * @param {string} [userId]
+ * @returns {Promise<object|null>}
+ */
+export const getUserReservationForEvent = async (eventId, userId = null) => {
+  try {
+    const uid = userId || auth.currentUser?.uid;
+    if (!uid || !eventId) return null;
+    const q = query(
+      collection(db, "membershipReservations"),
+      where("eventId", "==", eventId),
+      where("userId", "==", uid),
+      where("status", "==", "reserved"),
+      limit(1)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.empty
+      ? null
+      : { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+  } catch (e) {
+    console.error("❌ getUserReservationForEvent:", e);
+    return null;
+  }
+};
+
+/**
+ * Get all active reservations for an event (host check-in view).
+ * @param {string} eventId
+ * @returns {Promise<Array>}
+ */
+export const getEventReservations = async (eventId) => {
+  try {
+    if (!eventId) return [];
+    const q = query(
+      collection(db, "membershipReservations"),
+      where("eventId", "==", eventId),
+      where("status", "in", ["reserved", "redeemed"])
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.error("❌ getEventReservations:", e);
+    return [];
+  }
 };
 
 /**

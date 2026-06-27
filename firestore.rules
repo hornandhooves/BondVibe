@@ -146,6 +146,18 @@ service cloud.firestore {
     }
 
     // ============================================
+    // MEMBERSHIP RESERVATIONS (credit holds)
+    // Created/redeemed/released only via Cloud Functions (Admin SDK).
+    // ============================================
+    match /membershipReservations/{reservationId} {
+      allow read: if isSignedIn() &&
+                     (resource.data.userId == request.auth.uid ||
+                      resource.data.hostId == request.auth.uid ||
+                      isAdmin());
+      allow create, update, delete: if false;
+    }
+
+    // ============================================
     // PAYMENTS COLLECTION
     // ============================================
     match /payments/{paymentId} {

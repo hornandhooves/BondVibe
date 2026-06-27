@@ -31,7 +31,15 @@ import {
   getAttendeeIds,
   getEventCreatorId,
 } from "../utils/eventHelpers";
-import { getHostMembershipPlans } from "../services/membershipService";
+import {
+  getHostMembershipPlans,
+  getUsableMembershipForHost,
+  getUserReservationForEvent,
+  reserveMembershipCredit,
+  releaseMembershipReservation,
+  getMembershipState,
+  MEMBERSHIP_PLAN_TYPES,
+} from "../services/membershipService";
 import { pesosTocentavos } from "../services/stripeService";
 import CancelEventModal from "../components/CancelEventModal";
 import EventImageGallery from "../components/EventImageGallery";
@@ -64,6 +72,8 @@ export default function EventDetailScreen({ route, navigation }) {
   const [recurrenceGroupId, setRecurrenceGroupId] = useState(null);
   const [futureEventsCount, setFutureEventsCount] = useState(0);
   const [hostHasPlans, setHostHasPlans] = useState(false);
+  const [usableMembership, setUsableMembership] = useState(null);
+  const [userReservation, setUserReservation] = useState(null);
 
   const calculateDaysUntilEvent = (eventDate) => {
     const now = new Date();
@@ -95,18 +105,27 @@ export default function EventDetailScreen({ route, navigation }) {
     }
   }, [route.params?.shouldReload]);
 
-  // Check whether the host sells membership plans (for the buy entry point).
+  // Load membership context: does the host sell plans, does the user have a
+  // usable membership, and do they already hold a reservation for this event.
   useEffect(() => {
     const creatorId = getEventCreatorId(event);
     if (!creatorId) return;
     let active = true;
-    getHostMembershipPlans(creatorId, { activeOnly: true }).then((plans) => {
-      if (active) setHostHasPlans(plans.length > 0);
-    });
+    (async () => {
+      const [plans, membership, reservation] = await Promise.all([
+        getHostMembershipPlans(creatorId, { activeOnly: true }),
+        getUsableMembershipForHost(creatorId),
+        getUserReservationForEvent(eventId),
+      ]);
+      if (!active) return;
+      setHostHasPlans(plans.length > 0);
+      setUsableMembership(membership);
+      setUserReservation(reservation);
+    })();
     return () => {
       active = false;
     };
-  }, [event?.creatorId, event?.createdBy]);
+  }, [event?.creatorId, event?.createdBy, eventId, isJoined]);
 
   useEffect(() => {
     if (!eventId) return;
@@ -226,9 +245,90 @@ export default function EventDetailScreen({ route, navigation }) {
     }
   };
 
+  // Join the event by paying (paid events) or for free.
+  const proceedJoinPayOrFree = async () => {
+    if (event.price && event.price > 0) {
+      const amountInCentavos = pesosTocentavos(event.price);
+      navigation.navigate("Checkout", {
+        eventId: event.id,
+        eventTitle: event.title,
+        amount: amountInCentavos,
+      });
+      return;
+    }
+    setJoining(true);
+    try {
+      const eventRef = doc(db, "events", eventId);
+      await updateDoc(eventRef, {
+        attendees: arrayUnion(auth.currentUser.uid),
+      });
+      setIsJoined(true);
+      const creatorId = getEventCreatorId(event);
+      if (creatorId && creatorId !== auth.currentUser.uid) {
+        const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+        const userName = userDoc.data()?.fullName || "Someone";
+        await createNotification(creatorId, {
+          type: "event_joined",
+          title: "New attendee!",
+          message: `${userName} joined your "${event.title}" event`,
+          icon: "👋",
+          metadata: { eventId: event.id, eventTitle: event.title },
+        });
+      }
+      Alert.alert("Joined!", "You have joined this event");
+      await loadEvent();
+    } catch (error) {
+      Alert.alert("Error", "Could not join event");
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  // Reserve a spot using a membership credit (deducted at host check-in).
+  const joinWithMembershipCredit = async () => {
+    setJoining(true);
+    try {
+      const r = await reserveMembershipCredit(eventId);
+      if (!r.success) {
+        Alert.alert("Couldn't use membership", r.error || "Please try again.");
+        return;
+      }
+      setIsJoined(true);
+      Alert.alert(
+        "Spot reserved! 🎟️",
+        "You're booked with your membership. The host will check you in at the event."
+      );
+      await loadEvent();
+    } finally {
+      setJoining(false);
+    }
+  };
+
   const handleJoinLeave = async () => {
     if (!event) return;
+
     if (isJoined) {
+      // Joined with a membership credit → release (returns credit if ≥2h).
+      if (userReservation) {
+        setJoining(true);
+        try {
+          const r = await releaseMembershipReservation(userReservation.id);
+          setIsJoined(false);
+          setUserReservation(null);
+          Alert.alert(
+            "Left event",
+            r.forfeited
+              ? "You cancelled within 2 hours, so the class credit was used."
+              : "You left the event and your class credit was returned."
+          );
+          await loadEvent();
+        } catch (error) {
+          Alert.alert("Error", "Could not leave event");
+        } finally {
+          setJoining(false);
+        }
+        return;
+      }
       if (event.price && event.price > 0) {
         handleCancelAttendance();
         return;
@@ -249,46 +349,39 @@ export default function EventDetailScreen({ route, navigation }) {
       }
       return;
     }
+
     const maxCapacity = event.maxAttendees || event.maxPeople || 0;
     const currentCount = event.attendees?.length || 0;
     if (currentCount >= maxCapacity) {
       Alert.alert("Event Full", "This event has reached maximum capacity");
       return;
     }
-    if (event.price && event.price > 0) {
-      const amountInCentavos = pesosTocentavos(event.price);
-      navigation.navigate("Checkout", {
-        eventId: event.id,
-        eventTitle: event.title,
-        amount: amountInCentavos,
-      });
+
+    // If the user has a usable membership for this host, let them choose
+    // between using a credit and paying/joining normally.
+    const canUseMembership =
+      event.acceptsMembership !== false &&
+      usableMembership &&
+      getMembershipState(usableMembership) === "active";
+
+    if (canUseMembership) {
+      const isUnlimited =
+        usableMembership.type === MEMBERSHIP_PLAN_TYPES.UNLIMITED;
+      const creditLabel = isUnlimited
+        ? "Use membership"
+        : `Use 1 credit (${usableMembership.creditsRemaining} left)`;
+      const payLabel =
+        event.price && event.price > 0 ? `Pay $${event.price}` : "Join free";
+
+      Alert.alert("How do you want to attend?", undefined, [
+        { text: creditLabel, onPress: joinWithMembershipCredit },
+        { text: payLabel, onPress: proceedJoinPayOrFree },
+        { text: "Cancel", style: "cancel" },
+      ]);
       return;
     }
-    setJoining(true);
-    try {
-      const eventRef = doc(db, "events", eventId);
-      await updateDoc(eventRef, {
-        attendees: arrayUnion(auth.currentUser.uid),
-      });
-      setIsJoined(true);
-      if (event.creatorId && event.creatorId !== auth.currentUser.uid) {
-        const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
-        const userName = userDoc.data()?.fullName || "Someone";
-        await createNotification(event.creatorId, {
-          type: "event_joined",
-          title: "New attendee!",
-          message: `${userName} joined your "${event.title}" event`,
-          icon: "👋",
-          metadata: { eventId: event.id, eventTitle: event.title },
-        });
-      }
-      Alert.alert("Joined!", "You have joined this event");
-      await loadEvent();
-    } catch (error) {
-      Alert.alert("Error", "Could not join event");
-    } finally {
-      setJoining(false);
-    }
+
+    proceedJoinPayOrFree();
   };
 
   const handleCancelEvent = () => {
@@ -990,6 +1083,40 @@ export default function EventDetailScreen({ route, navigation }) {
               </Text>
             </View>
             <Text style={{ color: colors.primary, fontWeight: "700" }}>View</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Host check-in / attendance — host only */}
+        {isCreator && (
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate("EventCheckIn", {
+                eventId,
+                eventTitle: event.title,
+              })
+            }
+            activeOpacity={0.85}
+            style={{
+              marginHorizontal: 20,
+              marginTop: 8,
+              marginBottom: 8,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: isDark
+                ? "rgba(255,255,255,0.04)"
+                : "rgba(255,255,255,0.85)",
+              paddingVertical: 14,
+              paddingHorizontal: 16,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <Text style={{ color: colors.text, fontWeight: "700", fontSize: 15 }}>
+              ✅ Take attendance / check-in
+            </Text>
+            <Text style={{ color: colors.primary, fontWeight: "700" }}>Open</Text>
           </TouchableOpacity>
         )}
 

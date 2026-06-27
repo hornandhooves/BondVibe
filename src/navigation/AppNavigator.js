@@ -47,6 +47,7 @@ import MembershipPlansScreen from "../screens/MembershipPlansScreen";
 import HostMembershipsScreen from "../screens/HostMembershipsScreen";
 import MembershipCheckoutScreen from "../screens/MembershipCheckoutScreen";
 import MyMembershipsScreen from "../screens/MyMembershipsScreen";
+import EventCheckInScreen from "../screens/EventCheckInScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -346,6 +347,10 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen
             name="MyMemberships"
             component={MyMembershipsScreen}
+          />
+          <Stack.Screen
+            name="EventCheckIn"
+            component={EventCheckInScreen}
           />
         </Stack.Navigator>
       </NavigationContainer>
