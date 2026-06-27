@@ -407,6 +407,25 @@ export const registerPushToken = async (userId) => {
   }
 };
 
+/**
+ * Remove the push token from a user's document. Call this on logout so that
+ * notifications for this account stop arriving on a device that another user
+ * may sign into next (prevents cross-account notification leakage).
+ * @param {string} userId
+ */
+export const clearPushToken = async (userId) => {
+  if (!userId) return;
+  try {
+    await updateDoc(doc(db, "users", userId), {
+      pushToken: null,
+      pushTokenUpdatedAt: new Date().toISOString(),
+    });
+    logger.log("🧹 Push token cleared on logout for:", userId);
+  } catch (error) {
+    console.error("❌ Error clearing push token:", error);
+  }
+};
+
 // ============================================
 // CONTADORES PARA BADGES
 // ============================================

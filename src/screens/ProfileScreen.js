@@ -15,6 +15,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../services/firebase";
 import { resolveAvatarForSave } from "../services/storageService";
+import { clearPushToken } from "../utils/messageService";
 import { signOut } from "firebase/auth";
 import { useTheme } from "../contexts/ThemeContext";
 import { useFocusEffect } from "@react-navigation/native";
@@ -155,6 +156,9 @@ export default function ProfileScreen({ navigation }) {
   const performLogout = async () => {
     setShowLogoutModal(false);
     try {
+      // Detach this device's push token from the account BEFORE signing out so
+      // its notifications don't reach whoever logs in next on this device.
+      await clearPushToken(auth.currentUser?.uid);
       await signOut(auth);
     } catch (error) {
       console.error("Logout error:", error);

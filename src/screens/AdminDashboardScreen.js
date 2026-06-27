@@ -67,6 +67,8 @@ export default function AdminDashboardScreen({ navigation }) {
   const [confirmUser, setConfirmUser] = useState(null);
 
   const [loading, setLoading] = useState(true);
+  // null = still checking; false = denied; true = admin
+  const [authorized, setAuthorized] = useState(null);
 
   // ✅ HELPER: Get user display name (handles both fullName and name fields)
   const getUserDisplayName = (user) => {
@@ -74,15 +76,46 @@ export default function AdminDashboardScreen({ navigation }) {
     return user.fullName || user.name || "Unknown";
   };
 
+  // Access guard: only admins may use this screen. This is defense-in-depth on
+  // top of the Firestore rules (which already restrict admin-only writes), so a
+  // non-admin who reaches here (e.g. via a stale notification) is sent back.
   useEffect(() => {
-    loadData();
+    let active = true;
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
+        const isAdmin = snap.exists() && snap.data().role === "admin";
+        if (!active) return;
+        setAuthorized(isAdmin);
+        if (!isAdmin) {
+          setLoading(false);
+          Alert.alert(
+            "Access denied",
+            "This area is for administrators only.",
+            [{ text: "OK", onPress: () => navigation.goBack() }]
+          );
+        }
+      } catch (e) {
+        if (!active) return;
+        setAuthorized(false);
+        setLoading(false);
+        navigation.goBack();
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
-    if (activeTab === "users") {
+    if (authorized) loadData();
+  }, [authorized]);
+
+  useEffect(() => {
+    if (authorized && activeTab === "users") {
       loadUsers(roleFilter);
     }
-  }, [activeTab, roleFilter]);
+  }, [authorized, activeTab, roleFilter]);
 
   const loadData = async () => {
     setLoading(true);
@@ -549,6 +582,20 @@ export default function AdminDashboardScreen({ navigation }) {
       >
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
+    );
+  }
+
+  // Don't render the admin UI for non-admins (or while the check is pending).
+  if (authorized !== true) {
+    return (
+      <GradientBackground>
+        <StatusBar style={isDark ? "light" : "dark"} />
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </GradientBackground>
     );
   }
 
