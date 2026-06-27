@@ -168,6 +168,19 @@ export default function App() {
         navigate("AdminDashboard");
         break;
 
+      case "membership_purchased":
+      case "membership_low_credits":
+      case "membership_expiring":
+      case "membership_expired":
+        console.log("📍 Navigating to MyMemberships");
+        navigate("MyMemberships");
+        break;
+
+      case "membership_sold":
+        console.log("📍 Navigating to MembershipPlans");
+        navigate("MembershipPlans");
+        break;
+
       default:
         // Default: go to Notifications screen
         console.log("📍 Navigating to Notifications (default)");

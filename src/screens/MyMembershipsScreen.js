@@ -6,6 +6,7 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from "@react-navigation/native";
@@ -16,6 +17,7 @@ import {
   getUserMemberships,
   getMembershipState,
   getMembershipExpiryDate,
+  getMembershipPlan,
   MEMBERSHIP_PLAN_TYPES,
 } from "../services/membershipService";
 
@@ -40,6 +42,18 @@ export default function MyMembershipsScreen({ navigation }) {
     const data = await getUserMemberships();
     setMemberships(data);
     setLoading(false);
+  };
+
+  const handleRenew = async (m) => {
+    const plan = await getMembershipPlan(m.planId);
+    if (plan && plan.active) {
+      navigation.navigate("MembershipCheckout", { plan });
+    } else {
+      Alert.alert(
+        "Plan unavailable",
+        "This plan isn't offered anymore. Check the host's current plans on one of their events."
+      );
+    }
   };
 
   const styles = createStyles(colors, isDark);
@@ -95,6 +109,23 @@ export default function MyMembershipsScreen({ navigation }) {
             Unlimited classes
           </Text>
         )}
+
+        <TouchableOpacity
+          style={[
+            styles.renewButton,
+            {
+              backgroundColor:
+                state === "active" ? "transparent" : `${colors.primary}22`,
+              borderColor: colors.primary,
+            },
+          ]}
+          onPress={() => handleRenew(m)}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.renewText, { color: colors.primary }]}>
+            {state === "active" ? "Renew early" : "Renew"}
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -177,5 +208,13 @@ function createStyles(colors, isDark) {
     progressTrack: { height: 8, borderRadius: 4, overflow: "hidden" },
     progressFill: { height: 8, borderRadius: 4 },
     unlimitedText: { fontSize: 14, marginTop: 14, fontWeight: "500" },
+    renewButton: {
+      marginTop: 16,
+      borderWidth: 1.5,
+      borderRadius: 10,
+      paddingVertical: 11,
+      alignItems: "center",
+    },
+    renewText: { fontSize: 14, fontWeight: "700" },
   });
 }

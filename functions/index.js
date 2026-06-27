@@ -5,6 +5,7 @@
 
 const {onRequest, onCall, HttpsError} = require("firebase-functions/v2/https");
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
+const {onSchedule} = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 const {defineSecret} = require("firebase-functions/params");
 
@@ -796,6 +797,131 @@ exports.releaseMembershipReservation = onCall(async (request) => {
 
   return {success: true, forfeited: forfeit};
 });
+
+// ============================================
+// MEMBERSHIP REMINDERS (scheduled, daily)
+// Notifies members about low credits, upcoming expiry, and expiration, and
+// flips expired memberships to status "expired". Each reminder fires once
+// (tracked in remindersSent) to avoid spamming.
+// ============================================
+
+/**
+ * Write an in-app notification.
+ * @param {string} userId
+ * @param {object} payload
+ * @return {Promise<void>}
+ */
+async function pushMembershipNotification(userId, payload) {
+  await db.collection("notifications").add({
+    userId,
+    read: false,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    ...payload,
+  });
+}
+
+exports.sendMembershipReminders = onSchedule(
+  {schedule: "every day 09:00", timeZone: "America/Mexico_City"},
+  async () => {
+    const now = Date.now();
+    const snap = await db
+      .collection("memberships")
+      .where("status", "in", ["active", "depleted"])
+      .get();
+
+    console.log(`🔔 Checking ${snap.size} memberships for reminders`);
+    let sent = 0;
+
+    for (const docSnap of snap.docs) {
+      const m = docSnap.data();
+      const expMs = m.expiresAt?.toMillis ? m.expiresAt.toMillis() : 0;
+      const reminders = m.remindersSent || {};
+      const updates = {};
+      let changed = false;
+      const planMeta = {membershipId: docSnap.id, planId: m.planId, planName: m.planName};
+
+      if (expMs && expMs < now) {
+        // Expired
+        if (m.status !== "expired") {
+          updates.status = "expired";
+          changed = true;
+        }
+        if (!reminders.expired) {
+          await pushMembershipNotification(m.userId, {
+            type: "membership_expired",
+            title: "Membership expired",
+            message: `Your "${m.planName}" has expired. Renew to keep attending.`,
+            icon: "⌛",
+            metadata: planMeta,
+          });
+          reminders.expired = true;
+          updates.remindersSent = reminders;
+          changed = true;
+          sent++;
+        }
+      } else if (expMs) {
+        const daysLeft = Math.ceil((expMs - now) / 86400000);
+
+        if (daysLeft <= 1 && !reminders.expiring1) {
+          await pushMembershipNotification(m.userId, {
+            type: "membership_expiring",
+            title: "Membership expires tomorrow",
+            message: `Your "${m.planName}" expires soon. Renew so you don't lose access.`,
+            icon: "⏳",
+            metadata: planMeta,
+          });
+          reminders.expiring1 = true;
+          updates.remindersSent = reminders;
+          changed = true;
+          sent++;
+        } else if (daysLeft <= 7 && !reminders.expiring7) {
+          await pushMembershipNotification(m.userId, {
+            type: "membership_expiring",
+            title: "Membership expiring soon",
+            message: `Your "${m.planName}" expires in ${daysLeft} days. Renew anytime.`,
+            icon: "⏳",
+            metadata: planMeta,
+          });
+          reminders.expiring7 = true;
+          updates.remindersSent = reminders;
+          changed = true;
+          sent++;
+        }
+
+        // Low credits (credit packs only)
+        const remaining = m.creditsRemaining || 0;
+        if (
+          m.type === "credits" &&
+          remaining > 0 &&
+          remaining <= 2 &&
+          !reminders.lowCredits
+        ) {
+          await pushMembershipNotification(m.userId, {
+            type: "membership_low_credits",
+            title: "Running low on classes",
+            message: `Only ${remaining} class${
+              remaining === 1 ? "" : "es"
+            } left on "${m.planName}". Renew to top up.`,
+            icon: "🎟️",
+            metadata: planMeta,
+          });
+          reminders.lowCredits = true;
+          updates.remindersSent = reminders;
+          changed = true;
+          sent++;
+        }
+      }
+
+      if (changed) {
+        updates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+        await docSnap.ref.update(updates);
+      }
+    }
+
+    console.log(`✅ Membership reminders sent: ${sent}`);
+    return null;
+  },
+);
 
 /**
  * Get pricing info

@@ -245,6 +245,17 @@ export default function NotificationsScreen({ navigation }) {
         navigation.navigate("AdminDashboard");
         break;
 
+      case "membership_purchased":
+      case "membership_low_credits":
+      case "membership_expiring":
+      case "membership_expired":
+        navigation.navigate("MyMemberships");
+        break;
+
+      case "membership_sold":
+        navigation.navigate("MembershipPlans");
+        break;
+
       case "welcome":
         Alert.alert(
           notification.title || "Welcome to BondVibe! 🎉",
