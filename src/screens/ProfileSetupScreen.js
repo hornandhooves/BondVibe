@@ -14,6 +14,7 @@ import { StatusBar } from "expo-status-bar";
 import { doc, updateDoc } from "firebase/firestore";
 import { createNotification } from "../utils/notificationService";
 import { auth, db } from "../services/firebase";
+import { resolveAvatarForSave } from "../services/storageService";
 import { useTheme } from "../contexts/ThemeContext";
 import AvatarPicker, { AvatarDisplay } from "../components/AvatarPicker";
 
@@ -53,9 +54,15 @@ export default function ProfileSetupScreen() {
     try {
       console.log("📝 Saving profile setup...");
 
+      // Upload the avatar photo to Storage if it's a local picker image.
+      const avatar = await resolveAvatarForSave(
+        form.avatar,
+        auth.currentUser.uid
+      );
+
       await updateDoc(doc(db, "users", auth.currentUser.uid), {
         fullName: form.fullName.trim(),
-        avatar: form.avatar,
+        avatar,
         location: form.location.trim(),
         isOver18: true,
         profileCompleted: true,

@@ -27,6 +27,55 @@ export const compressImage = async (uri) => {
 };
 
 /**
+ * Whether a URI is already a remote (uploaded) URL rather than a local file.
+ * @param {string} uri
+ * @returns {boolean}
+ */
+export const isRemoteUrl = (uri) =>
+  typeof uri === "string" && /^https?:\/\//.test(uri);
+
+/**
+ * Upload a user's avatar photo to Firebase Storage and return its download URL.
+ * Uses a fixed path per user so re-uploads overwrite the previous photo
+ * (no orphaned files accumulate). The returned tokenized URL is viewable on
+ * any device.
+ * @param {string} userId
+ * @param {string} imageUri - Local image URI from the picker
+ * @returns {Promise<string>} - Download URL
+ */
+export const uploadAvatar = async (userId, imageUri) => {
+  try {
+    console.log(`📤 Uploading avatar for user ${userId}...`);
+    const compressedUri = await compressImage(imageUri);
+    const response = await fetch(compressedUri);
+    const blob = await response.blob();
+    const avatarRef = ref(storage, `avatars/${userId}/avatar.jpg`);
+    await uploadBytes(avatarRef, blob);
+    const downloadURL = await getDownloadURL(avatarRef);
+    console.log("✅ Avatar uploaded successfully");
+    return downloadURL;
+  } catch (error) {
+    console.error("❌ Error uploading avatar:", error);
+    throw error;
+  }
+};
+
+/**
+ * Resolve an avatar object for saving: if it's a photo with a local URI,
+ * upload it and return a photo avatar pointing at the remote URL. Emoji,
+ * abstract, and already-uploaded photo avatars are returned unchanged.
+ * @param {object} avatar - { type, value?, id?, uri? }
+ * @param {string} userId
+ * @returns {Promise<object>} avatar safe to persist in Firestore
+ */
+export const resolveAvatarForSave = async (avatar, userId) => {
+  if (!avatar || avatar.type !== "photo" || !avatar.uri) return avatar;
+  if (isRemoteUrl(avatar.uri)) return avatar; // already uploaded
+  const url = await uploadAvatar(userId, avatar.uri);
+  return { type: "photo", uri: url };
+};
+
+/**
  * Upload a single image to Firebase Storage
  * @param {string} eventId - Event ID for folder structure
  * @param {string} imageUri - Local image URI

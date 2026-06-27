@@ -8,11 +8,13 @@ import {
   TextInput,
   Modal,
   Switch,
+  Alert,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../services/firebase";
+import { resolveAvatarForSave } from "../services/storageService";
 import { signOut } from "firebase/auth";
 import { useTheme } from "../contexts/ThemeContext";
 import { useFocusEffect } from "@react-navigation/native";
@@ -93,9 +95,14 @@ export default function ProfileScreen({ navigation }) {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Upload the avatar photo to Storage if it's a local picker image.
+      const avatar = await resolveAvatarForSave(
+        editForm.avatar,
+        auth.currentUser.uid
+      );
       await updateDoc(doc(db, "users", auth.currentUser.uid), {
         fullName: editForm.fullName.trim(),
-        avatar: editForm.avatar,
+        avatar,
         location: editForm.location.trim(),
         updatedAt: new Date().toISOString(),
       });
@@ -103,6 +110,7 @@ export default function ProfileScreen({ navigation }) {
       setEditing(false);
     } catch (error) {
       console.error("Error updating profile:", error);
+      Alert.alert("Error", "Could not save your profile. Please try again.");
     } finally {
       setSaving(false);
     }

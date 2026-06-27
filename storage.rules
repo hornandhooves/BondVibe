@@ -1,0 +1,40 @@
+rules_version = '2';
+
+// BondVibe Cloud Storage security rules.
+// Note: getDownloadURL() returns a tokenized URL that is shareable and works
+// across devices; these rules govern direct (gs://) access and uploads.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isImageUnder(maxBytes) {
+      return request.resource.size < maxBytes &&
+             request.resource.contentType.matches('image/.*');
+    }
+
+    // Event images — any signed-in user can view (so attendees on any device
+    // see them); any signed-in user can upload (the app writes only under the
+    // events they create; Storage rules can't read Firestore to verify owner).
+    match /events/{eventId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isImageUnder(10 * 1024 * 1024);
+    }
+
+    // Avatars — one folder per user. Anyone signed in can view; only the owner
+    // can upload/replace their own avatar.
+    match /avatars/{userId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() &&
+                      request.auth.uid == userId &&
+                      isImageUnder(5 * 1024 * 1024);
+    }
+
+    // Everything else is denied by default.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
