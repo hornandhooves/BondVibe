@@ -185,14 +185,41 @@ Reusa el sistema de notificaciones/push que ya existe.
 - Planes ilimitados / auto-renovación (suscripción Stripe recurrente) ·
   analítics del host (ingresos, asistencia, churn) · ajustes masivos.
 
-## 10. Decisiones que necesito de ti
+## 10. Decisiones (CERRADAS)
 
-1. **Modelo de membresía**: ¿solo paquetes de créditos (N clases), o también
-   "ilimitada por tiempo", o ambos? (Tu descripción suena a créditos.)
-2. **Cuándo descontar el crédito**: ¿al hacer check-in el host (recomendado y
-   lo que describiste), o al reservar?
-3. **Renovación**: ¿recompra manual (simple) o auto-renovación con suscripción
-   Stripe (más complejo)?
-4. **Política de cancelación/no-show**: ¿se devuelve el crédito si cancela a
-   tiempo? ¿hay ventana (ej. 2 h antes)?
-5. **Alcance del MVP**: ¿arrancamos con Fase 1 tal cual?
+1. **Modelo**: AMBOS — paquetes de créditos (N clases) **y** ilimitada por tiempo.
+2. **Descuento**: al **check-in del host** (la reserva pone hold, el check-in
+   descuenta).
+3. **Renovación**: AMBAS — recompra manual **y** auto-renovación (suscripción
+   Stripe recurrente).
+4. **Cancelación/no-show**: se **devuelve el crédito si cancela ≥ 2 h antes** del
+   inicio del evento. Dentro de las 2 h, el crédito se pierde (hold se convierte
+   en consumo).
+5. **Alcance**: Fase 1 + Fase 2 + (de Fase 3, **solo analytics del host**).
+
+### Implicaciones de "ambos" e "ilimitada"
+- `membershipPlans.type`: "credits" | "unlimited".
+- En planes `unlimited` no hay `creditsRemaining`; la validez es solo por fecha
+  (`expiresAt`). El check-in marca asistencia pero **no descuenta** crédito.
+- Auto-renovación usa **Stripe Subscriptions** sobre el Connected Account del
+  host. `memberships.autoRenew = true`, `stripeSubscriptionId`. El webhook de
+  `invoice.paid` renueva créditos / extiende `expiresAt`.
+
+## 11. Plan de construcción (rebanadas verticales)
+
+Cada rebanada es demostrable y se commitea/valida por separado.
+
+- **Slice 1 — Fundación + planes del host** *(en curso)*: reglas + índices +
+  `membershipService` (CRUD de planes) + Host Hub + pantalla "Membership Plans"
+  (crear/listar/archivar) + accesos en Profile/Home para Paid Hosts.
+- **Slice 2 — Compra de membresía**: `createMembershipPaymentIntent` + webhook
+  crea `memberships` + pantalla de compra + "My Memberships" del alumno.
+- **Slice 3 — Reserva y check-in**: selector pago/crédito en RSVP (hold) +
+  pantalla de asistencia del host + `redeemMembershipCredit` (transacción) +
+  devolución de crédito en cancelación ≥ 2 h.
+- **Slice 4 — Recordatorios (Fase 2)**: Cloud Function programada (saldo bajo,
+  por vencer, vencida) + renovación de 1 toque.
+- **Slice 5 — Auto-renovación (Fase 2)**: Stripe Subscriptions + webhooks de
+  invoice + toggle de auto-renew.
+- **Slice 6 — Analytics del host (Fase 3 parcial)**: ingresos, miembros activos,
+  asistencia, por vencer/churn.

@@ -35,6 +35,7 @@ import {
   BadgeCheck,
   Trash2,
   Sparkles,
+  Ticket,
 } from "lucide-react-native";
 
 export default function ProfileScreen({ navigation }) {
@@ -175,6 +176,9 @@ export default function ProfileScreen({ navigation }) {
     profile.hostApproved &&
     profile.role !== "host" &&
     profile.role !== "admin";
+  // Only paid hosts can sell memberships.
+  const isPaidHost =
+    profile.role === "host" && profile.hostConfig?.type === "paid";
 
   return (
     <GradientBackground>
@@ -729,6 +733,59 @@ export default function ProfileScreen({ navigation }) {
                     <ChevronRight
                       size={20}
                       color={colors.primary}
+                      strokeWidth={2}
+                    />
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {/* Membership Plans — paid hosts only */}
+              {isPaidHost && (
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("MembershipPlans")}
+                  activeOpacity={0.8}
+                >
+                  <View
+                    style={[
+                      styles.infoCard,
+                      {
+                        backgroundColor: isDark
+                          ? "rgba(255, 255, 255, 0.04)"
+                          : "rgba(255, 255, 255, 0.85)",
+                        borderColor: isDark
+                          ? "rgba(255, 255, 255, 0.10)"
+                          : "rgba(0, 0, 0, 0.08)",
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.infoIconCircle,
+                        {
+                          backgroundColor: isDark
+                            ? `${colors.primary}20`
+                            : `${colors.primary}15`,
+                        },
+                      ]}
+                    >
+                      <Ticket size={22} color={colors.primary} strokeWidth={1.8} />
+                    </View>
+                    <View style={styles.infoContent}>
+                      <Text
+                        style={[
+                          styles.infoLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        Memberships
+                      </Text>
+                      <Text style={[styles.infoValue, { color: colors.text }]}>
+                        Manage membership plans
+                      </Text>
+                    </View>
+                    <ChevronRight
+                      size={20}
+                      color={colors.textTertiary}
                       strokeWidth={2}
                     />
                   </View>

@@ -42,6 +42,9 @@ import CheckoutScreen from "../screens/payment/CheckoutScreen";
 import HostTypeSelectionScreen from "../screens/HostTypeSelectionScreen";
 import StripeConnectScreen from "../screens/StripeConnectScreen";
 
+// Host Membership Screens
+import MembershipPlansScreen from "../screens/MembershipPlansScreen";
+
 const Stack = createNativeStackNavigator();
 
 const AppNavigator = forwardRef((props, ref) => {
@@ -325,6 +328,10 @@ const AppNavigator = forwardRef((props, ref) => {
           />
           <Stack.Screen name="Checkout" component={CheckoutScreen} />
           <Stack.Screen name="StripeConnect" component={StripeConnectScreen} />
+          <Stack.Screen
+            name="MembershipPlans"
+            component={MembershipPlansScreen}
+          />
         </Stack.Navigator>
       </NavigationContainer>
 

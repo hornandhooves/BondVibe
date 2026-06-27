@@ -108,6 +108,44 @@ service cloud.firestore {
     }
     
     // ============================================
+    // MEMBERSHIP PLANS (host-defined templates)
+    // ============================================
+    match /membershipPlans/{planId} {
+      // Anyone signed in can read (buyers browse a host's plans).
+      allow read: if isSignedIn();
+      // A host manages only their own plans.
+      allow create: if isSignedIn() &&
+                       request.resource.data.hostId == request.auth.uid;
+      allow update, delete: if isSignedIn() &&
+                               resource.data.hostId == request.auth.uid;
+    }
+
+    // ============================================
+    // MEMBERSHIPS (a user's purchased instance)
+    // Credits/expiry are money-sensitive: only the server (Admin SDK via
+    // Cloud Functions / webhooks) may create or mutate them.
+    // ============================================
+    match /memberships/{membershipId} {
+      allow read: if isSignedIn() &&
+                     (resource.data.userId == request.auth.uid ||
+                      resource.data.hostId == request.auth.uid ||
+                      isAdmin());
+      allow create, update, delete: if false;
+    }
+
+    // ============================================
+    // MEMBERSHIP REDEMPTIONS (credit-deduction audit trail)
+    // Server-only writes (host check-in goes through a Cloud Function).
+    // ============================================
+    match /membershipRedemptions/{redemptionId} {
+      allow read: if isSignedIn() &&
+                     (resource.data.userId == request.auth.uid ||
+                      resource.data.hostId == request.auth.uid ||
+                      isAdmin());
+      allow create, update, delete: if false;
+    }
+
+    // ============================================
     // PAYMENTS COLLECTION
     // ============================================
     match /payments/{paymentId} {
