@@ -16,6 +16,7 @@ import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { useTheme } from '../contexts/ThemeContext';
 import SuccessModal from '../components/SuccessModal';
+import { Sparkles } from 'lucide-react-native';
 
 export default function RequestHostScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -129,7 +130,12 @@ export default function RequestHostScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.introSection}>
-          <Text style={styles.introEmoji}>��</Text>
+          <View style={[styles.introIconCircle, {
+            backgroundColor: `${colors.primary}1A`,
+            borderColor: `${colors.primary}40`,
+          }]}>
+            <Sparkles size={40} color={colors.primary} strokeWidth={2} />
+          </View>
           <Text style={[styles.introTitle, { color: colors.text }]}>
             Share Your Passion
           </Text>
@@ -265,7 +271,15 @@ function createStyles(colors) {
     scrollView: { flex: 1 },
     scrollContent: { paddingHorizontal: 24, paddingBottom: 40 },
     introSection: { alignItems: 'center', marginBottom: 32 },
-    introEmoji: { fontSize: 64, marginBottom: 16 },
+    introIconCircle: {
+      width: 88,
+      height: 88,
+      borderRadius: 44,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
     introTitle: { fontSize: 24, fontWeight: '700', marginBottom: 12, letterSpacing: -0.4 },
     introText: { fontSize: 14, textAlign: 'center', lineHeight: 22, paddingHorizontal: 20 },
     formSection: { marginBottom: 24 },
