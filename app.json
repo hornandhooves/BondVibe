@@ -31,7 +31,6 @@
       [
         "@stripe/stripe-react-native",
         {
-          "merchantIdentifier": "merchant.com.bondvibe.app",
           "enableGooglePay": false
         }
       ]
