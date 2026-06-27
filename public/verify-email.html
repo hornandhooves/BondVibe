@@ -65,6 +65,25 @@
         .success .status-title { color: #34C759; }
         .error .status-title { color: #EF4444; }
         .loading .status-title { color: #FFFFFF; }
+
+        .app-button {
+            display: inline-block;
+            background: rgba(233, 30, 140, 0.18);
+            border: 2px solid rgba(233, 30, 140, 0.6);
+            color: #E91E8C;
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .app-button:hover { background: rgba(233, 30, 140, 0.3); }
+        .app-note {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 13px;
+            margin-top: 16px;
+        }
         
         .spinner {
             width: 40px;
@@ -106,7 +125,9 @@
                 </svg>
             </div>
             <div class="status-title">Email Verified!</div>
-            <div class="status-message">Your email has been successfully verified. You can now log in to BondVibe and start connecting with others.</div>
+            <div class="status-message">Your email has been successfully verified. Open the app and log in to start connecting with others.</div>
+            <a href="bondvibe://login" class="app-button">Open BondVibe App</a>
+            <div class="app-note">If nothing happens, just close this tab and open the BondVibe app.</div>
         </div>
 
         <div id="error" class="error" style="display: none;">
@@ -118,6 +139,8 @@
             </div>
             <div class="status-title">Verification Failed</div>
             <div class="status-message" id="errorMessage">This verification link is invalid or has expired.</div>
+            <a href="bondvibe://login" class="app-button">Open BondVibe App</a>
+            <div class="app-note">Open the app to request a new verification email.</div>
         </div>
     </div>
 
