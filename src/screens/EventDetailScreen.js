@@ -613,6 +613,9 @@ export default function EventDetailScreen({ route, navigation }) {
   }
 
   const isCreator = event.creatorId === auth.currentUser.uid;
+  const isCoHost =
+    Array.isArray(event.coHosts) && event.coHosts.includes(auth.currentUser.uid);
+  const isManager = isCreator || isCoHost;
   const isAdmin = currentUser?.role === "admin";
   const canSeeAttendees = isCreator || isAdmin;
   const maxCapacity = event.maxAttendees || event.maxPeople || 0;
@@ -683,7 +686,7 @@ export default function EventDetailScreen({ route, navigation }) {
               </View>
             </TouchableOpacity>
           )}
-          {isCreator && (
+          {isManager && (
             <TouchableOpacity
               onPress={() =>
                 isPremium
@@ -704,7 +707,7 @@ export default function EventDetailScreen({ route, navigation }) {
               </View>
             </TouchableOpacity>
           )}
-          {isCreator && (
+          {isManager && (
             <TouchableOpacity
               onPress={() => navigation.navigate("EditEvent", { eventId })}
             >

@@ -22,8 +22,11 @@ import {
   where,
   getDocs,
   writeBatch,
+  arrayUnion,
+  arrayRemove,
 } from "firebase/firestore";
 import { db, auth } from "../services/firebase";
+import { findUserByEmail } from "../services/hostGroupService";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -60,6 +63,10 @@ export default function EditEventScreen({ route, navigation }) {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [creatorId, setCreatorId] = useState(null);
+  const [coHosts, setCoHosts] = useState([]); // [{ id, name }]
+  const [coHostEmail, setCoHostEmail] = useState("");
+  const [addingCoHost, setAddingCoHost] = useState(false);
 
   // Image state
   const [eventImages, setEventImages] = useState([]); // Current images (URLs or local URIs)
@@ -108,6 +115,21 @@ export default function EditEventScreen({ route, navigation }) {
           price: data.price?.toString() || "",
         });
         setTempDate(eventDate);
+        setCreatorId(data.creatorId || data.createdBy || data.hostId || null);
+
+        // Load co-hosts (names) for management.
+        if (Array.isArray(data.coHosts) && data.coHosts.length) {
+          const names = await Promise.all(
+            data.coHosts.map(async (id) => {
+              const u = await getDoc(doc(db, "users", id));
+              return {
+                id,
+                name: u.exists() ? u.data().fullName || u.data().name || "Co-host" : "Co-host",
+              };
+            })
+          );
+          setCoHosts(names);
+        }
 
         // Load existing images
         if (data.images && Array.isArray(data.images)) {
@@ -251,6 +273,33 @@ export default function EditEventScreen({ route, navigation }) {
   };
 
   // Handle save - check for recurring event
+  const isCreator = !!creatorId && auth.currentUser?.uid === creatorId;
+
+  const handleAddCoHost = async () => {
+    const email = coHostEmail.trim().toLowerCase();
+    if (!email) return;
+    setAddingCoHost(true);
+    const user = await findUserByEmail(email);
+    setAddingCoHost(false);
+    if (!user) {
+      Alert.alert("No encontrado", "Ningún usuario de BondVibe con ese email.");
+      return;
+    }
+    if (user.id === creatorId || coHosts.some((c) => c.id === user.id)) {
+      Alert.alert("Ya es co-host", "Esa persona ya gestiona el evento.");
+      return;
+    }
+    await updateDoc(doc(db, "events", eventId), { coHosts: arrayUnion(user.id) });
+    setCoHosts((c) => [...c, { id: user.id, name: user.fullName || user.name || email }]);
+    setCoHostEmail("");
+    Alert.alert("Co-host agregado", `${user.fullName || email} ahora puede gestionar el evento.`);
+  };
+
+  const handleRemoveCoHost = async (id) => {
+    await updateDoc(doc(db, "events", eventId), { coHosts: arrayRemove(id) });
+    setCoHosts((c) => c.filter((x) => x.id !== id));
+  };
+
   const handleSave = async () => {
     if (
       !form.title.trim() ||
@@ -953,6 +1002,48 @@ export default function EditEventScreen({ route, navigation }) {
           </View>
         </View>
 
+        {/* Co-hosts — only the creator manages them */}
+        {isCreator && (
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.text }]}>Co-anfitriones</Text>
+            <Text style={[styles.coHostHint, { color: colors.textSecondary }]}>
+              Pueden editar el evento y registrar asistencia (check-in).
+            </Text>
+            {coHosts.map((c) => (
+              <View
+                key={c.id}
+                style={[styles.coHostRow, { borderColor: colors.borderStrong }]}
+              >
+                <Text style={[styles.coHostName, { color: colors.text }]} numberOfLines={1}>
+                  {c.name}
+                </Text>
+                <TouchableOpacity onPress={() => handleRemoveCoHost(c.id)}>
+                  <Text style={{ color: "#E0413A", fontWeight: "700" }}>Quitar</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+            <View style={styles.coHostAddRow}>
+              <TextInput
+                style={[
+                  styles.coHostInput,
+                  { color: colors.text, borderColor: colors.borderStrong },
+                ]}
+                placeholder="email del co-anfitrión"
+                placeholderTextColor={colors.textTertiary}
+                value={coHostEmail}
+                onChangeText={setCoHostEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+              <TouchableOpacity onPress={handleAddCoHost} disabled={addingCoHost}>
+                <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                  {addingCoHost ? "…" : "Agregar"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Save Button */}
         <TouchableOpacity
           style={styles.saveButton}
@@ -1182,6 +1273,27 @@ function createStyles(colors) {
     },
     iosPicker: {
       height: 200,
+    },
+    coHostHint: { fontSize: 13, marginBottom: 10, lineHeight: 18 },
+    coHostRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderWidth: 2,
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      marginBottom: 8,
+    },
+    coHostName: { flex: 1, fontSize: 15, fontWeight: "600" },
+    coHostAddRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 4 },
+    coHostInput: {
+      flex: 1,
+      borderWidth: 2,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 15,
     },
     saveButton: {
       borderRadius: 16,

@@ -26,8 +26,9 @@ service cloud.firestore {
     }
 
     function isEventHost(eventId) {
-      return request.auth.uid ==
-             get(/databases/$(database)/documents/events/$(eventId)).data.creatorId;
+      let eventData = get(/databases/$(database)/documents/events/$(eventId)).data;
+      return request.auth.uid == eventData.creatorId ||
+             (eventData.coHosts != null && request.auth.uid in eventData.coHosts);
     }
 
     // An attendee who is NOT the creator — only these users may rate an event.
@@ -102,6 +103,15 @@ service cloud.firestore {
                            .affectedKeys()
                            .hasAny(['featured', 'featuredUntil', 'featuredTier',
                                     'averageRating', 'totalRatings'])) ||
+                        // Co-hosts can edit content, but not server-owned fields
+                        // nor ownership (creatorId/coHosts stay creator-managed).
+                        (resource.data.coHosts != null &&
+                         request.auth.uid in resource.data.coHosts &&
+                         !request.resource.data.diff(resource.data)
+                           .affectedKeys()
+                           .hasAny(['featured', 'featuredUntil', 'featuredTier',
+                                    'averageRating', 'totalRatings',
+                                    'creatorId', 'coHosts'])) ||
                         onlyUpdating(['attendees']));
       
       allow delete: if isSignedIn() && 

@@ -210,6 +210,24 @@ const runQuery = async (structuredQuery, h) => {
   }, outsider.headers), 403);
   chk("attendee can read own check-in", await readDoc(`events/${ev}/checkins/${member.uid}`, member.headers), 200);
 
+  // ---- CO-HOST (shared event management) ----
+  section("Co-host");
+  chk("creator adds a co-host", await patchDoc(`events/${ev}?updateMask.fieldPaths=coHosts`, {
+    coHosts: arr([member.uid]),
+  }, host.headers), 200);
+  chk("co-host can edit the event", await patchDoc(`events/${ev}?updateMask.fieldPaths=title`, {
+    title: s("Edited by co-host"),
+  }, member.headers), 200);
+  chk("co-host CANNOT change ownership", await patchDoc(`events/${ev}?updateMask.fieldPaths=creatorId`, {
+    creatorId: s(member.uid),
+  }, member.headers), 403);
+  chk("co-host CANNOT self-feature", await patchDoc(`events/${ev}?updateMask.fieldPaths=featured`, {
+    featured: b(true),
+  }, member.headers), 403);
+  chk("outsider (attendee) CANNOT edit title", await patchDoc(`events/${ev}?updateMask.fieldPaths=title`, {
+    title: s("hacked"),
+  }, outsider.headers), 403);
+
   // ---- PREMIUM AI GATE (getHostFeedbackInsights) ----
   section("Premium AI gate");
   const aiCall = await callFn("getHostFeedbackInsights", {}, host.headers);
