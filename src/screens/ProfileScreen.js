@@ -21,6 +21,8 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useFocusEffect } from "@react-navigation/native";
 import AvatarPicker, { AvatarDisplay } from "../components/AvatarPicker";
 import GradientBackground from "../components/GradientBackground";
+import { BVBadge } from "../components/BoldPop";
+import { AvatarFrame } from "../components/CategoryIcon";
 import {
   ChevronLeft,
   
@@ -241,12 +243,14 @@ export default function ProfileScreen({ navigation }) {
                     style={[
                       styles.modalButtonGlass,
                       {
-                        backgroundColor: isDark
-                          ? "rgba(255, 255, 255, 0.04)"
-                          : "rgba(255, 255, 255, 0.85)",
-                        borderColor: isDark
-                          ? "rgba(255, 255, 255, 0.10)"
-                          : "rgba(0, 0, 0, 0.08)",
+                        backgroundColor: colors.surface,
+                        borderColor: colors.borderStrong,
+                        borderWidth: 2,
+                        shadowColor: colors.hardShadow,
+                        shadowOffset: { width: 3, height: 3 },
+                        shadowOpacity: 1,
+                        shadowRadius: 0,
+                        elevation: 4,
                       },
                     ]}
                   >
@@ -315,12 +319,14 @@ export default function ProfileScreen({ navigation }) {
                     style={[
                       styles.modalButtonGlass,
                       {
-                        backgroundColor: isDark
-                          ? "rgba(255, 255, 255, 0.04)"
-                          : "rgba(255, 255, 255, 0.85)",
-                        borderColor: isDark
-                          ? "rgba(255, 255, 255, 0.10)"
-                          : "rgba(0, 0, 0, 0.08)",
+                        backgroundColor: colors.surface,
+                        borderColor: colors.borderStrong,
+                        borderWidth: 2,
+                        shadowColor: colors.hardShadow,
+                        shadowOffset: { width: 3, height: 3 },
+                        shadowOpacity: 1,
+                        shadowRadius: 0,
+                        elevation: 4,
                       },
                     ]}
                   >
@@ -473,12 +479,14 @@ export default function ProfileScreen({ navigation }) {
                   style={[
                     styles.actionButtonGlass,
                     {
-                      backgroundColor: isDark
-                        ? "rgba(255, 255, 255, 0.04)"
-                        : "rgba(255, 255, 255, 0.85)",
-                      borderColor: isDark
-                        ? "rgba(255, 255, 255, 0.10)"
-                        : "rgba(0, 0, 0, 0.08)",
+                      backgroundColor: colors.surface,
+                      borderColor: colors.borderStrong,
+                      borderWidth: 2,
+                      shadowColor: colors.hardShadow,
+                      shadowOffset: { width: 3, height: 3 },
+                      shadowOpacity: 1,
+                      shadowRadius: 0,
+                      elevation: 4,
                     },
                   ]}
                 >
@@ -517,19 +525,9 @@ export default function ProfileScreen({ navigation }) {
           /* VIEW MODE */
           <>
             <View style={styles.profileHeader}>
-              <View
-                style={[
-                  styles.avatarGlass,
-                  {
-                    backgroundColor: isDark
-                      ? "rgba(255, 255, 255, 0.04)"
-                      : "rgba(255, 255, 255, 0.85)",
-                    borderColor: `${colors.primary}66`,
-                  },
-                ]}
-              >
+              <AvatarFrame size={96}>
                 <AvatarDisplay avatar={profile.avatar} size={80} />
-              </View>
+              </AvatarFrame>
               <Text style={[styles.profileName, { color: colors.text }]}>
                 {profile.fullName}
               </Text>
@@ -541,18 +539,20 @@ export default function ProfileScreen({ navigation }) {
 
               {profile.role === "admin" && (
                 <View style={styles.roleBadge}>
-                  <View style={styles.roleBadgeAdmin}>
-                    <Crown size={14} color="#FFD700" strokeWidth={2} />
-                    <Text style={styles.roleBadgeTextAdmin}>Admin</Text>
-                  </View>
+                  <BVBadge
+                    label="Admin"
+                    tone="ink"
+                    icon={<Crown size={13} color={colors.onInk} strokeWidth={2.5} />}
+                  />
                 </View>
               )}
               {profile.role === "host" && (
                 <View style={styles.roleBadge}>
-                  <View style={styles.roleBadgeHost}>
-                    <BadgeCheck size={14} color="#34C759" strokeWidth={2} />
-                    <Text style={styles.roleBadgeTextHost}>Verified Host</Text>
-                  </View>
+                  <BVBadge
+                    label="Verified Host"
+                    tone="success"
+                    icon={<BadgeCheck size={13} color={colors.onPrimary} strokeWidth={2.5} />}
+                  />
                 </View>
               )}
             </View>
@@ -562,12 +562,14 @@ export default function ProfileScreen({ navigation }) {
                 style={[
                   styles.bioCard,
                   {
-                    backgroundColor: isDark
-                      ? "rgba(255, 255, 255, 0.04)"
-                      : "rgba(255, 255, 255, 0.85)",
-                    borderColor: isDark
-                      ? "rgba(255, 255, 255, 0.10)"
-                      : "rgba(0, 0, 0, 0.08)",
+                    backgroundColor: colors.surface,
+                    borderColor: colors.borderStrong,
+                    borderWidth: 2,
+                    shadowColor: colors.hardShadow,
+                    shadowOffset: { width: 3, height: 3 },
+                    shadowOpacity: 1,
+                    shadowRadius: 0,
+                    elevation: 4,
                   },
                 ]}
               >
@@ -583,12 +585,14 @@ export default function ProfileScreen({ navigation }) {
                 style={[
                   styles.infoCard,
                   {
-                    backgroundColor: isDark
-                      ? "rgba(255, 255, 255, 0.04)"
-                      : "rgba(255, 255, 255, 0.85)",
-                    borderColor: isDark
-                      ? "rgba(255, 255, 255, 0.10)"
-                      : "rgba(0, 0, 0, 0.08)",
+                    backgroundColor: colors.surface,
+                    borderColor: colors.borderStrong,
+                    borderWidth: 2,
+                    shadowColor: colors.hardShadow,
+                    shadowOffset: { width: 3, height: 3 },
+                    shadowOpacity: 1,
+                    shadowRadius: 0,
+                    elevation: 4,
                   },
                 ]}
               >
@@ -626,12 +630,14 @@ export default function ProfileScreen({ navigation }) {
                     style={[
                       styles.infoCard,
                       {
-                        backgroundColor: isDark
-                          ? "rgba(255, 255, 255, 0.04)"
-                          : "rgba(255, 255, 255, 0.85)",
-                        borderColor: isDark
-                          ? "rgba(255, 255, 255, 0.10)"
-                          : "rgba(0, 0, 0, 0.08)",
+                        backgroundColor: colors.surface,
+                        borderColor: colors.borderStrong,
+                        borderWidth: 2,
+                        shadowColor: colors.hardShadow,
+                        shadowOffset: { width: 3, height: 3 },
+                        shadowOpacity: 1,
+                        shadowRadius: 0,
+                        elevation: 4,
                       },
                     ]}
                   >
@@ -762,12 +768,14 @@ export default function ProfileScreen({ navigation }) {
                   style={[
                     styles.infoCard,
                     {
-                      backgroundColor: isDark
-                        ? "rgba(255, 255, 255, 0.04)"
-                        : "rgba(255, 255, 255, 0.85)",
-                      borderColor: isDark
-                        ? "rgba(255, 255, 255, 0.10)"
-                        : "rgba(0, 0, 0, 0.08)",
+                      backgroundColor: colors.surface,
+                      borderColor: colors.borderStrong,
+                      borderWidth: 2,
+                      shadowColor: colors.hardShadow,
+                      shadowOffset: { width: 3, height: 3 },
+                      shadowOpacity: 1,
+                      shadowRadius: 0,
+                      elevation: 4,
                     },
                   ]}
                 >
@@ -811,12 +819,14 @@ export default function ProfileScreen({ navigation }) {
                     style={[
                       styles.infoCard,
                       {
-                        backgroundColor: isDark
-                          ? "rgba(255, 255, 255, 0.04)"
-                          : "rgba(255, 255, 255, 0.85)",
-                        borderColor: isDark
-                          ? "rgba(255, 255, 255, 0.10)"
-                          : "rgba(0, 0, 0, 0.08)",
+                        backgroundColor: colors.surface,
+                        borderColor: colors.borderStrong,
+                        borderWidth: 2,
+                        shadowColor: colors.hardShadow,
+                        shadowOffset: { width: 3, height: 3 },
+                        shadowOpacity: 1,
+                        shadowRadius: 0,
+                        elevation: 4,
                       },
                     ]}
                   >
@@ -864,12 +874,14 @@ export default function ProfileScreen({ navigation }) {
                     style={[
                       styles.infoCard,
                       {
-                        backgroundColor: isDark
-                          ? "rgba(255, 255, 255, 0.04)"
-                          : "rgba(255, 255, 255, 0.85)",
-                        borderColor: isDark
-                          ? "rgba(255, 255, 255, 0.10)"
-                          : "rgba(0, 0, 0, 0.08)",
+                        backgroundColor: colors.surface,
+                        borderColor: colors.borderStrong,
+                        borderWidth: 2,
+                        shadowColor: colors.hardShadow,
+                        shadowOffset: { width: 3, height: 3 },
+                        shadowOpacity: 1,
+                        shadowRadius: 0,
+                        elevation: 4,
                       },
                     ]}
                   >
@@ -914,12 +926,14 @@ export default function ProfileScreen({ navigation }) {
                     style={[
                       styles.infoCard,
                       {
-                        backgroundColor: isDark
-                          ? "rgba(255, 255, 255, 0.04)"
-                          : "rgba(255, 255, 255, 0.85)",
-                        borderColor: isDark
-                          ? "rgba(255, 255, 255, 0.10)"
-                          : "rgba(0, 0, 0, 0.08)",
+                        backgroundColor: colors.surface,
+                        borderColor: colors.borderStrong,
+                        borderWidth: 2,
+                        shadowColor: colors.hardShadow,
+                        shadowOffset: { width: 3, height: 3 },
+                        shadowOpacity: 1,
+                        shadowRadius: 0,
+                        elevation: 4,
                       },
                     ]}
                   >
@@ -964,12 +978,14 @@ export default function ProfileScreen({ navigation }) {
                     style={[
                       styles.infoCard,
                       {
-                        backgroundColor: isDark
-                          ? "rgba(255, 255, 255, 0.04)"
-                          : "rgba(255, 255, 255, 0.85)",
-                        borderColor: isDark
-                          ? "rgba(255, 255, 255, 0.10)"
-                          : "rgba(0, 0, 0, 0.08)",
+                        backgroundColor: colors.surface,
+                        borderColor: colors.borderStrong,
+                        borderWidth: 2,
+                        shadowColor: colors.hardShadow,
+                        shadowOffset: { width: 3, height: 3 },
+                        shadowOpacity: 1,
+                        shadowRadius: 0,
+                        elevation: 4,
                       },
                     ]}
                   >
@@ -1070,12 +1086,14 @@ export default function ProfileScreen({ navigation }) {
                   style={[
                     styles.quizRetakeGlass,
                     {
-                      backgroundColor: isDark
-                        ? "rgba(255, 255, 255, 0.04)"
-                        : "rgba(255, 255, 255, 0.85)",
-                      borderColor: isDark
-                        ? "rgba(255, 255, 255, 0.10)"
-                        : "rgba(0, 0, 0, 0.08)",
+                      backgroundColor: colors.surface,
+                      borderColor: colors.borderStrong,
+                      borderWidth: 2,
+                      shadowColor: colors.hardShadow,
+                      shadowOffset: { width: 3, height: 3 },
+                      shadowOpacity: 1,
+                      shadowRadius: 0,
+                      elevation: 4,
                     },
                   ]}
                 >
@@ -1142,12 +1160,14 @@ export default function ProfileScreen({ navigation }) {
                   style={[
                     styles.personalityCard,
                     {
-                      backgroundColor: isDark
-                        ? "rgba(255, 255, 255, 0.04)"
-                        : "rgba(255, 255, 255, 0.85)",
-                      borderColor: isDark
-                        ? "rgba(255, 255, 255, 0.10)"
-                        : "rgba(0, 0, 0, 0.08)",
+                      backgroundColor: colors.surface,
+                      borderColor: colors.borderStrong,
+                      borderWidth: 2,
+                      shadowColor: colors.hardShadow,
+                      shadowOffset: { width: 3, height: 3 },
+                      shadowOpacity: 1,
+                      shadowRadius: 0,
+                      elevation: 4,
                     },
                   ]}
                 >
@@ -1306,8 +1326,8 @@ function createStyles(colors, isDark) {
     // Info Cards
     infoSection: { gap: 12, marginBottom: 20 },
     infoCard: {
-      borderWidth: 1,
-      borderRadius: 16,
+      borderWidth: 2,
+      borderRadius: 18,
       padding: 16,
       flexDirection: "row",
       alignItems: "center",
