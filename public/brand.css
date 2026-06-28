@@ -1,0 +1,85 @@
+/* BondVibe — Brand tokens for the public web pages
+   (public/verify-email.html, reset-password.html, 404.html, index.html, stripe/*)
+   Link once per page <head>:  <link rel="stylesheet" href="/brand.css">
+   Default = Aurora (dark). Add <html data-theme="warmth"> for the light/Day surface. */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+:root,
+:root[data-theme="aurora"] {
+  --bg:            #0E1117;
+  --surface:       #171B26;
+  --surface-2:     #1C2130;
+  --text:          #EDEFF5;
+  --text-2:        #8B93A7;
+  --primary:       #FF3E9A;
+  --secondary:     #3DDCFF;
+  --success:       #3DE0A0;
+  --error:         #FF6B6B;
+  --border:        rgba(255,255,255,.12);
+  --border-strong: rgba(255,255,255,.16);
+  --hard-shadow:   #FF3E9A;
+  --ink:           #EDEFF5;
+  --on-ink:        #0E1117;
+  --on-primary:    #FFFFFF;
+}
+
+:root[data-theme="warmth"] {
+  --bg:            #FBF6F1;
+  --surface:       #FFFFFF;
+  --surface-2:     #FFFFFF;
+  --text:          #2A2520;
+  --text-2:        #9A8D7E;
+  --primary:       #F0573D;
+  --secondary:     #1F8A6E;
+  --success:       #1F8A6E;
+  --error:         #E0413A;
+  --border:        rgba(42,37,32,.10);
+  --border-strong: #2A2520;
+  --hard-shadow:   #2A2520;
+  --ink:           #2A2520;
+  --on-ink:        #FFFFFF;
+  --on-primary:    #FFFFFF;
+}
+
+/* Brand signature — fixed in both themes (refined: no cold indigo) */
+:root { --grad-brand: linear-gradient(135deg, #7C3AED, #C026D3, #FF3E9A);
+        --grad-warm:  linear-gradient(135deg, #E91E8C, #F0573D); }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.02em; }
+
+/* Bold Pop primitives */
+.bv-card {
+  background: var(--surface);
+  border: 2px solid var(--border-strong);
+  border-radius: 20px;
+  box-shadow: 5px 5px 0 var(--hard-shadow);
+  padding: 24px;
+}
+.bv-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--primary); color: var(--on-primary);
+  border: 2px solid var(--border-strong); border-radius: 30px;
+  padding: 13px 22px; font-weight: 700; font-size: 15px;
+  box-shadow: 3px 3px 0 var(--hard-shadow); cursor: pointer;
+  text-decoration: none;
+}
+.bv-btn--ghost { background: var(--surface); color: var(--text); box-shadow: none; }
+.bv-badge-verified {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--secondary); color: var(--on-ink);
+  border: 2px solid var(--border-strong); border-radius: 30px;
+  padding: 5px 11px; font-weight: 800; font-size: 12px;
+}
+.bv-logo-tile {
+  width: 64px; height: 64px; border-radius: 18px;
+  background: var(--grad-brand);
+  display: flex; align-items: center; justify-content: center;
+}
