@@ -130,6 +130,29 @@ export const nudgeAttendee = (userId, hostName, kind) => {
   });
 };
 
+/**
+ * Mass announcement — send the same message to many attendees at once.
+ * @param {string[]} userIds
+ * @param {string} message
+ * @returns {Promise<{success:boolean, count:number}>}
+ */
+export const sendAnnouncement = async (userIds, message) => {
+  const text = (message || "").trim();
+  const ids = Array.from(new Set(userIds || []));
+  if (!text || ids.length === 0) return { success: false, count: 0 };
+  await Promise.all(
+    ids.map((uid) =>
+      createNotification(uid, {
+        type: "host_announcement",
+        title: "📣 Anuncio",
+        message: text,
+        icon: "📣",
+      })
+    )
+  );
+  return { success: true, count: ids.length };
+};
+
 /** Build a CSV string of the CRM list for export/share. */
 export const crmToCSV = (rows) => {
   const head = "Name,Events,Last attended,Upcoming,Membership expires,At risk";

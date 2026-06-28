@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   Share,
   Alert,
+  Modal,
+  TextInput,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from "@react-navigation/native";
@@ -17,7 +19,12 @@ import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import { AvatarDisplay } from "../components/AvatarPicker";
 import { usePremium } from "../hooks/usePremium";
-import { getHostCRM, nudgeAttendee, crmToCSV } from "../services/crmService";
+import {
+  getHostCRM,
+  nudgeAttendee,
+  crmToCSV,
+  sendAnnouncement,
+} from "../services/crmService";
 
 const normAvatar = (a) =>
   !a ? null : typeof a === "string" ? { type: "emoji", value: a } : a;
@@ -36,6 +43,9 @@ export default function HostCRMScreen({ navigation }) {
   const [segment, setSegment] = useState("risk");
   const [hostName, setHostName] = useState("tu anfitrión");
   const [sent, setSent] = useState({});
+  const [announceVisible, setAnnounceVisible] = useState(false);
+  const [announceText, setAnnounceText] = useState("");
+  const [announcing, setAnnouncing] = useState(false);
   const styles = createStyles(colors, isDark);
 
   useFocusEffect(
@@ -70,6 +80,17 @@ export default function HostCRMScreen({ navigation }) {
     } catch (e) {
       // cancelled
     }
+  };
+
+  const sendAnnounce = async () => {
+    const ids = filtered.map((r) => r.id);
+    if (!announceText.trim() || ids.length === 0) return;
+    setAnnouncing(true);
+    const r = await sendAnnouncement(ids, announceText);
+    setAnnouncing(false);
+    setAnnounceVisible(false);
+    setAnnounceText("");
+    if (r.success) Alert.alert("Enviado", `Anuncio enviado a ${r.count} persona(s).`);
   };
 
   const Header = (
@@ -137,6 +158,20 @@ export default function HostCRMScreen({ navigation }) {
         ))}
       </View>
 
+      {!loading && filtered.length > 0 && (
+        <TouchableOpacity
+          style={[
+            styles.announceBtn,
+            { backgroundColor: `${colors.primary}14`, borderColor: `${colors.primary}66` },
+          ]}
+          onPress={() => setAnnounceVisible(true)}
+        >
+          <Text style={[styles.announceBtnText, { color: colors.primary }]}>
+            📣 Enviar anuncio a {filtered.length}
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -202,6 +237,38 @@ export default function HostCRMScreen({ navigation }) {
           )}
         </ScrollView>
       )}
+
+      <Modal visible={announceVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: colors.background }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              Anuncio a {filtered.length} asistente{filtered.length === 1 ? "" : "s"}
+            </Text>
+            <TextInput
+              style={[
+                styles.modalInput,
+                { color: colors.text, borderColor: colors.borderStrong },
+              ]}
+              placeholder="Escribe tu anuncio…"
+              placeholderTextColor={colors.textTertiary}
+              value={announceText}
+              onChangeText={setAnnounceText}
+              multiline
+              maxLength={300}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={() => setAnnounceVisible(false)}>
+                <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={sendAnnounce} disabled={announcing || !announceText.trim()}>
+                <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                  {announcing ? "Enviando…" : "Enviar"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </GradientBackground>
   );
 }
@@ -246,5 +313,26 @@ function createStyles(colors, isDark) {
     action: { borderWidth: 2, borderRadius: 20, paddingVertical: 8, paddingHorizontal: 14 },
     actionText: { fontSize: 13, fontWeight: "700" },
     sentMsg: { fontSize: 13, fontWeight: "700", marginTop: 12 },
+    announceBtn: {
+      marginHorizontal: 24,
+      marginBottom: 10,
+      borderWidth: 2,
+      borderRadius: 14,
+      paddingVertical: 12,
+      alignItems: "center",
+    },
+    announceBtnText: { fontSize: 14, fontWeight: "700" },
+    modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" },
+    modalCard: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 36 },
+    modalTitle: { fontSize: 18, fontWeight: "700", marginBottom: 14 },
+    modalInput: {
+      borderWidth: 2,
+      borderRadius: 14,
+      padding: 14,
+      fontSize: 15,
+      minHeight: 90,
+      textAlignVertical: "top",
+    },
+    modalActions: { flexDirection: "row", justifyContent: "space-between", marginTop: 16 },
   });
 }
