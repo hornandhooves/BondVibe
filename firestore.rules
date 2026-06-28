@@ -72,7 +72,7 @@ service cloud.firestore {
       // server (the promotion payment webhook, via the Admin SDK).
       allow create: if isSignedIn() &&
                        request.resource.data.creatorId == request.auth.uid &&
-                       request.resource.data.featured != true;
+                       request.resource.data.get('featured', false) == false;
 
       allow update: if isSignedIn() &&
                        (isAdmin() ||
