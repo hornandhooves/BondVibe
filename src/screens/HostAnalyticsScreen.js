@@ -316,9 +316,25 @@ export default function HostAnalyticsScreen({ navigation }) {
                   {aiInsights.summary}
                 </Text>
               )}
-              <AiList title="✅ Strengths" items={aiInsights?.strengths} colors={colors} styles={styles} />
-              <AiList title="🛠 Improve" items={aiInsights?.improvements} colors={colors} styles={styles} />
-              <AiList title="💡 Suggestions" items={aiInsights?.suggestions} colors={colors} styles={styles} />
+              {!!aiInsights?.sentiment && (
+                <View style={{ marginTop: 14 }}>
+                  <Text style={[styles.aiListTitle, { color: colors.text }]}>😊 Sentimiento</Text>
+                  <Text style={[styles.aiListItem, { color: colors.textSecondary }]}>
+                    {aiInsights.sentiment}
+                  </Text>
+                </View>
+              )}
+              {!!aiInsights?.trend && (
+                <View style={{ marginTop: 14 }}>
+                  <Text style={[styles.aiListTitle, { color: colors.text }]}>📈 Tendencia</Text>
+                  <Text style={[styles.aiListItem, { color: colors.textSecondary }]}>
+                    {aiInsights.trend}
+                  </Text>
+                </View>
+              )}
+              <AiList title="✅ Fortalezas" items={aiInsights?.strengths} colors={colors} styles={styles} />
+              <AiList title="🛠 A mejorar" items={aiInsights?.improvements} colors={colors} styles={styles} />
+              <AiList title="🎯 Próximo evento" items={aiInsights?.nextEvent || aiInsights?.suggestions} colors={colors} styles={styles} />
             </ScrollView>
             <TouchableOpacity
               style={[styles.aiClose, { backgroundColor: colors.primary }]}

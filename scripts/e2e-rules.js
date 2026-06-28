@@ -214,6 +214,10 @@ const runQuery = async (structuredQuery, h) => {
   section("Premium AI gate");
   const aiCall = await callFn("getHostFeedbackInsights", {}, host.headers);
   chk("non-premium host blocked from AI insights", aiCall.body?.error != null, true);
+  const aiListing = await callFn("generateEventListing", { idea: "yoga al amanecer" }, host.headers);
+  chk("non-premium blocked from AI listing writer", aiListing.body?.error != null, true);
+  const aiReply = await callFn("generateReviewReply", { rating: 5, comment: "great" }, host.headers);
+  chk("non-premium blocked from AI review reply", aiReply.body?.error != null, true);
 
   // ---- CLEANUP ----
   await del(`notifications/event_msg_${ev}_${member.uid}`, member.headers);

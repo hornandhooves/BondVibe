@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -21,9 +22,11 @@ import {
   addDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { Star, Send } from "lucide-react-native";
+import { Star, Send, Sparkles } from "lucide-react-native";
 import { db, auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
+import { usePremium } from "../hooks/usePremium";
+import { generateReviewReply, isPremiumRequired } from "../services/aiService";
 import GradientBackground from "../components/GradientBackground";
 import { AvatarDisplay } from "../components/AvatarPicker";
 import { createNotification } from "../utils/notificationService";
@@ -42,6 +45,28 @@ export default function RatingDetailScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const { isPremium } = usePremium();
+
+  const handleSuggestReply = async () => {
+    setAiLoading(true);
+    const r = await generateReviewReply(rating?.rating || 0, rating?.comment || "");
+    setAiLoading(false);
+    if (r.success && r.reply) {
+      setText(r.reply);
+    } else if (isPremiumRequired(r)) {
+      Alert.alert(
+        "Función Pro ✨",
+        "Las respuestas con IA son parte de BondVibe Pro.",
+        [
+          { text: "Ahora no", style: "cancel" },
+          { text: "Ver Pro", onPress: () => navigation.navigate("BondVibePro") },
+        ]
+      );
+    } else {
+      Alert.alert("No se pudo generar", r.error || "Intenta de nuevo.");
+    }
+  };
   const scrollRef = useRef(null);
 
   const uid = auth.currentUser?.uid;
@@ -212,6 +237,22 @@ export default function RatingDetailScreen({ route, navigation }) {
           )}
         </ScrollView>
 
+        {isHost && (
+          <TouchableOpacity
+            style={styles.aiSuggest}
+            onPress={handleSuggestReply}
+            disabled={aiLoading}
+          >
+            {aiLoading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Sparkles size={15} color={colors.primary} strokeWidth={2} />
+            )}
+            <Text style={[styles.aiSuggestText, { color: colors.primary }]}>
+              {aiLoading ? "Generando…" : "Sugerir respuesta con IA"}
+            </Text>
+          </TouchableOpacity>
+        )}
         <View style={[styles.inputBar, { borderTopColor: colors.border }]}>
           <TextInput
             style={[styles.input, { color: colors.text, backgroundColor: colors.surfaceGlass }]}
@@ -274,6 +315,14 @@ function createStyles(colors, isDark) {
       paddingVertical: 10,
       marginBottom: 8,
     },
+    aiSuggest: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 8,
+    },
+    aiSuggestText: { fontSize: 13, fontWeight: "700" },
     inputBar: {
       flexDirection: "row",
       alignItems: "flex-end",

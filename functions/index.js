@@ -1268,16 +1268,71 @@ exports.onEventWritten = onDocumentWritten("events/{eventId}", async (event) => 
  * actionable advice to improve future events. Gated behind users/{uid}.isPremium
  * (set server-side, never by the client).
  */
+/**
+ * Call Claude (Anthropic) and parse a JSON object from its reply.
+ * @param {string} system - system prompt
+ * @param {string} userContent - user message content
+ * @param {number} [maxTokens=1024] - max output tokens
+ * @return {Promise<object>} parsed JSON (or { raw } on parse failure)
+ */
+async function callClaudeJSON(system, userContent, maxTokens = 1024) {
+  let resp;
+  try {
+    resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": anthropicKey.value(),
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: maxTokens,
+        system,
+        messages: [{role: "user", content: userContent}],
+      }),
+    });
+  } catch (e) {
+    console.error("Anthropic fetch failed:", e);
+    throw new HttpsError("internal", "AI service unavailable.");
+  }
+  if (!resp.ok) {
+    const errText = await resp.text();
+    console.error("Anthropic error:", resp.status, errText);
+    throw new HttpsError("internal", "AI service error.");
+  }
+  const data = await resp.json();
+  const raw = (data.content?.[0]?.text || "").trim();
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    return {raw};
+  }
+}
+
+/**
+ * Ensure the caller is a signed-in premium user.
+ * @param {object} request - the onCall request
+ * @return {Promise<string>} the caller uid
+ */
+async function requirePremiumUid(request) {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const userDoc = await db.collection("users").doc(uid).get();
+  if (!userDoc.exists || userDoc.data().isPremium !== true) {
+    throw new HttpsError("permission-denied", "premium_required");
+  }
+  return uid;
+}
+
+/**
+ * Premium AI coaching with advanced insights: sentiment, rating trend, and
+ * concrete changes for the next event, from the host's attendee reviews.
+ */
 exports.getHostFeedbackInsights = onCall(
   {secrets: [anthropicKey]},
   async (request) => {
-    const uid = request.auth?.uid;
-    if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
-
-    const userDoc = await db.collection("users").doc(uid).get();
-    if (!userDoc.exists || userDoc.data().isPremium !== true) {
-      throw new HttpsError("permission-denied", "premium_required");
-    }
+    const uid = await requirePremiumUid(request);
 
     const snap = await db
       .collection("ratings")
@@ -1285,76 +1340,99 @@ exports.getHostFeedbackInsights = onCall(
       .orderBy("createdAt", "desc")
       .limit(80)
       .get();
-    const reviews = snap.docs
-      .map((d) => d.data())
+    const all = snap.docs.map((d) => d.data());
+    const reviews = all
       .filter((r) => (r.comment || "").trim().length > 0)
-      .map((r) => ({
-        rating: r.rating,
-        comment: r.comment,
-        event: r.eventTitle || "",
-      }));
+      .map((r) => ({rating: r.rating, comment: r.comment, event: r.eventTitle || ""}));
 
     if (reviews.length < 3) {
       return {enough: false, reviewCount: reviews.length};
     }
 
+    // Rating trend: recent third vs oldest third (docs are newest-first).
+    const nums = all.map((r) => r.rating).filter((n) => typeof n === "number");
+    const chunk = Math.max(3, Math.floor(nums.length / 3));
+    const avg = (a) => (a.length ? a.reduce((s, n) => s + n, 0) / a.length : 0);
+    const recentAvg = avg(nums.slice(0, chunk));
+    const olderAvg = avg(nums.slice(-chunk));
+    const dir = recentAvg > olderAvg + 0.2 ? "up" :
+      recentAvg < olderAvg - 0.2 ? "down" : "flat";
+
     const reviewText = reviews
       .map((r, idx) =>
-        `${idx + 1}. [${r.rating}★]${r.event ? ` (${r.event})` : ""} ` +
-        `${r.comment}`,
-      )
+        `${idx + 1}. [${r.rating}★]${r.event ? ` (${r.event})` : ""} ${r.comment}`)
       .join("\n");
 
     const system =
-      "You are an expert event-hosting coach. Given attendee reviews of a " +
-      "host's events, give concise, specific, actionable advice to improve " +
-      "future events. Base everything ONLY on the reviews. Respond in the " +
-      "language the reviews are mostly written in. Return ONLY valid JSON, no " +
-      "markdown fences, with this shape: {\"summary\": string, \"strengths\": " +
-      "string[], \"improvements\": string[], \"suggestions\": string[]}. Keep " +
-      "each array to 3-5 short items.";
+      "You are an expert event-hosting coach analyzing attendee reviews. " +
+      "Return ONLY valid JSON (no markdown fences) with this shape: " +
+      "{\"summary\": string, \"sentiment\": string, \"trend\": string, " +
+      "\"strengths\": string[], \"improvements\": string[], " +
+      "\"nextEvent\": string[]}. 'sentiment' = one sentence on overall " +
+      "attendee sentiment. 'trend' = one sentence interpreting the rating " +
+      `trend (it is going ${dir}; recent avg ${recentAvg.toFixed(1)} vs ` +
+      `older ${olderAvg.toFixed(1)}). 'nextEvent' = 3-5 concrete changes for ` +
+      "the next event. Keep arrays to 3-5 short items. Respond in the " +
+      "language the reviews are mostly written in.";
 
-    let resp;
-    try {
-      resp = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "x-api-key": anthropicKey.value(),
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 1024,
-          system,
-          messages: [{
-            role: "user",
-            content:
-              `Here are ${reviews.length} reviews (rating + comment):\n\n` +
-              reviewText,
-          }],
-        }),
-      });
-    } catch (e) {
-      console.error("Anthropic fetch failed:", e);
-      throw new HttpsError("internal", "AI service unavailable.");
-    }
+    const insights = await callClaudeJSON(
+      system, `Reviews (${reviews.length}):\n\n${reviewText}`, 1200);
+    return {
+      enough: true,
+      reviewCount: reviews.length,
+      trend: {dir, recentAvg, olderAvg},
+      insights,
+    };
+  },
+);
 
-    if (!resp.ok) {
-      const errText = await resp.text();
-      console.error("Anthropic error:", resp.status, errText);
-      throw new HttpsError("internal", "AI service error.");
-    }
+/**
+ * Premium AI listing writer: generate catchy title options + a description
+ * from a short idea + category.
+ */
+exports.generateEventListing = onCall(
+  {secrets: [anthropicKey]},
+  async (request) => {
+    await requirePremiumUid(request);
+    const idea = (request.data?.idea || "").toString().trim().slice(0, 600);
+    const category = (request.data?.category || "").toString().slice(0, 60);
+    const language = (request.data?.language || "es").toString().slice(0, 5);
+    if (!idea) throw new HttpsError("invalid-argument", "Describe your event first.");
 
-    const data = await resp.json();
-    const raw = data.content?.[0]?.text || "";
-    let insights;
-    try {
-      insights = JSON.parse(raw);
-    } catch (e) {
-      insights = {summary: raw, strengths: [], improvements: [], suggestions: []};
-    }
-    return {enough: true, reviewCount: reviews.length, insights};
+    const system =
+      "You write attractive event listings. Return ONLY valid JSON (no " +
+      "markdown fences): {\"titles\": string[], \"description\": string}. " +
+      "'titles' = 3 short catchy options (max ~6 words each). 'description' = " +
+      "one engaging paragraph (60-110 words) that sells the experience and " +
+      `sets expectations. Write everything in language code: ${language}.`;
+
+    const result = await callClaudeJSON(
+      system, `Category: ${category}\nIdea: ${idea}`, 700);
+    return {success: true, ...result};
+  },
+);
+
+/**
+ * Premium AI: suggest a gracious host reply to an attendee review.
+ */
+exports.generateReviewReply = onCall(
+  {secrets: [anthropicKey]},
+  async (request) => {
+    await requirePremiumUid(request);
+    const rating = Number(request.data?.rating) || 0;
+    const comment = (request.data?.comment || "").toString().slice(0, 600);
+    const language = (request.data?.language || "es").toString().slice(0, 5);
+
+    const system =
+      "You are a gracious event host replying to an attendee review. Return " +
+      "ONLY valid JSON (no markdown fences): {\"reply\": string}. The reply is " +
+      "warm, specific and professional, 1-3 sentences; thank positives and " +
+      "address concerns constructively without being defensive. Language " +
+      `code: ${language}.`;
+
+    const result = await callClaudeJSON(
+      system, `Rating: ${rating}/5\nComment: ${comment}`, 400);
+    return {success: true, reply: result.reply || result.raw || ""};
   },
 );
 

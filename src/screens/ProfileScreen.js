@@ -23,6 +23,7 @@ import AvatarPicker, { AvatarDisplay } from "../components/AvatarPicker";
 import GradientBackground from "../components/GradientBackground";
 import { BVBadge } from "../components/BoldPop";
 import { AvatarFrame } from "../components/CategoryIcon";
+import { usePremium } from "../hooks/usePremium";
 import {
   ChevronLeft,
   
@@ -47,6 +48,7 @@ import {
 
 export default function ProfileScreen({ navigation }) {
   const { colors, isDark, toggleTheme } = useTheme();
+  const { isPremium } = usePremium();
   const [profile, setProfile] = useState(null);
   const [editing, setEditing] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
@@ -552,6 +554,15 @@ export default function ProfileScreen({ navigation }) {
                     label="Verified Host"
                     tone="success"
                     icon={<BadgeCheck size={13} color={colors.onPrimary} strokeWidth={2.5} />}
+                  />
+                </View>
+              )}
+              {isPremium && (
+                <View style={styles.roleBadge}>
+                  <BVBadge
+                    label="Pro"
+                    tone="primary"
+                    icon={<Crown size={13} color={colors.onPrimary} strokeWidth={2.5} />}
                   />
                 </View>
               )}

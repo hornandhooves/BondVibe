@@ -38,6 +38,8 @@ import { getHostMembershipPlans } from "../services/membershipService";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import RecurrenceModal from "../components/RecurrenceModal";
 import { generateRecurringDates, getRecurrenceSummary } from "../utils/recurrenceUtils";
+import { usePremium } from "../hooks/usePremium";
+import { generateEventListing, isPremiumRequired } from "../services/aiService";
 
 // Recurrence handled by modal
 
@@ -47,6 +49,33 @@ export default function CreateEventScreen({ navigation }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("social");
+  const [aiGenLoading, setAiGenLoading] = useState(false);
+  const { isPremium } = usePremium();
+
+  const handleGenerateListing = async () => {
+    const idea = (description || title).trim();
+    if (!idea) {
+      Alert.alert(
+        "Escribe una idea",
+        "Pon una frase sobre tu evento (o un título) y la IA generará un título y descripción atractivos."
+      );
+      return;
+    }
+    setAiGenLoading(true);
+    const r = await generateEventListing(idea, selectedCategory);
+    setAiGenLoading(false);
+    if (r.success) {
+      if (Array.isArray(r.titles) && r.titles[0]) setTitle(r.titles[0]);
+      if (r.description) setDescription(r.description);
+    } else if (isPremiumRequired(r)) {
+      Alert.alert("Función Pro ✨", "El generador con IA es parte de BondVibe Pro.", [
+        { text: "Ahora no", style: "cancel" },
+        { text: "Ver Pro", onPress: () => navigation.navigate("BondVibePro") },
+      ]);
+    } else {
+      Alert.alert("No se pudo generar", r.error || "Intenta de nuevo.");
+    }
+  };
   const [selectedLanguages, setSelectedLanguages] = useState(["es", "en"]);
   const [selectedCity, setSelectedCity] = useState("tulum");
 
@@ -691,6 +720,23 @@ export default function CreateEventScreen({ navigation }) {
           <Text style={[styles.charCount, { color: colors.textTertiary }]}>
             {description.length}/500
           </Text>
+          <TouchableOpacity
+            style={[
+              styles.aiGenBtn,
+              { borderColor: `${colors.primary}66`, backgroundColor: `${colors.primary}12` },
+            ]}
+            onPress={handleGenerateListing}
+            disabled={aiGenLoading}
+            activeOpacity={0.85}
+          >
+            {aiGenLoading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Text style={[styles.aiGenText, { color: colors.primary }]}>
+                ✨ Generar título y descripción con IA
+              </Text>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Category Dropdown */}
@@ -1236,6 +1282,15 @@ function createStyles(colors) {
     textAreaWrapper: { borderWidth: 1, borderRadius: 16, padding: 16 },
     textArea: { fontSize: 16, minHeight: 100 },
     charCount: { fontSize: 12, marginTop: 8, textAlign: "right" },
+    aiGenBtn: {
+      marginTop: 10,
+      borderWidth: 1,
+      borderRadius: 14,
+      paddingVertical: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    aiGenText: { fontSize: 14, fontWeight: "700" },
     toggleRow: { flexDirection: "row", gap: 12 },
     toggleButton: {
       flex: 1,
