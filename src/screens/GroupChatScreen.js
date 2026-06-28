@@ -17,6 +17,8 @@ import { Send, Settings, Ticket } from "lucide-react-native";
 import { db, auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
+import PollCard from "../components/PollCard";
+import { createPoll } from "../services/pollService";
 import {
   getGroup,
   subscribeGroupMessages,
@@ -32,6 +34,9 @@ export default function GroupChatScreen({ route, navigation }) {
   const [text, setText] = useState("");
   const [inviteVisible, setInviteVisible] = useState(false);
   const [myEvents, setMyEvents] = useState([]);
+  const [pollVisible, setPollVisible] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState("");
+  const [pollOptions, setPollOptions] = useState(["", ""]);
   const scrollRef = useRef(null);
   const uid = auth.currentUser?.uid;
 
@@ -71,6 +76,20 @@ export default function GroupChatScreen({ route, navigation }) {
     await sendEventInvite(groupId, event);
   };
 
+  const handleCreatePoll = async () => {
+    const r = await createPoll(["hostGroups", groupId], {
+      question: pollQuestion,
+      options: pollOptions,
+    });
+    if (r.success) {
+      setPollVisible(false);
+      setPollQuestion("");
+      setPollOptions(["", ""]);
+    } else {
+      alert(r.error || "Couldn't create poll");
+    }
+  };
+
   const styles = createStyles(colors, isDark);
 
   return (
@@ -101,6 +120,20 @@ export default function GroupChatScreen({ route, navigation }) {
         <ScrollView ref={scrollRef} contentContainerStyle={styles.messages}>
           {messages.map((m) => {
             const mine = m.senderId === uid;
+            if (m.type === "poll" && m.data?.pollId) {
+              return (
+                <View
+                  key={m.id}
+                  style={[styles.cardWrap, mine ? { alignSelf: "flex-end" } : { alignSelf: "flex-start" }]}
+                >
+                  <PollCard
+                    parent={["hostGroups", groupId]}
+                    pollId={m.data.pollId}
+                    isHost={isHost}
+                  />
+                </View>
+              );
+            }
             if (m.type === "event_invite" && m.data?.eventId) {
               return (
                 <TouchableOpacity
@@ -143,6 +176,11 @@ export default function GroupChatScreen({ route, navigation }) {
           {isHost && (
             <TouchableOpacity style={styles.iconBtn} onPress={openInvite}>
               <Text style={{ fontSize: 20 }}>🎟️</Text>
+            </TouchableOpacity>
+          )}
+          {isHost && (
+            <TouchableOpacity style={styles.iconBtn} onPress={() => setPollVisible(true)}>
+              <Text style={{ fontSize: 20 }}>📊</Text>
             </TouchableOpacity>
           )}
           <TextInput
@@ -199,6 +237,53 @@ export default function GroupChatScreen({ route, navigation }) {
                   Cancel
                 </Text>
               </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Create poll modal (host) */}
+        <Modal visible={pollVisible} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { backgroundColor: colors.background }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                Create a poll 📊
+              </Text>
+              <TextInput
+                style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
+                placeholder="Question"
+                placeholderTextColor={colors.textTertiary}
+                value={pollQuestion}
+                onChangeText={setPollQuestion}
+                maxLength={140}
+              />
+              {pollOptions.map((opt, idx) => (
+                <TextInput
+                  key={idx}
+                  style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
+                  placeholder={`Option ${idx + 1}`}
+                  placeholderTextColor={colors.textTertiary}
+                  value={opt}
+                  onChangeText={(v) =>
+                    setPollOptions((p) => p.map((o, i) => (i === idx ? v : o)))
+                  }
+                  maxLength={80}
+                />
+              ))}
+              {pollOptions.length < 5 && (
+                <TouchableOpacity onPress={() => setPollOptions((p) => [...p, ""])}>
+                  <Text style={{ color: colors.primary, fontWeight: "600", marginBottom: 8 }}>
+                    + Add option
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
+                <TouchableOpacity onPress={() => setPollVisible(false)}>
+                  <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleCreatePoll}>
+                  <Text style={{ color: colors.primary, fontWeight: "700" }}>Create poll</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </Modal>
@@ -278,6 +363,15 @@ function createStyles(colors, isDark) {
       paddingBottom: 24,
     },
     modalTitle: { fontSize: 20, fontWeight: "700", marginBottom: 16 },
+    cardWrap: { marginBottom: 8 },
+    pollInput: {
+      borderWidth: 1,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 15,
+      marginBottom: 10,
+    },
     eventRow: {
       flexDirection: "row",
       justifyContent: "space-between",

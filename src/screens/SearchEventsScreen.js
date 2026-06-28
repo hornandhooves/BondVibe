@@ -26,6 +26,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import Icon, { getCategoryIcon } from "../components/Icon";
 import FilterChips from "../components/FilterChips";
 import SelectDropdown from "../components/SelectDropdown";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 // Language filter options
 const LANGUAGE_OPTIONS = [
@@ -67,6 +68,10 @@ export default function SearchEventsScreen({ navigation, route }) {
   const [languageFilter, setLanguageFilter] = useState(
     EVENT_LANGUAGES.map((l) => l.id),
   );
+  // Date range filter (same day in both = a specific date).
+  const [dateFrom, setDateFrom] = useState(null);
+  const [dateTo, setDateTo] = useState(null);
+  const [datePicker, setDatePicker] = useState(null); // "from" | "to" | null
 
   // ✅ FIX: Update selected category when route params change
   useEffect(() => {
@@ -99,6 +104,8 @@ export default function SearchEventsScreen({ navigation, route }) {
     selectedLocation,
     priceFilter,
     languageFilter,
+    dateFrom,
+    dateTo,
     events,
   ]);
 
@@ -185,6 +192,22 @@ export default function SearchEventsScreen({ navigation, route }) {
           event.title.toLowerCase().includes(query) ||
           event.location.toLowerCase().includes(query) ||
           (event.category?.toLowerCase() || "").includes(query),
+      );
+    }
+
+    // Filter by date range (inclusive). Same day in both = a specific date.
+    if (dateFrom) {
+      const start = new Date(dateFrom);
+      start.setHours(0, 0, 0, 0);
+      filtered = filtered.filter(
+        (e) => new Date(e.date).getTime() >= start.getTime(),
+      );
+    }
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(
+        (e) => new Date(e.date).getTime() <= end.getTime(),
       );
     }
 
@@ -412,6 +435,66 @@ export default function SearchEventsScreen({ navigation, route }) {
             />
           </View>
         </View>
+
+        {/* Date range filter */}
+        <View style={styles.filtersRow}>
+          <View style={styles.filterDropdown}>
+            <Text style={[styles.dateFilterLabel, { color: colors.textSecondary }]}>
+              From
+            </Text>
+            <TouchableOpacity
+              style={[styles.dateFilterBtn, { backgroundColor: colors.surfaceGlass, borderColor: colors.border }]}
+              onPress={() => setDatePicker("from")}
+            >
+              <Text style={{ color: dateFrom ? colors.text : colors.textTertiary }}>
+                {dateFrom ? formatISODate(dateFrom.toISOString()) : "Any date"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.filterDropdown}>
+            <Text style={[styles.dateFilterLabel, { color: colors.textSecondary }]}>
+              To
+            </Text>
+            <TouchableOpacity
+              style={[styles.dateFilterBtn, { backgroundColor: colors.surfaceGlass, borderColor: colors.border }]}
+              onPress={() => setDatePicker("to")}
+            >
+              <Text style={{ color: dateTo ? colors.text : colors.textTertiary }}>
+                {dateTo ? formatISODate(dateTo.toISOString()) : "Any date"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        {(dateFrom || dateTo) && (
+          <TouchableOpacity
+            onPress={() => {
+              setDateFrom(null);
+              setDateTo(null);
+            }}
+            style={styles.clearDates}
+          >
+            <Text style={{ color: colors.primary, fontWeight: "600" }}>
+              Clear dates
+            </Text>
+          </TouchableOpacity>
+        )}
+        {datePicker && (
+          <DateTimePicker
+            value={
+              (datePicker === "from" ? dateFrom : dateTo) || new Date()
+            }
+            mode="date"
+            display="default"
+            onChange={(event, selected) => {
+              setDatePicker(null);
+              if (event.type === "set" && selected) {
+                if (datePicker === "from") setDateFrom(selected);
+                else setDateTo(selected);
+              }
+            }}
+          />
+        )}
+
         {/* Results Header */}
         <View style={styles.resultsHeader}>
           <Text style={[styles.resultsTitle, { color: colors.text }]}>
@@ -576,5 +659,13 @@ function createStyles(colors) {
     filterDropdown: {
       flex: 1,
     },
+    dateFilterLabel: { fontSize: 13, fontWeight: "600", marginBottom: 6 },
+    dateFilterBtn: {
+      borderWidth: 1,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    clearDates: { alignSelf: "flex-start", paddingVertical: 4, marginBottom: 8 },
   });
 }

@@ -363,7 +363,7 @@ export default function EventChatScreen({ route, navigation }) {
 
   const handleCreatePoll = async () => {
     setCreatingPoll(true);
-    const result = await createPoll(eventId, {
+    const result = await createPoll(["events", eventId], {
       question: pollQuestion,
       options: pollOptions,
     });
@@ -485,7 +485,7 @@ export default function EventChatScreen({ route, navigation }) {
             </Text>
           )}
           <PollCard
-            eventId={eventId}
+            parent={["events", eventId]}
             pollId={message.data.pollId}
             isHost={isHost}
           />

@@ -308,6 +308,29 @@ service cloud.firestore {
                          request.resource.data.senderId == request.auth.uid;
         allow update, delete: if false;
       }
+
+      // Group polls — only the group host creates/closes; members vote.
+      match /polls/{pollId} {
+        function group() {
+          return get(/databases/$(database)/documents/hostGroups/$(groupId)).data;
+        }
+        function isMember() {
+          let g = group();
+          return g.hostId == request.auth.uid ||
+                 (g.memberIds != null && request.auth.uid in g.memberIds);
+        }
+        allow read: if isSignedIn() && isMember();
+        allow create: if isSignedIn() &&
+                         group().hostId == request.auth.uid &&
+                         request.resource.data.createdBy == request.auth.uid;
+        allow update: if isSignedIn() && group().hostId == request.auth.uid;
+        allow delete: if false;
+
+        match /votes/{userId} {
+          allow read: if isSignedIn() && isMember();
+          allow write: if isSignedIn() && request.auth.uid == userId && isMember();
+        }
+      }
     }
 
     // ============================================

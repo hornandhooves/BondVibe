@@ -12,21 +12,22 @@ import {
 /**
  * Live poll card rendered inside the event chat for a "poll" message.
  */
-export default function PollCard({ eventId, pollId, isHost }) {
+export default function PollCard({ parent, pollId, isHost }) {
   const { colors, isDark } = useTheme();
   const [poll, setPoll] = useState(null);
   const [votes, setVotes] = useState([]);
   const uid = auth.currentUser?.uid;
+  const parentKey = (parent || []).join("/");
 
   useEffect(() => {
-    if (!eventId || !pollId) return;
-    const unsubP = subscribePoll(eventId, pollId, setPoll);
-    const unsubV = subscribeVotes(eventId, pollId, setVotes);
+    if (!parent || !pollId) return;
+    const unsubP = subscribePoll(parent, pollId, setPoll);
+    const unsubV = subscribeVotes(parent, pollId, setVotes);
     return () => {
       unsubP();
       unsubV();
     };
-  }, [eventId, pollId]);
+  }, [parentKey, pollId]);
 
   const styles = createStyles(colors, isDark);
 
@@ -44,7 +45,7 @@ export default function PollCard({ eventId, pollId, isHost }) {
 
   const handleVote = (optId) => {
     if (poll.closed) return;
-    votePoll(eventId, pollId, optId);
+    votePoll(parent, pollId, optId);
   };
 
   return (
@@ -52,7 +53,7 @@ export default function PollCard({ eventId, pollId, isHost }) {
       <View style={styles.headerRow}>
         <Text style={styles.badge}>📊 POLL{poll.closed ? " · CLOSED" : ""}</Text>
         {isHost && !poll.closed && (
-          <TouchableOpacity onPress={() => closePoll(eventId, pollId)}>
+          <TouchableOpacity onPress={() => closePoll(parent, pollId)}>
             <Text style={[styles.close, { color: colors.primary }]}>Close</Text>
           </TouchableOpacity>
         )}
