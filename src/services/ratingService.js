@@ -13,7 +13,7 @@ import {
 } from "firebase/firestore";
 import { db, auth } from "./firebase";
 import { createNotification } from "../utils/notificationService";
-import { isUserAttending, getEventCreatorId } from "../utils/eventHelpers";
+import { getEventCreatorId } from "../utils/eventHelpers";
 
 /**
  * Convert rating number to stars string
@@ -250,25 +250,23 @@ export const getPendingRatings = async () => {
     const userId = auth.currentUser?.uid;
     if (!userId) return [];
 
-    // Get all events user attended
-    const allEventsSnapshot = await getDocs(collection(db, "events"));
+    // Only the events this user attends (server-side), not the whole
+    // collection. attendees uses the canonical UID-string format.
+    const attendedSnapshot = await getDocs(
+      query(
+        collection(db, "events"),
+        where("attendees", "array-contains", userId)
+      )
+    );
     const now = new Date();
 
-    const attendedPastEvents = allEventsSnapshot.docs
+    const attendedPastEvents = attendedSnapshot.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))
       .filter((event) => {
-        // Check if user is an attendee (not creator)
-        const isAttendee = isUserAttending(event.attendees, userId);
         const isNotCreator = getEventCreatorId(event) !== userId;
-
-        // Check if event is in the past
-        const eventDate = new Date(event.date);
-        const isPast = eventDate < now;
-
-        // Check if event is not cancelled
+        const isPast = new Date(event.date) < now;
         const isActive = event.status !== "cancelled";
-
-        return isAttendee && isNotCreator && isPast && isActive;
+        return isNotCreator && isPast && isActive;
       });
 
     // Filter out events user has already rated

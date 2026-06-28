@@ -46,6 +46,13 @@ const readDoc = (p, h) => fetch(`${FS}/${p}`, { headers: h }).then((r) => r.stat
 const del = (p, h) => fetch(`${FS}/${p}`, { method: "DELETE", headers: h });
 const callFn = (n, data, h) =>
   fetch(`${FN}/${n}`, { method: "POST", headers: h, body: JSON.stringify({ data }) }).then(async (r) => ({ status: r.status, body: await r.json() }));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const runQuery = async (structuredQuery, h) => {
+  const res = await fetch(`${FS}:runQuery`, { method: "POST", headers: h, body: JSON.stringify({ structuredQuery }) });
+  const body = await res.json();
+  if (!Array.isArray(body)) return { error: body.error?.message || "non-array", rows: [] };
+  return { rows: body.filter((r) => r.document).map((r) => r.document.name.split("/").pop()) };
+};
 
 (async () => {
   console.log(`E2E against ${PROJECT}\n========================================`);
@@ -152,7 +159,35 @@ const callFn = (n, data, h) =>
   const bad = await callFn("joinGroupByCode", { code: "NOPE00" }, outsider.headers);
   chk("bad invite code rejected", bad.body?.error != null, true);
 
+  // ---- SCALABILITY: targeted attendee query (getPendingRatings/MyEvents) ----
+  section("Scalability queries");
+  const attendeeQuery = await runQuery({
+    from: [{ collectionId: "events" }],
+    where: { fieldFilter: { field: { fieldPath: "attendees" }, op: "ARRAY_CONTAINS", value: { stringValue: member.uid } } },
+  }, member.headers);
+  chk("attendees array-contains returns the event", attendeeQuery.rows.includes(ev), true);
+
+  // ---- SCALABILITY: per-user unread aggregate (useUnreadMessages source) ----
+  section("Unread aggregate");
+  chk("host posts event message", await createDoc(`events/${ev}/messages?documentId=emsg1`, {
+    senderId: s(host.uid), type: s("text"), text: s("hello team"), createdAt: s(new Date().toISOString()),
+  }, host.headers), 200);
+  // onNewMessage trigger increments notifications/event_msg_{ev}_{member}
+  let unread = 0;
+  for (let i = 0; i < 12; i++) {
+    await sleep(2500);
+    const r = await fetch(`${FS}/notifications/event_msg_${ev}_${member.uid}`, { headers: member.headers });
+    if (r.status === 200) {
+      const d = await r.json();
+      unread = parseInt(d.fields?.unreadCount?.integerValue || "0", 10);
+      if (unread > 0) break;
+    }
+  }
+  chk("trigger incremented member unreadCount", unread >= 1, true);
+
   // ---- CLEANUP ----
+  await del(`notifications/event_msg_${ev}_${member.uid}`, member.headers);
+  await del(`notifications/event_msg_${ev}_${outsider.uid}`, outsider.headers);
   for (const p of cleanup) await del(p, host.headers);
   await del(`events/${ev}`, host.headers);
   await del(`hostGroups/${gId}`, host.headers);

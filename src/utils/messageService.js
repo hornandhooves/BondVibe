@@ -16,7 +16,6 @@ import {
 import { db } from "../services/firebase";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
-import { getEventCreatorId, isUserAttending } from "./eventHelpers";
 import { logger } from "./logger";
 
 // ============================================
@@ -435,37 +434,20 @@ export const clearPushToken = async (userId) => {
  */
 export const getUnreadMessagesCount = async (userId) => {
   try {
+    // Sum the per-user message-notification aggregate maintained server-side
+    // (onNewMessage increments, clearEventMessageNotifications resets). One
+    // per-user query instead of scanning every event's messages.
+    const snapshot = await getDocs(
+      query(collection(db, "notifications"), where("userId", "==", userId))
+    );
+
     let totalUnread = 0;
-
-    const eventsSnapshot = await getDocs(collection(db, "events"));
-
-    for (const eventDoc of eventsSnapshot.docs) {
-      const eventData = eventDoc.data();
-
-      const isParticipant =
-        getEventCreatorId(eventData) === userId ||
-        isUserAttending(eventData.attendees, userId);
-
-      if (!isParticipant) continue;
-
-      const eventId = eventDoc.id;
-
-      try {
-        const messagesRef = collection(db, "events", eventId, "messages");
-        const unreadQuery = query(messagesRef, where("read", "==", false));
-
-        const unreadSnapshot = await getDocs(unreadQuery);
-
-        unreadSnapshot.docs.forEach((docSnap) => {
-          const data = docSnap.data();
-          if (data.senderId !== userId) {
-            totalUnread++;
-          }
-        });
-      } catch (err) {
-        continue;
+    snapshot.docs.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data.type === "event_messages") {
+        totalUnread += data.unreadCount || 0;
       }
-    }
+    });
 
     return totalUnread;
   } catch (error) {

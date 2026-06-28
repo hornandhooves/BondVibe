@@ -36,6 +36,17 @@ collections with subcollections) is appropriate for Firestore.
 
 ## 2. Scalability risks (ranked)
 
+> **Status (2026-06): the global full-collection reads + listener fan-out are
+> resolved.** SearchEvents/feed is paginated with server-side keyword search
+> (see §1 commits). `getPendingRatings`, `MyEventsScreen` (joined tab) and
+> `getUnreadMessagesCount` now use targeted `where(attendees array-contains me)`
+> / per-user aggregate queries instead of scanning all events.
+> `useUnreadMessages` is a single per-user listener on the message-notification
+> aggregate (was: whole-events listener + one listener per event). Verified by
+> `scripts/e2e-rules.js` (38/38). **Still open:** incremental rating
+> aggregation (`onRatingCreated`, per-host bounded) and the admin-only
+> all-events/all-users reads.
+
 ### 🔴 High — Full-collection client reads
 
 The client downloads **every** document and filters in memory:

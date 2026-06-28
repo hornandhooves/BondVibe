@@ -26,7 +26,7 @@ import {
   filterPastEvents,
   isEventPast,
 } from "../utils/eventFilters";
-import { isUserAttending, getEventCreatorId } from "../utils/eventHelpers";
+import { getEventCreatorId } from "../utils/eventHelpers";
 import { useFocusEffect } from "@react-navigation/native";
 import { Star, MapPin } from "lucide-react-native";
 import RatingModal from "../components/RatingModal";
@@ -138,23 +138,21 @@ export default function MyEventsScreen({ navigation, route }) {
           .filter((event) => event.status !== "cancelled");
         console.log("📅 Hosting events:", userEvents.length);
       } else {
-        const allEventsSnapshot = await getDocs(collection(db, "events"));
+        // Only the events this user attends (server-side), not the whole
+        // collection. attendees uses the canonical UID-string format.
+        const joinedQuery = query(
+          collection(db, "events"),
+          where("attendees", "array-contains", auth.currentUser.uid)
+        );
+        const snapshot = await getDocs(joinedQuery);
 
-        userEvents = allEventsSnapshot.docs
+        userEvents = snapshot.docs
           .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .filter((event) => {
-            if (event.status === "cancelled") return false;
-
-            const isAttending = isUserAttending(
-              event.attendees,
-              auth.currentUser.uid
-            );
-
-            return (
-              isAttending &&
+          .filter(
+            (event) =>
+              event.status !== "cancelled" &&
               getEventCreatorId(event) !== auth.currentUser.uid
-            );
-          });
+          );
 
         console.log("🎉 Joined events:", userEvents.length);
       }

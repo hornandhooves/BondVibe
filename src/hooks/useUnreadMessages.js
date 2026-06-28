@@ -1,72 +1,48 @@
-import { useState, useEffect, useRef } from 'react';
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
-import { auth, db } from '../services/firebase';
-import { isUserAttending, getEventCreatorId } from '../utils/eventHelpers';
+import { useState, useEffect } from "react";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { auth, db } from "../services/firebase";
 
+/**
+ * Unread event-message badge counts.
+ *
+ * Sourced from the per-user `notifications` aggregate (type "event_messages",
+ * `unreadCount`) which the onNewMessage Cloud Function increments and
+ * clearEventMessageNotifications resets on read. This is a single per-user
+ * listener — O(1) listeners per user — instead of subscribing to the whole
+ * events collection plus one listener per event.
+ *
+ * @returns {{ unreadCount: number, unreadByEvent: Record<string, number> }}
+ */
 export const useUnreadMessages = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadByEvent, setUnreadByEvent] = useState({});
-  const listenersRef = useRef([]);
 
   useEffect(() => {
     if (!auth.currentUser) return;
+    const uid = auth.currentUser.uid;
 
-    const userId = auth.currentUser.uid;
+    const q = query(
+      collection(db, "notifications"),
+      where("userId", "==", uid)
+    );
 
-    // Listen to the user's participated events in real-time
-    const eventsUnsub = onSnapshot(
-      collection(db, 'events'),
-      (eventsSnap) => {
-        // Clean up previous message listeners
-        listenersRef.current.forEach((unsub) => unsub());
-        listenersRef.current = [];
-
-        const userEventIds = [];
-        eventsSnap.forEach((doc) => {
-          const d = doc.data();
-          const isCreator = getEventCreatorId(d) === userId;
-          const isAttendee = isUserAttending(d.attendees, userId);
-          if (isCreator || isAttendee) userEventIds.push(doc.id);
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const byEvent = {};
+        let total = 0;
+        snap.forEach((docSnap) => {
+          const d = docSnap.data();
+          if (d.type !== "event_messages") return;
+          const count = d.unreadCount || 0;
+          if (count <= 0) return;
+          const eventId = (d.eventId || "").replace(/^event_/, "");
+          if (!eventId) return;
+          byEvent[eventId] = count;
+          total += count;
         });
-
-        if (userEventIds.length === 0) {
-          setUnreadCount(0);
-          setUnreadByEvent({});
-          return;
-        }
-
-        // One real-time listener per event for unread messages
-        const counts = {};
-        userEventIds.forEach((eventId) => {
-          // All messages — filter unread for current user in the listener
-          const q = query(
-            collection(db, 'events', eventId, 'messages'),
-            orderBy('createdAt', 'desc'),
-            limit(100)
-          );
-          const unsub = onSnapshot(q, (msgSnap) => {
-            let count = 0;
-            msgSnap.forEach((msgDoc) => {
-              const d = msgDoc.data();
-              if (d.senderId === userId) return;
-              // New map format
-              if (d.readBy !== undefined) {
-                if (!d.readBy?.[userId]) count++;
-              } else if (!d.read) {
-                // Legacy boolean format
-                count++;
-              }
-            });
-            counts[eventId] = count;
-            const total = Object.values(counts).reduce((s, c) => s + c, 0);
-            setUnreadCount(total);
-            setUnreadByEvent({ ...counts });
-          }, () => {
-            // Permission denied for this event — skip silently
-            counts[eventId] = 0;
-          });
-          listenersRef.current.push(unsub);
-        });
+        setUnreadCount(total);
+        setUnreadByEvent(byEvent);
       },
       () => {
         setUnreadCount(0);
@@ -74,11 +50,7 @@ export const useUnreadMessages = () => {
       }
     );
 
-    return () => {
-      eventsUnsub();
-      listenersRef.current.forEach((unsub) => unsub());
-      listenersRef.current = [];
-    };
+    return () => unsub();
   }, []);
 
   return { unreadCount, unreadByEvent };
