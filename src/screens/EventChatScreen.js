@@ -11,9 +11,12 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  Modal,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as Location from "expo-location";
+import PollCard from "../components/PollCard";
+import { createPoll } from "../services/pollService";
 import { useTheme } from "../contexts/ThemeContext";
 import { auth } from "../services/firebase";
 import {
@@ -44,6 +47,11 @@ export default function EventChatScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [typingUsers, setTypingUsers] = useState([]);
   const [sendingLocation, setSendingLocation] = useState(false);
+  const [isHost, setIsHost] = useState(false);
+  const [pollModalVisible, setPollModalVisible] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState("");
+  const [pollOptions, setPollOptions] = useState(["", ""]);
+  const [creatingPoll, setCreatingPoll] = useState(false);
   const scrollViewRef = useRef();
   const typingTimeoutRef = useRef(null);
   const previousMessageCountRef = useRef(0);
@@ -68,6 +76,7 @@ export default function EventChatScreen({ route, navigation }) {
           // Verify current user is a participant before entering chat
           const creatorId = getEventCreatorId(eventData);
           const isCreator = creatorId === currentUserId;
+          setIsHost(isCreator);
           const isAttendee = isUserAttending(
             eventData.attendees,
             currentUserId
@@ -332,6 +341,30 @@ export default function EventChatScreen({ route, navigation }) {
     }
   };
 
+  const openPollModal = () => {
+    setPollQuestion("");
+    setPollOptions(["", ""]);
+    setPollModalVisible(true);
+  };
+
+  const updatePollOption = (index, value) => {
+    setPollOptions((prev) => prev.map((o, i) => (i === index ? value : o)));
+  };
+
+  const handleCreatePoll = async () => {
+    setCreatingPoll(true);
+    const result = await createPoll(eventId, {
+      question: pollQuestion,
+      options: pollOptions,
+    });
+    setCreatingPoll(false);
+    if (result.success) {
+      setPollModalVisible(false);
+    } else {
+      Alert.alert("Couldn't create poll", result.error || "Please try again.");
+    }
+  };
+
   const openInMaps = (latitude, longitude) => {
     const scheme = Platform.select({
       ios: "maps:0,0?q=",
@@ -406,6 +439,32 @@ export default function EventChatScreen({ route, navigation }) {
       minute: "2-digit",
     });
     const status = getMessageStatus(message);
+
+    if (message.type === "poll" && message.data?.pollId) {
+      return (
+        <View
+          style={[
+            styles.messageBubble,
+            isMe ? styles.myMessage : styles.theirMessage,
+            { backgroundColor: "transparent", padding: 0 },
+          ]}
+        >
+          {!isMe && user && (
+            <Text style={[styles.senderName, { color: colors.primary }]}>
+              {user.fullName || user.name || "Host"}
+            </Text>
+          )}
+          <PollCard
+            eventId={eventId}
+            pollId={message.data.pollId}
+            isHost={isHost}
+          />
+          <Text style={[styles.timeStamp, { color: colors.textTertiary, marginTop: 4 }]}>
+            {time}
+          </Text>
+        </View>
+      );
+    }
 
     if (message.type === "location") {
       return (
@@ -674,6 +733,12 @@ export default function EventChatScreen({ route, navigation }) {
             </Text>
           </TouchableOpacity>
 
+          {isHost && (
+            <TouchableOpacity style={styles.locationButton} onPress={openPollModal}>
+              <Text style={styles.locationButtonIcon}>📊</Text>
+            </TouchableOpacity>
+          )}
+
           <TextInput
             style={[styles.input, { color: colors.text }]}
             value={inputText}
@@ -707,6 +772,55 @@ export default function EventChatScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Create poll modal (host) */}
+      <Modal visible={pollModalVisible} transparent animationType="slide">
+        <View style={styles.pollModalOverlay}>
+          <View style={[styles.pollModalCard, { backgroundColor: colors.background }]}>
+            <Text style={[styles.pollModalTitle, { color: colors.text }]}>
+              Create a poll
+            </Text>
+            <TextInput
+              style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
+              placeholder="Question"
+              placeholderTextColor={colors.textTertiary}
+              value={pollQuestion}
+              onChangeText={setPollQuestion}
+              maxLength={140}
+            />
+            {pollOptions.map((opt, i) => (
+              <TextInput
+                key={i}
+                style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
+                placeholder={`Option ${i + 1}`}
+                placeholderTextColor={colors.textTertiary}
+                value={opt}
+                onChangeText={(v) => updatePollOption(i, v)}
+                maxLength={80}
+              />
+            ))}
+            {pollOptions.length < 5 && (
+              <TouchableOpacity onPress={() => setPollOptions((p) => [...p, ""])}>
+                <Text style={[styles.pollAddOption, { color: colors.primary }]}>
+                  + Add option
+                </Text>
+              </TouchableOpacity>
+            )}
+            <View style={styles.pollModalActions}>
+              <TouchableOpacity onPress={() => setPollModalVisible(false)}>
+                <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleCreatePoll} disabled={creatingPoll}>
+                <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                  {creatingPoll ? "Creating…" : "Create poll"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -788,6 +902,32 @@ function createStyles(colors) {
     },
     locationButton: { padding: 4, marginRight: 4 },
     locationButtonIcon: { fontSize: 20 },
+    pollModalOverlay: {
+      flex: 1,
+      justifyContent: "flex-end",
+      backgroundColor: "rgba(0,0,0,0.5)",
+    },
+    pollModalCard: {
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      padding: 24,
+      paddingBottom: 36,
+    },
+    pollModalTitle: { fontSize: 20, fontWeight: "700", marginBottom: 16 },
+    pollInput: {
+      borderWidth: 1,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 15,
+      marginBottom: 10,
+    },
+    pollAddOption: { fontSize: 14, fontWeight: "600", marginBottom: 8 },
+    pollModalActions: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginTop: 16,
+    },
     input: {
       flex: 1,
       fontSize: 15,

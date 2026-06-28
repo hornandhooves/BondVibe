@@ -25,6 +25,11 @@ service cloud.firestore {
              (eventData.attendees != null && request.auth.uid in eventData.attendees);
     }
 
+    function isEventHost(eventId) {
+      return request.auth.uid ==
+             get(/databases/$(database)/documents/events/$(eventId)).data.creatorId;
+    }
+
     // An attendee who is NOT the creator — only these users may rate an event.
     function isEventAttendeeNotCreator(eventId) {
       let eventData = get(/databases/$(database)/documents/events/$(eventId)).data;
@@ -108,6 +113,22 @@ service cloud.firestore {
       match /typing/{documentId} {
         allow read: if isSignedIn() && isEventParticipant(eventId);
         allow write: if isSignedIn() && isEventParticipant(eventId);
+      }
+
+      // Polls — only the host creates/closes; any participant votes (own vote).
+      match /polls/{pollId} {
+        allow read: if isSignedIn() && isEventParticipant(eventId);
+        allow create: if isSignedIn() && isEventHost(eventId) &&
+                         request.resource.data.createdBy == request.auth.uid;
+        allow update: if isSignedIn() && isEventHost(eventId);
+        allow delete: if false;
+
+        match /votes/{userId} {
+          allow read: if isSignedIn() && isEventParticipant(eventId);
+          allow write: if isSignedIn() &&
+                          request.auth.uid == userId &&
+                          isEventParticipant(eventId);
+        }
       }
     }
     

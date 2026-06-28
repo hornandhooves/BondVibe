@@ -78,9 +78,9 @@ exports.onNewMessage = onDocumentCreated(
       type: messageData.type,
     });
 
-    // Only process text and location messages
-    if (!["text", "location"].includes(messageData.type)) {
-      console.log("⏭️ Skipping non-text/location message");
+    // Only process text, location and poll messages
+    if (!["text", "location", "poll"].includes(messageData.type)) {
+      console.log("⏭️ Skipping unsupported message type for push");
       return;
     }
 
