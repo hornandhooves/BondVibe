@@ -323,8 +323,8 @@ export default function SearchEventsScreen({ navigation, route }) {
           style={[
             styles.eventGlass,
             {
-              backgroundColor: colors.surfaceGlass,
-              borderColor: colors.border,
+              backgroundColor: colors.surface,
+              borderColor: colors.borderStrong,
             },
           ]}
         >
@@ -474,8 +474,8 @@ export default function SearchEventsScreen({ navigation, route }) {
           style={[
             styles.searchBar,
             {
-              backgroundColor: colors.surfaceGlass,
-              borderColor: colors.border,
+              backgroundColor: colors.surface,
+              borderColor: colors.borderStrong,
             },
           ]}
         >
@@ -656,8 +656,8 @@ function createStyles(colors) {
     searchBar: {
       flexDirection: "row",
       alignItems: "center",
-      borderWidth: 1,
-      borderRadius: 16,
+      borderWidth: 2,
+      borderRadius: 18,
       paddingHorizontal: 16,
       paddingVertical: 14,
       marginBottom: 20,
@@ -678,8 +678,8 @@ function createStyles(colors) {
     },
     loadingContainer: { paddingVertical: 60, alignItems: "center" },
     footerLoader: { paddingVertical: 20, alignItems: "center" },
-    eventCard: { marginBottom: 16, borderRadius: 16, overflow: "hidden" },
-    eventGlass: { borderWidth: 1, padding: 16 },
+    eventCard: { marginBottom: 16, borderRadius: 20, overflow: "hidden" },
+    eventGlass: { borderWidth: 2, padding: 16, borderRadius: 20 },
     eventHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
