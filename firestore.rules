@@ -47,7 +47,11 @@ service cloud.firestore {
     // ============================================
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && isOwner(userId);
+      // Server-computed reputation fields can't be set by the user, not even
+      // at account creation.
+      allow create: if isSignedIn() && isOwner(userId) &&
+                       !request.resource.data.keys()
+                          .hasAny(['hostStats', 'carpoolStats']);
       
       // The owner can edit their profile but NOT hostStats — host ratings are
       // computed server-side (onRatingCreated) and must not be manipulable.
