@@ -49,8 +49,9 @@ export default function BondVibeLogo({
       <Svg width={size} height={size} viewBox="0 0 200 200">
         <Defs>
           <LinearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor="#4A00E0" />
-            <Stop offset="100%" stopColor="#E100FF" />
+            <Stop offset="0%" stopColor="#7C3AED" />
+            <Stop offset="50%" stopColor="#C026D3" />
+            <Stop offset="100%" stopColor="#FF3E9A" />
           </LinearGradient>
           <ClipPath id="rounded">
             <Rect width="200" height="200" rx="44" ry="44" />

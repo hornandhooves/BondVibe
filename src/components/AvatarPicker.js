@@ -257,7 +257,7 @@ const AbstractAvatar = ({ type, size = 56, colors }) => {
         <Defs>
           <LinearGradient id="grad15" x1="0%" y1="0%" x2="100%" y2="100%">
             <Stop offset="0%" stopColor="#8E2DE2" />
-            <Stop offset="100%" stopColor="#4A00E0" />
+            <Stop offset="100%" stopColor="#7C3AED" />
           </LinearGradient>
         </Defs>
         <Circle cx="50" cy="50" r="45" fill="url(#grad15)" />
