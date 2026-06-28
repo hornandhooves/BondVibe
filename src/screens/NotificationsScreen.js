@@ -342,11 +342,9 @@ export default function NotificationsScreen({ navigation }) {
               styles.notificationGlass,
               {
                 backgroundColor: notification.read
-                  ? (isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(255, 255, 255, 0.85)")
+                  ? colors.surface
                   : (isDark ? `${colors.primary}15` : `${colors.primary}10`),
-                borderColor: notification.read
-                  ? (isDark ? "rgba(255, 255, 255, 0.10)" : "rgba(0, 0, 0, 0.08)")
-                  : `${colors.primary}4D`,
+                borderColor: notification.read ? colors.borderStrong : colors.primary,
               },
             ]}
           >
@@ -486,14 +484,7 @@ export default function NotificationsScreen({ navigation }) {
                   key={g.id}
                   style={[
                     styles.groupRow,
-                    {
-                      backgroundColor: isDark
-                        ? "rgba(255,255,255,0.04)"
-                        : "rgba(255,255,255,0.85)",
-                      borderColor: isDark
-                        ? "rgba(255,255,255,0.10)"
-                        : "rgba(0,0,0,0.08)",
-                    },
+                    { backgroundColor: colors.surface, borderColor: colors.borderStrong },
                   ]}
                   onPress={() => navigation.navigate("GroupChat", { groupId: g.id })}
                   activeOpacity={0.85}
@@ -604,8 +595,8 @@ function createStyles(colors) {
       flexDirection: "row",
       alignItems: "center",
       gap: 12,
-      borderRadius: 14,
-      borderWidth: 1,
+      borderRadius: 16,
+      borderWidth: 2,
       padding: 14,
       marginBottom: 10,
     },
@@ -646,7 +637,7 @@ function createStyles(colors) {
       borderRadius: 16,
       overflow: "hidden",
     },
-    notificationGlass: { borderWidth: 1, padding: 16, flexDirection: "row", borderRadius: 16 },
+    notificationGlass: { borderWidth: 2, padding: 16, flexDirection: "row", borderRadius: 18 },
     notificationIcon: {
       width: 44,
       height: 44,
