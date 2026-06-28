@@ -194,6 +194,11 @@ const runQuery = async (structuredQuery, h) => {
   }
   chk("trigger incremented member unreadCount", unread >= 1, true);
 
+  // ---- PREMIUM AI GATE (getHostFeedbackInsights) ----
+  section("Premium AI gate");
+  const aiCall = await callFn("getHostFeedbackInsights", {}, host.headers);
+  chk("non-premium host blocked from AI insights", aiCall.body?.error != null, true);
+
   // ---- CLEANUP ----
   await del(`notifications/event_msg_${ev}_${member.uid}`, member.headers);
   await del(`notifications/event_msg_${ev}_${outsider.uid}`, outsider.headers);
