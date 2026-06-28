@@ -15,6 +15,7 @@ import {
   Ticket,
   CalendarCheck,
   Clock,
+  Star,
 } from "lucide-react-native";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
@@ -115,6 +116,20 @@ export default function HostAnalyticsScreen({ navigation }) {
               label="Expiring (7 days)"
               value={data.expiringSoonCount}
               accent="#FF9F0A"
+            />
+            <StatCard
+              icon={Star}
+              label={
+                data.hostTotalRatings > 0
+                  ? `Rating (${data.hostTotalRatings})`
+                  : "Rating"
+              }
+              value={
+                data.hostTotalRatings > 0
+                  ? data.hostAverageRating.toFixed(1)
+                  : "—"
+              }
+              accent="#FFD700"
             />
           </View>
 

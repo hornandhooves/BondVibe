@@ -870,6 +870,7 @@ export default function CreateEventScreen({ navigation }) {
               onPress={() => {
                 setIsFree(true);
                 setPrice("");
+                setAcceptsMembership(false);
               }}
             >
               <Icon
@@ -919,19 +920,22 @@ export default function CreateEventScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Accept membership credits */}
+        {/* Accept membership credits — only for paid events */}
         <View style={styles.field}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={handleToggleMembership}
-            disabled={checkingPlans}
+            disabled={checkingPlans || isFree}
             style={[
               styles.membershipToggle,
               {
-                backgroundColor: acceptsMembership
-                  ? `${colors.primary}1A`
-                  : colors.surfaceGlass,
-                borderColor: acceptsMembership ? colors.primary : colors.border,
+                backgroundColor:
+                  acceptsMembership && !isFree
+                    ? `${colors.primary}1A`
+                    : colors.surfaceGlass,
+                borderColor:
+                  acceptsMembership && !isFree ? colors.primary : colors.border,
+                opacity: isFree ? 0.5 : 1,
               },
             ]}
           >
@@ -940,7 +944,9 @@ export default function CreateEventScreen({ navigation }) {
                 Accept membership credits
               </Text>
               <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                Let your members attend this event using a class credit.
+                {isFree
+                  ? "Only available for paid events."
+                  : "Let your members attend this event using a class credit."}
               </Text>
             </View>
             {checkingPlans ? (
@@ -950,16 +956,18 @@ export default function CreateEventScreen({ navigation }) {
                 style={[
                   styles.switchTrack,
                   {
-                    backgroundColor: acceptsMembership
-                      ? colors.primary
-                      : colors.border,
+                    backgroundColor:
+                      acceptsMembership && !isFree ? colors.primary : colors.border,
                   },
                 ]}
               >
                 <View
                   style={[
                     styles.switchKnob,
-                    { alignSelf: acceptsMembership ? "flex-end" : "flex-start" },
+                    {
+                      alignSelf:
+                        acceptsMembership && !isFree ? "flex-end" : "flex-start",
+                    },
                   ]}
                 />
               </View>

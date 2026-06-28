@@ -151,6 +151,16 @@ export default function App() {
         }
         break;
 
+      case "event_rating":
+      case "rating_reply":
+        if (data.ratingId) {
+          console.log("📍 Navigating to RatingDetail");
+          navigate("RatingDetail", { ratingId: data.ratingId });
+        } else if (data.eventId) {
+          navigate("EventDetail", { eventId: data.eventId });
+        }
+        break;
+
       case "host_approved":
         // Navigate to HostTypeSelection so user can choose their host type
         console.log("📍 Navigating to HostTypeSelection (host approved)");

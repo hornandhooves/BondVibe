@@ -225,8 +225,13 @@ export default function NotificationsScreen({ navigation }) {
         break;
 
       case "event_rating":
-        // Navigate directly to the event that received the rating
-        if (notification.metadata?.eventId) {
+      case "rating_reply":
+        // Open the review detail (read + reply thread), not a modal.
+        if (notification.metadata?.ratingId) {
+          navigation.navigate("RatingDetail", {
+            ratingId: notification.metadata.ratingId,
+          });
+        } else if (notification.metadata?.eventId) {
           navigation.navigate("EventDetail", {
             eventId: notification.metadata.eventId,
           });

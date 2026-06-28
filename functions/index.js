@@ -1019,6 +1019,66 @@ exports.sendMembershipReminders = onSchedule(
   },
 );
 
+// ============================================
+// RATINGS AGGREGATION (server-side, manipulation-proof)
+// Recomputes the event's and the host's average rating whenever a new rating
+// is created. Done server-side so hosts can't edit/inflate their own averages.
+// ============================================
+exports.onRatingCreated = onDocumentCreated(
+  "ratings/{ratingId}",
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const rating = snap.data();
+    const {eventId, hostId} = rating;
+    const round1 = (n) => Math.round(n * 10) / 10;
+
+    try {
+      // Event average
+      if (eventId) {
+        const evRatings = await db
+          .collection("ratings")
+          .where("eventId", "==", eventId)
+          .get();
+        let sum = 0;
+        evRatings.forEach((d) => (sum += d.data().rating || 0));
+        const n = evRatings.size;
+        if (n > 0) {
+          await db.collection("events").doc(eventId).update({
+            averageRating: round1(sum / n),
+            totalRatings: n,
+          });
+        }
+      }
+
+      // Host average (across all their rated events)
+      if (hostId) {
+        const hostRatings = await db
+          .collection("ratings")
+          .where("hostId", "==", hostId)
+          .get();
+        let sum = 0;
+        const events = new Set();
+        hostRatings.forEach((d) => {
+          sum += d.data().rating || 0;
+          if (d.data().eventId) events.add(d.data().eventId);
+        });
+        const n = hostRatings.size;
+        if (n > 0) {
+          await db.collection("users").doc(hostId).update({
+            "hostStats.averageRating": round1(sum / n),
+            "hostStats.totalRatings": n,
+            "hostStats.ratedEventsCount": events.size,
+          });
+        }
+      }
+      console.log("✅ Ratings aggregated for event/host");
+    } catch (e) {
+      console.error("❌ Error aggregating ratings:", e);
+    }
+  },
+);
+
 /**
  * Get pricing info
  */

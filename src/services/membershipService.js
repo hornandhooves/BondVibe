@@ -375,13 +375,16 @@ export const getHostAnalytics = async (hostId = null) => {
     const uid = hostId || auth.currentUser?.uid;
     if (!uid) return null;
 
-    const [membershipsSnap, paymentsSnap, redemptionsSnap] = await Promise.all([
-      getDocs(query(collection(db, "memberships"), where("hostId", "==", uid))),
-      getDocs(query(collection(db, "payments"), where("hostId", "==", uid))),
-      getDocs(
-        query(collection(db, "membershipRedemptions"), where("hostId", "==", uid))
-      ),
-    ]);
+    const [membershipsSnap, paymentsSnap, redemptionsSnap, hostSnap] =
+      await Promise.all([
+        getDocs(query(collection(db, "memberships"), where("hostId", "==", uid))),
+        getDocs(query(collection(db, "payments"), where("hostId", "==", uid))),
+        getDocs(
+          query(collection(db, "membershipRedemptions"), where("hostId", "==", uid))
+        ),
+        getDoc(doc(db, "users", uid)),
+      ]);
+    const hostStats = hostSnap.exists() ? hostSnap.data().hostStats || null : null;
 
     const memberships = membershipsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
     const now = new Date();
@@ -422,6 +425,8 @@ export const getHostAnalytics = async (hostId = null) => {
       classesAttended: redemptionsSnap.size,
       expiringSoonCount: expiringSoon.length,
       expiringSoon,
+      hostAverageRating: hostStats?.averageRating || 0,
+      hostTotalRatings: hostStats?.totalRatings || 0,
     };
   } catch (e) {
     console.error("❌ Error computing host analytics:", e);

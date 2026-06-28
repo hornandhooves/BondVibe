@@ -9,6 +9,15 @@ import {
 import { useTheme } from "../contexts/ThemeContext";
 import { Star, ChevronDown, ChevronUp } from "lucide-react-native";
 import { getEventRatings } from "../services/ratingService";
+import { AvatarDisplay } from "./AvatarPicker";
+
+// Accept legacy string avatars and {type,value} objects; AvatarDisplay needs
+// an object (or null), so wrap plain strings as an emoji avatar.
+const normalizeAvatar = (a) => {
+  if (!a) return null;
+  if (typeof a === "string") return { type: "emoji", value: a };
+  return a;
+};
 
 export default function EventRatings({ eventId, isHost }) {
   const { colors } = useTheme();
@@ -135,18 +144,10 @@ export default function EventRatings({ eventId, isHost }) {
               >
                 <View style={styles.ratingHeader}>
                   <View style={styles.userInfo}>
-                    <View
-                      style={[
-                        styles.userAvatar,
-                        {
-                          backgroundColor: `${colors.primary}20`,
-                        },
-                      ]}
-                    >
-                      <Text style={styles.avatarEmoji}>
-                        {ratingItem.userAvatar || "😊"}
-                      </Text>
-                    </View>
+                    <AvatarDisplay
+                      avatar={normalizeAvatar(ratingItem.userAvatar)}
+                      size={36}
+                    />
                     <View>
                       <Text style={[styles.userName, { color: colors.text }]}>
                         {ratingItem.userName || "Anonymous"}

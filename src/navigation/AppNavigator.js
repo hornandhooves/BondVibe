@@ -51,6 +51,7 @@ import EventCheckInScreen from "../screens/EventCheckInScreen";
 import HostAnalyticsScreen from "../screens/HostAnalyticsScreen";
 import HowToAttendScreen from "../screens/HowToAttendScreen";
 import PromoteEventScreen from "../screens/PromoteEventScreen";
+import RatingDetailScreen from "../screens/RatingDetailScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -366,6 +367,10 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen
             name="PromoteEvent"
             component={PromoteEventScreen}
+          />
+          <Stack.Screen
+            name="RatingDetail"
+            component={RatingDetailScreen}
           />
         </Stack.Navigator>
       </NavigationContainer>

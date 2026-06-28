@@ -73,6 +73,7 @@ export default function EventDetailScreen({ route, navigation }) {
   const [hostHasPlans, setHostHasPlans] = useState(false);
   const [usableMembership, setUsableMembership] = useState(null);
   const [userReservation, setUserReservation] = useState(null);
+  const [hostRating, setHostRating] = useState(null);
 
   const calculateDaysUntilEvent = (eventDate) => {
     const now = new Date();
@@ -111,15 +112,17 @@ export default function EventDetailScreen({ route, navigation }) {
     if (!creatorId) return;
     let active = true;
     (async () => {
-      const [plans, membership, reservation] = await Promise.all([
+      const [plans, membership, reservation, hostSnap] = await Promise.all([
         getHostMembershipPlans(creatorId, { activeOnly: true }),
         getUsableMembershipForHost(creatorId),
         getUserReservationForEvent(eventId),
+        getDoc(doc(db, "users", creatorId)),
       ]);
       if (!active) return;
       setHostHasPlans(plans.length > 0);
       setUsableMembership(membership);
       setUserReservation(reservation);
+      setHostRating(hostSnap.exists() ? hostSnap.data().hostStats || null : null);
     })();
     return () => {
       active = false;
@@ -1015,6 +1018,41 @@ export default function EventDetailScreen({ route, navigation }) {
             </Text>
           </View>
         </View>
+
+        {/* Public host rating — auto-calculated, not editable by the host */}
+        {hostRating && hostRating.totalRatings > 0 && (
+          <View style={[styles.infoCard, { marginBottom: 12 }]}>
+            <View
+              style={[
+                styles.infoGlass,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(255, 255, 255, 0.04)"
+                    : "rgba(255, 255, 255, 0.85)",
+                  borderColor: isDark
+                    ? "rgba(255, 255, 255, 0.10)"
+                    : "rgba(0, 0, 0, 0.08)",
+                },
+              ]}
+            >
+              <View
+                style={[styles.infoIconCircle, { backgroundColor: "rgba(255, 215, 0, 0.2)" }]}
+              >
+                <Star size={22} color="#FFD700" fill="#FFD700" strokeWidth={1.8} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+                  Host rating
+                </Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>
+                  {hostRating.averageRating?.toFixed(1)} ·{" "}
+                  {hostRating.totalRatings} review
+                  {hostRating.totalRatings === 1 ? "" : "s"}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Membership options — host sells plans and viewer isn't the host */}
         {hostHasPlans && !isCreator && (

@@ -44,9 +44,15 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && isOwner(userId);
       
-      allow update: if isOwner(userId) || 
-                       isAdmin() ||
-                       (isSignedIn() && onlyUpdating(['hostStats', 'hostStats.averageRating', 'hostStats.totalRatings', 'hostStats.ratedEventsCount']));
+      // The owner can edit their profile but NOT hostStats — host ratings are
+      // computed server-side (onRatingCreated) and must not be manipulable.
+      // Any signed-in user may (un)set a pushToken on any doc, so the
+      // login/logout de-dupe can clear stale device tokens.
+      allow update: if isAdmin() ||
+                       (isOwner(userId) &&
+                        !request.resource.data.diff(resource.data)
+                          .affectedKeys().hasAny(['hostStats'])) ||
+                       onlyUpdating(['pushToken', 'pushTokenUpdatedAt']);
       
       allow delete: if isOwner(userId) || isAdmin();
       
@@ -74,13 +80,18 @@ service cloud.firestore {
                        request.resource.data.creatorId == request.auth.uid &&
                        request.resource.data.get('featured', false) == false;
 
+      // - Admin: full control.
+      // - Creator: anything except server-owned fields (featured/* and the
+      //   rating aggregates, which are written only by Cloud Functions).
+      // - Any signed-in user: only the attendees list (to join/leave).
       allow update: if isSignedIn() &&
                        (isAdmin() ||
                         (resource.data.creatorId == request.auth.uid &&
                          !request.resource.data.diff(resource.data)
                            .affectedKeys()
-                           .hasAny(['featured', 'featuredUntil', 'featuredTier'])) ||
-                        onlyUpdating(['averageRating', 'totalRatings']));
+                           .hasAny(['featured', 'featuredUntil', 'featuredTier',
+                                    'averageRating', 'totalRatings'])) ||
+                        onlyUpdating(['attendees']));
       
       allow delete: if isSignedIn() && 
                        (resource.data.creatorId == request.auth.uid || isAdmin());
@@ -110,7 +121,22 @@ service cloud.firestore {
       allow create: if isSignedIn() &&
                        request.resource.data.userId == request.auth.uid &&
                        isEventAttendeeNotCreator(request.resource.data.eventId);
+      // Ratings are immutable from the client (averages are recomputed by a
+      // Cloud Function); the host can't edit/inflate them.
       allow update, delete: if false;
+
+      // Reply thread between the reviewer and the host.
+      match /messages/{messageId} {
+        function ratingParty() {
+          let r = get(/databases/$(database)/documents/ratings/$(ratingId)).data;
+          return request.auth.uid == r.userId || request.auth.uid == r.hostId;
+        }
+        allow read: if isSignedIn() && (ratingParty() || isAdmin());
+        allow create: if isSignedIn() &&
+                         request.resource.data.senderId == request.auth.uid &&
+                         ratingParty();
+        allow update, delete: if false;
+      }
     }
     
     // ============================================
