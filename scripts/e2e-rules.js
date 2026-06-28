@@ -59,6 +59,9 @@ const runQuery = async (structuredQuery, h) => {
   const host = await mkUser(), member = await mkUser(), outsider = await mkUser(), stranger = await mkUser();
   const ev = `e2e_${Date.now()}`;
   const gId = `e2eg_${Date.now()}`;
+  // Unique invite code per run — a static code can collide with an orphan group
+  // left by a previous failed run (joinGroupByCode matches where(code) limit 1).
+  const inviteCode = `E2E${Date.now()}`;
   const cleanup = [];
 
   // ---- EVENTS ----
@@ -146,7 +149,7 @@ const runQuery = async (structuredQuery, h) => {
 
   // ---- HOST GROUPS ----
   section("Host groups");
-  chk("host creates group", await createDoc(`hostGroups?documentId=${gId}`, { hostId: s(host.uid), name: s("Regulars"), inviteCode: s("E2ECODE"), memberIds: arr([member.uid]) }, host.headers), 200);
+  chk("host creates group", await createDoc(`hostGroups?documentId=${gId}`, { hostId: s(host.uid), name: s("Regulars"), inviteCode: s(inviteCode), memberIds: arr([member.uid]) }, host.headers), 200);
   chk("member reads group", await readDoc(`hostGroups/${gId}`, member.headers), 200);
   chk("outsider CANNOT read group", await readDoc(`hostGroups/${gId}`, outsider.headers), 403);
   chk("member posts message", await createDoc(`hostGroups/${gId}/messages?documentId=gm1`, { senderId: s(member.uid), type: s("text"), text: s("hi") }, member.headers), 200);
@@ -162,7 +165,7 @@ const runQuery = async (structuredQuery, h) => {
 
   // ---- GROUP INVITES (callable) ----
   section("Group invites");
-  const join = await callFn("joinGroupByCode", { code: "E2ECODE" }, outsider.headers);
+  const join = await callFn("joinGroupByCode", { code: inviteCode }, outsider.headers);
   chk("joinGroupByCode adds member", join.status === 200 && join.body?.result?.groupId === gId, true);
   chk("outsider can read after joining", await readDoc(`hostGroups/${gId}`, outsider.headers), 200);
   const bad = await callFn("joinGroupByCode", { code: "NOPE00" }, outsider.headers);
