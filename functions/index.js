@@ -4,7 +4,8 @@
  */
 
 const {onRequest, onCall, HttpsError} = require("firebase-functions/v2/https");
-const {onDocumentCreated} = require("firebase-functions/v2/firestore");
+const {onDocumentCreated, onDocumentWritten} =
+  require("firebase-functions/v2/firestore");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 const {defineSecret} = require("firebase-functions/params");
@@ -1076,6 +1077,120 @@ exports.onRatingCreated = onDocumentCreated(
     } catch (e) {
       console.error("❌ Error aggregating ratings:", e);
     }
+  },
+);
+
+// ============================================
+// CAR POOL — loyalty + notifications
+// On a rider request → notify the driver. On approval → notify the rider and
+// increment the driver's carpoolStats.seatsShared (server-side, so the loyalty
+// metric can't be self-inflated).
+// ============================================
+exports.onCarpoolRiderWritten = onDocumentWritten(
+  "events/{eventId}/carpools/{carpoolId}/riders/{riderId}",
+  async (event) => {
+    const before = event.data.before.exists ? event.data.before.data() : null;
+    const after = event.data.after.exists ? event.data.after.data() : null;
+    const {eventId, carpoolId, riderId} = event.params;
+
+    const newRequest = !before && after && after.status === "requested";
+    const justApproved =
+      (before?.status !== "approved") && after?.status === "approved";
+    if (!newRequest && !justApproved) return;
+
+    const cpSnap = await db
+      .doc(`events/${eventId}/carpools/${carpoolId}`)
+      .get();
+    if (!cpSnap.exists) return;
+    const carpool = cpSnap.data();
+
+    if (newRequest) {
+      await db.collection("notifications").add({
+        userId: carpool.driverId,
+        type: "carpool_request",
+        title: "Seat request 🚗",
+        message: `${after.name || "Someone"} wants a seat in your car pool`,
+        icon: "🚗",
+        read: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        metadata: {eventId, eventTitle: carpool.eventTitle || ""},
+      });
+      return;
+    }
+
+    // Approved: reward the driver + notify the rider.
+    await db.collection("users").doc(carpool.driverId).set(
+      {
+        carpoolStats: {
+          seatsShared: admin.firestore.FieldValue.increment(1),
+        },
+      },
+      {merge: true},
+    );
+    await db.collection("notifications").add({
+      userId: riderId,
+      type: "carpool_approved",
+      title: "Ride confirmed 🚗",
+      message: `You've got a seat in ${carpool.driverName || "the"} car pool!`,
+      icon: "🚗",
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      metadata: {eventId, eventTitle: carpool.eventTitle || ""},
+    });
+  },
+);
+
+// ============================================
+// HOST GROUP messages → notify members (in-app + push)
+// ============================================
+exports.onGroupMessage = onDocumentCreated(
+  "hostGroups/{groupId}/messages/{messageId}",
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const msg = snap.data();
+    const {groupId} = event.params;
+
+    const gSnap = await db.doc(`hostGroups/${groupId}`).get();
+    if (!gSnap.exists) return;
+    const group = gSnap.data();
+
+    const recipients = new Set([group.hostId, ...(group.memberIds || [])]);
+    recipients.delete(msg.senderId);
+    if (recipients.size === 0) return;
+
+    const senderDoc = await db.collection("users").doc(msg.senderId).get();
+    const senderName = senderDoc.exists ?
+      senderDoc.data().fullName?.split(" ")[0] ||
+        senderDoc.data().name?.split(" ")[0] ||
+        "Someone" :
+      "Someone";
+    const preview = `${senderName}: ${msg.text || ""}`.slice(0, 140);
+
+    const pushes = [];
+    for (const uid of recipients) {
+      await db.collection("notifications").add({
+        userId: uid,
+        type: "group_message",
+        title: group.name || "Group",
+        message: preview,
+        icon: "💬",
+        read: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        metadata: {groupId, groupName: group.name || ""},
+      });
+      const u = await db.collection("users").doc(uid).get();
+      if (u.exists && u.data().pushToken) {
+        pushes.push({
+          pushToken: u.data().pushToken,
+          title: group.name || "Group",
+          body: preview,
+          data: {type: "group_message", groupId},
+        });
+      }
+    }
+    if (pushes.length > 0) await sendBatchPushNotifications(pushes);
+    console.log(`✅ Group message notified ${recipients.size} member(s)`);
   },
 );
 

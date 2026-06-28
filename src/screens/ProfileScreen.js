@@ -40,6 +40,7 @@ import {
   Sparkles,
   Ticket,
   BarChart3,
+  Users,
 } from "lucide-react-native";
 
 export default function ProfileScreen({ navigation }) {
@@ -892,6 +893,56 @@ export default function ProfileScreen({ navigation }) {
                       </Text>
                       <Text style={[styles.infoValue, { color: colors.text }]}>
                         Revenue & members
+                      </Text>
+                    </View>
+                    <ChevronRight
+                      size={20}
+                      color={colors.textTertiary}
+                      strokeWidth={2}
+                    />
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {/* Groups — any host can manage attendee groups */}
+              {canManageStripe && (
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("HostGroups")}
+                  activeOpacity={0.8}
+                >
+                  <View
+                    style={[
+                      styles.infoCard,
+                      {
+                        backgroundColor: isDark
+                          ? "rgba(255, 255, 255, 0.04)"
+                          : "rgba(255, 255, 255, 0.85)",
+                        borderColor: isDark
+                          ? "rgba(255, 255, 255, 0.10)"
+                          : "rgba(0, 0, 0, 0.08)",
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.infoIconCircle,
+                        {
+                          backgroundColor: isDark
+                            ? `${colors.primary}20`
+                            : `${colors.primary}15`,
+                        },
+                      ]}
+                    >
+                      <Users size={22} color={colors.primary} strokeWidth={1.8} />
+                    </View>
+                    <View style={styles.infoContent}>
+                      <Text
+                        style={[styles.infoLabel, { color: colors.textSecondary }]}
+                      >
+                        Groups
+                      </Text>
+                      <Text style={[styles.infoValue, { color: colors.text }]}>
+                        Manage attendee groups
                       </Text>
                     </View>
                     <ChevronRight

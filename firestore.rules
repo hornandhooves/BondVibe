@@ -56,7 +56,7 @@ service cloud.firestore {
       allow update: if isAdmin() ||
                        (isOwner(userId) &&
                         !request.resource.data.diff(resource.data)
-                          .affectedKeys().hasAny(['hostStats'])) ||
+                          .affectedKeys().hasAny(['hostStats', 'carpoolStats'])) ||
                        onlyUpdating(['pushToken', 'pushTokenUpdatedAt']);
       
       allow delete: if isOwner(userId) || isAdmin();
@@ -128,6 +128,31 @@ service cloud.firestore {
           allow write: if isSignedIn() &&
                           request.auth.uid == userId &&
                           isEventParticipant(eventId);
+        }
+      }
+
+      // Car pool — a participant offers a ride; riders request seats.
+      match /carpools/{carpoolId} {
+        allow read: if isSignedIn() && isEventParticipant(eventId);
+        allow create: if isSignedIn() && isEventParticipant(eventId) &&
+                         request.resource.data.driverId == request.auth.uid;
+        // Only the driver edits/closes their offer.
+        allow update: if isSignedIn() &&
+                         resource.data.driverId == request.auth.uid;
+        allow delete: if false;
+
+        match /riders/{userId} {
+          function driverId() {
+            return get(/databases/$(database)/documents/events/$(eventId)/carpools/$(carpoolId)).data.driverId;
+          }
+          allow read: if isSignedIn() && isEventParticipant(eventId);
+          allow create: if isSignedIn() && request.auth.uid == userId &&
+                           isEventParticipant(eventId);
+          // Rider can edit/cancel their own request; driver can approve/decline.
+          allow update: if isSignedIn() &&
+                           (request.auth.uid == userId ||
+                            request.auth.uid == driverId());
+          allow delete: if isSignedIn() && request.auth.uid == userId;
         }
       }
     }
@@ -258,6 +283,33 @@ service cloud.firestore {
       }
     }
     
+    // ============================================
+    // HOST GROUPS (WhatsApp-style attendee groups)
+    // ============================================
+    match /hostGroups/{groupId} {
+      allow read: if isSignedIn() &&
+                     (resource.data.hostId == request.auth.uid ||
+                      (resource.data.memberIds != null &&
+                       request.auth.uid in resource.data.memberIds));
+      allow create: if isSignedIn() &&
+                       request.resource.data.hostId == request.auth.uid;
+      // Only the host can rename / change members / delete.
+      allow update, delete: if isSignedIn() &&
+                               resource.data.hostId == request.auth.uid;
+
+      match /messages/{messageId} {
+        function groupMembers() {
+          let g = get(/databases/$(database)/documents/hostGroups/$(groupId)).data;
+          return g.hostId == request.auth.uid ||
+                 (g.memberIds != null && request.auth.uid in g.memberIds);
+        }
+        allow read: if isSignedIn() && groupMembers();
+        allow create: if isSignedIn() && groupMembers() &&
+                         request.resource.data.senderId == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
     // ============================================
     // PROMOTIONS (featured-event purchases)
     // Server-only writes (set by the payment webhook).

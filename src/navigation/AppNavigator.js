@@ -52,6 +52,9 @@ import HostAnalyticsScreen from "../screens/HostAnalyticsScreen";
 import HowToAttendScreen from "../screens/HowToAttendScreen";
 import PromoteEventScreen from "../screens/PromoteEventScreen";
 import RatingDetailScreen from "../screens/RatingDetailScreen";
+import HostGroupsScreen from "../screens/HostGroupsScreen";
+import GroupChatScreen from "../screens/GroupChatScreen";
+import GroupManageScreen from "../screens/GroupManageScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -372,6 +375,9 @@ const AppNavigator = forwardRef((props, ref) => {
             name="RatingDetail"
             component={RatingDetailScreen}
           />
+          <Stack.Screen name="HostGroups" component={HostGroupsScreen} />
+          <Stack.Screen name="GroupChat" component={GroupChatScreen} />
+          <Stack.Screen name="GroupManage" component={GroupManageScreen} />
         </Stack.Navigator>
       </NavigationContainer>
 

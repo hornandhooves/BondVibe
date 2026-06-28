@@ -17,6 +17,8 @@ import { StatusBar } from "expo-status-bar";
 import * as Location from "expo-location";
 import PollCard from "../components/PollCard";
 import { createPoll } from "../services/pollService";
+import CarpoolCard from "../components/CarpoolCard";
+import { createCarpool } from "../services/carpoolService";
 import { useTheme } from "../contexts/ThemeContext";
 import { auth } from "../services/firebase";
 import {
@@ -52,6 +54,14 @@ export default function EventChatScreen({ route, navigation }) {
   const [pollQuestion, setPollQuestion] = useState("");
   const [pollOptions, setPollOptions] = useState(["", ""]);
   const [creatingPoll, setCreatingPoll] = useState(false);
+  const [carpoolModalVisible, setCarpoolModalVisible] = useState(false);
+  const [carpoolForm, setCarpoolForm] = useState({
+    seatsTotal: "",
+    from: "",
+    departureTime: "",
+    notes: "",
+  });
+  const [creatingCarpool, setCreatingCarpool] = useState(false);
   const scrollViewRef = useRef();
   const typingTimeoutRef = useRef(null);
   const previousMessageCountRef = useRef(0);
@@ -365,6 +375,26 @@ export default function EventChatScreen({ route, navigation }) {
     }
   };
 
+  const currentUserName = () => {
+    const u = users[auth.currentUser?.uid];
+    return u?.fullName || u?.name || "Someone";
+  };
+
+  const handleCreateCarpool = async () => {
+    setCreatingCarpool(true);
+    const result = await createCarpool(eventId, {
+      ...carpoolForm,
+      driverName: currentUserName(),
+    });
+    setCreatingCarpool(false);
+    if (result.success) {
+      setCarpoolModalVisible(false);
+      setCarpoolForm({ seatsTotal: "", from: "", departureTime: "", notes: "" });
+    } else {
+      Alert.alert("Couldn't offer ride", result.error || "Please try again.");
+    }
+  };
+
   const openInMaps = (latitude, longitude) => {
     const scheme = Platform.select({
       ios: "maps:0,0?q=",
@@ -458,6 +488,32 @@ export default function EventChatScreen({ route, navigation }) {
             eventId={eventId}
             pollId={message.data.pollId}
             isHost={isHost}
+          />
+          <Text style={[styles.timeStamp, { color: colors.textTertiary, marginTop: 4 }]}>
+            {time}
+          </Text>
+        </View>
+      );
+    }
+
+    if (message.type === "carpool" && message.data?.carpoolId) {
+      return (
+        <View
+          style={[
+            styles.messageBubble,
+            isMe ? styles.myMessage : styles.theirMessage,
+            { backgroundColor: "transparent", padding: 0 },
+          ]}
+        >
+          {!isMe && user && (
+            <Text style={[styles.senderName, { color: colors.primary }]}>
+              {user.fullName || user.name || "Someone"}
+            </Text>
+          )}
+          <CarpoolCard
+            eventId={eventId}
+            carpoolId={message.data.carpoolId}
+            currentUserName={currentUserName()}
           />
           <Text style={[styles.timeStamp, { color: colors.textTertiary, marginTop: 4 }]}>
             {time}
@@ -739,6 +795,13 @@ export default function EventChatScreen({ route, navigation }) {
             </TouchableOpacity>
           )}
 
+          <TouchableOpacity
+            style={styles.locationButton}
+            onPress={() => setCarpoolModalVisible(true)}
+          >
+            <Text style={styles.locationButtonIcon}>🚗</Text>
+          </TouchableOpacity>
+
           <TextInput
             style={[styles.input, { color: colors.text }]}
             value={inputText}
@@ -815,6 +878,63 @@ export default function EventChatScreen({ route, navigation }) {
               <TouchableOpacity onPress={handleCreatePoll} disabled={creatingPoll}>
                 <Text style={{ color: colors.primary, fontWeight: "700" }}>
                   {creatingPoll ? "Creating…" : "Create poll"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Offer a ride (car pool) modal */}
+      <Modal visible={carpoolModalVisible} transparent animationType="slide">
+        <View style={styles.pollModalOverlay}>
+          <View style={[styles.pollModalCard, { backgroundColor: colors.background }]}>
+            <Text style={[styles.pollModalTitle, { color: colors.text }]}>
+              Offer a ride 🚗
+            </Text>
+            <TextInput
+              style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
+              placeholder="Seats available (e.g. 3)"
+              placeholderTextColor={colors.textTertiary}
+              value={carpoolForm.seatsTotal}
+              onChangeText={(v) =>
+                setCarpoolForm((f) => ({ ...f, seatsTotal: v.replace(/[^0-9]/g, "") }))
+              }
+              keyboardType="number-pad"
+            />
+            <TextInput
+              style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
+              placeholder="Pickup area (e.g. Centro)"
+              placeholderTextColor={colors.textTertiary}
+              value={carpoolForm.from}
+              onChangeText={(v) => setCarpoolForm((f) => ({ ...f, from: v }))}
+              maxLength={60}
+            />
+            <TextInput
+              style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
+              placeholder="Departure time (e.g. 6:30 PM)"
+              placeholderTextColor={colors.textTertiary}
+              value={carpoolForm.departureTime}
+              onChangeText={(v) => setCarpoolForm((f) => ({ ...f, departureTime: v }))}
+              maxLength={40}
+            />
+            <TextInput
+              style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
+              placeholder="Notes (optional)"
+              placeholderTextColor={colors.textTertiary}
+              value={carpoolForm.notes}
+              onChangeText={(v) => setCarpoolForm((f) => ({ ...f, notes: v }))}
+              maxLength={120}
+            />
+            <View style={styles.pollModalActions}>
+              <TouchableOpacity onPress={() => setCarpoolModalVisible(false)}>
+                <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleCreateCarpool} disabled={creatingCarpool}>
+                <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                  {creatingCarpool ? "Posting…" : "Offer ride"}
                 </Text>
               </TouchableOpacity>
             </View>

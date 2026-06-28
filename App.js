@@ -161,6 +161,22 @@ export default function App() {
         }
         break;
 
+      case "carpool_request":
+      case "carpool_approved":
+        if (data.eventId) {
+          navigate("EventChat", {
+            eventId: data.eventId,
+            eventTitle: data.eventTitle || "Event Chat",
+          });
+        }
+        break;
+
+      case "group_message":
+        if (data.groupId) {
+          navigate("GroupChat", { groupId: data.groupId });
+        }
+        break;
+
       case "host_approved":
         // Navigate to HostTypeSelection so user can choose their host type
         console.log("📍 Navigating to HostTypeSelection (host approved)");

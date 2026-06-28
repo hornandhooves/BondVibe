@@ -13,6 +13,8 @@ import { StatusBar } from "expo-status-bar";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import { auth, db } from "../services/firebase";
+import { subscribeUserGroups } from "../services/hostGroupService";
+import { Users } from "lucide-react-native";
 import {
   getUserNotifications,
   markAsRead,
@@ -31,6 +33,13 @@ export default function NotificationsScreen({ navigation }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [groups, setGroups] = useState([]);
+
+  // Member inbox: groups the user belongs to.
+  useEffect(() => {
+    const unsub = subscribeUserGroups(setGroups);
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -213,13 +222,12 @@ export default function NotificationsScreen({ navigation }) {
         break;
 
       case "event_messages":
-        if (
-          notification.metadata?.eventId &&
-          notification.metadata?.eventTitle
-        ) {
+      case "carpool_request":
+      case "carpool_approved":
+        if (notification.metadata?.eventId) {
           navigation.navigate("EventChat", {
             eventId: notification.metadata.eventId,
-            eventTitle: notification.metadata.eventTitle,
+            eventTitle: notification.metadata.eventTitle || "Event Chat",
           });
         }
         break;
@@ -259,6 +267,14 @@ export default function NotificationsScreen({ navigation }) {
 
       case "membership_sold":
         navigation.navigate("MembershipPlans");
+        break;
+
+      case "group_message":
+        if (notification.metadata?.groupId) {
+          navigation.navigate("GroupChat", {
+            groupId: notification.metadata.groupId,
+          });
+        }
         break;
 
       case "welcome":
@@ -415,16 +431,6 @@ export default function NotificationsScreen({ navigation }) {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      ) : notifications.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>🔔</Text>
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            No notifications
-          </Text>
-          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            You're all caught up!
-          </Text>
-        </View>
       ) : (
         <ScrollView
           style={styles.scrollView}
@@ -438,12 +444,62 @@ export default function NotificationsScreen({ navigation }) {
             />
           }
         >
-          {notifications.map((notification) => (
-            <NotificationCard
-              key={notification.id}
-              notification={notification}
-            />
-          ))}
+          {/* Groups inbox */}
+          {groups.length > 0 && (
+            <>
+              <Text style={[styles.groupsHeading, { color: colors.textTertiary }]}>
+                GROUPS
+              </Text>
+              {groups.map((g) => (
+                <TouchableOpacity
+                  key={g.id}
+                  style={[
+                    styles.groupRow,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.04)"
+                        : "rgba(255,255,255,0.85)",
+                      borderColor: isDark
+                        ? "rgba(255,255,255,0.10)"
+                        : "rgba(0,0,0,0.08)",
+                    },
+                  ]}
+                  onPress={() => navigation.navigate("GroupChat", { groupId: g.id })}
+                  activeOpacity={0.85}
+                >
+                  <View style={[styles.groupIcon, { backgroundColor: `${colors.primary}1F` }]}>
+                    <Users size={18} color={colors.primary} strokeWidth={2} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.groupName, { color: colors.text }]} numberOfLines={1}>
+                      {g.name}
+                    </Text>
+                    <Text style={[styles.groupMeta, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {g.lastMessage || `${g.memberIds?.length || 0} members`}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+              <Text style={[styles.groupsHeading, { color: colors.textTertiary, marginTop: 16 }]}>
+                NOTIFICATIONS
+              </Text>
+            </>
+          )}
+
+          {notifications.length === 0 ? (
+            <View style={styles.emptyInline}>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                You're all caught up!
+              </Text>
+            </View>
+          ) : (
+            notifications.map((notification) => (
+              <NotificationCard
+                key={notification.id}
+                notification={notification}
+              />
+            ))
+          )}
         </ScrollView>
       )}
     </GradientBackground>
@@ -471,6 +527,31 @@ function createStyles(colors) {
     },
     scrollView: { flex: 1 },
     scrollContent: { paddingHorizontal: 24, paddingBottom: 40 },
+    groupsHeading: {
+      fontSize: 12,
+      fontWeight: "700",
+      letterSpacing: 1,
+      marginBottom: 10,
+    },
+    groupRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      borderRadius: 14,
+      borderWidth: 1,
+      padding: 14,
+      marginBottom: 10,
+    },
+    groupIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    groupName: { fontSize: 15, fontWeight: "700" },
+    groupMeta: { fontSize: 13, marginTop: 2 },
+    emptyInline: { alignItems: "center", paddingVertical: 30 },
     notificationCard: {
       marginBottom: 12,
       borderRadius: 16,
