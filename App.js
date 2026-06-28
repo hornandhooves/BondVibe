@@ -6,6 +6,18 @@ import { StripeProvider } from "@stripe/stripe-react-native";
 import { ThemeProvider } from "./src/contexts/ThemeContext";
 import AppNavigator from "./src/navigation/AppNavigator";
 import * as Notifications from "expo-notifications";
+import { useFonts } from "expo-font";
+import {
+  SpaceGrotesk_600SemiBold,
+  SpaceGrotesk_700Bold,
+} from "@expo-google-fonts/space-grotesk";
+import {
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+  PlusJakartaSans_800ExtraBold,
+} from "@expo-google-fonts/plus-jakarta-sans";
 
 // Configure how notifications are handled when app is in foreground
 Notifications.setNotificationHandler({
@@ -40,6 +52,16 @@ export const navigate = (name, params) => {
 export default function App() {
   const notificationListener = useRef();
   const responseListener = useRef();
+
+  const [fontsLoaded] = useFonts({
+    SpaceGrotesk_600SemiBold,
+    SpaceGrotesk_700Bold,
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
+  });
 
   useEffect(() => {
     // Verify Stripe key on app start
@@ -280,6 +302,8 @@ export default function App() {
       console.error("❌ Error setting up push notifications:", error);
     }
   };
+
+  if (!fontsLoaded) return null;
 
   return (
     <AuthProvider>

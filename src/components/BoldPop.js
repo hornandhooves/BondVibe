@@ -6,6 +6,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { FONTS } from '../constants/theme-tokens';
 
 // Hard offset block shadow (the Bold Pop signature). RN: radius 0 + full opacity.
 function hardShadow(color, offset = 5) {
@@ -66,7 +67,7 @@ export function BVButton({ label, onPress, variant = 'solid', icon, style }) {
       ]}
     >
       {icon}
-      <Text style={{ color: solid ? colors.onPrimary : colors.text, fontWeight: '700', fontSize: 15 }}>
+      <Text style={{ color: solid ? colors.onPrimary : colors.text, fontFamily: FONTS.bodyBold, fontSize: 15 }}>
         {label}
       </Text>
     </Pressable>
@@ -93,7 +94,7 @@ export function BVBadge({ label, tone = 'secondary', icon }) {
       borderRadius: 30, paddingVertical: 5, paddingHorizontal: 11, alignSelf: 'flex-start',
     }}>
       {icon}
-      <Text style={{ color: fg, fontWeight: '800', fontSize: 12, letterSpacing: 0.2 }}>{label}</Text>
+      <Text style={{ color: fg, fontFamily: FONTS.bodyExtra, fontSize: 12, letterSpacing: 0.2 }}>{label}</Text>
     </View>
   );
 }
@@ -111,11 +112,11 @@ export function BVStat({ value, label, highlight = false }) {
       highlight && hardShadow(colors.hardShadow, 3),
     ]}>
       <Text style={{
-        fontSize: 24, fontWeight: '800', letterSpacing: -1,
+        fontSize: 24, fontFamily: FONTS.display, letterSpacing: -1,
         color: highlight ? colors.onPrimary : colors.text,
       }}>{value}</Text>
       <Text style={{
-        fontSize: 11, fontWeight: '600', marginTop: 2,
+        fontSize: 11, fontFamily: FONTS.bodySemibold, marginTop: 2,
         color: highlight ? 'rgba(255,255,255,0.85)' : colors.textSecondary,
       }}>{label}</Text>
     </View>
@@ -127,7 +128,7 @@ export function SectionHeader({ title, action, onAction }) {
   const { colors } = useTheme();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-      <Text style={{ fontSize: 15, fontWeight: '800', letterSpacing: -0.3, color: colors.text }}>
+      <Text style={{ fontSize: 15, fontFamily: FONTS.displaySemibold, letterSpacing: -0.3, color: colors.text }}>
         {title}
       </Text>
       <View style={{ flex: 1, height: 2, backgroundColor: colors.border }} />

@@ -4,6 +4,18 @@
 // and ADDS Bold-Pop tokens (borderStrong, hardShadow, ink, onInk, onPrimary)
 // plus the refined brand gradient.
 
+// Typography — Space Grotesk for display/wordmark/numbers, Plus Jakarta Sans
+// for UI/body. Names match the @expo-google-fonts weights loaded in App.js.
+export const FONTS = {
+  display: 'SpaceGrotesk_700Bold',
+  displaySemibold: 'SpaceGrotesk_600SemiBold',
+  body: 'PlusJakartaSans_400Regular',
+  bodyMedium: 'PlusJakartaSans_500Medium',
+  bodySemibold: 'PlusJakartaSans_600SemiBold',
+  bodyBold: 'PlusJakartaSans_700Bold',
+  bodyExtra: 'PlusJakartaSans_800ExtraBold',
+};
+
 export const BRAND = {
   // Fixed brand signature — same in every theme (logo, icon, splash, marketing).
   // Refined: dropped the cold indigo; ends on Aurora's exact magenta.
