@@ -7,7 +7,9 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Modal,
 } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 import { StatusBar } from "expo-status-bar";
 import {
   doc,
@@ -55,7 +57,10 @@ import {
   Ticket,
   Sparkles,
   Star,
+  QrCode,
 } from "lucide-react-native";
+import { usePremium } from "../hooks/usePremium";
+import { buildCheckinPayload } from "../services/checkinService";
 
 export default function EventDetailScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
@@ -64,6 +69,8 @@ export default function EventDetailScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [isJoined, setIsJoined] = useState(false);
   const [joining, setJoining] = useState(false);
+  const [qrVisible, setQrVisible] = useState(false);
+  const { isPremium } = usePremium();
   const [currentUser, setCurrentUser] = useState(null);
   const [attendeesData, setAttendeesData] = useState([]);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -673,6 +680,27 @@ export default function EventDetailScreen({ route, navigation }) {
                 ]}
               >
                 <MessageCircle size={20} color={colors.text} strokeWidth={2} />
+              </View>
+            </TouchableOpacity>
+          )}
+          {isCreator && (
+            <TouchableOpacity
+              onPress={() =>
+                isPremium
+                  ? navigation.navigate("CheckInScanner", {
+                      eventId,
+                      eventTitle,
+                    })
+                  : navigation.navigate("BondVibePro")
+              }
+            >
+              <View
+                style={[
+                  styles.headerButton,
+                  { backgroundColor: colors.surface, borderColor: colors.borderStrong },
+                ]}
+              >
+                <QrCode size={20} color={colors.text} strokeWidth={2} />
               </View>
             </TouchableOpacity>
           )}
@@ -1379,9 +1407,48 @@ export default function EventDetailScreen({ route, navigation }) {
                 </Text>
               </View>
             </TouchableOpacity>
+            {isJoined && !isCreator && (
+              <TouchableOpacity
+                style={styles.qrLinkBtn}
+                onPress={() => setQrVisible(true)}
+              >
+                <QrCode size={16} color={colors.primary} strokeWidth={2} />
+                <Text style={[styles.qrLinkText, { color: colors.primary }]}>
+                  Mi QR de check-in
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       )}
+
+      <Modal visible={qrVisible} transparent animationType="fade">
+        <View style={styles.qrOverlay}>
+          <View
+            style={[
+              styles.qrCard,
+              { backgroundColor: colors.surface, borderColor: colors.borderStrong },
+            ]}
+          >
+            <Text style={[styles.qrTitle, { color: colors.text }]}>Tu check-in</Text>
+            <Text style={[styles.qrSub, { color: colors.textSecondary }]}>
+              Muestra este código al anfitrión en la entrada.
+            </Text>
+            <View style={styles.qrBox}>
+              <QRCode
+                value={buildCheckinPayload(eventId, auth.currentUser?.uid || "")}
+                size={220}
+              />
+            </View>
+            <TouchableOpacity
+              style={[styles.qrClose, { backgroundColor: colors.primary }]}
+              onPress={() => setQrVisible(false)}
+            >
+              <Text style={styles.qrCloseText}>Listo</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <CancelEventModal
         visible={showCancelModal}
@@ -1396,6 +1463,46 @@ export default function EventDetailScreen({ route, navigation }) {
 function createStyles(colors) {
   return StyleSheet.create({
     container: { flex: 1 },
+    qrLinkBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 10,
+      marginTop: 8,
+    },
+    qrLinkText: { fontSize: 14, fontWeight: "700" },
+    qrOverlay: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(0,0,0,0.6)",
+      padding: 24,
+    },
+    qrCard: {
+      width: "100%",
+      maxWidth: 340,
+      borderRadius: 24,
+      borderWidth: 2,
+      padding: 24,
+      alignItems: "center",
+      gap: 6,
+    },
+    qrTitle: { fontSize: 20, fontWeight: "800" },
+    qrSub: { fontSize: 13, textAlign: "center", marginBottom: 14 },
+    qrBox: {
+      backgroundColor: "#FFFFFF",
+      padding: 16,
+      borderRadius: 16,
+      marginBottom: 18,
+    },
+    qrClose: {
+      borderRadius: 14,
+      paddingVertical: 13,
+      paddingHorizontal: 40,
+      alignItems: "center",
+    },
+    qrCloseText: { color: "#fff", fontSize: 15, fontWeight: "700" },
     loadingContainer: {
       flex: 1,
       justifyContent: "center",
