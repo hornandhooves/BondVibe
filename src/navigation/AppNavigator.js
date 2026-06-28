@@ -51,6 +51,7 @@ import EventCheckInScreen from "../screens/EventCheckInScreen";
 import HostAnalyticsScreen from "../screens/HostAnalyticsScreen";
 import BondVibeProScreen from "../screens/BondVibeProScreen";
 import CheckInScannerScreen from "../screens/CheckInScannerScreen";
+import HostCRMScreen from "../screens/HostCRMScreen";
 import HowToAttendScreen from "../screens/HowToAttendScreen";
 import PromoteEventScreen from "../screens/PromoteEventScreen";
 import RatingDetailScreen from "../screens/RatingDetailScreen";
@@ -326,6 +327,7 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="Profile" component={ProfileScreen} />
           <Stack.Screen name="BondVibePro" component={BondVibeProScreen} />
           <Stack.Screen name="CheckInScanner" component={CheckInScannerScreen} />
+          <Stack.Screen name="HostCRM" component={HostCRMScreen} />
           <Stack.Screen
             name="PersonalityQuiz"
             component={PersonalityQuizScreen}

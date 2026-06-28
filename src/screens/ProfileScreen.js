@@ -979,6 +979,52 @@ export default function ProfileScreen({ navigation }) {
                 </TouchableOpacity>
               )}
 
+              {/* Attendee CRM — any host (Pro feature; screen upsells if not) */}
+              {canManageStripe && (
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("HostCRM")}
+                  activeOpacity={0.8}
+                >
+                  <View
+                    style={[
+                      styles.infoCard,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.borderStrong,
+                        borderWidth: 2,
+                        shadowColor: colors.hardShadow,
+                        shadowOffset: { width: 3, height: 3 },
+                        shadowOpacity: 1,
+                        shadowRadius: 0,
+                        elevation: 4,
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.infoIconCircle,
+                        {
+                          backgroundColor: isDark
+                            ? `${colors.primary}20`
+                            : `${colors.primary}15`,
+                        },
+                      ]}
+                    >
+                      <Users size={22} color={colors.primary} strokeWidth={1.8} />
+                    </View>
+                    <View style={styles.infoContent}>
+                      <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+                        Asistentes
+                      </Text>
+                      <Text style={[styles.infoValue, { color: colors.text }]}>
+                        CRM y reactivación
+                      </Text>
+                    </View>
+                    <ChevronRight size={20} color={colors.textTertiary} strokeWidth={2} />
+                  </View>
+                </TouchableOpacity>
+              )}
+
               {/* Groups — any host can manage attendee groups */}
               {canManageStripe && (
                 <TouchableOpacity
