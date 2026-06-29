@@ -231,16 +231,16 @@ const runQuery = async (structuredQuery, h) => {
   // ---- PREMIUM AI GATE (getHostFeedbackInsights) ----
   section("Premium AI gate");
   const aiCall = await callFn("getHostFeedbackInsights", {}, host.headers);
-  chk("non-premium host blocked from AI insights", aiCall.body?.error != null, true);
-  // Admin-only functions reject non-admins
+  chk("non-premium host blocked from AI insights", aiCall.body?.error?.message, "premium_required");
+  // Admin-only functions reject non-admins (assert the specific gate message)
   const delCall = await callFn("adminDeleteUser", { uid: member.uid }, host.headers);
-  chk("non-admin blocked from adminDeleteUser", delCall.body?.error != null, true);
+  chk("non-admin blocked from adminDeleteUser", delCall.body?.error?.message, "Admin only.");
   const resetCall = await callFn("adminResetPassword", { email: "x@x.com" }, host.headers);
-  chk("non-admin blocked from adminResetPassword", resetCall.body?.error != null, true);
+  chk("non-admin blocked from adminResetPassword", resetCall.body?.error?.message, "Admin only.");
   const aiListing = await callFn("generateEventListing", { idea: "yoga al amanecer" }, host.headers);
-  chk("non-premium blocked from AI listing writer", aiListing.body?.error != null, true);
+  chk("non-premium blocked from AI listing writer", aiListing.body?.error?.message, "premium_required");
   const aiReply = await callFn("generateReviewReply", { rating: 5, comment: "great" }, host.headers);
-  chk("non-premium blocked from AI review reply", aiReply.body?.error != null, true);
+  chk("non-premium blocked from AI review reply", aiReply.body?.error?.message, "premium_required");
 
   // ---- CLEANUP ----
   await del(`notifications/event_msg_${ev}_${member.uid}`, member.headers);
