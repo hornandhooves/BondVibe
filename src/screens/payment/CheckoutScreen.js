@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import { savePaymentRecord } from "../../services/paymentService";
 import { createNotification } from "../../utils/notificationService";
 import { isUserAttending } from "../../utils/eventHelpers";
 import { estimateCheckout } from "../../utils/pricing";
+import { startMercadoPagoCheckout } from "../../services/mercadoPagoService";
 
 /**
  * Wait until the webhook adds the user to the event's attendees array.
@@ -66,15 +67,69 @@ export default function CheckoutScreen({ route, navigation }) {
 
   const { eventId, eventTitle, amount } = route.params;
 
+  const [processor, setProcessor] = useState("stripe");
+  const [cardComplete, setCardComplete] = useState(false);
+  const [processing, setProcessing] = useState(false);
+
   // Estimated fee breakdown (server is the source of truth for the real charge).
   const {
     platformFeeCentavos: platformFee,
     stripeFeeCentavos: stripeFee,
     totalCentavos: totalAmount,
-  } = estimateCheckout(amount);
+  } = estimateCheckout(amount, processor);
 
-  const [cardComplete, setCardComplete] = useState(false);
-  const [processing, setProcessing] = useState(false);
+  // Detect the host's payout processor (Stripe vs Mercado Pago).
+  useEffect(() => {
+    (async () => {
+      try {
+        const evSnap = await getDoc(doc(db, "events", eventId));
+        const hostId = evSnap.exists()
+          ? evSnap.data().creatorId ||
+            evSnap.data().createdBy ||
+            evSnap.data().hostId
+          : null;
+        if (hostId) {
+          const hostSnap = await getDoc(doc(db, "users", hostId));
+          if (
+            hostSnap.exists() &&
+            hostSnap.data().hostConfig?.payoutProcessor === "mercadopago"
+          ) {
+            setProcessor("mercadopago");
+          }
+        }
+      } catch (e) {
+        // default to stripe
+      }
+    })();
+  }, [eventId]);
+
+  const handleMercadoPago = async () => {
+    setProcessing(true);
+    try {
+      await startMercadoPagoCheckout(eventId, amount);
+      const ok = await waitForAttendance(eventId, auth.currentUser.uid, 90000);
+      Alert.alert(
+        ok ? "Payment successful! 🎉" : "Almost there",
+        ok
+          ? `You've joined "${eventTitle}".`
+          : "We'll confirm your spot as soon as the payment is processed.",
+        [
+          {
+            text: "OK",
+            onPress: () =>
+              navigation.replace("EventDetail", { eventId, shouldReload: true }),
+          },
+        ]
+      );
+    } catch (e) {
+      Alert.alert(
+        "Mercado Pago",
+        e.message || "Could not start checkout. Please try again."
+      );
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   const handlePayment = async () => {
     if (!cardComplete) {
@@ -273,68 +328,118 @@ export default function CheckoutScreen({ route, navigation }) {
               </View>
             </View>
 
-            {/* Card Input */}
-            <View
-              style={[
-                styles.cardFieldContainer,
-                {
-                  backgroundColor: colors.surfaceGlass,
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              <Text style={[styles.cardLabel, { color: colors.text }]}>
-                Card Details
-              </Text>
-              <CardField
-                postalCodeEnabled={false}
-                placeholders={{
-                  number: "4242 4242 4242 4242",
-                }}
-                cardStyle={{
-                  backgroundColor: colors.surface,
-                  textColor: colors.text,
-                  placeholderColor: colors.textTertiary,
-                }}
-                style={styles.cardField}
-                onCardChange={(cardDetails) => {
-                  setCardComplete(cardDetails.complete);
-                }}
-              />
-            </View>
+            {processor === "mercadopago" ? (
+              <>
+                {/* Mercado Pago — hosted checkout */}
+                <View
+                  style={[
+                    styles.cardFieldContainer,
+                    {
+                      backgroundColor: colors.surfaceGlass,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.cardLabel, { color: colors.text }]}>
+                    Mercado Pago
+                  </Text>
+                  <Text
+                    style={[
+                      styles.securityText,
+                      { color: colors.textSecondary, marginTop: 6 },
+                    ]}
+                  >
+                    You'll pay securely on Mercado Pago (cards, OXXO or SPEI).
+                    Your spot is confirmed automatically once payment completes.
+                  </Text>
+                </View>
 
-            {/* Security Message */}
-            <View style={styles.securityRow}>
-              <Text style={styles.lockIcon}>🔒</Text>
-              <Text
-                style={[styles.securityText, { color: colors.textSecondary }]}
-              >
-                Your payment is secure and encrypted
-              </Text>
-            </View>
+                <TouchableOpacity
+                  style={[
+                    styles.payButton,
+                    {
+                      backgroundColor: colors.primary,
+                      opacity: processing ? 0.5 : 1,
+                    },
+                  ]}
+                  onPress={handleMercadoPago}
+                  disabled={processing}
+                >
+                  {processing ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.payButtonText}>
+                      Continue with Mercado Pago
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                {/* Card Input */}
+                <View
+                  style={[
+                    styles.cardFieldContainer,
+                    {
+                      backgroundColor: colors.surfaceGlass,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.cardLabel, { color: colors.text }]}>
+                    Card Details
+                  </Text>
+                  <CardField
+                    postalCodeEnabled={false}
+                    placeholders={{
+                      number: "4242 4242 4242 4242",
+                    }}
+                    cardStyle={{
+                      backgroundColor: colors.surface,
+                      textColor: colors.text,
+                      placeholderColor: colors.textTertiary,
+                    }}
+                    style={styles.cardField}
+                    onCardChange={(cardDetails) => {
+                      setCardComplete(cardDetails.complete);
+                    }}
+                  />
+                </View>
 
-            {/* Pay Button */}
-            <TouchableOpacity
-              style={[
-                styles.payButton,
-                {
-                  backgroundColor: cardComplete
-                    ? colors.primary
-                    : colors.border,
-                  opacity: processing || !cardComplete ? 0.5 : 1,
-                },
-              ]}
-              onPress={handlePayment}
-              disabled={!cardComplete || processing || confirmLoading}
-            >
-              {processing || confirmLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.payButtonText}>
-                  Pay {formatMXN(totalAmount)}
-                </Text>
-              )}
-            </TouchableOpacity>
+                {/* Security Message */}
+                <View style={styles.securityRow}>
+                  <Text style={styles.lockIcon}>🔒</Text>
+                  <Text
+                    style={[styles.securityText, { color: colors.textSecondary }]}
+                  >
+                    Your payment is secure and encrypted
+                  </Text>
+                </View>
+
+                {/* Pay Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.payButton,
+                    {
+                      backgroundColor: cardComplete
+                        ? colors.primary
+                        : colors.border,
+                      opacity: processing || !cardComplete ? 0.5 : 1,
+                    },
+                  ]}
+                  onPress={handlePayment}
+                  disabled={!cardComplete || processing || confirmLoading}
+                >
+                  {processing || confirmLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.payButtonText}>
+                      Pay {formatMXN(totalAmount)}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
 
             {/* Terms */}
             <Text style={[styles.termsText, { color: colors.textTertiary }]}>

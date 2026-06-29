@@ -1704,3 +1704,10 @@ exports.onNewHostRequest = onDocumentCreated(
     }
   },
 );
+
+// ============================================
+// MERCADO PAGO — Checkout Pro (single-account, Option B)
+// ============================================
+const mercadopago = require("./mercadopago");
+exports.createMercadoPagoPreference = mercadopago.createMercadoPagoPreference;
+exports.mercadoPagoWebhook = mercadopago.mercadoPagoWebhook;
