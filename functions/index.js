@@ -1711,3 +1711,53 @@ exports.onNewHostRequest = onDocumentCreated(
 const mercadopago = require("./mercadopago");
 exports.createMercadoPagoPreference = mercadopago.createMercadoPagoPreference;
 exports.mercadoPagoWebhook = mercadopago.mercadoPagoWebhook;
+
+// ============================================
+// ADMIN — user management (master/admin only)
+// ============================================
+
+/**
+ * Assert the caller is an admin; returns their uid.
+ * @param {object} request - onCall request
+ * @return {Promise<string>} caller uid
+ */
+async function requireAdminUid(request) {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const snap = await db.collection("users").doc(uid).get();
+  if (!snap.exists || snap.data().role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+  return uid;
+}
+
+/**
+ * Delete a user (admin only): removes their Firebase Auth account and user doc.
+ */
+exports.adminDeleteUser = onCall(async (request) => {
+  const callerUid = await requireAdminUid(request);
+  const {uid} = request.data || {};
+  if (!uid) throw new HttpsError("invalid-argument", "Missing uid.");
+  if (uid === callerUid) {
+    throw new HttpsError("failed-precondition", "You can't delete your own account here.");
+  }
+  try {
+    await admin.auth().deleteUser(uid);
+  } catch (e) {
+    console.warn("adminDeleteUser auth:", e.message); // may already be gone
+  }
+  await db.collection("users").doc(uid).delete();
+  return {success: true};
+});
+
+/**
+ * Generate a password-reset link for a user (admin only). The admin shares the
+ * returned link with the user — no need to open Firebase.
+ */
+exports.adminResetPassword = onCall(async (request) => {
+  await requireAdminUid(request);
+  const {email} = request.data || {};
+  if (!email) throw new HttpsError("invalid-argument", "Missing email.");
+  const link = await admin.auth().generatePasswordResetLink(email);
+  return {success: true, link};
+});

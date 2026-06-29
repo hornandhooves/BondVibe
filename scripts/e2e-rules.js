@@ -232,6 +232,11 @@ const runQuery = async (structuredQuery, h) => {
   section("Premium AI gate");
   const aiCall = await callFn("getHostFeedbackInsights", {}, host.headers);
   chk("non-premium host blocked from AI insights", aiCall.body?.error != null, true);
+  // Admin-only functions reject non-admins
+  const delCall = await callFn("adminDeleteUser", { uid: member.uid }, host.headers);
+  chk("non-admin blocked from adminDeleteUser", delCall.body?.error != null, true);
+  const resetCall = await callFn("adminResetPassword", { email: "x@x.com" }, host.headers);
+  chk("non-admin blocked from adminResetPassword", resetCall.body?.error != null, true);
   const aiListing = await callFn("generateEventListing", { idea: "yoga al amanecer" }, host.headers);
   chk("non-premium blocked from AI listing writer", aiListing.body?.error != null, true);
   const aiReply = await callFn("generateReviewReply", { rating: 5, comment: "great" }, host.headers);

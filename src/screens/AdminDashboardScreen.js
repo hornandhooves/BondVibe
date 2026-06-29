@@ -8,7 +8,9 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
+  Share,
 } from "react-native";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { StatusBar } from "expo-status-bar";
 import {
   collection,
@@ -291,6 +293,61 @@ export default function AdminDashboardScreen({ navigation }) {
     setConfirmModalVisible(true);
   };
 
+  const handleResetPassword = (user) => {
+    if (!user.email) {
+      Alert.alert("No email", "This user has no email on file.");
+      return;
+    }
+    Alert.alert(
+      "Reset password",
+      `Generate a password-reset link for ${user.email}? You can share it with them.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Generate",
+          onPress: async () => {
+            try {
+              const fn = httpsCallable(getFunctions(), "adminResetPassword");
+              const res = await fn({ email: user.email });
+              const link = res.data?.link;
+              if (link) {
+                await Share.share({
+                  message: `BondVibe password reset for ${user.email}:\n${link}`,
+                });
+              }
+            } catch (e) {
+              Alert.alert("Error", e.message || "Could not generate the link.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteUser = (user) => {
+    Alert.alert(
+      "Delete user",
+      `Permanently delete ${getUserDisplayName(user)} (${user.email})? This removes their account and can't be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const fn = httpsCallable(getFunctions(), "adminDeleteUser");
+              await fn({ uid: user.id });
+              await loadUsers(roleFilter);
+              Alert.alert("Deleted", "The user has been removed.");
+            } catch (e) {
+              Alert.alert("Error", e.message || "Could not delete the user.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleConfirmAction = async (reason) => {
     if (!confirmUser) return;
 
@@ -543,6 +600,48 @@ export default function AdminDashboardScreen({ navigation }) {
                 </TouchableOpacity>
               )}
             </>
+          )}
+
+          {user.id !== auth.currentUser.uid && (
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleResetPassword(user)}
+            >
+              <View
+                style={[
+                  styles.actionGlass,
+                  {
+                    backgroundColor: "rgba(0, 122, 255, 0.1)",
+                    borderColor: "rgba(0, 122, 255, 0.3)",
+                  },
+                ]}
+              >
+                <Text style={[styles.actionText, { color: "#007AFF" }]}>
+                  Reset Password
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+
+          {user.id !== auth.currentUser.uid && (
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleDeleteUser(user)}
+            >
+              <View
+                style={[
+                  styles.actionGlass,
+                  {
+                    backgroundColor: "rgba(255, 69, 58, 0.18)",
+                    borderColor: "rgba(255, 69, 58, 0.45)",
+                  },
+                ]}
+              >
+                <Text style={[styles.actionText, { color: "#FF453A" }]}>
+                  Delete
+                </Text>
+              </View>
+            </TouchableOpacity>
           )}
         </View>
       </View>
