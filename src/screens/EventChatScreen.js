@@ -18,6 +18,7 @@ import * as Location from "expo-location";
 import PollCard from "../components/PollCard";
 import { createPoll } from "../services/pollService";
 import CarpoolCard from "../components/CarpoolCard";
+import KeyboardAccessory from "../components/KeyboardAccessory";
 import { createCarpool } from "../services/carpoolService";
 import { useTheme } from "../contexts/ThemeContext";
 import { auth } from "../services/firebase";
@@ -883,6 +884,7 @@ export default function EventChatScreen({ route, navigation }) {
             </View>
           </View>
         </View>
+        <KeyboardAccessory />
       </Modal>
 
       {/* Offer a ride (car pool) modal */}
@@ -940,6 +942,7 @@ export default function EventChatScreen({ route, navigation }) {
             </View>
           </View>
         </View>
+        <KeyboardAccessory />
       </Modal>
     </KeyboardAvoidingView>
   );

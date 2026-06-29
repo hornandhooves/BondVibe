@@ -18,6 +18,7 @@ import { Plus, Pencil, Archive, RotateCcw, X } from "lucide-react-native";
 import { auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
+import KeyboardAccessory from "../components/KeyboardAccessory";
 import {
   MEMBERSHIP_PLAN_TYPES,
   createMembershipPlan,
@@ -451,6 +452,7 @@ export default function MembershipPlansScreen({ navigation }) {
               </TouchableOpacity>
             </ScrollView>
           </View>
+          <KeyboardAccessory />
         </KeyboardAvoidingView>
       </Modal>
     </GradientBackground>

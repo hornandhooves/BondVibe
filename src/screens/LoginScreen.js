@@ -22,6 +22,7 @@ import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
+import KeyboardAccessory from "../components/KeyboardAccessory";
 import SuccessModal from "../components/SuccessModal";
 import BondVibeLogo from "../components/BondVibeLogo";
 import { Eye, EyeOff } from "lucide-react-native";
@@ -470,6 +471,7 @@ export default function LoginScreen({ navigation }) {
                 </View>
               </View>
             </View>
+            <KeyboardAccessory />
           </Modal>
         )}
 

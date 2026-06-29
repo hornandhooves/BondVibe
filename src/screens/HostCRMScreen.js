@@ -17,6 +17,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db, auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
+import KeyboardAccessory from "../components/KeyboardAccessory";
 import { AvatarDisplay } from "../components/AvatarPicker";
 import { usePremium } from "../hooks/usePremium";
 import {
@@ -268,6 +269,7 @@ export default function HostCRMScreen({ navigation }) {
             </View>
           </View>
         </View>
+        <KeyboardAccessory />
       </Modal>
     </GradientBackground>
   );

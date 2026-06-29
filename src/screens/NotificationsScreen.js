@@ -14,6 +14,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
+import KeyboardAccessory from "../components/KeyboardAccessory";
 import { auth, db } from "../services/firebase";
 import { subscribeUserGroups, joinGroupByCode } from "../services/hostGroupService";
 import { Users } from "lucide-react-native";
@@ -559,6 +560,7 @@ export default function NotificationsScreen({ navigation }) {
             </View>
           </View>
         </View>
+        <KeyboardAccessory />
       </Modal>
     </GradientBackground>
   );

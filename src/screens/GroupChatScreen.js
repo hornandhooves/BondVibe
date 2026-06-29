@@ -17,6 +17,7 @@ import { Send, Settings, Ticket } from "lucide-react-native";
 import { db, auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
+import KeyboardAccessory from "../components/KeyboardAccessory";
 import PollCard from "../components/PollCard";
 import { createPoll } from "../services/pollService";
 import {
@@ -286,6 +287,7 @@ export default function GroupChatScreen({ route, navigation }) {
               </View>
             </View>
           </View>
+          <KeyboardAccessory />
         </Modal>
       </GradientBackground>
     </KeyboardAvoidingView>
