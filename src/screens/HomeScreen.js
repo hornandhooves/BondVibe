@@ -484,7 +484,7 @@ export default function HomeScreen({ navigation }) {
               activeOpacity={0.8}
             >
               <BVCard
-                shadowColor="#FFD700"
+                shadow={false}
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
@@ -534,7 +534,7 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitleInline, { color: colors.text }]}>
-              Browse by Category
+              Browse by Community
             </Text>
             <TouchableOpacity
               onPress={() => navigation.navigate("SearchEvents")}

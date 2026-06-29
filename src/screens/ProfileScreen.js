@@ -820,8 +820,8 @@ export default function ProfileScreen({ navigation }) {
                 </View>
               </TouchableOpacity>
 
-              {/* Membership Plans — paid hosts only */}
-              {isPaidHost && (
+              {/* Membership Plans — paid hosts + admin (to create/sell plans) */}
+              {(isPaidHost || profile.role === "admin") && (
                 <TouchableOpacity
                   onPress={() => navigation.navigate("MembershipPlans")}
                   activeOpacity={0.8}

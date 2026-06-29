@@ -741,11 +741,11 @@ export default function CreateEventScreen({ navigation }) {
 
         {/* Category Dropdown */}
         <SelectDropdown
-          label="Category *"
+          label="Community *"
           value={selectedCategory}
           onValueChange={setSelectedCategory}
           options={EVENT_CATEGORIES}
-          placeholder="Select a category"
+          placeholder="Select a community"
           type="category"
         />
 

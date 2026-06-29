@@ -7,6 +7,8 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  Modal,
+  Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -500,7 +502,7 @@ export default function SearchEventsScreen({ navigation, route }) {
 
         {/* Category Filter */}
         <FilterChips
-          label="Categories"
+          label="Communities"
           value={selectedCategory}
           onValueChange={handleCategoryChange}
           options={categoryOptions}
@@ -573,11 +575,10 @@ export default function SearchEventsScreen({ navigation, route }) {
             </Text>
           </TouchableOpacity>
         )}
-        {datePicker && (
+        {/* Android: native date dialog */}
+        {datePicker && Platform.OS === "android" && (
           <DateTimePicker
-            value={
-              (datePicker === "from" ? dateFrom : dateTo) || new Date()
-            }
+            value={(datePicker === "from" ? dateFrom : dateTo) || new Date()}
             mode="date"
             display="default"
             onChange={(event, selected) => {
@@ -588,6 +589,52 @@ export default function SearchEventsScreen({ navigation, route }) {
               }
             }}
           />
+        )}
+
+        {/* iOS: spinner ("cylinder") inside a modal with Done/Cancel */}
+        {Platform.OS === "ios" && (
+          <Modal
+            visible={!!datePicker}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setDatePicker(null)}
+          >
+            <View style={styles.pickerOverlay}>
+              <View
+                style={[
+                  styles.pickerModal,
+                  { backgroundColor: isDark ? "#1a1a2e" : "#ffffff" },
+                ]}
+              >
+                <View style={styles.pickerHeader}>
+                  <TouchableOpacity onPress={() => setDatePicker(null)}>
+                    <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
+                  <Text style={{ color: colors.text, fontWeight: "700" }}>
+                    {datePicker === "from" ? "From" : "To"}
+                  </Text>
+                  <TouchableOpacity onPress={() => setDatePicker(null)}>
+                    <Text style={{ color: colors.primary, fontWeight: "700" }}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={(datePicker === "from" ? dateFrom : dateTo) || new Date()}
+                  mode="date"
+                  display="spinner"
+                  textColor={colors.text}
+                  themeVariant={isDark ? "dark" : "light"}
+                  onChange={(_e, selected) => {
+                    if (selected) {
+                      if (datePicker === "from") setDateFrom(selected);
+                      else setDateTo(selected);
+                    }
+                  }}
+                />
+              </View>
+            </View>
+          </Modal>
         )}
 
         {/* Results Header */}
@@ -678,6 +725,17 @@ function createStyles(colors) {
     },
     loadingContainer: { paddingVertical: 60, alignItems: "center" },
     footerLoader: { paddingVertical: 20, alignItems: "center" },
+    pickerOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
+    pickerModal: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 24 },
+    pickerHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: "rgba(127,127,127,0.3)",
+    },
     eventCard: { marginBottom: 16, borderRadius: 20, overflow: "hidden" },
     eventGlass: { borderWidth: 2, padding: 16, borderRadius: 20 },
     eventHeader: {

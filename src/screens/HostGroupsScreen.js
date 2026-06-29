@@ -15,6 +15,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Plus, Users, ChevronRight } from "lucide-react-native";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
+import KeyboardAccessory from "../components/KeyboardAccessory";
 import { getHostGroups, createGroup } from "../services/hostGroupService";
 
 export default function HostGroupsScreen({ navigation }) {
@@ -153,6 +154,7 @@ export default function HostGroupsScreen({ navigation }) {
             </View>
           </View>
         </View>
+        <KeyboardAccessory />
       </Modal>
     </GradientBackground>
   );

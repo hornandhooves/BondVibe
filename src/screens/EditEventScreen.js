@@ -759,7 +759,7 @@ export default function EditEventScreen({ route, navigation }) {
 
         {/* Category */}
         <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.text }]}>Category</Text>
+          <Text style={[styles.label, { color: colors.text }]}>Community</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}

@@ -110,22 +110,18 @@ export default function MyMembershipsScreen({ navigation }) {
           </Text>
         )}
 
-        <TouchableOpacity
-          style={[
-            styles.renewButton,
-            {
-              backgroundColor:
-                state === "active" ? "transparent" : `${colors.primary}22`,
-              borderColor: colors.primary,
-            },
-          ]}
-          onPress={() => handleRenew(m)}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.renewText, { color: colors.primary }]}>
-            {state === "active" ? "Renew early" : "Renew"}
-          </Text>
-        </TouchableOpacity>
+        {state !== "active" && (
+          <TouchableOpacity
+            style={[
+              styles.renewButton,
+              { backgroundColor: `${colors.primary}22`, borderColor: colors.primary },
+            ]}
+            onPress={() => handleRenew(m)}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.renewText, { color: colors.primary }]}>Renew</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };

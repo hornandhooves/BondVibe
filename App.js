@@ -5,6 +5,7 @@ import { AuthProvider } from "./src/contexts/AuthContext";
 import { StripeProvider } from "@stripe/stripe-react-native";
 import { ThemeProvider } from "./src/contexts/ThemeContext";
 import AppNavigator from "./src/navigation/AppNavigator";
+import KeyboardAccessory from "./src/components/KeyboardAccessory";
 import * as Notifications from "expo-notifications";
 import { useFonts } from "expo-font";
 import {
@@ -314,6 +315,7 @@ export default function App() {
           urlScheme="bondvibe"
         >
           <AppNavigator ref={navigationRef} />
+          <KeyboardAccessory />
         </StripeProvider>
       </ThemeProvider>
     </AuthProvider>
