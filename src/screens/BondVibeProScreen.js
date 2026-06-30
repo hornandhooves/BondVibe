@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,9 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import * as WebBrowser from "expo-web-browser";
 import {
   Crown,
   Check,
@@ -20,15 +20,10 @@ import {
 } from "lucide-react-native";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
-import { auth } from "../services/firebase";
 import { usePremium } from "../hooks/usePremium";
+import { startProCheckout, openProPortal } from "../services/proService";
 
-// TODO: replace with the real hosted Stripe checkout + Customer Portal URLs
-// once the Pro Product/Price and the web page exist. The uid is passed so the
-// web page can tie the subscription to this user; the webhook sets isPremium.
 const PRO_PRICE_LABEL = "$199 MXN / mo";
-const CHECKOUT_BASE_URL = "https://bondvibe.app/pro"; // placeholder
-const PORTAL_BASE_URL = "https://bondvibe.app/pro/manage"; // placeholder
 
 const PRO_FEATURES = [
   { icon: Sparkles, title: "AI coaching", desc: "Recommendations to improve your events based on your reviews" },
@@ -41,20 +36,29 @@ const PRO_FEATURES = [
 export default function BondVibeProScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { isPremium, loading } = usePremium();
+  const [working, setWorking] = useState(false);
   const styles = createStyles(colors, isDark);
 
   const openCheckout = async () => {
-    const uid = auth.currentUser?.uid || "";
-    await WebBrowser.openBrowserAsync(
-      `${CHECKOUT_BASE_URL}?uid=${encodeURIComponent(uid)}`
-    );
+    setWorking(true);
+    try {
+      await startProCheckout();
+    } catch (e) {
+      Alert.alert("Pro", e.message || "Could not start checkout.");
+    } finally {
+      setWorking(false);
+    }
   };
 
   const openPortal = async () => {
-    const uid = auth.currentUser?.uid || "";
-    await WebBrowser.openBrowserAsync(
-      `${PORTAL_BASE_URL}?uid=${encodeURIComponent(uid)}`
-    );
+    setWorking(true);
+    try {
+      await openProPortal();
+    } catch (e) {
+      Alert.alert("Pro", e.message || "Could not open the billing portal.");
+    } finally {
+      setWorking(false);
+    }
   };
 
   return (
@@ -99,14 +103,33 @@ export default function BondVibeProScreen({ navigation }) {
         {loading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
         ) : isPremium ? (
-          <TouchableOpacity style={[styles.secondaryBtn, { borderColor: colors.border }]} onPress={openPortal}>
-            <Text style={[styles.secondaryText, { color: colors.text }]}>Manage subscription</Text>
+          <TouchableOpacity
+            style={[styles.secondaryBtn, { borderColor: colors.border, opacity: working ? 0.6 : 1 }]}
+            onPress={openPortal}
+            disabled={working}
+          >
+            {working ? (
+              <ActivityIndicator color={colors.text} />
+            ) : (
+              <Text style={[styles.secondaryText, { color: colors.text }]}>Manage subscription</Text>
+            )}
           </TouchableOpacity>
         ) : (
           <>
-            <TouchableOpacity style={[styles.cta, { backgroundColor: colors.primary }]} onPress={openCheckout} activeOpacity={0.9}>
-              <Crown size={18} color="#fff" strokeWidth={2} />
-              <Text style={styles.ctaText}>Go Pro · {PRO_PRICE_LABEL}</Text>
+            <TouchableOpacity
+              style={[styles.cta, { backgroundColor: colors.primary, opacity: working ? 0.7 : 1 }]}
+              onPress={openCheckout}
+              activeOpacity={0.9}
+              disabled={working}
+            >
+              {working ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Crown size={18} color="#fff" strokeWidth={2} />
+                  <Text style={styles.ctaText}>Go Pro · {PRO_PRICE_LABEL}</Text>
+                </>
+              )}
             </TouchableOpacity>
             <Text style={[styles.finePrint, { color: colors.textTertiary }]}>
               Payment is processed securely in your browser. Your Pro access

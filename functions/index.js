@@ -1804,3 +1804,67 @@ exports.adminResetPassword = onCall(async (request) => {
   const link = await admin.auth().generatePasswordResetLink(email);
   return {success: true, link};
 });
+
+// ============================================
+// BONDVIBE PRO — subscription checkout (Stripe)
+// ============================================
+
+const PRO_PRICE_CENTAVOS = 19900; // $199 MXN / month
+const PRO_RETURN_URL = `https://${process.env.GCLOUD_PROJECT || "bondvibe-dev"}.web.app/pro-return.html`;
+
+/**
+ * Create a Stripe Checkout Session (subscription) for BondVibe Pro. Returns the
+ * hosted checkout URL; the webhook flips isPremium once payment completes.
+ */
+exports.createProCheckoutSession = onCall({secrets: [stripeSecretKey]}, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+
+  const email = await getUserEmail(uid);
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    client_reference_id: uid,
+    ...(email ? {customer_email: email} : {}),
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency: "mxn",
+          recurring: {interval: "month"},
+          unit_amount: PRO_PRICE_CENTAVOS,
+          product_data: {
+            name: "BondVibe Pro",
+            description: "AI coaching, QR check-in, CRM, co-hosts and more",
+          },
+        },
+      },
+    ],
+    metadata: {type: "pro_subscription", uid},
+    subscription_data: {metadata: {type: "pro_subscription", uid}},
+    allow_promotion_codes: true,
+    success_url: `${PRO_RETURN_URL}?status=success`,
+    cancel_url: `${PRO_RETURN_URL}?status=cancel`,
+  });
+  return {url: session.url};
+});
+
+/**
+ * Create a Stripe Billing Portal session so a Pro member can manage/cancel.
+ */
+exports.createProPortalSession = onCall({secrets: [stripeSecretKey]}, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+
+  const snap = await db.collection("users").doc(uid).get();
+  const customerId = snap.exists ? snap.data().stripeProCustomerId : null;
+  if (!customerId) {
+    throw new HttpsError("failed-precondition", "No active subscription found.");
+  }
+  const portal = await stripe.billingPortal.sessions.create({
+    customer: customerId,
+    return_url: PRO_RETURN_URL,
+  });
+  return {url: portal.url};
+});

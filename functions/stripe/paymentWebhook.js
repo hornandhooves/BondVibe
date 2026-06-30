@@ -39,25 +39,85 @@ exports.stripePaymentWebhook = onRequest(
 
     console.log("🔔 Stripe webhook received:", event.type);
 
-    // Handle payment_intent.succeeded
-    if (event.type === "payment_intent.succeeded") {
-      const paymentIntent = event.data.object;
-
-      try {
-        await handlePaymentSuccess(paymentIntent);
-        res.json({received: true, handled: true});
-      } catch (error) {
-        console.error("❌ Error handling payment success:", error);
-        res
-          .status(500)
-          .json({received: true, handled: false, error: error.message});
+    try {
+      if (event.type === "payment_intent.succeeded") {
+        await handlePaymentSuccess(event.data.object);
+        return res.json({received: true, handled: true});
       }
-    } else {
-      // Other event types - just acknowledge
-      res.json({received: true, handled: false});
+      // BondVibe Pro subscription lifecycle
+      if (event.type === "checkout.session.completed") {
+        await handleProCheckoutCompleted(event.data.object);
+        return res.json({received: true, handled: true});
+      }
+      if (
+        event.type === "customer.subscription.deleted" ||
+        event.type === "customer.subscription.updated"
+      ) {
+        await handleProSubscriptionChange(event.data.object);
+        return res.json({received: true, handled: true});
+      }
+      return res.json({received: true, handled: false});
+    } catch (error) {
+      console.error("❌ Error handling webhook:", error);
+      return res
+        .status(500)
+        .json({received: true, handled: false, error: error.message});
     }
   },
 );
+
+/**
+ * Pro checkout completed → flip the buyer to Premium and store the Stripe IDs.
+ * @param {Object} session - Stripe Checkout Session
+ * @return {Promise<void>}
+ */
+async function handleProCheckoutCompleted(session) {
+  if (session.mode !== "subscription") return;
+  const meta = session.metadata || {};
+  if (meta.type !== "pro_subscription") return;
+  const uid = meta.uid || session.client_reference_id;
+  if (!uid) return;
+  await db.collection("users").doc(uid).set(
+    {
+      isPremium: true,
+      stripeProCustomerId: session.customer || null,
+      stripeProSubscriptionId: session.subscription || null,
+      proSince: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    {merge: true},
+  );
+  console.log("✅ Pro activated for", uid);
+}
+
+/**
+ * Subscription updated/cancelled → keep isPremium in sync with its status.
+ * @param {Object} subscription - Stripe Subscription
+ * @return {Promise<void>}
+ */
+async function handleProSubscriptionChange(subscription) {
+  const meta = subscription.metadata || {};
+  if (meta.type !== "pro_subscription") return;
+  const uid = meta.uid;
+  if (!uid) return;
+  const active = ["active", "trialing", "past_due"].includes(
+    subscription.status,
+  );
+  await db.collection("users").doc(uid).set(
+    {
+      isPremium: active,
+      stripeProSubscriptionStatus: subscription.status,
+    },
+    {merge: true},
+  );
+  console.log(
+    "🔁 Pro subscription",
+    subscription.status,
+    "for",
+    uid,
+    "→ isPremium",
+    active,
+  );
+}
 
 /**
  * Handle successful payment
