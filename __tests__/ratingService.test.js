@@ -23,7 +23,7 @@ jest.mock('firebase/firestore', () => ({
   serverTimestamp: jest.fn(() => ({ toDate: () => new Date() })),
 }));
 
-jest.mock('../services/firebase', () => ({
+jest.mock('../src/services/firebase', () => ({
   auth: {
     currentUser: { uid: 'test-user-123' },
   },
@@ -37,7 +37,7 @@ import {
   getEventRatings,
   updateEventRating,
   updateHostRating,
-} from '../services/ratingService';
+} from '../src/services/ratingService';
 
 import {
   collection,
@@ -94,15 +94,15 @@ describe('ratingService', () => {
   describe('getUserRatingForEvent', () => {
     it('should return null when no user is logged in', async () => {
       // Temporarily mock no user
-      const originalAuth = require('../services/firebase').auth;
-      require('../services/firebase').auth.currentUser = null;
+      const originalAuth = require('../src/services/firebase').auth;
+      require('../src/services/firebase').auth.currentUser = null;
 
       const result = await getUserRatingForEvent('event-123');
       
       expect(result).toBeNull();
       
       // Restore
-      require('../services/firebase').auth.currentUser = originalAuth.currentUser;
+      require('../src/services/firebase').auth.currentUser = originalAuth.currentUser;
     });
 
     it('should return null when no rating exists', async () => {

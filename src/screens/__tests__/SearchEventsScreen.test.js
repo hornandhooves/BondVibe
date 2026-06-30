@@ -5,7 +5,16 @@ import { collection, getDocs } from "firebase/firestore";
 
 // Mock Firebase
 jest.mock("firebase/firestore");
-jest.mock("../../services/firebase");
+jest.mock("../../services/firebase", () => ({
+  auth: { currentUser: { uid: "u1" } },
+  db: {},
+}));
+jest.mock("@react-navigation/native", () => ({
+  useFocusEffect: (cb) => {
+    const React = require("react");
+    React.useEffect(() => cb(), []);
+  },
+}));
 
 // Mock ThemeContext
 jest.mock("../../contexts/ThemeContext", () => ({
@@ -228,7 +237,7 @@ describe("SearchEventsScreen", () => {
     );
 
     await waitFor(() => {
-      expect(getByText("No events found")).toBeTruthy();
+      expect(getByText("No upcoming events found")).toBeTruthy();
       expect(
         getByText("Try adjusting your filters or search terms")
       ).toBeTruthy();

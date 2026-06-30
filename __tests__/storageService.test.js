@@ -15,7 +15,7 @@ jest.mock('firebase/storage', () => ({
   deleteObject: jest.fn(),
 }));
 
-jest.mock('../services/firebase', () => ({
+jest.mock('../src/services/firebase', () => ({
   storage: {},
 }));
 
