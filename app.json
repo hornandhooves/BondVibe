@@ -69,10 +69,6 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#7C3AED"
       },
-      "notification": {
-        "icon": "./assets/notification-icon.png",
-        "color": "#7C3AED"
-      },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
