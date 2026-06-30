@@ -10,6 +10,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:e2e": "node scripts/e2e-rules.js",
+    "emulators": "firebase emulators:start --only auth,firestore,functions",
+    "test:e2e:emulator": "firebase emulators:exec --only auth,firestore,functions \"USE_EMULATOR=1 node scripts/e2e-rules.js\"",
     "lint": "expo lint"
   },
   "dependencies": {

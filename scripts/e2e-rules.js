@@ -14,9 +14,20 @@ const path = require("path");
 const app = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "app.json"), "utf8"));
 const API_KEY = app.expo.extra.EXPO_PUBLIC_FIREBASE_API_KEY;
 const PROJECT = app.expo.extra.EXPO_PUBLIC_FIREBASE_PROJECT_ID;
-const IDT = "https://identitytoolkit.googleapis.com/v1/accounts";
-const FS = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
-const FN = `https://us-central1-${PROJECT}.cloudfunctions.net`;
+
+// Run against the local Firebase Emulator Suite when USE_EMULATOR=1 (or when
+// firebase emulators:exec injects FIRESTORE_EMULATOR_HOST). Otherwise hit live.
+const EMU = process.env.USE_EMULATOR === "1" || !!process.env.FIRESTORE_EMULATOR_HOST;
+const IDT = EMU
+  ? "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts"
+  : "https://identitytoolkit.googleapis.com/v1/accounts";
+const FS = EMU
+  ? `http://127.0.0.1:8080/v1/projects/${PROJECT}/databases/(default)/documents`
+  : `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
+const FN = EMU
+  ? `http://127.0.0.1:5001/${PROJECT}/us-central1`
+  : `https://us-central1-${PROJECT}.cloudfunctions.net`;
+if (EMU) console.log("🧪 Using LOCAL emulators");
 
 const j = (r) => r.json();
 const s = (v) => ({ stringValue: v });
