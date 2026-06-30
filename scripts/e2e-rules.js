@@ -53,6 +53,12 @@ const runQuery = async (structuredQuery, h) => {
   if (!Array.isArray(body)) return { error: body.error?.message || "non-array", rows: [] };
   return { rows: body.filter((r) => r.document).map((r) => r.document.name.split("/").pop()) };
 };
+const getFields = async (p, h) => {
+  const r = await fetch(`${FS}/${p}`, { headers: h });
+  if (r.status !== 200) return null;
+  return (await r.json()).fields || {};
+};
+const arrVals = (f) => (f?.arrayValue?.values || []).map((v) => v.stringValue);
 
 (async () => {
   console.log(`E2E against ${PROJECT}\n========================================`);
@@ -170,6 +176,38 @@ const runQuery = async (structuredQuery, h) => {
   chk("outsider can read after joining", await readDoc(`hostGroups/${gId}`, outsider.headers), 200);
   const bad = await callFn("joinGroupByCode", { code: "NOPE00" }, outsider.headers);
   chk("bad invite code rejected", bad.body?.error != null, true);
+
+  // ---- GROUP MEMBER MANAGEMENT ----
+  section("Group members (add/remove)");
+  chk("host adds a member", await patchDoc(`hostGroups/${gId}?updateMask.fieldPaths=memberIds`, { memberIds: arr([member.uid, stranger.uid]) }, host.headers), 200);
+  chk("non-host CANNOT change members", await patchDoc(`hostGroups/${gId}?updateMask.fieldPaths=memberIds`, { memberIds: arr([member.uid]) }, member.headers), 403);
+  chk("host removes a member", await patchDoc(`hostGroups/${gId}?updateMask.fieldPaths=memberIds`, { memberIds: arr([member.uid]) }, host.headers), 200);
+
+  // ---- GROUP MESSAGING: delivered / read receipts + unread badge ----
+  section("Group receipts (delivered/read/unread)");
+  // onGroupMessage (trigger) marks gm1 delivered to recipients + notifies them.
+  let delivered = [];
+  for (let k = 0; k < 12 && !delivered.includes(host.uid); k++) {
+    await sleep(1500);
+    delivered = arrVals((await getFields(`hostGroups/${gId}/messages/gm1`, host.headers))?.deliveredTo);
+  }
+  chk("onGroupMessage marks message delivered to recipient", delivered.includes(host.uid), true);
+  // Read receipt: a member may add ONLY themselves to readBy.
+  chk("recipient marks message read (readBy self)", await patchDoc(`hostGroups/${gId}/messages/gm1?updateMask.fieldPaths=readBy`, { readBy: arr([host.uid]) }, host.headers), 200);
+  chk("read receipt persisted", arrVals((await getFields(`hostGroups/${gId}/messages/gm1`, host.headers))?.readBy).includes(host.uid), true);
+  chk("member CANNOT edit message text", await patchDoc(`hostGroups/${gId}/messages/gm1?updateMask.fieldPaths=text`, { text: s("tampered") }, member.headers), 403);
+  // Unread badge: the trigger created an unread group_message notification for the host.
+  const gNotif = await runQuery({
+    from: [{ collectionId: "notifications" }],
+    where: { compositeFilter: { op: "AND", filters: [
+      { fieldFilter: { field: { fieldPath: "userId" }, op: "EQUAL", value: s(host.uid) } },
+      { fieldFilter: { field: { fieldPath: "type" }, op: "EQUAL", value: s("group_message") } },
+    ] } },
+  }, host.headers);
+  chk("group message created an unread notification (Home badge)", gNotif.rows.length >= 1, true);
+  if (gNotif.rows.length) {
+    chk("owner marks group notification read (badge clears)", await patchDoc(`notifications/${gNotif.rows[0]}?updateMask.fieldPaths=read`, { read: b(true) }, host.headers), 200);
+  }
 
   // ---- SCALABILITY: targeted attendee query (getPendingRatings/MyEvents) ----
   section("Scalability queries");

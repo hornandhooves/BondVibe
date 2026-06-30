@@ -1160,6 +1160,10 @@ exports.onGroupMessage = onDocumentCreated(
     recipients.delete(msg.senderId);
     if (recipients.size === 0) return;
 
+    // Mark the message delivered to every recipient (drives the ✓✓ delivered
+    // tick). readBy is added client-side when each recipient opens the chat.
+    await snap.ref.update({deliveredTo: Array.from(recipients)});
+
     const senderDoc = await db.collection("users").doc(msg.senderId).get();
     const senderName = senderDoc.exists ?
       senderDoc.data().fullName?.split(" ")[0] ||

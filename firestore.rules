@@ -330,7 +330,13 @@ service cloud.firestore {
         allow read: if isSignedIn() && groupMembers();
         allow create: if isSignedIn() && groupMembers() &&
                          request.resource.data.senderId == request.auth.uid;
-        allow update, delete: if false;
+        // Members may only add themselves to readBy (read receipts). deliveredTo
+        // is written server-side (Admin SDK) and bypasses rules.
+        allow update: if isSignedIn() && groupMembers() &&
+                         request.resource.data.diff(resource.data)
+                           .affectedKeys().hasOnly(['readBy']) &&
+                         request.auth.uid in request.resource.data.readBy;
+        allow delete: if false;
       }
 
       // Group polls — only the group host creates/closes; members vote.

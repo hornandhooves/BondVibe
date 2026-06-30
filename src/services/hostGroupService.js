@@ -25,6 +25,7 @@ import {
   arrayUnion,
   arrayRemove,
   serverTimestamp,
+  writeBatch,
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
@@ -167,6 +168,61 @@ export const subscribeGroupMessages = (groupId, cb) =>
     ),
     (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() })))
   );
+
+/**
+ * Clear this user's unread group_message notifications for a group (drops the
+ * Home bell badge). Reuses the userId+read index; filters type/group client-side.
+ */
+export const markGroupNotificationsRead = async (groupId) => {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+  try {
+    const snap = await getDocs(
+      query(
+        collection(db, "notifications"),
+        where("userId", "==", uid),
+        where("read", "==", false)
+      )
+    );
+    const batch = writeBatch(db);
+    let n = 0;
+    snap.forEach((d) => {
+      const data = d.data();
+      if (data.type === "group_message" && data.metadata?.groupId === groupId) {
+        batch.update(d.ref, { read: true });
+        n++;
+      }
+    });
+    if (n > 0) await batch.commit();
+  } catch (e) {
+    console.error("❌ markGroupNotificationsRead:", e);
+  }
+};
+
+/**
+ * Mark group messages (not mine, not already read by me) as read — drives the
+ * blue read ✓✓ on the sender's side. Self-terminating: once I'm in readBy the
+ * next snapshot has nothing left to mark.
+ */
+export const markGroupMessagesRead = async (groupId, messages) => {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+  const toMark = (messages || []).filter(
+    (m) => m.senderId !== uid && !(Array.isArray(m.readBy) && m.readBy.includes(uid))
+  );
+  if (toMark.length === 0) return;
+  try {
+    const batch = writeBatch(db);
+    toMark.forEach((m) => {
+      batch.update(doc(db, "hostGroups", groupId, "messages", m.id), {
+        readBy: arrayUnion(uid),
+      });
+    });
+    await batch.commit();
+  } catch (e) {
+    console.error("❌ markGroupMessagesRead:", e);
+  }
+};
 
 /**
  * Ensure a group has an invite code (older groups created before codes existed).

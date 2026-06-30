@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { Send, Settings, Ticket } from "lucide-react-native";
+import { Send, Settings, Ticket, Check, CheckCheck } from "lucide-react-native";
 import { db, auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
@@ -25,6 +25,8 @@ import {
   subscribeGroupMessages,
   sendGroupMessage,
   sendEventInvite,
+  markGroupMessagesRead,
+  markGroupNotificationsRead,
 } from "../services/hostGroupService";
 
 export default function GroupChatScreen({ route, navigation }) {
@@ -45,12 +47,38 @@ export default function GroupChatScreen({ route, navigation }) {
     getGroup(groupId).then(setGroup);
     const unsub = subscribeGroupMessages(groupId, (m) => {
       setMessages(m);
+      // Read receipts (blue ✓✓ for senders) + clear my Home bell badge.
+      markGroupMessagesRead(groupId, m);
+      markGroupNotificationsRead(groupId);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     });
     return () => unsub();
   }, [groupId]);
 
   const isHost = group && uid === group.hostId;
+
+  // Everyone who should receive my messages (for delivered/read tick math).
+  const recipientIds = useMemo(() => {
+    if (!group) return [];
+    const all = new Set([...(group.memberIds || []), group.hostId]);
+    all.delete(uid);
+    return [...all];
+  }, [group, uid]);
+
+  const MessageTicks = ({ m }) => {
+    if (recipientIds.length === 0) {
+      return <Check size={14} color={colors.textTertiary} strokeWidth={2.5} />;
+    }
+    const read = recipientIds.every((id) => (m.readBy || []).includes(id));
+    if (read) return <CheckCheck size={14} color="#34B7F1" strokeWidth={2.5} />;
+    const delivered = recipientIds.every((id) =>
+      (m.deliveredTo || []).includes(id)
+    );
+    if (delivered) {
+      return <CheckCheck size={14} color={colors.textTertiary} strokeWidth={2.5} />;
+    }
+    return <Check size={14} color={colors.textTertiary} strokeWidth={2.5} />;
+  };
 
   const openInvite = async () => {
     const snap = await getDocs(
@@ -163,6 +191,11 @@ export default function GroupChatScreen({ route, navigation }) {
                 style={[styles.bubble, mine ? styles.mine : styles.theirs]}
               >
                 <Text style={{ color: colors.text }}>{m.text}</Text>
+                {mine && (
+                  <View style={styles.tickRow}>
+                    <MessageTicks m={m} />
+                  </View>
+                )}
               </View>
             );
           })}
@@ -316,6 +349,7 @@ function createStyles(colors, isDark) {
       marginBottom: 8,
     },
     mine: { alignSelf: "flex-end", backgroundColor: `${colors.primary}33` },
+    tickRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 2 },
     theirs: {
       alignSelf: "flex-start",
       backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",
