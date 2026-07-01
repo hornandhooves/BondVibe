@@ -279,6 +279,26 @@ export const findUserByEmail = async (email) => {
 };
 
 /**
+ * Find a user by phone number (normalized to digits/+). Matches the format
+ * stored on the profile.
+ * @param {string} phone
+ * @returns {Promise<object|null>}
+ */
+export const findUserByPhone = async (phone) => {
+  try {
+    const p = (phone || "").replace(/[^0-9+]/g, "");
+    if (!p) return null;
+    const snap = await getDocs(
+      query(collection(db, "users"), where("phone", "==", p), limit(1))
+    );
+    return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
+  } catch (err) {
+    console.error("❌ findUserByPhone:", err);
+    return null;
+  }
+};
+
+/**
  * Candidate members for a host: unique attendees across the host's events.
  * @returns {Promise<Array<{id, fullName, avatar}>>}
  */

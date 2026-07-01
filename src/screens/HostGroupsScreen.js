@@ -17,7 +17,11 @@ import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import KeyboardAccessory from "../components/KeyboardAccessory";
 import { getHostGroups, createGroup } from "../services/hostGroupService";
+import { AvatarDisplay } from "../components/AvatarPicker";
 import { usePremium } from "../hooks/usePremium";
+
+const normAvatar = (a) =>
+  !a ? null : typeof a === "string" ? { type: "emoji", value: a } : a;
 
 const FREE_GROUP_LIMIT = 1;
 
@@ -120,9 +124,13 @@ export default function HostGroupsScreen({ navigation }) {
                 onPress={() => navigation.navigate("GroupChat", { groupId: g.id })}
                 activeOpacity={0.85}
               >
-                <View style={styles.iconCircle}>
-                  <Users size={20} color={colors.primary} strokeWidth={2} />
-                </View>
+                {g.avatar ? (
+                  <AvatarDisplay avatar={normAvatar(g.avatar)} size={40} />
+                ) : (
+                  <View style={styles.iconCircle}>
+                    <Users size={20} color={colors.primary} strokeWidth={2} />
+                  </View>
+                )}
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
                     {g.name}

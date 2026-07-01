@@ -24,7 +24,12 @@ jest.mock("../../services/hostGroupService", () => ({
   deleteGroup: jest.fn(),
   findUserByEmail: jest.fn(),
 }));
-jest.mock("../../components/AvatarPicker", () => ({ AvatarDisplay: () => null }));
+jest.mock("../../components/AvatarPicker", () => ({
+  __esModule: true,
+  default: () => null,
+  AvatarDisplay: () => null,
+}));
+jest.mock("../../services/storageService", () => ({ resolveGroupAvatar: jest.fn() }));
 jest.mock("../../components/GradientBackground", () => {
   const { View } = require("react-native");
   return ({ children }) => <View>{children}</View>;

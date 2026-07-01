@@ -75,6 +75,24 @@ export const resolveAvatarForSave = async (avatar, userId) => {
   return { type: "photo", uri: url };
 };
 
+/** Upload a group photo (separate path from user avatars) and return its URL. */
+export const uploadGroupPhoto = async (groupId, imageUri) => {
+  const compressedUri = await compressImage(imageUri);
+  const response = await fetch(compressedUri);
+  const blob = await response.blob();
+  const photoRef = ref(storage, `groups/${groupId}/photo.jpg`);
+  await uploadBytes(photoRef, blob);
+  return getDownloadURL(photoRef);
+};
+
+/** Resolve a group avatar object for saving (uploads a local photo). */
+export const resolveGroupAvatar = async (avatar, groupId) => {
+  if (!avatar || avatar.type !== "photo" || !avatar.uri) return avatar;
+  if (isRemoteUrl(avatar.uri)) return avatar;
+  const url = await uploadGroupPhoto(groupId, avatar.uri);
+  return { type: "photo", uri: url };
+};
+
 /**
  * Upload a single image to Firebase Storage
  * @param {string} eventId - Event ID for folder structure

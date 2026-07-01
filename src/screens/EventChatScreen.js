@@ -14,6 +14,7 @@ import {
   Linking,
   Modal,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { StatusBar } from "expo-status-bar";
 import * as Location from "expo-location";
 import PollCard from "../components/PollCard";
@@ -64,6 +65,7 @@ export default function EventChatScreen({ route, navigation }) {
     departureTime: "",
     notes: "",
   });
+  const [showDepPicker, setShowDepPicker] = useState(false);
   const [creatingCarpool, setCreatingCarpool] = useState(false);
   const scrollViewRef = useRef();
   const typingTimeoutRef = useRef(null);
@@ -936,14 +938,41 @@ export default function EventChatScreen({ route, navigation }) {
               onChangeText={(v) => setCarpoolForm((f) => ({ ...f, from: v }))}
               maxLength={60}
             />
-            <TextInput
-              style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
-              placeholder="Departure time (e.g. 6:30 PM)"
-              placeholderTextColor={colors.textTertiary}
-              value={carpoolForm.departureTime}
-              onChangeText={(v) => setCarpoolForm((f) => ({ ...f, departureTime: v }))}
-              maxLength={40}
-            />
+            <TouchableOpacity
+              style={[styles.pollInput, { borderColor: colors.border, justifyContent: "center" }]}
+              onPress={() => setShowDepPicker(true)}
+            >
+              <Text style={{ color: carpoolForm.departureTime ? colors.text : colors.textTertiary }}>
+                {carpoolForm.departureTime || "Departure time (tap to pick)"}
+              </Text>
+            </TouchableOpacity>
+            {showDepPicker && (
+              <View>
+                <DateTimePicker
+                  value={new Date()}
+                  mode="time"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={(e, d) => {
+                    if (Platform.OS !== "ios") setShowDepPicker(false);
+                    if (d) {
+                      const t = d.toLocaleTimeString([], {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      });
+                      setCarpoolForm((f) => ({ ...f, departureTime: t }));
+                    }
+                  }}
+                />
+                {Platform.OS === "ios" && (
+                  <TouchableOpacity
+                    style={{ alignSelf: "flex-end", padding: 8 }}
+                    onPress={() => setShowDepPicker(false)}
+                  >
+                    <Text style={{ color: colors.primary, fontWeight: "700" }}>Done</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
             <TextInput
               style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
               placeholder="Notes (optional)"

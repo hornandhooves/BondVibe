@@ -14,7 +14,8 @@ import { StatusBar } from "expo-status-bar";
 import { Check, Trash2, Share2, RotateCcw } from "lucide-react-native";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
-import { AvatarDisplay } from "../components/AvatarPicker";
+import AvatarPicker, { AvatarDisplay } from "../components/AvatarPicker";
+import { resolveGroupAvatar } from "../services/storageService";
 import {
   getGroup,
   updateGroup,
@@ -25,6 +26,7 @@ import {
   ensureInviteCode,
   regenerateInviteCode,
   findUserByEmail,
+  findUserByPhone,
 } from "../services/hostGroupService";
 
 const normAvatar = (a) =>
@@ -41,6 +43,24 @@ export default function GroupManageScreen({ route, navigation }) {
   const [inviteCode, setInviteCode] = useState("");
   const [email, setEmail] = useState("");
   const [addingEmail, setAddingEmail] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [addingPhone, setAddingPhone] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [savingPhoto, setSavingPhoto] = useState(false);
+
+  const handleAvatarChange = async (avatar) => {
+    setShowAvatarPicker(false);
+    setSavingPhoto(true);
+    try {
+      const saved = await resolveGroupAvatar(avatar, groupId);
+      await updateGroup(groupId, { avatar: saved });
+      setGroup((g) => ({ ...g, avatar: saved }));
+    } catch (e) {
+      Alert.alert("Couldn't update photo", e.message || "Please try again.");
+    } finally {
+      setSavingPhoto(false);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -104,6 +124,26 @@ export default function GroupManageScreen({ route, navigation }) {
     Alert.alert("Added", `${user.fullName || target} was added to the group.`);
   };
 
+  const handleAddByPhone = async () => {
+    const target = phone.trim();
+    if (!target) return;
+    setAddingPhone(true);
+    const user = await findUserByPhone(target);
+    setAddingPhone(false);
+    if (!user) {
+      Alert.alert("Not found", "No BondVibe user with that phone number.");
+      return;
+    }
+    if ((group.memberIds || []).includes(user.id)) {
+      Alert.alert("Already a member", `${user.fullName || target} is already in the group.`);
+      return;
+    }
+    await addMembers(groupId, [user.id]);
+    setGroup((g) => ({ ...g, memberIds: [...(g.memberIds || []), user.id] }));
+    setPhone("");
+    Alert.alert("Added", `${user.fullName || target} was added to the group.`);
+  };
+
   const memberIds = group?.memberIds || [];
 
   const toggleMember = async (uid) => {
@@ -162,6 +202,18 @@ export default function GroupManageScreen({ route, navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <TouchableOpacity
+          style={styles.photoWrap}
+          onPress={() => setShowAvatarPicker(true)}
+          disabled={savingPhoto}
+          activeOpacity={0.85}
+        >
+          <AvatarDisplay avatar={normAvatar(group?.avatar)} size={84} />
+          <Text style={[styles.photoText, { color: colors.primary }]}>
+            {savingPhoto ? "Saving…" : "Change group photo"}
+          </Text>
+        </TouchableOpacity>
+
         <Text style={[styles.label, { color: colors.textSecondary }]}>GROUP NAME</Text>
         <View style={styles.nameRow}>
           <TextInput
@@ -220,6 +272,26 @@ export default function GroupManageScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
 
+        {/* Add by phone */}
+        <Text style={[styles.label, { color: colors.textSecondary, marginTop: 20 }]}>
+          ADD BY PHONE
+        </Text>
+        <View style={styles.nameRow}>
+          <TextInput
+            style={[styles.input, { color: colors.text, borderColor: colors.border }]}
+            placeholder="+52 55 1234 5678"
+            placeholderTextColor={colors.textTertiary}
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+          />
+          <TouchableOpacity onPress={handleAddByPhone} disabled={addingPhone}>
+            <Text style={{ color: colors.primary, fontWeight: "700" }}>
+              {addingPhone ? "…" : "Add"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <Text style={[styles.label, { color: colors.textSecondary, marginTop: 20 }]}>
           MEMBERS ({memberIds.length})
         </Text>
@@ -264,6 +336,13 @@ export default function GroupManageScreen({ route, navigation }) {
           <Text style={styles.deleteText}>Delete group</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <AvatarPicker
+        visible={showAvatarPicker}
+        onClose={() => setShowAvatarPicker(false)}
+        currentAvatar={normAvatar(group?.avatar)}
+        onAvatarChange={handleAvatarChange}
+      />
     </GradientBackground>
   );
 }
@@ -284,6 +363,8 @@ function createStyles(colors, isDark) {
     back: { fontSize: 28 },
     headerTitle: { fontSize: 20, fontWeight: "700" },
     content: { paddingHorizontal: 24, paddingBottom: 40 },
+    photoWrap: { alignItems: "center", marginBottom: 20, gap: 8 },
+    photoText: { fontSize: 14, fontWeight: "700" },
     label: { fontSize: 12, fontWeight: "700", letterSpacing: 1, marginBottom: 8 },
     hint: { fontSize: 13, lineHeight: 18 },
     nameRow: { flexDirection: "row", alignItems: "center", gap: 12 },

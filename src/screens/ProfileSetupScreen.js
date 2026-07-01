@@ -28,6 +28,7 @@ export default function ProfileSetupScreen() {
     fullName: "",
     avatar: { type: "emoji", value: "😊" },
     location: "",
+    phone: "",
   });
 
   const handleAvatarChange = (newAvatar) => {
@@ -64,6 +65,7 @@ export default function ProfileSetupScreen() {
         fullName: form.fullName.trim(),
         avatar,
         location: form.location.trim(),
+        phone: form.phone.replace(/[^0-9+]/g, ""),
         isOver18: true,
         profileCompleted: true,
         profileCompletedAt: new Date().toISOString(),
@@ -183,6 +185,29 @@ export default function ProfileSetupScreen() {
               placeholder="City, Country"
               placeholderTextColor={colors.textTertiary}
               maxLength={50}
+            />
+          </View>
+
+          {/* Phone (optional) */}
+          <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { color: colors.text }]}>
+              Phone <Text style={{ color: colors.textTertiary }}>(optional)</Text>
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surfaceGlass,
+                  borderColor: colors.border,
+                  color: colors.text,
+                },
+              ]}
+              value={form.phone}
+              onChangeText={(text) => setForm({ ...form, phone: text })}
+              placeholder="+52 55 1234 5678"
+              placeholderTextColor={colors.textTertiary}
+              keyboardType="phone-pad"
+              maxLength={20}
             />
           </View>
 
