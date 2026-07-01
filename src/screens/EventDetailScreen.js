@@ -1182,8 +1182,19 @@ export default function EventDetailScreen({ route, navigation }) {
                 : 0;
               const isFeatured = featuredMs > Date.now();
               if (isFeatured) {
+                const daysLeft = Math.max(
+                  1,
+                  Math.ceil((featuredMs - Date.now()) / 86400000)
+                );
                 return (
-                  <View
+                  <TouchableOpacity
+                    onPress={() =>
+                      navigation.navigate("PromoteEvent", {
+                        eventId,
+                        eventTitle: event.title,
+                      })
+                    }
+                    activeOpacity={0.85}
                     style={[
                       styles.infoGlass,
                       {
@@ -1202,13 +1213,13 @@ export default function EventDetailScreen({ route, navigation }) {
                     </View>
                     <View style={styles.infoContent}>
                       <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                        Featured
+                        Featured · {daysLeft} day{daysLeft === 1 ? "" : "s"} left
                       </Text>
                       <Text style={[styles.infoValue, { color: colors.text }]}>
-                        Active until {new Date(featuredMs).toLocaleDateString()}
+                        Until {new Date(featuredMs).toLocaleDateString()} · Tap to extend
                       </Text>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               }
               return (

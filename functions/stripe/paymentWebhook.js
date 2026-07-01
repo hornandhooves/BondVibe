@@ -169,7 +169,13 @@ async function handlePromotionPurchase(paymentIntent) {
   }
 
   const now = new Date();
-  const expiresAt = new Date(now);
+  // Extend from the current expiry when the event is still featured, so buying
+  // more time adds to it instead of resetting/shortening it.
+  const evSnap = await db.collection("events").doc(eventId).get();
+  const curUntil = evSnap.exists ? evSnap.data().featuredUntil : null;
+  const curMs = curUntil?.toMillis ? curUntil.toMillis() : 0;
+  const base = curMs > now.getTime() ? new Date(curMs) : now;
+  const expiresAt = new Date(base);
   expiresAt.setDate(expiresAt.getDate() + days);
 
   // 1. Payment record
@@ -359,7 +365,14 @@ async function handleMembershipPurchase(paymentIntent) {
     icon: "🎟️",
     read: false,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    metadata: {planId, planName, membershipId: membershipRef.id, userId},
+    metadata: {
+      planId,
+      planName,
+      membershipId: membershipRef.id,
+      userId,
+      buyerName: userName,
+      amountCentavos: amount,
+    },
   });
 
   // 5. Notify buyer

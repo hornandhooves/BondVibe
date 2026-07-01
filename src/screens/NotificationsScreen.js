@@ -286,7 +286,11 @@ export default function NotificationsScreen({ navigation }) {
         break;
 
       case "membership_sold":
-        navigation.navigate("MembershipPlans");
+        if (notification.metadata?.membershipId) {
+          navigation.navigate("MembershipSale", { ...notification.metadata });
+        } else {
+          navigation.navigate("MembershipPlans");
+        }
         break;
 
       case "group_message":
