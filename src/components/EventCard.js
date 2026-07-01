@@ -16,12 +16,14 @@ export default function EventCard({ event, onPress }) {
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>
-      {/* Compatibility Badge */}
-      <View style={[styles.badge, { backgroundColor: event.compatibilityScore >= 85 ? '#E8F5E9' : '#FFF9E6' }]}>
-        <Text style={[styles.badgeText, { color: event.compatibilityScore >= 85 ? Colors.success : '#F59E0B' }]}>
-          {event.compatibilityScore}% Match
-        </Text>
-      </View>
+      {/* Compatibility badge — only when a real, explainable fit is provided */}
+      {event.matchLabel ? (
+        <View style={[styles.badge, { backgroundColor: event.matchStrong ? '#E8F5E9' : '#FFF9E6' }]}>
+          <Text style={[styles.badgeText, { color: event.matchStrong ? Colors.success : '#F59E0B' }]}>
+            {event.matchLabel}
+          </Text>
+        </View>
+      ) : null}
 
       {/* Event Info */}
       <View style={styles.header}>

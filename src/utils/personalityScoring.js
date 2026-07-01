@@ -98,6 +98,49 @@ export const calculateCompatibility = (profile1, profile2) => {
   return Math.round(Math.max(0, Math.min(100, totalCompatibility)));
 };
 
+// A profile is usable only if it has Big Five numeric scores (some users stored
+// raw answers instead; those can't be scored).
+export const isBigFive = (p) =>
+  !!p &&
+  typeof p === "object" &&
+  ["OPENNESS", "CONSCIENTIOUSNESS", "EXTRAVERSION", "AGREEABLENESS", "NEUROTICISM"].some(
+    (d) => typeof p[d] === "number"
+  );
+
+const DIMENSION_PHRASES = {
+  OPENNESS: "love trying new things",
+  CONSCIENTIOUSNESS: "value planning and reliability",
+  EXTRAVERSION: "enjoy being social",
+  AGREEABLENESS: "are warm and easygoing",
+  NEUROTICISM: "are emotionally in tune",
+};
+
+/**
+ * Explainable, humble fit between two profiles. Returns null unless both are
+ * real Big Five profiles AND the fit is meaningful (>=60) — never a fake number.
+ * @returns {{label:string, strong:boolean, score:number, why:string}|null}
+ */
+export const getMatchInsight = (a, b) => {
+  if (!isBigFive(a) || !isBigFive(b)) return null;
+  const score = calculateCompatibility(a, b);
+  if (score < 60) return null;
+  let best = null;
+  let bestVal = -1;
+  Object.keys(DIMENSION_PHRASES).forEach((d) => {
+    const shared = Math.min(a[d] || 0, b[d] || 0);
+    if (shared > bestVal) {
+      bestVal = shared;
+      best = d;
+    }
+  });
+  return {
+    label: score >= 80 ? "Great fit" : "Good fit",
+    strong: score >= 80,
+    score,
+    why: best ? `You both ${DIMENSION_PHRASES[best]}` : "",
+  };
+};
+
 /**
  * Calculate group compatibility for an event
  * @param {Object} userProfile - Current user's personality profile

@@ -41,8 +41,9 @@ export default function EventRatings({ eventId, isHost }) {
     }
   };
 
-  // Only show to host
-  if (!isHost) return null;
+  // Visible to everyone (trust signal for attendees). `isHost` retained for
+  // callers but no longer gates visibility.
+  void isHost;
 
   // Don't show if no ratings
   if (!loading && ratings.length === 0) return null;

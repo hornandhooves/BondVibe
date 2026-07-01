@@ -62,11 +62,13 @@ import {
 import { usePremium } from "../hooks/usePremium";
 import { buildCheckinPayload } from "../services/checkinService";
 import { joinFreeEvent } from "../services/eventJoinService";
+import { getMatchInsight } from "../utils/personalityScoring";
 
 export default function EventDetailScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
   const { eventId } = route.params;
   const [event, setEvent] = useState(null);
+  const [matchInsight, setMatchInsight] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isJoined, setIsJoined] = useState(false);
   const [joining, setJoining] = useState(false);
@@ -120,17 +122,22 @@ export default function EventDetailScreen({ route, navigation }) {
     if (!creatorId) return;
     let active = true;
     (async () => {
-      const [plans, membership, reservation, hostSnap] = await Promise.all([
+      const [plans, membership, reservation, hostSnap, meSnap] = await Promise.all([
         getHostMembershipPlans(creatorId, { activeOnly: true }),
         getUsableMembershipForHost(creatorId),
         getUserReservationForEvent(eventId),
         getDoc(doc(db, "users", creatorId)),
+        getDoc(doc(db, "users", auth.currentUser.uid)),
       ]);
       if (!active) return;
       setHostHasPlans(plans.length > 0);
       setUsableMembership(membership);
       setUserReservation(reservation);
       setHostRating(hostSnap.exists() ? hostSnap.data().hostStats || null : null);
+      // Explainable, humble fit between the current user and the host.
+      const hostP = hostSnap.exists() ? hostSnap.data().personality : null;
+      const meP = meSnap.exists() ? meSnap.data().personality : null;
+      setMatchInsight(creatorId === auth.currentUser.uid ? null : getMatchInsight(meP, hostP));
     })();
     return () => {
       active = false;
@@ -1052,6 +1059,33 @@ export default function EventDetailScreen({ route, navigation }) {
           </View>
         </View>
 
+        {/* Explainable fit with the host (only when both have real profiles) */}
+        {matchInsight && (
+          <View
+            style={[
+              styles.matchChip,
+              {
+                borderColor: matchInsight.strong ? "#34C759" : "#F59E0B",
+                backgroundColor: matchInsight.strong ? "#34C75915" : "#F59E0B15",
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.matchLabel,
+                { color: matchInsight.strong ? "#34C759" : "#F59E0B" },
+              ]}
+            >
+              ✨ {matchInsight.label} with the host
+            </Text>
+            {!!matchInsight.why && (
+              <Text style={[styles.matchWhy, { color: colors.textSecondary }]}>
+                {matchInsight.why}
+              </Text>
+            )}
+          </View>
+        )}
+
         {/* Public host rating — auto-calculated, not editable by the host */}
         {hostRating && hostRating.totalRatings > 0 && (
           <View style={[styles.infoCard, { marginBottom: 12 }]}>
@@ -1262,8 +1296,8 @@ export default function EventDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Event Ratings - Only visible to host for past events */}
-        {isPastEvent && isCreator && (
+        {/* Event Ratings — visible to everyone for past events (trust signal) */}
+        {isPastEvent && (
           <EventRatings eventId={eventId} isHost={isCreator} />
         )}
 
@@ -1698,6 +1732,15 @@ function createStyles(colors) {
       marginBottom: 14,
       letterSpacing: -0.2,
     },
+    matchChip: {
+      borderWidth: 1,
+      borderRadius: 14,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      marginBottom: 16,
+    },
+    matchLabel: { fontSize: 15, fontWeight: "800" },
+    matchWhy: { fontSize: 13, marginTop: 2 },
     descriptionText: { fontSize: 15, lineHeight: 24 },
     policySection: { marginBottom: 24, borderRadius: 16, overflow: "hidden" },
     policyGlass: { borderWidth: 2, padding: 20 },
