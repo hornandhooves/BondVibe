@@ -1062,10 +1062,10 @@ export default function ProfileScreen({ navigation }) {
                       <Text
                         style={[styles.infoLabel, { color: colors.textSecondary }]}
                       >
-                        Groups
+                        Community
                       </Text>
                       <Text style={[styles.infoValue, { color: colors.text }]}>
-                        Manage attendee groups
+                        My community groups
                       </Text>
                     </View>
                     <ChevronRight

@@ -34,7 +34,7 @@ const messagesCol = (parent) => collection(db, ...parent, "messages");
  * @param {string[]} parent conversation path segments
  * @param {{question:string, options:string[]}} input
  */
-export const createPoll = async (parent, { question, options }) => {
+export const createPoll = async (parent, { question, options, anonymous = false }) => {
   try {
     const uid = auth.currentUser?.uid;
     if (!uid) return { success: false, error: "Not signed in." };
@@ -46,6 +46,7 @@ export const createPoll = async (parent, { question, options }) => {
       question: question.trim(),
       options: clean.map((text, i) => ({ id: String(i), text })),
       closed: false,
+      anonymous: !!anonymous,
       createdBy: uid,
       createdAt: serverTimestamp(),
     });

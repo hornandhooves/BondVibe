@@ -10,6 +10,7 @@ import {
   Platform,
   Modal,
   ActivityIndicator,
+  Switch,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { collection, query, where, getDocs } from "firebase/firestore";
@@ -40,6 +41,7 @@ export default function GroupChatScreen({ route, navigation }) {
   const [pollVisible, setPollVisible] = useState(false);
   const [pollQuestion, setPollQuestion] = useState("");
   const [pollOptions, setPollOptions] = useState(["", ""]);
+  const [pollAnon, setPollAnon] = useState(false);
   const scrollRef = useRef(null);
   const uid = auth.currentUser?.uid;
 
@@ -113,11 +115,13 @@ export default function GroupChatScreen({ route, navigation }) {
     const r = await createPoll(["hostGroups", groupId], {
       question: pollQuestion,
       options: pollOptions,
+      anonymous: pollAnon,
     });
     if (r.success) {
       setPollVisible(false);
       setPollQuestion("");
       setPollOptions(["", ""]);
+      setPollAnon(false);
     } else {
       alert(r.error || "Couldn't create poll");
     }
@@ -315,6 +319,19 @@ export default function GroupChatScreen({ route, navigation }) {
                   </Text>
                 </TouchableOpacity>
               )}
+              <View style={styles.anonRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.text, fontWeight: "600" }}>Anonymous</Text>
+                  <Text style={{ color: colors.textTertiary, fontSize: 12 }}>
+                    Hide who voted for what
+                  </Text>
+                </View>
+                <Switch
+                  value={pollAnon}
+                  onValueChange={setPollAnon}
+                  trackColor={{ true: colors.primary }}
+                />
+              </View>
               <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
                 <TouchableOpacity onPress={() => setPollVisible(false)}>
                   <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>Cancel</Text>
@@ -355,6 +372,7 @@ function createStyles(colors, isDark) {
     },
     mine: { alignSelf: "flex-end", backgroundColor: `${colors.primary}33` },
     tickRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 2 },
+    anonRow: { flexDirection: "row", alignItems: "center", marginVertical: 6, gap: 8 },
     theirs: {
       alignSelf: "flex-start",
       backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",

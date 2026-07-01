@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Switch,
   Linking,
   Modal,
 } from "react-native";
@@ -54,6 +55,7 @@ export default function EventChatScreen({ route, navigation }) {
   const [pollModalVisible, setPollModalVisible] = useState(false);
   const [pollQuestion, setPollQuestion] = useState("");
   const [pollOptions, setPollOptions] = useState(["", ""]);
+  const [pollAnon, setPollAnon] = useState(false);
   const [creatingPoll, setCreatingPoll] = useState(false);
   const [carpoolModalVisible, setCarpoolModalVisible] = useState(false);
   const [carpoolForm, setCarpoolForm] = useState({
@@ -367,10 +369,12 @@ export default function EventChatScreen({ route, navigation }) {
     const result = await createPoll(["events", eventId], {
       question: pollQuestion,
       options: pollOptions,
+      anonymous: pollAnon,
     });
     setCreatingPoll(false);
     if (result.success) {
       setPollModalVisible(false);
+      setPollAnon(false);
     } else {
       Alert.alert("Couldn't create poll", result.error || "Please try again.");
     }
@@ -397,18 +401,25 @@ export default function EventChatScreen({ route, navigation }) {
   };
 
   const openInMaps = (latitude, longitude) => {
-    const scheme = Platform.select({
-      ios: "maps:0,0?q=",
-      android: "geo:0,0?q=",
-    });
     const latLng = `${latitude},${longitude}`;
-    const label = "Location";
-    const url = Platform.select({
-      ios: `${scheme}${label}@${latLng}`,
-      android: `${scheme}${latLng}(${label})`,
+    const open = (url) => Linking.openURL(url).catch(() => {});
+    const buttons = [];
+    if (Platform.OS === "ios") {
+      buttons.push({ text: "Apple Maps", onPress: () => open(`maps:0,0?q=${latLng}`) });
+    }
+    buttons.push({
+      text: "Google Maps",
+      onPress: () => open(`https://www.google.com/maps/search/?api=1&query=${latLng}`),
     });
-
-    Linking.openURL(url);
+    buttons.push({
+      text: "Waze",
+      onPress: () => open(`https://waze.com/ul?ll=${latLng}&navigate=yes`),
+    });
+    if (Platform.OS === "android") {
+      buttons.push({ text: "Maps", onPress: () => open(`geo:0,0?q=${latLng}`) });
+    }
+    buttons.push({ text: "Cancel", style: "cancel" });
+    Alert.alert("Open location in…", "", buttons);
   };
 
   const getMessageStatus = (message) => {
@@ -870,6 +881,19 @@ export default function EventChatScreen({ route, navigation }) {
                 </Text>
               </TouchableOpacity>
             )}
+            <View style={styles.pollAnonRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.text, fontWeight: "600" }}>Anonymous</Text>
+                <Text style={{ color: colors.textTertiary, fontSize: 12 }}>
+                  Hide who voted for what
+                </Text>
+              </View>
+              <Switch
+                value={pollAnon}
+                onValueChange={setPollAnon}
+                trackColor={{ true: colors.primary }}
+              />
+            </View>
             <View style={styles.pollModalActions}>
               <TouchableOpacity onPress={() => setPollModalVisible(false)}>
                 <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>
@@ -1050,6 +1074,12 @@ function createStyles(colors) {
       flexDirection: "row",
       justifyContent: "space-between",
       marginTop: 16,
+    },
+    pollAnonRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: 8,
+      gap: 8,
     },
     input: {
       flex: 1,

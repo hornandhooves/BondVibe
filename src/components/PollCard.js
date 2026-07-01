@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../contexts/ThemeContext";
 import { auth } from "../services/firebase";
 import {
@@ -14,6 +15,7 @@ import {
  */
 export default function PollCard({ parent, pollId, isHost }) {
   const { colors, isDark } = useTheme();
+  const navigation = useNavigation();
   const [poll, setPoll] = useState(null);
   const [votes, setVotes] = useState([]);
   const uid = auth.currentUser?.uid;
@@ -73,13 +75,22 @@ export default function PollCard({ parent, pollId, isHost }) {
             style={styles.optionRow}
           >
             <View style={styles.optionTop}>
+              <View
+                style={[
+                  styles.radio,
+                  { borderColor: mine ? colors.primary : colors.border },
+                ]}
+              >
+                {mine && (
+                  <View style={[styles.radioDot, { backgroundColor: colors.primary }]} />
+                )}
+              </View>
               <Text
                 style={[
                   styles.optionText,
                   { color: colors.text, fontWeight: mine ? "700" : "500" },
                 ]}
               >
-                {mine ? "✓ " : ""}
                 {opt.text}
               </Text>
               <Text style={[styles.pct, { color: colors.textSecondary }]}>{pct}%</Text>
@@ -99,10 +110,24 @@ export default function PollCard({ parent, pollId, isHost }) {
         );
       })}
 
-      <Text style={[styles.total, { color: colors.textTertiary }]}>
-        {total} vote{total === 1 ? "" : "s"}
-        {poll.closed ? " · Final" : myVote ? " · tap to change" : " · tap to vote"}
-      </Text>
+      <View style={styles.footerRow}>
+        <Text style={[styles.total, { color: colors.textTertiary }]}>
+          {total} vote{total === 1 ? "" : "s"}
+          {poll.anonymous ? " · anonymous" : ""}
+          {poll.closed ? " · Final" : myVote ? " · tap to change" : " · tap to vote"}
+        </Text>
+        {!poll.anonymous && (
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate("PollVotes", { parent, pollId })
+            }
+          >
+            <Text style={[styles.viewVotes, { color: colors.primary }]}>
+              View votes
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 }
@@ -130,12 +155,30 @@ function createStyles(colors, isDark) {
     optionTop: {
       flexDirection: "row",
       justifyContent: "space-between",
+      alignItems: "center",
       marginBottom: 4,
     },
     optionText: { fontSize: 14, flex: 1, marginRight: 8 },
     pct: { fontSize: 13, fontWeight: "600" },
     track: { height: 8, borderRadius: 4, overflow: "hidden" },
     fill: { height: 8, borderRadius: 4 },
-    total: { fontSize: 12, marginTop: 4 },
+    total: { fontSize: 12, marginTop: 4, flex: 1 },
+    radio: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      borderWidth: 2,
+      marginRight: 8,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    radioDot: { width: 9, height: 9, borderRadius: 5 },
+    footerRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginTop: 4,
+    },
+    viewVotes: { fontSize: 12, fontWeight: "700" },
   });
 }
