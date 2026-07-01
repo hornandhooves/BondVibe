@@ -1297,7 +1297,13 @@ exports.joinEvent = onCall(async (request) => {
 
     const max = e.maxAttendees || e.maxPeople || 0;
     if (max && ids.length >= max) {
-      throw new HttpsError("resource-exhausted", "event_full");
+      // Full → waitlist (FIFO). onEventAttendeesChanged promotes when a spot opens.
+      const waitlist = Array.isArray(e.waitlist) ? e.waitlist : [];
+      if (waitlist.includes(uid)) {
+        return {success: true, waitlisted: true, already: true};
+      }
+      tx.update(ref, {waitlist: admin.firestore.FieldValue.arrayUnion(uid)});
+      return {success: true, waitlisted: true, position: waitlist.length + 1};
     }
 
     tx.update(ref, {attendees: admin.firestore.FieldValue.arrayUnion(uid)});

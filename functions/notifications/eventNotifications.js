@@ -49,6 +49,42 @@ exports.onEventAttendeesChanged = onDocumentUpdated(
       removedAttendees: removedAttendees.length,
     });
 
+    // Promote from the waitlist (FIFO) whenever a spot is open. The resulting
+    // update re-triggers this function, which then notifies the host of the join.
+    const max = afterData.maxAttendees || afterData.maxPeople || 0;
+    const waitlist = Array.isArray(afterData.waitlist) ? afterData.waitlist : [];
+    if (max && waitlist.length > 0 && afterAttendees.length < max) {
+      const promoted = waitlist.slice(0, max - afterAttendees.length);
+      if (promoted.length > 0) {
+        await db.doc(`events/${eventId}`).update({
+          attendees: admin.firestore.FieldValue.arrayUnion(...promoted),
+          waitlist: admin.firestore.FieldValue.arrayRemove(...promoted),
+        });
+        for (const uid of promoted) {
+          await db.collection("notifications").add({
+            userId: uid,
+            type: "waitlist_promoted",
+            title: "You're in! 🎉",
+            message: `A spot opened in "${afterData.title || "an event"}" — you're confirmed.`,
+            icon: "🎉",
+            read: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            metadata: {eventId, eventTitle: afterData.title || ""},
+          });
+          const u = await db.collection("users").doc(uid).get();
+          if (u.exists && u.data().pushToken) {
+            await sendBatchPushNotifications([{
+              pushToken: u.data().pushToken,
+              title: "You're in! 🎉",
+              body: `A spot opened in "${afterData.title || "an event"}"`,
+              data: {type: "waitlist_promoted", eventId},
+            }]);
+          }
+        }
+        console.log(`✅ Promoted ${promoted.length} from waitlist`);
+      }
+    }
+
     // Process new attendees (someone joined)
     if (newAttendees.length > 0) {
       await notifyHostOfNewAttendees(

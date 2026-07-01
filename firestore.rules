@@ -112,7 +112,9 @@ service cloud.firestore {
                            .hasAny(['featured', 'featuredUntil', 'featuredTier',
                                     'averageRating', 'totalRatings',
                                     'creatorId', 'coHosts'])) ||
-                        onlyUpdating(['attendees']));
+                        onlyUpdating(['attendees']) ||
+                        onlyUpdating(['attendees', 'waitlist']) ||
+                        onlyUpdating(['waitlist']));
       
       allow delete: if isSignedIn() && 
                        (resource.data.creatorId == request.auth.uid || isAdmin());

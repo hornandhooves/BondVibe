@@ -63,6 +63,7 @@ import MembershipSaleScreen from "../screens/MembershipSaleScreen";
 import FinanceScreen from "../screens/FinanceScreen";
 import AnalyticsDetailScreen from "../screens/AnalyticsDetailScreen";
 import RatingsOverviewScreen from "../screens/RatingsOverviewScreen";
+import EventRosterScreen from "../screens/EventRosterScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -394,6 +395,7 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="Finance" component={FinanceScreen} />
           <Stack.Screen name="AnalyticsDetail" component={AnalyticsDetailScreen} />
           <Stack.Screen name="RatingsOverview" component={RatingsOverviewScreen} />
+          <Stack.Screen name="EventRoster" component={EventRosterScreen} />
         </Stack.Navigator>
       </NavigationContainer>
 

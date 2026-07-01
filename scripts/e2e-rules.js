@@ -335,9 +335,17 @@ const arrVals = (f) => (f?.arrayValue?.values || []).map((v) => v.stringValue);
   const j2 = await callFn("joinEvent", { eventId: evJoin }, member.headers);
   chk("joinEvent idempotent (already in)", j2.body?.result?.already, true);
   const j3 = await callFn("joinEvent", { eventId: evJoin }, outsider.headers);
-  chk("joinEvent blocks when full", j3.body?.error?.message, "event_full");
+  chk("joinEvent waitlists when full", j3.body?.result?.waitlisted, true);
   const j4 = await callFn("joinEvent", { eventId: evPaid }, member.headers);
   chk("joinEvent rejects paid event", j4.body?.error?.message, "paid_event");
+  // Member leaves → onEventAttendeesChanged should promote the waitlisted outsider.
+  await patchDoc(`events/${evJoin}?updateMask.fieldPaths=attendees`, { attendees: arr([]) }, member.headers);
+  let promoted = false;
+  for (let k = 0; k < 12 && !promoted; k++) {
+    await sleep(1500);
+    promoted = arrVals((await getFields(`events/${evJoin}`, host.headers))?.attendees).includes(outsider.uid);
+  }
+  chk("waitlist auto-promotes when a spot opens", promoted, true);
   await del(`events/${evJoin}`, host.headers);
   await del(`events/${evPaid}`, host.headers);
 

@@ -280,10 +280,17 @@ export default function EventDetailScreen({ route, navigation }) {
         Alert.alert("Couldn't join", r.error);
         return;
       }
-      setIsJoined(true);
-      // The host's "new attendee" notification (in-app bubble + push) is sent
-      // by the onEventAttendeesChanged Cloud Function for all join paths.
-      Alert.alert("Joined!", "You have joined this event");
+      if (r.waitlisted) {
+        Alert.alert(
+          "You're on the waitlist ⏳",
+          `This event is full. You're #${r.position || ""} in line — we'll confirm you automatically if a spot opens.`
+        );
+      } else {
+        setIsJoined(true);
+        // The host's "new attendee" notification (bubble + push) is sent by the
+        // onEventAttendeesChanged Cloud Function for all join paths.
+        Alert.alert("Joined!", "You have joined this event");
+      }
       await loadEvent();
     } catch (error) {
       Alert.alert("Error", "Could not join event");
@@ -1157,6 +1164,45 @@ export default function EventDetailScreen({ route, navigation }) {
                 </Text>
               </View>
               <ChevronRight size={20} color={colors.primary} strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Host attendee roster — host only */}
+        {isCreator && (
+          <View style={[styles.infoCard, { marginBottom: 12 }]}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("EventRoster", { eventId })}
+              activeOpacity={0.85}
+              style={[
+                styles.infoGlass,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.04)"
+                    : "rgba(255,255,255,0.85)",
+                  borderColor: isDark
+                    ? "rgba(255,255,255,0.10)"
+                    : "rgba(0,0,0,0.08)",
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.infoIconCircle,
+                  { backgroundColor: `${colors.primary}26` },
+                ]}
+              >
+                <Users size={22} color={colors.primary} strokeWidth={1.8} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+                  Attendees
+                </Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>
+                  Roster · paid, check-in, no-show, waitlist
+                </Text>
+              </View>
+              <ChevronRight size={20} color={colors.textTertiary} strokeWidth={2} />
             </TouchableOpacity>
           </View>
         )}
