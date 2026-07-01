@@ -275,6 +275,12 @@ const AppNavigator = forwardRef((props, ref) => {
         unsubscribeFirestore();
       }
     };
+    // navigateToRoute only closes over stable values (state setters + the
+    // module-level navigation ref + a constant array), so it never changes. The
+    // auth/Firestore listener must re-subscribe ONLY on auth/db/signup changes —
+    // adding navigateToRoute here would be a no-op at best and risk re-subscribe
+    // loops at worst. Verified stable; intentionally omitted.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth, db, signupInProgress]);
 
   const handleVerificationModalClose = () => {
