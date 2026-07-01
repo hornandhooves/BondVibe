@@ -70,7 +70,7 @@ const Stack = createNativeStackNavigator();
 
 const AppNavigator = forwardRef((props, ref) => {
   const { signupInProgress } = useAuthContext();
-  const [initialUser, setInitialUser] = useState(null);
+  const [, setInitialUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState("Login");
   const [initialParams, setInitialParams] = useState({});
@@ -419,5 +419,7 @@ const AppNavigator = forwardRef((props, ref) => {
     </>
   );
 });
+
+AppNavigator.displayName = "AppNavigator";
 
 export default AppNavigator;
