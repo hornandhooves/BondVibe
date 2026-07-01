@@ -9,6 +9,14 @@ module.exports = defineConfig([
     ignores: ["dist/*", "functions/*", "design_handoff_bondvibe_theme/**"],
   },
   {
+    // Cosmetic rules → warnings (they don't cause crashes), so `npm run lint`
+    // fails only on real, crash-relevant problems and can gate the build.
+    rules: {
+      "react/no-unescaped-entities": "warn",
+      "react/display-name": "warn",
+    },
+  },
+  {
     // Jest + Node globals for tests/scripts (CommonJS) so helpers aren't no-undef.
     files: ["**/__tests__/**", "**/*.test.js", "scripts/**", "jest/**"],
     languageOptions: {

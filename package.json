@@ -13,7 +13,8 @@
     "test:e2e": "node scripts/e2e-rules.js",
     "emulators": "firebase emulators:start --only auth,firestore,functions",
     "test:e2e:emulator": "firebase emulators:exec --only auth,firestore,functions \"USE_EMULATOR=1 node scripts/e2e-rules.js\"",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "gates": "npm run lint && npm test && npm run test:e2e && npx expo-doctor && npx expo export --platform ios && npx expo export --platform android && echo '\\n✅ ALL GATES PASSED — safe to build'"
   },
   "dependencies": {
     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
