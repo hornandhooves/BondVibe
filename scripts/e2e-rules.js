@@ -261,6 +261,15 @@ const arrVals = (f) => (f?.arrayValue?.values || []).map((v) => v.stringValue);
   chk("user files a report (own reporterId)", await createDoc(`reports?documentId=rep_${Date.now()}`, { reporterId: s(member.uid), type: s("prohibited_content"), reason: s("x") }, member.headers), 200);
   chk("user CANNOT file report as another", await createDoc(`reports?documentId=rep2_${Date.now()}`, { reporterId: s(host.uid), type: s("x") }, member.headers), 403);
 
+  // ---- FOLLOWS (social graph) ----
+  section("Follows (social graph)");
+  const fId = `${member.uid}_${host.uid}`;
+  chk("user follows another (own followerId)", await createDoc(`follows?documentId=${fId}`, { followerId: s(member.uid), followeeId: s(host.uid) }, member.headers), 200);
+  chk("user CANNOT follow as another", await createDoc(`follows?documentId=${host.uid}_${member.uid}`, { followerId: s(host.uid), followeeId: s(member.uid) }, member.headers), 403);
+  chk("follow doc readable", await readDoc(`follows/${fId}`, member.headers), 200);
+  chk("non-owner CANNOT delete a follow", (await del(`follows/${fId}`, outsider.headers)).status, [403, 404]);
+  chk("owner unfollows", (await del(`follows/${fId}`, member.headers)).status, 200);
+
   // ---- SCALABILITY: targeted attendee query (getPendingRatings/MyEvents) ----
   section("Scalability queries");
   const attendeeQuery = await runQuery({

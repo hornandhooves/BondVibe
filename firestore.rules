@@ -300,6 +300,17 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Social graph — follows (foundation for the future feed/posts layer).
+    // Doc id = "{followerId}_{followeeId}". You manage only your own follows.
+    match /follows/{followId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+                       request.resource.data.followerId == request.auth.uid;
+      allow delete: if isSignedIn() &&
+                       resource.data.followerId == request.auth.uid;
+      allow update: if false;
+    }
+
     // Moderation reports (off-platform payment attempts, host user blocks).
     // Any signed-in user files them (reporterId must be theirs); admins read +
     // resolve. The reporter can read their own.

@@ -63,12 +63,40 @@ import { usePremium } from "../hooks/usePremium";
 import { buildCheckinPayload } from "../services/checkinService";
 import { joinFreeEvent } from "../services/eventJoinService";
 import { getMatchInsight } from "../utils/personalityScoring";
+import { getFollowing } from "../services/followService";
 
 export default function EventDetailScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
   const { eventId } = route.params;
   const [event, setEvent] = useState(null);
   const [matchInsight, setMatchInsight] = useState(null);
+  const [friendsGoing, setFriendsGoing] = useState([]);
+
+  // "Friends going": event attendees the current user follows.
+  useEffect(() => {
+    if (!event) return;
+    let active = true;
+    (async () => {
+      const attendees = getAttendeeIds(event.attendees);
+      if (attendees.length === 0) return;
+      const following = await getFollowing();
+      if (!active || following.length === 0) return;
+      const ids = attendees.filter(
+        (id) => following.includes(id) && id !== auth.currentUser?.uid
+      );
+      const users = await Promise.all(
+        ids.slice(0, 12).map(async (id) => {
+          const u = await getDoc(doc(db, "users", id));
+          const d = u.exists() ? u.data() : {};
+          return { id, name: d.fullName || d.name || "Friend", avatar: d.avatar };
+        })
+      );
+      if (active) setFriendsGoing(users);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [event?.attendees?.length]);
   const [loading, setLoading] = useState(true);
   const [isJoined, setIsJoined] = useState(false);
   const [joining, setJoining] = useState(false);
@@ -1066,6 +1094,33 @@ export default function EventDetailScreen({ route, navigation }) {
           </View>
         </View>
 
+        {/* Friends going — social proof */}
+        {friendsGoing.length > 0 && (
+          <View style={styles.friendsRow}>
+            <View style={{ flexDirection: "row" }}>
+              {friendsGoing.slice(0, 5).map((f, i) => (
+                <View key={f.id} style={{ marginLeft: i === 0 ? 0 : -10 }}>
+                  <AvatarDisplay
+                    avatar={
+                      typeof f.avatar === "string"
+                        ? { type: "emoji", value: f.avatar }
+                        : f.avatar || { type: "emoji", value: "😊" }
+                    }
+                    size={30}
+                  />
+                </View>
+              ))}
+            </View>
+            <Text style={[styles.friendsText, { color: colors.text }]}>
+              {friendsGoing.length}{" "}
+              {friendsGoing.length === 1
+                ? "person you follow is"
+                : "people you follow are"}{" "}
+              going
+            </Text>
+          </View>
+        )}
+
         {/* Explainable fit with the host (only when both have real profiles) */}
         {matchInsight && (
           <View
@@ -1164,6 +1219,45 @@ export default function EventDetailScreen({ route, navigation }) {
                 </Text>
               </View>
               <ChevronRight size={20} color={colors.primary} strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Connect with attendees — after a past event you attended */}
+        {isJoined && isPastEvent && !isCreator && (
+          <View style={[styles.infoCard, { marginBottom: 12 }]}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("Connect", { eventId })}
+              activeOpacity={0.85}
+              style={[
+                styles.infoGlass,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.04)"
+                    : "rgba(255,255,255,0.85)",
+                  borderColor: isDark
+                    ? "rgba(255,255,255,0.10)"
+                    : "rgba(0,0,0,0.08)",
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.infoIconCircle,
+                  { backgroundColor: `${colors.primary}26` },
+                ]}
+              >
+                <Users size={22} color={colors.primary} strokeWidth={1.8} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+                  Connect
+                </Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>
+                  Follow people you met here
+                </Text>
+              </View>
+              <ChevronRight size={20} color={colors.textTertiary} strokeWidth={2} />
             </TouchableOpacity>
           </View>
         )}
@@ -1787,6 +1881,13 @@ function createStyles(colors) {
     },
     matchLabel: { fontSize: 15, fontWeight: "800" },
     matchWhy: { fontSize: 13, marginTop: 2 },
+    friendsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 16,
+    },
+    friendsText: { fontSize: 14, fontWeight: "700", flex: 1 },
     descriptionText: { fontSize: 15, lineHeight: 24 },
     policySection: { marginBottom: 24, borderRadius: 16, overflow: "hidden" },
     policyGlass: { borderWidth: 2, padding: 20 },
