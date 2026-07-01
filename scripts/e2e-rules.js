@@ -251,6 +251,16 @@ const arrVals = (f) => (f?.arrayValue?.values || []).map((v) => v.stringValue);
     chk("owner marks group notification read (badge clears)", await patchDoc(`notifications/${gNotif.rows[0]}?updateMask.fieldPaths=read`, { read: b(true) }, host.headers), 200);
   }
 
+  // ---- HOST-ONLY POSTING + MODERATION REPORTS ----
+  section("Host-only posting + reports");
+  chk("host enables host-only", await patchDoc(`hostGroups/${gId}?updateMask.fieldPaths=hostOnly`, { hostOnly: b(true) }, host.headers), 200);
+  chk("member CANNOT post in host-only group", await createDoc(`hostGroups/${gId}/messages?documentId=gmho`, { senderId: s(member.uid), type: s("text"), text: s("hi") }, member.headers), 403);
+  chk("host CAN post in host-only group", await createDoc(`hostGroups/${gId}/messages?documentId=gmho2`, { senderId: s(host.uid), type: s("text"), text: s("update") }, host.headers), 200);
+  chk("member still votes poll in host-only", await patchDoc(`hostGroups/${gId}/polls/${gp}/votes/${member.uid}`, { optionId: s("1") }, member.headers), 200);
+  await patchDoc(`hostGroups/${gId}?updateMask.fieldPaths=hostOnly`, { hostOnly: b(false) }, host.headers);
+  chk("user files a report (own reporterId)", await createDoc(`reports?documentId=rep_${Date.now()}`, { reporterId: s(member.uid), type: s("prohibited_content"), reason: s("x") }, member.headers), 200);
+  chk("user CANNOT file report as another", await createDoc(`reports?documentId=rep2_${Date.now()}`, { reporterId: s(host.uid), type: s("x") }, member.headers), 403);
+
   // ---- SCALABILITY: targeted attendee query (getPendingRatings/MyEvents) ----
   section("Scalability queries");
   const attendeeQuery = await runQuery({

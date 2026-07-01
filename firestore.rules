@@ -347,10 +347,11 @@ service cloud.firestore {
                  (g.memberIds != null && request.auth.uid in g.memberIds);
         }
         // Host-only groups: only the host may post; members still read + vote.
+        // Use get() with a default so groups without the field aren't blocked.
         function canPost() {
           let g = get(/databases/$(database)/documents/hostGroups/$(groupId)).data;
           return g.hostId == request.auth.uid ||
-                 (g.hostOnly != true &&
+                 (g.get('hostOnly', false) != true &&
                   g.memberIds != null && request.auth.uid in g.memberIds);
         }
         allow read: if isSignedIn() && groupMembers();
