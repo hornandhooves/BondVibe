@@ -6,11 +6,12 @@ import { StripeProvider } from "@stripe/stripe-react-native";
 import { ThemeProvider } from "./src/contexts/ThemeContext";
 import AppNavigator from "./src/navigation/AppNavigator";
 import KeyboardAccessory from "./src/components/KeyboardAccessory";
-import { initSentry, Sentry } from "./src/services/sentry";
+import ErrorBoundary from "./src/components/ErrorBoundary";
+import { installCrashLogger } from "./src/services/crashLogger";
 import * as Notifications from "expo-notifications";
 
-// Initialize crash/error reporting as early as possible (no-op without a DSN).
-initSentry();
+// Capture unhandled JS errors into Firestore as early as possible.
+installCrashLogger();
 import { useFonts } from "expo-font";
 import {
   SpaceGrotesk_600SemiBold,
@@ -311,21 +312,21 @@ function App() {
   if (!fontsLoaded) return null;
 
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <StripeProvider
-          publishableKey={STRIPE_PUBLISHABLE_KEY}
-          merchantIdentifier="merchant.com.bondvibe.app"
-          urlScheme="bondvibe"
-        >
-          <AppNavigator ref={navigationRef} />
-          <KeyboardAccessory />
-        </StripeProvider>
-      </ThemeProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ThemeProvider>
+          <StripeProvider
+            publishableKey={STRIPE_PUBLISHABLE_KEY}
+            merchantIdentifier="merchant.com.bondvibe.app"
+            urlScheme="bondvibe"
+          >
+            <AppNavigator ref={navigationRef} />
+            <KeyboardAccessory />
+          </StripeProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
-// Sentry.wrap adds the error boundary + performance instrumentation. It is a
-// harmless pass-through when Sentry isn't initialized (no DSN).
-export default Sentry.wrap(App);
+export default App;

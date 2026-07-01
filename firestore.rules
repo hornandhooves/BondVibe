@@ -290,7 +290,14 @@ service cloud.firestore {
       // (needed for rating notifications, event join notifications, etc.)
       allow create: if isSignedIn();
     }
-    
+
+    // Crash/error telemetry: write-only for users, admins read in the console.
+    match /crashes/{crashId} {
+      allow create: if isSignedIn();
+      allow read: if isSignedIn() && isAdmin();
+      allow update, delete: if false;
+    }
+
     // ============================================
     // CONVERSATIONS COLLECTION
     // ============================================

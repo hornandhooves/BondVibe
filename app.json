@@ -34,8 +34,7 @@
           "enableGooglePay": false
         }
       ],
-      "expo-font",
-      "@sentry/react-native"
+      "expo-font"
     ],
     "extra": {
       "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyCLaUcFpX5KcemGsCCMHSfCz49CauUKjGc",
@@ -44,7 +43,6 @@
       "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "bondvibe-dev.firebasestorage.app",
       "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "762181340271",
       "EXPO_PUBLIC_FIREBASE_APP_ID": "1:762181340271:web:fd45de5ece4e2ea1b1e393",
-      "SENTRY_DSN": "",
       "eas": {
         "projectId": "0cf2c3f2-26ad-4e9f-816f-b449085f9b10"
       }

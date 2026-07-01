@@ -106,7 +106,8 @@ console for red-box errors / warnings.
 
 ## 4. Config / secrets before the production build
 - [ ] **Anthropic**: add billing/credits (AI returns "credit balance too low" otherwise)
-- [ ] **Sentry**: set `app.json → extra.SENTRY_DSN` (crash reports on next build)
+- [ ] **Crash logs**: none needed — JS crashes land in the Firestore `crashes`
+      collection (Firebase console). Free, no third party.
 - [ ] **Stripe webhook**: endpoint listens to `payment_intent.succeeded`,
       `checkout.session.completed`, `customer.subscription.updated|deleted` (done)
 - [ ] **Mercado Pago**: production account (currently sandbox)
