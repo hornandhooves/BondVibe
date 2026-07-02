@@ -1975,3 +1975,206 @@ exports.createProPortalSession = onCall({secrets: [stripeSecretKey]}, async (req
   });
   return {url: portal.url};
 });
+
+// ============================================
+// VEHICLE RENTAL MARKETPLACE (model A)
+// Mirrors reserveMembershipCredit (atomic tx) + createEventPaymentIntent
+// (Stripe Connect payout). No maps/geo — city-scoped list + static pickup.
+// ============================================
+const RENTAL_COMMISSION_RATE = 0.15; // BondVibe platform fee on the rental fee
+const RENTAL_RESERVE_TTL_MS = 20 * 60 * 1000; // unpaid holds expire after 20 min
+
+/**
+ * Atomically reserve an available vehicle and open the payment.
+ * data: { vehicleId, startAt (ISO), endAt (ISO), eventId? }
+ * Returns { rentalId, clientSecret, depositClientSecret }.
+ */
+exports.reserveVehicle = onCall({secrets: [stripeSecretKey]}, async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const {vehicleId, startAt, endAt, eventId} = request.data || {};
+  if (!vehicleId || !startAt || !endAt) {
+    throw new HttpsError("invalid-argument", "Missing rental details.");
+  }
+  if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+
+  // 1) Atomic reservation — the transaction is the source of truth against
+  //    double-booking (serializes concurrent reserveVehicle calls).
+  const reserved = await db.runTransaction(async (tx) => {
+    const vRef = db.collection("vehicles").doc(vehicleId);
+    const vSnap = await tx.get(vRef);
+    if (!vSnap.exists) throw new HttpsError("not-found", "Vehicle not found.");
+    const v = vSnap.data();
+    if (v.status !== "available") {
+      throw new HttpsError("failed-precondition", "vehicle_unavailable");
+    }
+    const price = v.pricePerDayCentavos || (v.specs && v.specs.pricePerDayCentavos) || 0;
+    const deposit = v.depositCentavos || (v.specs && v.specs.depositCentavos) || 0;
+    const isFree = price === 0 && deposit === 0;
+    tx.update(vRef, {status: "rented"});
+    const rentalRef = db.collection("rentals").doc();
+    tx.set(rentalRef, {
+      vehicleId,
+      providerId: v.providerId || null,
+      ownerId: v.ownerId || null,
+      renterId: uid,
+      eventId: eventId || null,
+      startAt,
+      endAt,
+      priceCentavos: price,
+      depositCentavos: deposit,
+      currency: "mxn",
+      // Free vehicles (promos / first ride) skip payment and confirm immediately.
+      status: isFree ? "active" : "reserved",
+      reservedAt: admin.firestore.FieldValue.serverTimestamp(),
+      ...(isFree ? {paidAt: admin.firestore.FieldValue.serverTimestamp()} : {}),
+    });
+    return {
+      rentalId: rentalRef.id, price, deposit, isFree,
+      providerId: v.providerId || null,
+    };
+  });
+
+  // Free rental — no PaymentIntent needed.
+  if (reserved.isFree) {
+    return {success: true, rentalId: reserved.rentalId, free: true};
+  }
+
+  // 2) Partner payout account (Stripe Connect Express)
+  let providerAccount = null;
+  if (reserved.providerId) {
+    const pSnap = await db.collection("vehicleProviders").doc(reserved.providerId).get();
+    providerAccount = pSnap.exists ? pSnap.data().stripeAccountId || null : null;
+  }
+
+  // 3) Rental-fee PaymentIntent — routed to the partner, platform keeps commission
+  const commission = Math.round(reserved.price * RENTAL_COMMISSION_RATE);
+  const fee = await stripe.paymentIntents.create({
+    amount: reserved.price,
+    currency: "mxn",
+    metadata: {
+      type: "rental",
+      rentalId: reserved.rentalId,
+      vehicleId,
+      renterId: uid,
+    },
+    ...(providerAccount && reserved.price > 0 ? {
+      application_fee_amount: commission,
+      transfer_data: {destination: providerAccount},
+    } : {}),
+  });
+
+  // 4) Refundable deposit as a manual-capture hold (kept on the platform;
+  //    released on completeRental, capturable on reported damage).
+  let depositClientSecret = null;
+  let depositIntentId = null;
+  if (reserved.deposit > 0) {
+    const hold = await stripe.paymentIntents.create({
+      amount: reserved.deposit,
+      currency: "mxn",
+      capture_method: "manual",
+      metadata: {type: "rental_deposit", rentalId: reserved.rentalId},
+    });
+    depositClientSecret = hold.client_secret;
+    depositIntentId = hold.id;
+  }
+
+  await db.collection("rentals").doc(reserved.rentalId).update({
+    paymentIntentId: fee.id,
+    depositIntentId: depositIntentId,
+  });
+
+  return {
+    success: true,
+    rentalId: reserved.rentalId,
+    clientSecret: fee.client_secret,
+    depositClientSecret,
+  };
+});
+
+/**
+ * Complete (return) a rental: release the deposit hold, free the vehicle.
+ * data: { rentalId, damage? } — if damage=true the deposit hold is captured.
+ * Callable by the renter or the vehicle owner.
+ */
+exports.completeRental = onCall({secrets: [stripeSecretKey]}, async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const {rentalId, damage} = request.data || {};
+  if (!rentalId) throw new HttpsError("invalid-argument", "Missing rentalId.");
+
+  const rRef = db.collection("rentals").doc(rentalId);
+  const rSnap = await rRef.get();
+  if (!rSnap.exists) throw new HttpsError("not-found", "Rental not found.");
+  const r = rSnap.data();
+  if (r.renterId !== uid && r.ownerId !== uid) {
+    throw new HttpsError("permission-denied", "Not your rental.");
+  }
+  if (r.status === "completed" || r.status === "cancelled") {
+    return {success: true, already: true};
+  }
+
+  if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+  // Damage → owner captures the deposit; otherwise release the hold.
+  if (r.depositIntentId) {
+    try {
+      if (damage && r.ownerId === uid) {
+        await stripe.paymentIntents.capture(r.depositIntentId);
+      } else {
+        await stripe.paymentIntents.cancel(r.depositIntentId);
+      }
+    } catch (e) {
+      console.warn("deposit settle:", e.message);
+    }
+  }
+
+  await rRef.update({
+    status: "completed",
+    depositCaptured: !!(damage && r.ownerId === uid),
+    completedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  if (r.vehicleId) {
+    await db.collection("vehicles").doc(r.vehicleId)
+      .update({status: "available"}).catch(() => {});
+  }
+  return {success: true};
+});
+
+/**
+ * Release vehicles whose reservation was never paid within the TTL.
+ * Runs every 15 minutes; mirrors the membership reminder scheduler pattern.
+ */
+exports.expireVehicleReservations = onSchedule(
+  {schedule: "every 15 minutes", secrets: [stripeSecretKey]},
+  async () => {
+    const cutoff = Date.now() - RENTAL_RESERVE_TTL_MS;
+    const snap = await db.collection("rentals")
+      .where("status", "==", "reserved").get();
+    let expired = 0;
+    for (const docSnap of snap.docs) {
+      const r = docSnap.data();
+      const ms = r.reservedAt && r.reservedAt.toMillis ? r.reservedAt.toMillis() : 0;
+      if (!ms || ms > cutoff) continue;
+      if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+      for (const pi of [r.paymentIntentId, r.depositIntentId]) {
+        if (pi) {
+          try {
+            await stripe.paymentIntents.cancel(pi);
+          } catch (e) {
+            // already captured/cancelled — ignore
+          }
+        }
+      }
+      await docSnap.ref.update({
+        status: "cancelled",
+        cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      if (r.vehicleId) {
+        await db.collection("vehicles").doc(r.vehicleId)
+          .update({status: "available"}).catch(() => {});
+      }
+      expired++;
+    }
+    console.log(`🛴 Expired ${expired} unpaid vehicle reservations`);
+  },
+);

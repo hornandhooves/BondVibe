@@ -425,6 +425,43 @@ service cloud.firestore {
     }
     
     // ============================================
+    // VEHICLE RENTAL MARKETPLACE (model A — partner-owned fleets)
+    // ============================================
+    // Rental providers/partners. Owner manages their own; anyone signed-in reads.
+    match /vehicleProviders/{providerId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+                       request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() &&
+                       (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() &&
+                       (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    // Vehicles. Public read (browse); owner edits content. `status` transitions
+    // to/from "rented" are made server-side (reserveVehicle/completeRental), and
+    // the reservation transaction is the source of truth against double-booking.
+    match /vehicles/{vehicleId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+                       request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() &&
+                       (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() &&
+                       (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    // Rentals — money-sensitive: created/updated only by Cloud Functions
+    // (reserveVehicle / completeRental / expireReservations via Admin SDK).
+    match /rentals/{rentalId} {
+      allow read: if isSignedIn() &&
+                     (resource.data.renterId == request.auth.uid ||
+                      resource.data.ownerId == request.auth.uid ||
+                      isAdmin());
+      allow create, update, delete: if false;
+    }
+
+    // ============================================
     // DEFAULT DENY ALL
     // ============================================
     match /{document=**} {

@@ -137,6 +137,10 @@ async function handlePaymentSuccess(paymentIntent) {
     return handlePromotionPurchase(paymentIntent);
   }
 
+  if (type === "rental") {
+    return handleRentalPayment(paymentIntent);
+  }
+
   if (type !== "event_ticket") {
     console.log("⏭️ Skipping unhandled payment type:", type);
     return;
@@ -229,6 +233,75 @@ async function handlePromotionPurchase(paymentIntent) {
   });
 
   console.log("✅ Promotion processing complete; featured until", expiresAt);
+}
+
+/**
+ * Handle a successful vehicle-rental fee payment: confirm the reservation
+ * (reserved → active), save the payment record and notify the partner. The
+ * deposit is a separate manual-capture hold that does NOT hit this handler on
+ * authorization — it is released/captured by completeRental.
+ * @param {Object} paymentIntent - Stripe PaymentIntent object
+ * @return {Promise<void>}
+ */
+async function handleRentalPayment(paymentIntent) {
+  const {id: paymentIntentId, amount, currency, metadata} = paymentIntent;
+  const {rentalId, vehicleId, renterId} = metadata;
+  console.log("🛴 Processing rental payment:", paymentIntentId);
+  if (!rentalId) {
+    throw new Error("Missing rentalId in rental payment intent");
+  }
+
+  // Idempotency
+  const existing = await db.collection("payments").doc(paymentIntentId).get();
+  if (existing.exists) {
+    console.log("⏭️ Rental payment already processed, skipping");
+    return;
+  }
+
+  const rentalRef = db.collection("rentals").doc(rentalId);
+  const rentalSnap = await rentalRef.get();
+  if (!rentalSnap.exists) {
+    console.warn("⚠️ Rental not found for payment:", rentalId);
+    return;
+  }
+  const rental = rentalSnap.data();
+
+  // 1. Payment record
+  await db.collection("payments").doc(paymentIntentId).set({
+    paymentIntentId,
+    userId: renterId || rental.renterId,
+    hostId: rental.ownerId || null,
+    rentalId,
+    vehicleId: vehicleId || rental.vehicleId,
+    type: "rental",
+    amount,
+    currency,
+    status: "succeeded",
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    metadata,
+  });
+
+  // 2. Confirm the reservation
+  await rentalRef.update({
+    status: "active",
+    paidAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  // 3. Notify the partner/owner
+  if (rental.ownerId) {
+    await db.collection("notifications").add({
+      userId: rental.ownerId,
+      type: "rental_booked",
+      title: "New rental! 🛴",
+      message: `A rider booked your vehicle for $${(amount / 100).toFixed(2)} MXN.`,
+      icon: "🛴",
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      metadata: {rentalId, vehicleId: vehicleId || rental.vehicleId},
+    });
+  }
+
+  console.log("✅ Rental payment processing complete");
 }
 
 /**

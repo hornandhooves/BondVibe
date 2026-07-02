@@ -372,6 +372,60 @@ const arrVals = (f) => (f?.arrayValue?.values || []).map((v) => v.stringValue);
   const aiReply = await callFn("generateReviewReply", { rating: 5, comment: "great" }, host.headers);
   chk("non-premium blocked from AI review reply", aiReply.body?.error?.message, "premium_required");
 
+  // ---- VEHICLE RENTALS (marketplace model A) ----
+  section("Vehicle rentals");
+  const provId = `e2eprov_${Date.now()}`;
+  const vehId = `e2eveh_${Date.now()}`;
+  // Provider (partner) rules
+  chk("owner creates provider", await createDoc(`vehicleProviders?documentId=${provId}`, {
+    ownerId: s(host.uid), name: s("E2E Rides"), city: s("E2ECity"), verified: b(false),
+  }, host.headers), 200);
+  chk("cannot create provider spoofing owner", await createDoc(`vehicleProviders?documentId=${provId}x`, {
+    ownerId: s(host.uid), name: s("spoof"),
+  }, member.headers), 403);
+  chk("provider readable by signed-in user", await readDoc(`vehicleProviders/${provId}`, member.headers), 200);
+  // Vehicle rules (free vehicle → happy path needs no Stripe)
+  chk("owner publishes a vehicle", await createDoc(`vehicles?documentId=${vehId}`, {
+    ownerId: s(host.uid), providerId: s(provId), type: s("scooter"), title: s("E2E Scooter"),
+    city: s("E2ECity"), status: s("available"), pricePerDayCentavos: i(0), depositCentavos: i(0),
+  }, host.headers), 200);
+  chk("cannot publish vehicle spoofing owner", await createDoc(`vehicles?documentId=${vehId}x`, {
+    ownerId: s(host.uid), title: s("spoof"), status: s("available"),
+  }, member.headers), 403);
+  chk("vehicle readable by any signed-in user (browse)", await readDoc(`vehicles/${vehId}`, member.headers), 200);
+  chk("non-owner CANNOT edit a vehicle", await patchDoc(`vehicles/${vehId}?updateMask.fieldPaths=title`, { title: s("hacked") }, member.headers), 403);
+  chk("owner CAN set maintenance", await patchDoc(`vehicles/${vehId}?updateMask.fieldPaths=status`, { status: s("maintenance") }, host.headers), 200);
+  // Rentals are server-only
+  chk("client CANNOT create a rental doc directly", await createDoc(`rentals?documentId=e2erent_${Date.now()}`, {
+    vehicleId: s(vehId), renterId: s(member.uid), status: s("active"),
+  }, member.headers), 403);
+  // reserveVehicle guards (both throw before any Stripe call)
+  const rsvMaint = await callFn("reserveVehicle", { vehicleId: vehId, startAt: "2026-01-01", endAt: "2026-01-02" }, member.headers);
+  chk("reserveVehicle rejects unavailable vehicle", rsvMaint.body?.error?.message, "vehicle_unavailable");
+  const rsvMissing = await callFn("reserveVehicle", { vehicleId: `nope_${Date.now()}`, startAt: "2026-01-01", endAt: "2026-01-02" }, member.headers);
+  chk("reserveVehicle rejects missing vehicle", rsvMissing.body?.error?.message, "Vehicle not found.");
+  // Back to available → happy path (free vehicle: no PaymentIntent created)
+  await patchDoc(`vehicles/${vehId}?updateMask.fieldPaths=status`, { status: s("available") }, host.headers);
+  const rsv = await callFn("reserveVehicle", { vehicleId: vehId, startAt: "2026-01-01", endAt: "2026-01-02" }, member.headers);
+  chk("reserveVehicle reserves a free vehicle", rsv.body?.result?.success, true);
+  const rentalId = rsv.body?.result?.rentalId;
+  const vAfter = await getFields(`vehicles/${vehId}`, host.headers);
+  chk("vehicle now marked rented", vAfter?.status?.stringValue, "rented");
+  chk("renter can read own rental", await readDoc(`rentals/${rentalId}`, member.headers), 200);
+  chk("owner can read the rental", await readDoc(`rentals/${rentalId}`, host.headers), 200);
+  chk("stranger CANNOT read the rental", await readDoc(`rentals/${rentalId}`, stranger.headers), 403);
+  const rsvDouble = await callFn("reserveVehicle", { vehicleId: vehId, startAt: "2026-01-01", endAt: "2026-01-02" }, outsider.headers);
+  chk("reserveVehicle blocks double-booking", rsvDouble.body?.error?.message, "vehicle_unavailable");
+  const compBad = await callFn("completeRental", { rentalId }, stranger.headers);
+  chk("stranger CANNOT complete a rental", compBad.body?.error?.message, "Not your rental.");
+  const comp = await callFn("completeRental", { rentalId }, member.headers);
+  chk("completeRental succeeds", comp.body?.result?.success, true);
+  const vDone = await getFields(`vehicles/${vehId}`, host.headers);
+  chk("vehicle available again after completion", vDone?.status?.stringValue, "available");
+  // cleanup
+  await del(`vehicles/${vehId}`, host.headers);
+  await del(`vehicleProviders/${provId}`, host.headers);
+
   // ---- CLEANUP ----
   await del(`notifications/event_msg_${ev}_${member.uid}`, member.headers);
   await del(`notifications/event_msg_${ev}_${outsider.uid}`, outsider.headers);
