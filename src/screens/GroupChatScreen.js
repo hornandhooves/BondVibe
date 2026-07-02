@@ -12,10 +12,11 @@ import {
   ActivityIndicator,
   Switch,
   Alert,
+  Linking,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { Send, Settings, Ticket, Check, CheckCheck } from "lucide-react-native";
+import { Send, Settings, Ticket, Check, CheckCheck, Music2 } from "lucide-react-native";
 import { db, auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
@@ -153,15 +154,30 @@ export default function GroupChatScreen({ route, navigation }) {
           <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
             {group?.name || "Group"}
           </Text>
-          {isHost ? (
-            <TouchableOpacity
-              onPress={() => navigation.navigate("GroupManage", { groupId })}
-            >
-              <Settings size={22} color={colors.text} strokeWidth={2} />
-            </TouchableOpacity>
-          ) : (
-            <View style={{ width: 22 }} />
-          )}
+          <View style={styles.headerRight}>
+            {group?.spotifyUrl ? (
+              // Everyone can open the host's playlist in Spotify.
+              <TouchableOpacity onPress={() => Linking.openURL(group.spotifyUrl)}>
+                <Music2 size={22} color="#1DB954" strokeWidth={2} />
+              </TouchableOpacity>
+            ) : isHost ? (
+              // Host without a playlist yet: tap to add one in group settings.
+              <TouchableOpacity
+                onPress={() => navigation.navigate("GroupManage", { groupId })}
+              >
+                <Music2 size={22} color={colors.textTertiary} strokeWidth={2} />
+              </TouchableOpacity>
+            ) : null}
+            {isHost ? (
+              <TouchableOpacity
+                onPress={() => navigation.navigate("GroupManage", { groupId })}
+              >
+                <Settings size={22} color={colors.text} strokeWidth={2} />
+              </TouchableOpacity>
+            ) : (
+              !group?.spotifyUrl && <View style={{ width: 22 }} />
+            )}
+          </View>
         </View>
 
         <ScrollView ref={scrollRef} contentContainerStyle={styles.messages}>
@@ -378,6 +394,7 @@ function createStyles(colors, isDark) {
       paddingBottom: 12,
       gap: 12,
     },
+    headerRight: { flexDirection: "row", alignItems: "center", gap: 16 },
     back: { fontSize: 28 },
     headerTitle: { fontSize: 18, fontWeight: "700", flex: 1, textAlign: "center" },
     messages: { paddingHorizontal: 16, paddingVertical: 12 },

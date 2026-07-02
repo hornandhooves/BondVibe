@@ -45,6 +45,8 @@ export default function GroupManageScreen({ route, navigation }) {
   const [group, setGroup] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [name, setName] = useState("");
+  const [spotifyUrl, setSpotifyUrl] = useState("");
+  const [savingSpotify, setSavingSpotify] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
@@ -77,6 +79,7 @@ export default function GroupManageScreen({ route, navigation }) {
       ]);
       setGroup(g);
       setName(g?.name || "");
+      setSpotifyUrl(g?.spotifyUrl || "");
       setCandidates(c);
       if (g) setInviteCode(await ensureInviteCode(g));
       setLoading(false);
@@ -94,6 +97,30 @@ export default function GroupManageScreen({ route, navigation }) {
       });
     } catch (e) {
       // user cancelled
+    }
+  };
+
+  const handleSaveSpotify = async () => {
+    const url = spotifyUrl.trim();
+    if (url && !/spotify\.com|spotify:/i.test(url)) {
+      Alert.alert(
+        "Invalid link",
+        "Paste a Spotify playlist link (open.spotify.com/playlist/...)."
+      );
+      return;
+    }
+    setSavingSpotify(true);
+    try {
+      await updateGroup(groupId, { spotifyUrl: url });
+      setGroup((g) => ({ ...g, spotifyUrl: url }));
+      Alert.alert(
+        "Saved",
+        url ? "Your Spotify playlist is now on the group." : "Playlist removed."
+      );
+    } catch (e) {
+      Alert.alert("Couldn't save", e.message || "Please try again.");
+    } finally {
+      setSavingSpotify(false);
     }
   };
 
@@ -323,6 +350,30 @@ export default function GroupManageScreen({ route, navigation }) {
             <Text style={[styles.shareText, { color: colors.primary }]}>Share invite</Text>
           </View>
         </TouchableOpacity>
+
+        {/* Spotify playlist */}
+        <Text style={[styles.label, { color: colors.textSecondary, marginTop: 20 }]}>
+          SPOTIFY PLAYLIST
+        </Text>
+        <View style={styles.nameRow}>
+          <TextInput
+            style={[styles.input, { color: colors.text, borderColor: colors.border }]}
+            placeholder="Paste a Spotify playlist link"
+            placeholderTextColor={colors.textTertiary}
+            value={spotifyUrl}
+            onChangeText={setSpotifyUrl}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TouchableOpacity onPress={handleSaveSpotify} disabled={savingSpotify}>
+            <Text style={{ color: colors.primary, fontWeight: "700" }}>
+              {savingSpotify ? "…" : "Save"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={[styles.hint, { color: colors.textTertiary }]}>
+          Members will see a Spotify button at the top of the group to open it.
+        </Text>
 
         {/* Posting mode */}
         <Text style={[styles.label, { color: colors.textSecondary, marginTop: 20 }]}>
