@@ -28,3 +28,8 @@ jest.mock("expo-crypto", () => ({
   digestStringAsync: jest.fn(() => Promise.resolve("hash")),
   CryptoDigestAlgorithm: { SHA256: "SHA256" },
 }));
+jest.mock("expo-auth-session", () => ({
+  useAuthRequest: () => [null, null, jest.fn()],
+  exchangeCodeAsync: jest.fn(() => Promise.resolve({ accessToken: "x" })),
+  makeRedirectUri: jest.fn(() => "bondvibe://spotify-auth"),
+}));

@@ -24,6 +24,7 @@ import GradientBackground from "../components/GradientBackground";
 import { BVBadge } from "../components/BoldPop";
 import { AvatarFrame } from "../components/CategoryIcon";
 import { usePremium } from "../hooks/usePremium";
+import ConnectSpotifyButton from "../components/ConnectSpotifyButton";
 import {
   ChevronLeft,
   
@@ -590,6 +591,30 @@ export default function ProfileScreen({ navigation }) {
                 </Text>
               </View>
             )}
+
+            {/* Music taste — Spotify import (top artists/genres) */}
+            <View
+              style={[
+                styles.bioCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.borderStrong,
+                  borderWidth: 2,
+                  shadowColor: colors.hardShadow,
+                  shadowOffset: { width: 3, height: 3 },
+                  shadowOpacity: 1,
+                  shadowRadius: 0,
+                  elevation: 4,
+                },
+              ]}
+            >
+              <ConnectSpotifyButton
+                music={profile.music}
+                onChange={(music) =>
+                  setProfile((prev) => ({ ...prev, music }))
+                }
+              />
+            </View>
 
               <View style={styles.infoSection}>
               {/* Location Card */}
