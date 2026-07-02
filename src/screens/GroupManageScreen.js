@@ -118,7 +118,14 @@ export default function GroupManageScreen({ route, navigation }) {
     const user = await findUserByEmail(target);
     setAddingEmail(false);
     if (!user) {
-      Alert.alert("Not found", "No BondVibe user with that email.");
+      Alert.alert(
+        "Not on BondVibe yet",
+        `${target} isn't registered. Send them an invite to join your group?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Send invite", onPress: () => handleShareInvite(target) },
+        ]
+      );
       return;
     }
     if ((group.memberIds || []).includes(user.id)) {
@@ -190,7 +197,14 @@ export default function GroupManageScreen({ route, navigation }) {
     const user = await findUserByPhone(target);
     setAddingPhone(false);
     if (!user) {
-      Alert.alert("Not found", "No BondVibe user with that phone number.");
+      Alert.alert(
+        "Not on BondVibe yet",
+        `${target} isn't registered. Send them an invite to join your group?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Send invite", onPress: () => handleShareInvite(target) },
+        ]
+      );
       return;
     }
     if ((group.memberIds || []).includes(user.id)) {
