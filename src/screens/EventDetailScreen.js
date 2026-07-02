@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Linking,
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { StatusBar } from "expo-status-bar";
@@ -954,7 +955,19 @@ export default function EventDetailScreen({ route, navigation }) {
               </View>
             </View>
           </View>
-          <View style={styles.infoCard}>
+          <TouchableOpacity
+            style={styles.infoCard}
+            activeOpacity={event.location ? 0.85 : 1}
+            disabled={!event.location}
+            onPress={() =>
+              event.location &&
+              Linking.openURL(
+                `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                  eventLocation
+                )}`
+              )
+            }
+          >
             <View
               style={[
                 styles.infoGlass,
@@ -981,9 +994,14 @@ export default function EventDetailScreen({ route, navigation }) {
                 <Text style={[styles.infoValue, { color: colors.text }]}>
                   {eventLocation}
                 </Text>
+                {!!event.location && (
+                  <Text style={[styles.infoLabel, { color: colors.primary, marginTop: 2 }]}>
+                    Open in Maps ↗
+                  </Text>
+                )}
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.infoCard}
             activeOpacity={0.85}

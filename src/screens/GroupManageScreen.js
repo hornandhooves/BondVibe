@@ -19,6 +19,7 @@ import { Check, Trash2, Share2, RotateCcw, Ban, ImagePlus } from "lucide-react-n
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import AvatarPicker, { AvatarDisplay } from "../components/AvatarPicker";
+import PhoneInput from "../components/PhoneInput";
 import { resolveGroupAvatar } from "../services/storageService";
 import {
   getGroup,
@@ -355,14 +356,7 @@ export default function GroupManageScreen({ route, navigation }) {
           ADD BY PHONE
         </Text>
         <View style={styles.nameRow}>
-          <TextInput
-            style={[styles.input, { color: colors.text, borderColor: colors.border }]}
-            placeholder="+52 55 1234 5678"
-            placeholderTextColor={colors.textTertiary}
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-          />
+          <PhoneInput value={phone} onChangeText={setPhone} style={{ flex: 1 }} />
           <TouchableOpacity onPress={handleAddByPhone} disabled={addingPhone}>
             <Text style={{ color: colors.primary, fontWeight: "700" }}>
               {addingPhone ? "…" : "Add"}

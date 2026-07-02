@@ -17,6 +17,11 @@ import { auth, db } from "../services/firebase";
 import { resolveAvatarForSave } from "../services/storageService";
 import { useTheme } from "../contexts/ThemeContext";
 import AvatarPicker, { AvatarDisplay } from "../components/AvatarPicker";
+import SelectDropdown from "../components/SelectDropdown";
+import PhoneInput from "../components/PhoneInput";
+import { LOCATIONS } from "../utils/locations";
+
+const CITY_OPTIONS = LOCATIONS.filter((l) => l.id !== "all");
 
 export default function ProfileSetupScreen() {
   const { colors, isDark } = useTheme();
@@ -166,48 +171,32 @@ export default function ProfileSetupScreen() {
             />
           </View>
 
-          {/* Location */}
+          {/* Location — one of the cities where we operate (single source: LOCATIONS) */}
           <View style={styles.inputGroup}>
             <Text style={[styles.inputLabel, { color: colors.text }]}>
               Location <Text style={{ color: colors.accent }}>*</Text>
             </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.surfaceGlass,
-                  borderColor: colors.border,
-                  color: colors.text,
-                },
-              ]}
-              value={form.location}
-              onChangeText={(text) => setForm({ ...form, location: text })}
-              placeholder="City, Country"
-              placeholderTextColor={colors.textTertiary}
-              maxLength={50}
+            <SelectDropdown
+              value={CITY_OPTIONS.find((c) => c.label === form.location)?.id}
+              onValueChange={(id) =>
+                setForm({
+                  ...form,
+                  location: CITY_OPTIONS.find((c) => c.id === id)?.label || "",
+                })
+              }
+              options={CITY_OPTIONS}
+              placeholder="Select your city"
             />
           </View>
 
-          {/* Phone (optional) */}
+          {/* Phone (optional) — country code picker, default +52 */}
           <View style={styles.inputGroup}>
             <Text style={[styles.inputLabel, { color: colors.text }]}>
               Phone <Text style={{ color: colors.textTertiary }}>(optional)</Text>
             </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.surfaceGlass,
-                  borderColor: colors.border,
-                  color: colors.text,
-                },
-              ]}
+            <PhoneInput
               value={form.phone}
               onChangeText={(text) => setForm({ ...form, phone: text })}
-              placeholder="+52 55 1234 5678"
-              placeholderTextColor={colors.textTertiary}
-              keyboardType="phone-pad"
-              maxLength={20}
             />
           </View>
 
