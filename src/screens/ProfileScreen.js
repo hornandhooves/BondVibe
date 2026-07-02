@@ -42,6 +42,7 @@ import {
   Trash2,
   Sparkles,
   Ticket,
+  Bike,
   BarChart3,
   Users,
 } from "lucide-react-native";
@@ -810,6 +811,56 @@ export default function ProfileScreen({ navigation }) {
                     </Text>
                     <Text style={[styles.infoValue, { color: colors.text }]}>
                       My memberships
+                    </Text>
+                  </View>
+                  <ChevronRight
+                    size={20}
+                    color={colors.textTertiary}
+                    strokeWidth={2}
+                  />
+                </View>
+              </TouchableOpacity>
+
+              {/* My Rentals — any user (vehicle rental marketplace) */}
+              <TouchableOpacity
+                onPress={() => navigation.navigate("MyRentals")}
+                activeOpacity={0.8}
+              >
+                <View
+                  style={[
+                    styles.infoCard,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.borderStrong,
+                      borderWidth: 2,
+                      shadowColor: colors.hardShadow,
+                      shadowOffset: { width: 3, height: 3 },
+                      shadowOpacity: 1,
+                      shadowRadius: 0,
+                      elevation: 4,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.infoIconCircle,
+                      {
+                        backgroundColor: isDark
+                          ? `${colors.primary}20`
+                          : `${colors.primary}15`,
+                      },
+                    ]}
+                  >
+                    <Bike size={22} color={colors.primary} strokeWidth={1.8} />
+                  </View>
+                  <View style={styles.infoContent}>
+                    <Text
+                      style={[styles.infoLabel, { color: colors.textSecondary }]}
+                    >
+                      Rentals
+                    </Text>
+                    <Text style={[styles.infoValue, { color: colors.text }]}>
+                      My rentals
                     </Text>
                   </View>
                   <ChevronRight

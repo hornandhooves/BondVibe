@@ -137,6 +137,17 @@ export const completeRental = async (rentalId, damage = false) => {
   }
 };
 
+/** Fetch a single rental by id (readable by renter/owner per rules). */
+export const getRental = async (rentalId) => {
+  try {
+    const snap = await getDoc(doc(db, "rentals", rentalId));
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  } catch (e) {
+    logger.error("getRental:", e);
+    return null;
+  }
+};
+
 /** Rentals where the signed-in user is the renter (most recent first). */
 export const getMyRentals = async () => {
   try {

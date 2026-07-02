@@ -31,6 +31,7 @@ import {
   ChevronRight,
   Tent,
   Star,
+  Bike,
 } from "lucide-react-native";
 import RatingModal from "../components/RatingModal";
 import { getPendingRatings } from "../services/ratingService";
@@ -242,6 +243,13 @@ export default function HomeScreen({ navigation }) {
       icon: Bell,
       screen: "Notifications",
       badge: unreadNotifications,
+    },
+    {
+      id: "rentals",
+      label: "Muévete",
+      icon: Bike,
+      screen: "RentalHub",
+      badge: 0,
     },
     hostQuickAction,
   ];

@@ -1998,6 +1998,10 @@ exports.reserveVehicle = onCall({secrets: [stripeSecretKey]}, async (request) =>
   }
   if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
 
+  // Rental duration in whole days (at least 1) — the fee is per-day.
+  const spanMs = new Date(endAt).getTime() - new Date(startAt).getTime();
+  const days = Math.max(1, Math.ceil((spanMs || 0) / 864e5)) || 1;
+
   // 1) Atomic reservation — the transaction is the source of truth against
   //    double-booking (serializes concurrent reserveVehicle calls).
   const reserved = await db.runTransaction(async (tx) => {
@@ -2008,7 +2012,8 @@ exports.reserveVehicle = onCall({secrets: [stripeSecretKey]}, async (request) =>
     if (v.status !== "available") {
       throw new HttpsError("failed-precondition", "vehicle_unavailable");
     }
-    const price = v.pricePerDayCentavos || (v.specs && v.specs.pricePerDayCentavos) || 0;
+    const perDay = v.pricePerDayCentavos || (v.specs && v.specs.pricePerDayCentavos) || 0;
+    const price = perDay * days;
     const deposit = v.depositCentavos || (v.specs && v.specs.depositCentavos) || 0;
     const isFree = price === 0 && deposit === 0;
     tx.update(vRef, {status: "rented"});
@@ -2021,6 +2026,7 @@ exports.reserveVehicle = onCall({secrets: [stripeSecretKey]}, async (request) =>
       eventId: eventId || null,
       startAt,
       endAt,
+      days,
       priceCentavos: price,
       depositCentavos: deposit,
       currency: "mxn",

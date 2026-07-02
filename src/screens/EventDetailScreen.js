@@ -53,6 +53,7 @@ import {
   Calendar,
   MapPin,
   Users,
+  Bike,
   ChevronRight,
   Ticket,
   Sparkles,
@@ -983,6 +984,43 @@ export default function EventDetailScreen({ route, navigation }) {
               </View>
             </View>
           </View>
+          <TouchableOpacity
+            style={styles.infoCard}
+            activeOpacity={0.85}
+            onPress={() =>
+              navigation.navigate("RentalHub", { eventId, eventTitle })
+            }
+          >
+            <View
+              style={[
+                styles.infoGlass,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.borderStrong,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.infoIconCircle,
+                  { backgroundColor: `${colors.primary}15` },
+                ]}
+              >
+                <Bike size={22} color={colors.primary} strokeWidth={1.8} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text
+                  style={[styles.infoLabel, { color: colors.textSecondary }]}
+                >
+                  Muévete al evento
+                </Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>
+                  Rent a scooter, bike or car
+                </Text>
+              </View>
+              <ChevronRight size={20} color={colors.textTertiary} strokeWidth={2} />
+            </View>
+          </TouchableOpacity>
           <View style={styles.infoCard}>
             <View
               style={[

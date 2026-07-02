@@ -65,6 +65,11 @@ import AnalyticsDetailScreen from "../screens/AnalyticsDetailScreen";
 import RatingsOverviewScreen from "../screens/RatingsOverviewScreen";
 import EventRosterScreen from "../screens/EventRosterScreen";
 import ConnectScreen from "../screens/ConnectScreen";
+import RentalHubScreen from "../screens/RentalHubScreen";
+import VehicleDetailScreen from "../screens/VehicleDetailScreen";
+import RentalCheckoutScreen from "../screens/RentalCheckoutScreen";
+import ActiveRentalScreen from "../screens/ActiveRentalScreen";
+import MyRentalsScreen from "../screens/MyRentalsScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -404,6 +409,11 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="RatingsOverview" component={RatingsOverviewScreen} />
           <Stack.Screen name="EventRoster" component={EventRosterScreen} />
           <Stack.Screen name="Connect" component={ConnectScreen} />
+          <Stack.Screen name="RentalHub" component={RentalHubScreen} />
+          <Stack.Screen name="VehicleDetail" component={VehicleDetailScreen} />
+          <Stack.Screen name="RentalCheckout" component={RentalCheckoutScreen} />
+          <Stack.Screen name="ActiveRental" component={ActiveRentalScreen} />
+          <Stack.Screen name="MyRentals" component={MyRentalsScreen} />
         </Stack.Navigator>
       </NavigationContainer>
 
