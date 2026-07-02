@@ -23,6 +23,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
+import SocialAuthButtons from "../components/SocialAuthButtons";
 import { useAuthContext } from "../contexts/AuthContext";
 import SuccessModal from "../components/SuccessModal";
 import BondVibeLogo from "../components/BondVibeLogo";
@@ -456,6 +457,8 @@ export default function SignupScreen({ navigation }) {
                   )}
                 </View>
               </TouchableOpacity>
+
+              <SocialAuthButtons />
 
               <TouchableOpacity
                 style={styles.loginLink}
