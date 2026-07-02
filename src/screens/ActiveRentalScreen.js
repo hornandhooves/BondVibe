@@ -44,7 +44,7 @@ export default function ActiveRentalScreen({ route, navigation }) {
   );
 
   const onReturn = () => {
-    Alert.alert("Return vehicle?", "Confirm you've returned the vehicle. Your deposit hold will be released.", [
+    Alert.alert("Return vehicle?", "Confirm the vehicle has been returned. Settle any deposit directly with the host.", [
       { text: "Cancel", style: "cancel" },
       {
         text: "I've returned it",
@@ -113,17 +113,13 @@ export default function ActiveRentalScreen({ route, navigation }) {
           {rental.days ? <Detail label="Duration" value={`${rental.days} day${rental.days > 1 ? "s" : ""}`} colors={colors} /> : null}
           <Detail label="Rental fee" value={rental.priceCentavos ? formatCentavos(rental.priceCentavos) : "Free"} colors={colors} />
           {rental.depositCentavos ? (
-            <Detail
-              label="Deposit"
-              value={rental.depositCaptured ? `${formatCentavos(rental.depositCentavos)} (charged)` : `${formatCentavos(rental.depositCentavos)} (hold)`}
-              colors={colors}
-            />
+            <Detail label="Deposit (with host)" value={formatCentavos(rental.depositCentavos)} colors={colors} />
           ) : null}
         </View>
 
         {rental.status === "active" && (
           <Text style={[styles.tip, { color: colors.textSecondary }]}>
-            Enjoy the ride! When you finish, mark it returned to release your deposit.
+            Enjoy the ride! When you finish, mark it returned and settle any deposit with the host.
           </Text>
         )}
         {rental.status === "completed" && (

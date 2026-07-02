@@ -109,7 +109,7 @@ export default function VehicleDetailScreen({ route, navigation }) {
           {vehicle.rangeKm ? <Spec label="Range" value={`${vehicle.rangeKm} km`} colors={colors} /> : null}
           {vehicle.requiresLicense ? <Spec label="License" value="Required" colors={colors} /> : null}
           {vehicle.depositCentavos ? (
-            <Spec label="Deposit (hold)" value={formatCentavos(vehicle.depositCentavos)} colors={colors} />
+            <Spec label="Deposit (to host)" value={formatCentavos(vehicle.depositCentavos)} colors={colors} />
           ) : null}
         </View>
 

@@ -48,7 +48,7 @@ export default function RentalHubScreen({ route, navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={[styles.back, { color: colors.text }]}>←</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Muévete 🛴</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Get around 🛴</Text>
         <TouchableOpacity onPress={() => navigation.navigate("MyRentals")}>
           <Text style={[styles.link, { color: colors.primary }]}>My rentals</Text>
         </TouchableOpacity>

@@ -100,6 +100,42 @@ export const getProvider = async (providerId) => {
   }
 };
 
+/** The signed-in host's own provider profile, if any. */
+export const getMyProvider = async () => {
+  try {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return null;
+    const q = query(
+      collection(db, "vehicleProviders"),
+      where("ownerId", "==", uid),
+      qLimit(1)
+    );
+    const snap = await getDocs(q);
+    return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
+  } catch (e) {
+    logger.error("getMyProvider:", e);
+    return null;
+  }
+};
+
+/** Vehicles published by the signed-in host (their fleet). */
+export const getMyFleet = async () => {
+  try {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return [];
+    const q = query(
+      collection(db, "vehicles"),
+      where("ownerId", "==", uid),
+      qLimit(100)
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(shapeVehicle);
+  } catch (e) {
+    logger.error("getMyFleet:", e);
+    return [];
+  }
+};
+
 // ---------------------------------------------------------------------------
 // Reservation + lifecycle (Cloud Functions)
 // ---------------------------------------------------------------------------
@@ -190,19 +226,25 @@ export const getOwnerRentals = async () => {
 // Partner fleet management (owner side — content only)
 // ---------------------------------------------------------------------------
 
-/** Create (or return the caller's) provider profile. */
-export const createProvider = async ({ name, city, stripeAccountId }) => {
+/** Create a provider profile for the caller. */
+export const createProvider = async ({ name, city } = {}) => {
   const uid = auth.currentUser?.uid;
   if (!uid) throw new Error("Sign in required.");
   const ref = await addDoc(collection(db, "vehicleProviders"), {
     ownerId: uid,
     name: name || "",
     city: city || "",
-    stripeAccountId: stripeAccountId || null,
     verified: false,
     createdAt: serverTimestamp(),
   });
   return ref.id;
+};
+
+/** Return the caller's providerId, creating a provider on first use. */
+export const ensureProvider = async ({ name, city } = {}) => {
+  const existing = await getMyProvider();
+  if (existing) return existing.id;
+  return createProvider({ name, city });
 };
 
 /** Publish a vehicle in the caller's fleet. */

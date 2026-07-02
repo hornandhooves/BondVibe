@@ -871,6 +871,56 @@ export default function ProfileScreen({ navigation }) {
                 </View>
               </TouchableOpacity>
 
+              {/* My Fleet — publish scooters/vehicles to rent out */}
+              <TouchableOpacity
+                onPress={() => navigation.navigate("MyFleet")}
+                activeOpacity={0.8}
+              >
+                <View
+                  style={[
+                    styles.infoCard,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.borderStrong,
+                      borderWidth: 2,
+                      shadowColor: colors.hardShadow,
+                      shadowOffset: { width: 3, height: 3 },
+                      shadowOpacity: 1,
+                      shadowRadius: 0,
+                      elevation: 4,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.infoIconCircle,
+                      {
+                        backgroundColor: isDark
+                          ? `${colors.primary}20`
+                          : `${colors.primary}15`,
+                      },
+                    ]}
+                  >
+                    <Bike size={22} color={colors.primary} strokeWidth={1.8} />
+                  </View>
+                  <View style={styles.infoContent}>
+                    <Text
+                      style={[styles.infoLabel, { color: colors.textSecondary }]}
+                    >
+                      Earn
+                    </Text>
+                    <Text style={[styles.infoValue, { color: colors.text }]}>
+                      My fleet — rent out my scooter
+                    </Text>
+                  </View>
+                  <ChevronRight
+                    size={20}
+                    color={colors.textTertiary}
+                    strokeWidth={2}
+                  />
+                </View>
+              </TouchableOpacity>
+
               {/* Membership Plans — paid hosts + admin (to create/sell plans) */}
               {(isPaidHost || profile.role === "admin") && (
                 <TouchableOpacity

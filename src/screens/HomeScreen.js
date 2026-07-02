@@ -246,7 +246,7 @@ export default function HomeScreen({ navigation }) {
     },
     {
       id: "rentals",
-      label: "Muévete",
+      label: "Get around",
       icon: Bike,
       screen: "RentalHub",
       badge: 0,

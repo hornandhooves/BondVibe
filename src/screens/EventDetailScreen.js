@@ -1012,10 +1012,10 @@ export default function EventDetailScreen({ route, navigation }) {
                 <Text
                   style={[styles.infoLabel, { color: colors.textSecondary }]}
                 >
-                  Muévete al evento
+                  Get around
                 </Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>
-                  Rent a scooter, bike or car
+                  Rent a scooter to get there
                 </Text>
               </View>
               <ChevronRight size={20} color={colors.textTertiary} strokeWidth={2} />

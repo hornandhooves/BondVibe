@@ -404,6 +404,17 @@ const arrVals = (f) => (f?.arrayValue?.values || []).map((v) => v.stringValue);
   chk("reserveVehicle rejects unavailable vehicle", rsvMaint.body?.error?.message, "vehicle_unavailable");
   const rsvMissing = await callFn("reserveVehicle", { vehicleId: `nope_${Date.now()}`, startAt: "2026-01-01", endAt: "2026-01-02" }, member.headers);
   chk("reserveVehicle rejects missing vehicle", rsvMissing.body?.error?.message, "Vehicle not found.");
+  // Paid vehicle whose host has no Stripe payouts → blocked BEFORE reserving.
+  const vehPaid = `e2evehp_${Date.now()}`;
+  await createDoc(`vehicles?documentId=${vehPaid}`, {
+    ownerId: s(host.uid), providerId: s(provId), type: s("scooter"), title: s("Paid Scooter"),
+    city: s("E2ECity"), status: s("available"), pricePerDayCentavos: i(25000), depositCentavos: i(0),
+  }, host.headers);
+  const rsvNoPayout = await callFn("reserveVehicle", { vehicleId: vehPaid, startAt: "2026-01-01", endAt: "2026-01-02" }, member.headers);
+  chk("reserveVehicle blocks paid rental when host payouts not ready", rsvNoPayout.body?.error?.message, "host_payouts_not_ready");
+  const vPaidAfter = await getFields(`vehicles/${vehPaid}`, host.headers);
+  chk("paid vehicle stays available after blocked reserve", vPaidAfter?.status?.stringValue, "available");
+  await del(`vehicles/${vehPaid}`, host.headers);
   // Back to available → happy path (free vehicle: no PaymentIntent created)
   await patchDoc(`vehicles/${vehId}?updateMask.fieldPaths=status`, { status: s("available") }, host.headers);
   const rsv = await callFn("reserveVehicle", { vehicleId: vehId, startAt: "2026-01-01", endAt: "2026-01-02" }, member.headers);

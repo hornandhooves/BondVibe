@@ -1986,8 +1986,15 @@ const RENTAL_RESERVE_TTL_MS = 20 * 60 * 1000; // unpaid holds expire after 20 mi
 
 /**
  * Atomically reserve an available vehicle and open the payment.
+ *
+ * Marketplace stance: the rental payment is a Stripe Connect destination charge
+ * with `on_behalf_of` the HOST, so the host is the merchant of record and bears
+ * liability (disputes, refunds, damage/theft). BondVibe keeps only the
+ * commission (application_fee_amount). Any security deposit is arranged directly
+ * between renter and host on pickup — BondVibe never holds or captures it.
+ *
  * data: { vehicleId, startAt (ISO), endAt (ISO), eventId? }
- * Returns { rentalId, clientSecret, depositClientSecret }.
+ * Returns { rentalId, clientSecret } (or { free:true } for free vehicles).
  */
 exports.reserveVehicle = onCall({secrets: [stripeSecretKey]}, async (request) => {
   const uid = request.auth && request.auth.uid;
@@ -1996,11 +2003,33 @@ exports.reserveVehicle = onCall({secrets: [stripeSecretKey]}, async (request) =>
   if (!vehicleId || !startAt || !endAt) {
     throw new HttpsError("invalid-argument", "Missing rental details.");
   }
-  if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
 
   // Rental duration in whole days (at least 1) — the fee is per-day.
   const spanMs = new Date(endAt).getTime() - new Date(startAt).getTime();
   const days = Math.max(1, Math.ceil((spanMs || 0) / 864e5)) || 1;
+
+  // Pre-read the vehicle to validate payability BEFORE reserving, so a host
+  // who can't receive payouts never leaves a vehicle stuck as "rented".
+  const preSnap = await db.collection("vehicles").doc(vehicleId).get();
+  if (!preSnap.exists) throw new HttpsError("not-found", "Vehicle not found.");
+  const pre = preSnap.data();
+  const perDay = pre.pricePerDayCentavos || (pre.specs && pre.specs.pricePerDayCentavos) || 0;
+  const price = perDay * days;
+  const deposit = pre.depositCentavos || (pre.specs && pre.specs.depositCentavos) || 0;
+  const isFree = price === 0;
+
+  // Resolve the host's Stripe Connect account (reused from their host payouts).
+  let hostAccount = null;
+  if (!isFree) {
+    const ownerSnap = pre.ownerId ?
+      await db.collection("users").doc(pre.ownerId).get() : null;
+    const sc = ownerSnap && ownerSnap.exists ? ownerSnap.data().stripeConnect : null;
+    hostAccount = sc && sc.accountId ? sc.accountId : null;
+    const canCharge = sc && (sc.chargesEnabled || sc.payoutsEnabled);
+    if (!hostAccount || !canCharge) {
+      throw new HttpsError("failed-precondition", "host_payouts_not_ready");
+    }
+  }
 
   // 1) Atomic reservation — the transaction is the source of truth against
   //    double-booking (serializes concurrent reserveVehicle calls).
@@ -2012,10 +2041,6 @@ exports.reserveVehicle = onCall({secrets: [stripeSecretKey]}, async (request) =>
     if (v.status !== "available") {
       throw new HttpsError("failed-precondition", "vehicle_unavailable");
     }
-    const perDay = v.pricePerDayCentavos || (v.specs && v.specs.pricePerDayCentavos) || 0;
-    const price = perDay * days;
-    const deposit = v.depositCentavos || (v.specs && v.specs.depositCentavos) || 0;
-    const isFree = price === 0 && deposit === 0;
     tx.update(vRef, {status: "rented"});
     const rentalRef = db.collection("rentals").doc();
     tx.set(rentalRef, {
@@ -2028,85 +2053,64 @@ exports.reserveVehicle = onCall({secrets: [stripeSecretKey]}, async (request) =>
       endAt,
       days,
       priceCentavos: price,
+      // Deposit is informational only — settled directly with the host.
       depositCentavos: deposit,
       currency: "mxn",
-      // Free vehicles (promos / first ride) skip payment and confirm immediately.
+      // Free vehicles skip payment and confirm immediately.
       status: isFree ? "active" : "reserved",
       reservedAt: admin.firestore.FieldValue.serverTimestamp(),
       ...(isFree ? {paidAt: admin.firestore.FieldValue.serverTimestamp()} : {}),
     });
-    return {
-      rentalId: rentalRef.id, price, deposit, isFree,
-      providerId: v.providerId || null,
-    };
+    return {rentalId: rentalRef.id};
   });
 
   // Free rental — no PaymentIntent needed.
-  if (reserved.isFree) {
+  if (isFree) {
     return {success: true, rentalId: reserved.rentalId, free: true};
   }
 
-  // 2) Partner payout account (Stripe Connect Express)
-  let providerAccount = null;
-  if (reserved.providerId) {
-    const pSnap = await db.collection("vehicleProviders").doc(reserved.providerId).get();
-    providerAccount = pSnap.exists ? pSnap.data().stripeAccountId || null : null;
-  }
-
-  // 3) Rental-fee PaymentIntent — routed to the partner, platform keeps commission
-  const commission = Math.round(reserved.price * RENTAL_COMMISSION_RATE);
+  // 2) Rental-fee PaymentIntent — destination charge on_behalf_of the host
+  //    (host = merchant of record + liable); BondVibe keeps the commission.
+  if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+  const commission = Math.round(price * RENTAL_COMMISSION_RATE);
   const fee = await stripe.paymentIntents.create({
-    amount: reserved.price,
+    amount: price,
     currency: "mxn",
+    on_behalf_of: hostAccount,
+    application_fee_amount: commission,
+    transfer_data: {destination: hostAccount},
     metadata: {
       type: "rental",
       rentalId: reserved.rentalId,
       vehicleId,
       renterId: uid,
     },
-    ...(providerAccount && reserved.price > 0 ? {
-      application_fee_amount: commission,
-      transfer_data: {destination: providerAccount},
-    } : {}),
   });
-
-  // 4) Refundable deposit as a manual-capture hold (kept on the platform;
-  //    released on completeRental, capturable on reported damage).
-  let depositClientSecret = null;
-  let depositIntentId = null;
-  if (reserved.deposit > 0) {
-    const hold = await stripe.paymentIntents.create({
-      amount: reserved.deposit,
-      currency: "mxn",
-      capture_method: "manual",
-      metadata: {type: "rental_deposit", rentalId: reserved.rentalId},
-    });
-    depositClientSecret = hold.client_secret;
-    depositIntentId = hold.id;
-  }
 
   await db.collection("rentals").doc(reserved.rentalId).update({
     paymentIntentId: fee.id,
-    depositIntentId: depositIntentId,
+    stripeAccountId: hostAccount,
+    commissionCentavos: commission,
   });
 
   return {
     success: true,
     rentalId: reserved.rentalId,
     clientSecret: fee.client_secret,
-    depositClientSecret,
   };
 });
 
 /**
- * Complete (return) a rental: release the deposit hold, free the vehicle.
- * data: { rentalId, damage? } — if damage=true the deposit hold is captured.
- * Callable by the renter or the vehicle owner.
+ * Complete (return) a rental: mark it returned and free the vehicle.
+ * data: { rentalId }. Callable by the renter or the vehicle owner.
+ *
+ * BondVibe does not hold a deposit, so there is nothing to release/capture —
+ * any deposit is settled directly between renter and host.
  */
-exports.completeRental = onCall({secrets: [stripeSecretKey]}, async (request) => {
+exports.completeRental = onCall(async (request) => {
   const uid = request.auth && request.auth.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
-  const {rentalId, damage} = request.data || {};
+  const {rentalId} = request.data || {};
   if (!rentalId) throw new HttpsError("invalid-argument", "Missing rentalId.");
 
   const rRef = db.collection("rentals").doc(rentalId);
@@ -2120,23 +2124,8 @@ exports.completeRental = onCall({secrets: [stripeSecretKey]}, async (request) =>
     return {success: true, already: true};
   }
 
-  if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
-  // Damage → owner captures the deposit; otherwise release the hold.
-  if (r.depositIntentId) {
-    try {
-      if (damage && r.ownerId === uid) {
-        await stripe.paymentIntents.capture(r.depositIntentId);
-      } else {
-        await stripe.paymentIntents.cancel(r.depositIntentId);
-      }
-    } catch (e) {
-      console.warn("deposit settle:", e.message);
-    }
-  }
-
   await rRef.update({
     status: "completed",
-    depositCaptured: !!(damage && r.ownerId === uid),
     completedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
   if (r.vehicleId) {
@@ -2161,14 +2150,12 @@ exports.expireVehicleReservations = onSchedule(
       const r = docSnap.data();
       const ms = r.reservedAt && r.reservedAt.toMillis ? r.reservedAt.toMillis() : 0;
       if (!ms || ms > cutoff) continue;
-      if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
-      for (const pi of [r.paymentIntentId, r.depositIntentId]) {
-        if (pi) {
-          try {
-            await stripe.paymentIntents.cancel(pi);
-          } catch (e) {
-            // already captured/cancelled — ignore
-          }
+      if (r.paymentIntentId) {
+        if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+        try {
+          await stripe.paymentIntents.cancel(r.paymentIntentId);
+        } catch (e) {
+          // already captured/cancelled — ignore
         }
       }
       await docSnap.ref.update({

@@ -43,10 +43,11 @@ export default function RentalCheckoutScreen({ route, navigation }) {
     try {
       const res = await reserveVehicle({ vehicleId: vehicle.id, startAt, endAt, eventId });
       if (!res.success) {
-        const msg = res.error === "vehicle_unavailable"
-          ? "Sorry, this vehicle was just taken."
-          : res.error || "Please try again.";
-        Alert.alert("Couldn't reserve", msg);
+        const messages = {
+          vehicle_unavailable: "Sorry, this vehicle was just taken.",
+          host_payouts_not_ready: "This host hasn't finished payout setup yet. Try another vehicle.",
+        };
+        Alert.alert("Couldn't reserve", messages[res.error] || res.error || "Please try again.");
         setProcessing(false);
         return;
       }
@@ -57,25 +58,13 @@ export default function RentalCheckoutScreen({ route, navigation }) {
         return;
       }
 
-      // 1) Charge the rental fee.
+      // Charge the rental fee (paid directly to the host; BondVibe keeps a commission).
       if (res.clientSecret) {
         const { error } = await confirmPayment(res.clientSecret, { paymentMethodType: "Card" });
         if (error) {
           Alert.alert("Payment failed", error.message || "Please try again.");
           setProcessing(false);
           return;
-        }
-      }
-
-      // 2) Authorize the refundable deposit (manual-capture hold — released on return).
-      if (res.depositClientSecret) {
-        const { error: depErr } = await confirmPayment(res.depositClientSecret, { paymentMethodType: "Card" });
-        if (depErr) {
-          Alert.alert(
-            "Deposit hold failed",
-            "Your rental fee was charged but we couldn't place the deposit hold. Please contact the partner."
-          );
-          // Fee is paid; continue to the active rental.
         }
       }
 
@@ -135,7 +124,7 @@ export default function RentalCheckoutScreen({ route, navigation }) {
               {deposit > 0 && (
                 <Row
                   label="Deposit"
-                  hint="Held on your card, released when you return the vehicle"
+                  hint="Paid directly to the host on pickup — not charged by BondVibe"
                   value={formatCentavos(deposit)}
                 />
               )}
@@ -175,7 +164,8 @@ export default function RentalCheckoutScreen({ route, navigation }) {
               )}
             </TouchableOpacity>
             <Text style={[styles.disclaimer, { color: colors.textTertiary }]}>
-              By renting you agree to the partner terms. Return on time to avoid the deposit being charged.
+              The rental agreement, deposit, and any damage or theft are handled directly with the host.
+              BondVibe only facilitates the booking and charges a service commission.
             </Text>
           </ScrollView>
         </View>

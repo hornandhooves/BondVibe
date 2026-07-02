@@ -22,7 +22,7 @@ const b = (v) => ({ booleanValue: v });
 const iv = (v) => ({ integerValue: v });
 const ts = (d) => ({ timestampValue: d });
 
-const CITY = process.argv[2] || "Ciudad de México";
+const CITY = process.argv[2] || "Mexico City";
 
 const create = (p, fields, h) =>
   fetch(`${FS}/${p}`, { method: "POST", headers: h, body: JSON.stringify({ fields }) })
@@ -46,7 +46,7 @@ const create = (p, fields, h) =>
   // 2) Provider
   const provRes = await create(`vehicleProviders`, {
     ownerId: s(uid),
-    name: s("Rueda Libre MX"),
+    name: s("Free Wheels MX"),
     city: s(CITY),
     verified: b(true),
     createdAt: ts(new Date().toISOString()),
@@ -54,12 +54,12 @@ const create = (p, fields, h) =>
   const providerId = provRes.body.name?.split("/").pop();
   console.log("  provider:", providerId, provRes.status);
 
-  // 3) Vehicles
+  // 3) Vehicles — mostly scooters (the primary use case)
   const vehicles = [
-    { type: "scooter", title: "Scooter urbano", pickupLabel: "Metro Insurgentes", rangeKm: 35, day: 25000, deposit: 50000, license: false },
-    { type: "bike", title: "Bici de ciudad", pickupLabel: "Parque México", rangeKm: 0, day: 12000, deposit: 20000, license: false },
-    { type: "car", title: "Auto compacto", pickupLabel: "Aeropuerto T1", rangeKm: 500, day: 80000, deposit: 200000, license: true },
-    { type: "scooter", title: "Prueba gratis (demo)", pickupLabel: "Roma Norte", rangeKm: 20, day: 0, deposit: 0, license: false },
+    { type: "scooter", title: "City scooter", pickupLabel: "Insurgentes metro", rangeKm: 35, day: 25000, deposit: 50000, license: false },
+    { type: "scooter", title: "Long-range scooter", pickupLabel: "Condesa", rangeKm: 55, day: 32000, deposit: 60000, license: false },
+    { type: "scooter", title: "Compact scooter", pickupLabel: "Roma Norte", rangeKm: 30, day: 22000, deposit: 40000, license: false },
+    { type: "scooter", title: "Free demo scooter", pickupLabel: "Roma Norte", rangeKm: 20, day: 0, deposit: 0, license: false },
   ];
   for (const v of vehicles) {
     const res = await create(`vehicles`, {
@@ -80,5 +80,5 @@ const create = (p, fields, h) =>
     console.log(`  vehicle ${v.type} "${v.title}":`, res.body.name?.split("/").pop(), res.status);
   }
 
-  console.log("\n✅ Seed complete. Open the app → Muévete to see them.");
+  console.log("\n✅ Seed complete. Open the app → Get around to see them.");
 })();
