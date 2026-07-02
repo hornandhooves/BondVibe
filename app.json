@@ -38,7 +38,7 @@
       [
         "@react-native-google-signin/google-signin",
         {
-          "iosUrlScheme": "com.googleusercontent.apps.YOUR_GOOGLE_IOS_CLIENT_ID"
+          "iosUrlScheme": "com.googleusercontent.apps.629419649601-ldjobevlvjvjmsi92dfe3cpua8u1m8fk"
         }
       ]
     ],
@@ -49,8 +49,8 @@
       "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "bondvibe-dev.firebasestorage.app",
       "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "762181340271",
       "EXPO_PUBLIC_FIREBASE_APP_ID": "1:762181340271:web:fd45de5ece4e2ea1b1e393",
-      "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "YOUR_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com",
-      "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "YOUR_GOOGLE_IOS_CLIENT_ID.apps.googleusercontent.com",
+      "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "629419649601-qkgnj1g9gu2fssobs2d1p2bbmqn3imqc.apps.googleusercontent.com",
+      "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "629419649601-ldjobevlvjvjmsi92dfe3cpua8u1m8fk.apps.googleusercontent.com",
       "eas": {
         "projectId": "0cf2c3f2-26ad-4e9f-816f-b449085f9b10"
       }
