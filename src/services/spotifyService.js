@@ -39,7 +39,7 @@ export const SPOTIFY_SCOPES = ["user-top-read", "user-read-email"];
 // Custom-scheme redirect for the native build. Must be registered verbatim in
 // the Spotify app dashboard (Redirect URIs).
 export const SPOTIFY_REDIRECT_URI = makeRedirectUri({
-  scheme: "bondvibe",
+  scheme: "kinlo",
   path: "spotify-auth",
 });
 

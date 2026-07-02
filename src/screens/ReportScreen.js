@@ -52,7 +52,7 @@ export default function ReportScreen({ route, navigation }) {
 
       Alert.alert(
         'Report Submitted',
-        'Thank you for helping keep BondVibe safe. We will review your report.',
+        'Thank you for helping keep Kinlo safe. We will review your report.',
         [
           {
             text: 'OK',

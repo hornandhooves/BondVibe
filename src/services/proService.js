@@ -1,5 +1,5 @@
 /**
- * BondVibe Pro subscription — opens the hosted Stripe Checkout / Billing Portal.
+ * Kinlo Pro subscription — opens the hosted Stripe Checkout / Billing Portal.
  * The uid is taken server-side from the auth context; the Stripe webhook flips
  * users/{uid}.isPremium once payment completes.
  */

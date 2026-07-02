@@ -67,7 +67,7 @@ export default function RentalCheckoutScreen({ route, navigation }) {
         return;
       }
 
-      // Charge the rental fee (paid directly to the host; BondVibe keeps a commission).
+      // Charge the rental fee (paid directly to the host; Kinlo keeps a commission).
       if (res.clientSecret) {
         const { error } = await confirmPayment(res.clientSecret, { paymentMethodType: "Card" });
         if (error) {
@@ -139,7 +139,7 @@ export default function RentalCheckoutScreen({ route, navigation }) {
               {deposit > 0 && (
                 <Row
                   label="Deposit"
-                  hint="Paid directly to the host on pickup — not charged by BondVibe"
+                  hint="Paid directly to the host on pickup — not charged by Kinlo"
                   value={formatCentavos(deposit)}
                 />
               )}
@@ -180,7 +180,7 @@ export default function RentalCheckoutScreen({ route, navigation }) {
             </TouchableOpacity>
             <Text style={[styles.disclaimer, { color: colors.textTertiary }]}>
               The rental agreement, deposit, and any damage or theft are handled directly with the host.
-              BondVibe only facilitates the booking and charges a small service fee.
+              Kinlo only facilitates the booking and charges a small service fee.
             </Text>
           </ScrollView>
         </View>

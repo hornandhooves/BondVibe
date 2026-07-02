@@ -23,5 +23,5 @@ export function detectProhibitedContent(text) {
 
 export const PROHIBITED_MESSAGE =
   "For your safety, sharing bank accounts, CLABE, card numbers or off-platform " +
-  "payment details isn't allowed. Keep payments inside BondVibe. This attempt " +
+  "payment details isn't allowed. Keep payments inside Kinlo. This attempt " +
   "was reported.";

@@ -286,7 +286,7 @@ export default function PublishVehicleScreen({ route, navigation }) {
         </Text>
 
         <Text style={[styles.note, { color: colors.textTertiary }]}>
-          You rent directly to riders and receive the full price you set. BondVibe adds a small
+          You rent directly to riders and receive the full price you set. Kinlo adds a small
           service fee for the rider; the deposit, damage and theft are handled between you and the rider.
         </Text>
 

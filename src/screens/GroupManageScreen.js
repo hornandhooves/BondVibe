@@ -86,12 +86,12 @@ export default function GroupManageScreen({ route, navigation }) {
     })();
   }, [groupId]);
 
-  const inviteLink = (code) => `bondvibe://join-group/${code}`;
+  const inviteLink = (code) => `kinlo://join-group/${code}`;
 
   const handleShareInvite = async () => {
     try {
       await Share.share({
-        message: `Join my group "${name}" on BondVibe.\nOpen: ${inviteLink(
+        message: `Join my group "${name}" on Kinlo.\nOpen: ${inviteLink(
           inviteCode
         )}\nor enter code: ${inviteCode}`,
       });
@@ -146,7 +146,7 @@ export default function GroupManageScreen({ route, navigation }) {
     setAddingEmail(false);
     if (!user) {
       Alert.alert(
-        "Not on BondVibe yet",
+        "Not on Kinlo yet",
         `${target} isn't registered. Send them an invite to join your group?`,
         [
           { text: "Cancel", style: "cancel" },
@@ -198,7 +198,7 @@ export default function GroupManageScreen({ route, navigation }) {
       setBlockEvidence(null);
       Alert.alert(
         "User blocked",
-        "They were removed and can't rejoin. The report was sent to BondVibe."
+        "They were removed and can't rejoin. The report was sent to Kinlo."
       );
     } catch (e) {
       Alert.alert("Couldn't block", e.message || "Please try again.");
@@ -225,7 +225,7 @@ export default function GroupManageScreen({ route, navigation }) {
     setAddingPhone(false);
     if (!user) {
       Alert.alert(
-        "Not on BondVibe yet",
+        "Not on Kinlo yet",
         `${target} isn't registered. Send them an invite to join your group?`,
         [
           { text: "Cancel", style: "cancel" },
@@ -501,7 +501,7 @@ export default function GroupManageScreen({ route, navigation }) {
               Block {blockTarget?.fullName || blockTarget?.name || "user"}?
             </Text>
             <Text style={{ color: colors.textSecondary, marginBottom: 12 }}>
-              They'll be removed and can't rejoin. This is reported to BondVibe.
+              They'll be removed and can't rejoin. This is reported to Kinlo.
             </Text>
             <TextInput
               style={[styles.input, { color: colors.text, borderColor: colors.border, minHeight: 70 }]}

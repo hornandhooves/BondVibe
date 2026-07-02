@@ -1,4 +1,4 @@
-// BondVibe — Bold Pop primitives
+// Kinlo — Bold Pop primitives
 // The visual language (2px outline, hard offset shadow, big type) lives here so
 // screens compose it instead of re-implementing per file. All colors come from
 // useTheme() tokens, so Warmth/Aurora switch automatically.

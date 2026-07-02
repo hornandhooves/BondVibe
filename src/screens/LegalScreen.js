@@ -154,7 +154,7 @@ export default function LegalScreen({ navigation }) {
                   { color: colors.textSecondary },
                 ]}
               >
-                I agree to BondVibe's Terms of Service
+                I agree to Kinlo's Terms of Service
               </Text>
               <TouchableOpacity
                 onPress={(e) => {
@@ -214,7 +214,7 @@ export default function LegalScreen({ navigation }) {
                   { color: colors.textSecondary },
                 ]}
               >
-                I agree to BondVibe's Privacy Policy
+                I agree to Kinlo's Privacy Policy
               </Text>
               <TouchableOpacity
                 onPress={(e) => {

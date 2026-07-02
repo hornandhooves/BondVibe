@@ -1,5 +1,5 @@
 /**
- * Moderation reports sent to the BondVibe admin: off-platform payment attempts
+ * Moderation reports sent to the Kinlo admin: off-platform payment attempts
  * (#4) and host-initiated user blocks with evidence (#10).
  */
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";

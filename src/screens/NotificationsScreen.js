@@ -168,7 +168,7 @@ export default function NotificationsScreen({ navigation }) {
               {
                 id: "demo1",
                 type: "welcome",
-                title: "Welcome to BondVibe! 👋",
+                title: "Welcome to Kinlo! 👋",
                 message: "Start exploring events and connect with people",
                 time: "Just now",
                 read: false,
@@ -305,7 +305,7 @@ export default function NotificationsScreen({ navigation }) {
 
       case "welcome":
         Alert.alert(
-          notification.title || "Welcome to BondVibe! 🎉",
+          notification.title || "Welcome to Kinlo! 🎉",
           notification.message || notification.body,
           [{ text: "Let's go! 🚀", onPress: () => navigation.navigate("SearchEvents") }]
         );

@@ -1,4 +1,4 @@
-// BondVibe — Icon system
+// Kinlo — Icon system
 // Replaces system emojis (☕ ⛰ 🎵 😊) with lucide-react-native icons the app
 // already depends on, so categories render identically on every device, in brand color.
 

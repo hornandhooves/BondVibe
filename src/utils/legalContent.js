@@ -5,18 +5,18 @@ export const TERMS_OF_SERVICE = `# Terms of Service
 
 **Last Updated: January 4, 2026**
 
-Welcome to BondVibe! These Terms of Service ("Terms") govern your use of the BondVibe mobile application ("App") operated by BondVibe ("we," "us," or "our").
+Welcome to Kinlo! These Terms of Service ("Terms") govern your use of the Kinlo mobile application ("App") operated by Kinlo ("we," "us," or "our").
 
-By using BondVibe, you agree to these Terms. If you do not agree, do not use the App.
+By using Kinlo, you agree to these Terms. If you do not agree, do not use the App.
 
 ## 1. Eligibility
 
-To use BondVibe, you must:
+To use Kinlo, you must:
 
 - Be at least **18 years old**
 - Have the legal capacity to enter into a binding agreement
 - Not be prohibited from using the service under applicable law
-- Not have been previously banned from BondVibe
+- Not have been previously banned from Kinlo
 
 ## 2. Account Registration
 
@@ -71,8 +71,8 @@ Violations may result in:
 
 ### 4.1 Event Participation
 
-- BondVibe facilitates connections between users for group events
-- **BondVibe does not organize, host, or supervise events**
+- Kinlo facilitates connections between users for group events
+- **Kinlo does not organize, host, or supervise events**
 - You attend events at your own risk
 - You are responsible for your own safety and conduct at events
 
@@ -105,19 +105,19 @@ If you attend events, you agree to:
 
 ### 4.5 Vehicle Rentals (Marketplace)
 
-BondVibe operates a **peer-to-peer vehicle rental marketplace** where independent hosts list vehicles (scooters, bikes, cars) for rent. **BondVibe only facilitates the introduction and payment between renters and hosts and is NOT a party to the rental agreement.**
+Kinlo operates a **peer-to-peer vehicle rental marketplace** where independent hosts list vehicles (scooters, bikes, cars) for rent. **Kinlo only facilitates the introduction and payment between renters and hosts and is NOT a party to the rental agreement.**
 
 You expressly acknowledge and agree that:
 
-- The rental agreement is **solely between the renter and the host**. BondVibe does not own, operate, inspect, insure, or control any listed vehicle.
+- The rental agreement is **solely between the renter and the host**. Kinlo does not own, operate, inspect, insure, or control any listed vehicle.
 - The **host is responsible** for the vehicle's condition, roadworthiness, insurance, licensing, and legal compliance, and is the merchant of record for the rental payment.
-- Any **security deposit is arranged and settled directly between the renter and the host**. BondVibe does not hold, collect, or refund deposits.
-- **BondVibe is not liable for any loss, theft, damage, injury, death, fines, accidents, or disputes** arising from any rental, use, or condition of a vehicle. Any such matters are resolved directly between the renter and the host.
+- Any **security deposit is arranged and settled directly between the renter and the host**. Kinlo does not hold, collect, or refund deposits.
+- **Kinlo is not liable for any loss, theft, damage, injury, death, fines, accidents, or disputes** arising from any rental, use, or condition of a vehicle. Any such matters are resolved directly between the renter and the host.
 - The renter is responsible for operating any vehicle **safely and legally**, holding any required license, wearing appropriate safety gear, and complying with all local traffic laws.
-- BondVibe's only role is to facilitate the booking and to charge a service fee; hosts receive the rental price they set.
-- To the maximum extent permitted by law, you **release BondVibe from any and all claims, demands, and damages** arising out of or connected to any vehicle rental.
+- Kinlo's only role is to facilitate the booking and to charge a service fee; hosts receive the rental price they set.
+- To the maximum extent permitted by law, you **release Kinlo from any and all claims, demands, and damages** arising out of or connected to any vehicle rental.
 
-If you are a host, you further represent that you have the legal right to rent the vehicle, that it is safe and properly insured, and you agree to **indemnify and hold BondVibe harmless** from any claim arising from your listing or the rental of your vehicle.
+If you are a host, you further represent that you have the legal right to rent the vehicle, that it is safe and properly insured, and you agree to **indemnify and hold Kinlo harmless** from any claim arising from your listing or the rental of your vehicle.
 
 ## 5. Payments & Refunds
 
@@ -129,7 +129,7 @@ If you are a host, you further represent that you have the legal right to rent t
 
 ### 5.2 Platform Fees
 
-- BondVibe charges a service fee on paid events
+- Kinlo charges a service fee on paid events
 - Fees are clearly displayed before purchase
 
 ### 5.3 Refund Policy
@@ -153,7 +153,7 @@ If you are a host, you further represent that you have the legal right to rent t
 ### 6.1 Your Content
 
 - You retain ownership of content you post (photos, text, etc.)
-- By posting content, you grant BondVibe a non-exclusive, worldwide, royalty-free license to use, display, and distribute your content within the App
+- By posting content, you grant Kinlo a non-exclusive, worldwide, royalty-free license to use, display, and distribute your content within the App
 - You are responsible for ensuring you have rights to content you post
 
 ### 6.2 Prohibited Content
@@ -175,13 +175,13 @@ Do not post content that:
 
 ## 7. Intellectual Property
 
-- BondVibe and its logo are trademarks of BondVibe
+- Kinlo and its logo are trademarks of Kinlo
 - The App and its original content are protected by copyright
 - You may not copy, modify, or distribute our intellectual property without permission
 
 ## 8. Privacy
 
-Your use of BondVibe is subject to our [Privacy Policy](/privacy), which explains how we collect, use, and protect your information.
+Your use of Kinlo is subject to our [Privacy Policy](/privacy), which explains how we collect, use, and protect your information.
 
 ## 9. Safety
 
@@ -201,13 +201,13 @@ Your use of BondVibe is subject to our [Privacy Policy](/privacy), which explain
 
 ### 9.3 Disclaimer
 
-**BondVibe does not conduct background checks on users.** You are responsible for your own safety when meeting other users.
+**Kinlo does not conduct background checks on users.** You are responsible for your own safety when meeting other users.
 
 ## 10. Disclaimers
 
 ### 10.1 "As Is" Service
 
-BondVibe is provided "AS IS" and "AS AVAILABLE" without warranties of any kind, either express or implied.
+Kinlo is provided "AS IS" and "AS AVAILABLE" without warranties of any kind, either express or implied.
 
 ### 10.2 No Guarantee
 
@@ -222,13 +222,13 @@ We do not guarantee:
 
 To the maximum extent permitted by law:
 
-- BondVibe shall not be liable for any indirect, incidental, special, consequential, or punitive damages
-- BondVibe shall not be liable for any loss or injury arising from events facilitated through the App
-- Our total liability shall not exceed the amount you paid to BondVibe in the past 12 months, or \$100 USD, whichever is greater
+- Kinlo shall not be liable for any indirect, incidental, special, consequential, or punitive damages
+- Kinlo shall not be liable for any loss or injury arising from events facilitated through the App
+- Our total liability shall not exceed the amount you paid to Kinlo in the past 12 months, or \$100 USD, whichever is greater
 
 ## 12. Indemnification
 
-You agree to indemnify and hold harmless BondVibe, its officers, directors, employees, and agents from any claims, damages, or expenses arising from:
+You agree to indemnify and hold harmless Kinlo, its officers, directors, employees, and agents from any claims, damages, or expenses arising from:
 
 - Your use of the App
 - Your violation of these Terms
@@ -260,7 +260,7 @@ Any disputes shall be resolved in the courts of Quintana Roo, Mexico.
 
 ### 15.1 By You
 
-You may stop using BondVibe and delete your account at any time.
+You may stop using Kinlo and delete your account at any time.
 
 ### 15.2 By Us
 
@@ -282,7 +282,7 @@ Upon termination:
 
 ### 16.1 Entire Agreement
 
-These Terms constitute the entire agreement between you and BondVibe.
+These Terms constitute the entire agreement between you and Kinlo.
 
 ### 16.2 Severability
 
@@ -305,16 +305,16 @@ You may not assign your rights under these Terms. We may assign our rights at an
 
 ---
 
-**By using BondVibe, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.**
+**By using Kinlo, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.**
 
-© 2026 BondVibe. All rights reserved.
+© 2026 Kinlo. All rights reserved.
 `;
 
 export const PRIVACY_POLICY = `# Privacy Policy
 
 **Last Updated: January 4, 2026**
 
-BondVibe ("we," "us," or "our") operates the BondVibe mobile application. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our app.
+Kinlo ("we," "us," or "our") operates the Kinlo mobile application. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our app.
 
 ## 1. Information We Collect
 
@@ -419,7 +419,7 @@ However, no method of transmission over the Internet is 100% secure.
 
 ## 8. Children's Privacy
 
-BondVibe is strictly for users 18 years and older. We do not knowingly collect information from anyone under 18. If we discover we have collected data from a minor, we will delete it immediately.
+Kinlo is strictly for users 18 years and older. We do not knowingly collect information from anyone under 18. If we discover we have collected data from a minor, we will delete it immediately.
 
 ## 9. Location Information
 
@@ -475,7 +475,7 @@ Continued use after changes constitutes acceptance.
 
 ---
 
-**BondVibe is committed to protecting your privacy and being transparent about our data practices.**
+**Kinlo is committed to protecting your privacy and being transparent about our data practices.**
 
-© 2026 BondVibe. All rights reserved.
+© 2026 Kinlo. All rights reserved.
 `;

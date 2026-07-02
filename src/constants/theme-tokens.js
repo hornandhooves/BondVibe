@@ -1,4 +1,4 @@
-// BondVibe — Theme tokens (Warmth = light · Aurora = dark)
+// Kinlo — Theme tokens (Warmth = light · Aurora = dark)
 // Drop-in for the `colors` object in src/contexts/ThemeContext.js.
 // Keeps EVERY existing token name so current screens recolor instantly,
 // and ADDS Bold-Pop tokens (borderStrong, hardShadow, ink, onInk, onPrimary)

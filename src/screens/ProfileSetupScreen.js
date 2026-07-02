@@ -52,7 +52,7 @@ export default function ProfileSetupScreen() {
     }
 
     if (!isOver18) {
-      Alert.alert("Age Requirement", "You must be 18 or older to use BondVibe.");
+      Alert.alert("Age Requirement", "You must be 18 or older to use Kinlo.");
       return;
     }
 
@@ -80,7 +80,7 @@ export default function ProfileSetupScreen() {
       // Create welcome notification
       await createNotification(auth.currentUser.uid, {
         type: "welcome",
-        title: "Welcome to BondVibe! 🎉",
+        title: "Welcome to Kinlo! 🎉",
         message: "Hey! We're so hyped you're here. This app was built with tons of love for people like you who want real connections, not just likes. Go explore some events, meet awesome humans, and let's make some memories! You got this 💪✨",
         icon: "🎉",
       });
@@ -234,7 +234,7 @@ export default function ProfileSetupScreen() {
               <Text
                 style={[styles.checkboxSubtitle, { color: colors.textSecondary }]}
               >
-                BondVibe is only available for adults
+                Kinlo is only available for adults
               </Text>
             </View>
           </TouchableOpacity>

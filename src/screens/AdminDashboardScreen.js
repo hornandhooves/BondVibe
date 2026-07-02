@@ -366,7 +366,7 @@ export default function AdminDashboardScreen({ navigation }) {
               const link = res.data?.link;
               if (link) {
                 await Share.share({
-                  message: `BondVibe password reset for ${user.email}:\n${link}`,
+                  message: `Kinlo password reset for ${user.email}:\n${link}`,
                 });
               }
             } catch (e) {

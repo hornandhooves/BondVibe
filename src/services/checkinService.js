@@ -32,7 +32,7 @@ export const parseCheckinPayload = (raw) => {
  */
 export const checkInFromScan = async (eventId, raw) => {
   const parsed = parseCheckinPayload(raw);
-  if (!parsed) return { success: false, error: "This isn't a BondVibe check-in code." };
+  if (!parsed) return { success: false, error: "This isn't a Kinlo check-in code." };
   if (parsed.eventId !== eventId) {
     return { success: false, error: "That code is for a different event." };
   }

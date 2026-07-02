@@ -11,7 +11,7 @@ export const flagEmoji = (iso) =>
     .replace(/./g, (c) => String.fromCodePoint(127397 + c.charCodeAt(0)));
 
 // { code: ISO-2, dial: "+NN", name }. Ordered with the most relevant markets
-// for BondVibe (Mexico default) near the top, then alphabetical-ish.
+// for Kinlo (Mexico default) near the top, then alphabetical-ish.
 export const COUNTRIES = [
   { code: "MX", dial: "+52", name: "Mexico" },
   { code: "US", dial: "+1", name: "United States" },

@@ -57,7 +57,7 @@ export default function RatingDetailScreen({ route, navigation }) {
     } else if (isPremiumRequired(r)) {
       Alert.alert(
         "Pro feature ✨",
-        "AI replies are part of BondVibe Pro.",
+        "AI replies are part of Kinlo Pro.",
         [
           { text: "Not now", style: "cancel" },
           { text: "See Pro", onPress: () => navigation.navigate("BondVibePro") },

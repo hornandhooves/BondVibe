@@ -76,7 +76,7 @@ export default function CreateEventScreen({ navigation }) {
       if (Array.isArray(r.titles) && r.titles[0]) setTitle(r.titles[0]);
       if (r.description) setDescription(r.description);
     } else if (isPremiumRequired(r)) {
-      Alert.alert("Pro feature ✨", "The AI generator is part of BondVibe Pro.", [
+      Alert.alert("Pro feature ✨", "The AI generator is part of Kinlo Pro.", [
         { text: "Not now", style: "cancel" },
         { text: "See Pro", onPress: () => navigation.navigate("BondVibePro") },
       ]);

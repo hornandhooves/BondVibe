@@ -1,4 +1,4 @@
-// BondVibe Design System 2025-2026
+// Kinlo Design System 2025-2026
 // Palette derived from the single source of truth (theme-tokens): Warmth (day)
 // + Aurora (night). No duplicate hardcoded palettes — legacy keys that aren't
 // in the tokens (secondaryDark, gradientHero) are added on top.

@@ -11,7 +11,7 @@ import Svg, {
 } from "react-native-svg";
 
 /**
- * BondVibe Echo Logo Component
+ * Kinlo Echo Logo Component
  *
  * @param {number} size - Size of the logo (default: 72)
  * @param {string} variant - "adaptive" | "withBackground" | "light" | "dark"

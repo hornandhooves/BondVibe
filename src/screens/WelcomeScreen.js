@@ -23,7 +23,7 @@ export default function WelcomeScreen({ navigation }) {
         {/* Logo/Hero */}
         <View style={styles.heroSection}>
           <Text style={styles.heroEmoji}>🎉</Text>
-          <Text style={[styles.appName, { color: colors.text }]}>BondVibe</Text>
+          <Text style={[styles.appName, { color: colors.text }]}>Kinlo</Text>
           <Text style={[styles.tagline, { color: colors.textSecondary }]}>
             Connect through shared experiences
           </Text>

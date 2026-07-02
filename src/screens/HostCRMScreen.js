@@ -120,7 +120,7 @@ export default function HostCRMScreen({ navigation }) {
             style={[styles.upsellBtn, { backgroundColor: colors.primary }]}
             onPress={() => navigation.navigate("BondVibePro")}
           >
-            <Text style={styles.upsellBtnText}>See BondVibe Pro</Text>
+            <Text style={styles.upsellBtnText}>See Kinlo Pro</Text>
           </TouchableOpacity>
         </View>
       </GradientBackground>

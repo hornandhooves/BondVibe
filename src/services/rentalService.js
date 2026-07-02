@@ -2,7 +2,7 @@
  * Rental service — vehicle rental marketplace (model A).
  *
  * A local partner publishes their fleet (vehicleProviders + vehicles) and
- * BondVibe takes a commission on each rental. Browsing is a city-scoped list
+ * Kinlo takes a commission on each rental. Browsing is a city-scoped list
  * (no map / no geo native dep). All money-sensitive writes (rentals + vehicle
  * status transitions to/from "rented") go through Cloud Functions:
  *   - reserveVehicle       (atomic reserve + Stripe PaymentIntent + deposit hold)

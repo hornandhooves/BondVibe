@@ -35,7 +35,7 @@ export const makeUserAdmin = async (userId) => {
         eventsHosted: 0,
         rating: 5,
         verifiedAt: new Date().toISOString(),
-        bio: "BondVibe Team",
+        bio: "Kinlo Team",
       },
     });
 

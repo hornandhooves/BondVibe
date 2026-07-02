@@ -282,7 +282,7 @@ export default function EditEventScreen({ route, navigation }) {
     const user = await findUserByEmail(email);
     setAddingCoHost(false);
     if (!user) {
-      Alert.alert("Not found", "No BondVibe user with that email.");
+      Alert.alert("Not found", "No Kinlo user with that email.");
       return;
     }
     if (user.id === creatorId || coHosts.some((c) => c.id === user.id)) {

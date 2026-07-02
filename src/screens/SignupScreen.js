@@ -195,7 +195,7 @@ export default function SignupScreen({ navigation }) {
                 Create Account
               </Text>
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                Join BondVibe and start connecting
+                Join Kinlo and start connecting
               </Text>
             </View>
 

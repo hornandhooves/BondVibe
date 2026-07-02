@@ -87,7 +87,7 @@ export default function HostAnalyticsScreen({ navigation }) {
     ) {
       Alert.alert(
         "Premium feature ✨",
-        "AI recommendations are part of BondVibe Pro. Upgrade to get coaching on how to improve your events, based on your real reviews."
+        "AI recommendations are part of Kinlo Pro. Upgrade to get coaching on how to improve your events, based on your real reviews."
       );
     } else {
       Alert.alert("Couldn't generate", r.error || "Please try again later.");

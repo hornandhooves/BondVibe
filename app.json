@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "BondVibe",
+    "name": "Kinlo",
     "slug": "bondvibe",
-    "scheme": "bondvibe",
+    "scheme": "kinlo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -17,7 +17,7 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow BondVibe to access your location to share it with your group."
+          "locationAlwaysAndWhenInUsePermission": "Allow Kinlo to access your location to share it with your group."
         }
       ],
       [
@@ -63,11 +63,11 @@
       "bundleIdentifier": "com.bondvibe.app",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "BondVibe needs access to your location to let you share it with your group.",
-        "NSLocationAlwaysUsageDescription": "BondVibe needs access to your location to let you share it with your group.",
-        "NSCameraUsageDescription": "BondVibe needs camera access to let you take profile pictures and share photos in events.",
-        "NSPhotoLibraryUsageDescription": "BondVibe needs photo library access to let you choose profile pictures and share event photos.",
-        "NSPhotoLibraryAddUsageDescription": "BondVibe needs permission to save photos to your library.",
+        "NSLocationWhenInUseUsageDescription": "Kinlo needs access to your location to let you share it with your group.",
+        "NSLocationAlwaysUsageDescription": "Kinlo needs access to your location to let you share it with your group.",
+        "NSCameraUsageDescription": "Kinlo needs camera access to let you take profile pictures and share photos in events.",
+        "NSPhotoLibraryUsageDescription": "Kinlo needs photo library access to let you choose profile pictures and share event photos.",
+        "NSPhotoLibraryAddUsageDescription": "Kinlo needs permission to save photos to your library.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },

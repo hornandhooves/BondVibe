@@ -22,7 +22,7 @@ import {
 
 // Deep link the Stripe return page redirects to (intercepted by
 // openAuthSessionAsync to auto-close the browser).
-const STRIPE_RETURN_URL = "bondvibe://stripe/return";
+const STRIPE_RETURN_URL = "kinlo://stripe/return";
 
 export default function HostTypeSelectionScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();

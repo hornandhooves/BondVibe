@@ -67,7 +67,7 @@ export default function MyFleetScreen({ navigation }) {
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={[styles.intro, { color: colors.textSecondary }]}>
             Rent your scooters directly to riders. You receive the full price you set —
-            BondVibe adds a small service fee for the rider. The deposit and the rental
+            Kinlo adds a small service fee for the rider. The deposit and the rental
             agreement are between you and the rider.
           </Text>
 

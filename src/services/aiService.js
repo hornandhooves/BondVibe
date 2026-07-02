@@ -1,5 +1,5 @@
 /**
- * Premium AI helpers (BondVibe Pro). All gated server-side by isPremium; the
+ * Premium AI helpers (Kinlo Pro). All gated server-side by isPremium; the
  * client maps a "premium_required" error so the UI can upsell.
  */
 import { getFunctions, httpsCallable } from "firebase/functions";

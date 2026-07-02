@@ -230,7 +230,7 @@ export default function LoginScreen({ navigation }) {
                 <BondVibeLogo size={80} variant="adaptive" isDark={isDark} />
               </View>
               <Text style={[styles.title, { color: colors.text }]}>
-                BondVibe
+                Kinlo
               </Text>
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                 Connect through shared experiences

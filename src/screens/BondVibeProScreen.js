@@ -68,7 +68,7 @@ export default function BondVibeProScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={[styles.back, { color: colors.text }]}>←</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>BondVibe Pro</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Kinlo Pro</Text>
         <View style={{ width: 28 }} />
       </View>
 

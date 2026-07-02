@@ -1001,7 +1001,7 @@ export default function ProfileScreen({ navigation }) {
                 </TouchableOpacity>
               )}
 
-              {/* BondVibe Pro — any host (free or paid) */}
+              {/* Kinlo Pro — any host (free or paid) */}
               {canManageStripe && (
                 <TouchableOpacity
                   onPress={() => navigation.navigate("BondVibePro")}
@@ -1038,7 +1038,7 @@ export default function ProfileScreen({ navigation }) {
                       <Text
                         style={[styles.infoLabel, { color: colors.textSecondary }]}
                       >
-                        BondVibe Pro
+                        Kinlo Pro
                       </Text>
                       <Text style={[styles.infoValue, { color: colors.text }]}>
                         AI, QR, CRM & more

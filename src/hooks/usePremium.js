@@ -3,7 +3,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "../services/firebase";
 
 /**
- * Real-time BondVibe Pro entitlement for the current user.
+ * Real-time Kinlo Pro entitlement for the current user.
  *
  * `isPremium` is set server-side only (Stripe subscription webhook); the client
  * just listens to its own user doc. The moment it flips, gated UI updates with

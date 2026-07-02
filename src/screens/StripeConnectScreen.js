@@ -24,7 +24,7 @@ import {
 
 // Deep link the Stripe return/refresh pages redirect to. openAuthSessionAsync
 // watches for this URL to auto-close the browser and return to the app.
-const STRIPE_RETURN_URL = "bondvibe://stripe/return";
+const STRIPE_RETURN_URL = "kinlo://stripe/return";
 
 export default function StripeConnectScreen({ navigation }) {
   const { colors, isDark } = useTheme();

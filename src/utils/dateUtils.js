@@ -1,4 +1,4 @@
-// Date formatting utilities for BondVibe
+// Date formatting utilities for Kinlo
 
 /**
  * Format ISO date string to readable format
