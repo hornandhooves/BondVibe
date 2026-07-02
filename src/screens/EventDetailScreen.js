@@ -673,6 +673,21 @@ export default function EventDetailScreen({ route, navigation }) {
   const eventTitle = event.title || "Untitled Event";
   const eventCategory = event.category || "";
   const eventLocation = event.location || "Location TBD";
+  // Prefer a precise pin (lat,lng) from the Places picker; fall back to a text
+  // search by the location string. place_id sharpens the pin when present.
+  const mapsQuery =
+    event.locationCoords &&
+    typeof event.locationCoords.latitude === "number" &&
+    typeof event.locationCoords.longitude === "number"
+      ? `${event.locationCoords.latitude},${event.locationCoords.longitude}`
+      : eventLocation;
+  const mapsUrl = event.placeId
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        mapsQuery
+      )}&query_place_id=${event.placeId}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        mapsQuery
+      )}`;
   const eventDescription = event.description || "No description available";
   const eventPrice = typeof event.price === "number" ? event.price : 0;
   const eventStatus = event.status || "active";
@@ -959,14 +974,7 @@ export default function EventDetailScreen({ route, navigation }) {
             style={styles.infoCard}
             activeOpacity={event.location ? 0.85 : 1}
             disabled={!event.location}
-            onPress={() =>
-              event.location &&
-              Linking.openURL(
-                `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                  eventLocation
-                )}`
-              )
-            }
+            onPress={() => event.location && Linking.openURL(mapsUrl)}
           >
             <View
               style={[

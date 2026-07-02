@@ -51,6 +51,7 @@
       "EXPO_PUBLIC_FIREBASE_APP_ID": "1:762181340271:web:fd45de5ece4e2ea1b1e393",
       "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "629419649601-qkgnj1g9gu2fssobs2d1p2bbmqn3imqc.apps.googleusercontent.com",
       "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "629419649601-ldjobevlvjvjmsi92dfe3cpua8u1m8fk.apps.googleusercontent.com",
+      "EXPO_PUBLIC_GOOGLE_PLACES_API_KEY": "AIzaSyDP2zxLDMAXu8XOevVCL3wAE6s3z_UT7Qc",
       "eas": {
         "projectId": "0cf2c3f2-26ad-4e9f-816f-b449085f9b10"
       }

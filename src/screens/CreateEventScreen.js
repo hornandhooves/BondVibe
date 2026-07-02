@@ -29,6 +29,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import EventCreatedModal from "../components/EventCreatedModal";
 import SelectDropdown from "../components/SelectDropdown";
+import PlaceAutocomplete from "../components/PlaceAutocomplete";
 import EventImagePicker from "../components/EventImagePicker";
 import Icon from "../components/Icon";
 import { EVENT_CATEGORIES, EVENT_LANGUAGES } from "../utils/eventCategories";
@@ -117,6 +118,10 @@ export default function CreateEventScreen({ navigation }) {
   });
 
   const [locationDetail, setLocationDetail] = useState("");
+  // Coordinates + place id captured from the Google Places picker (optional;
+  // when present they let attendees open a precise pin in Maps).
+  const [locationCoords, setLocationCoords] = useState(null); // { latitude, longitude }
+  const [placeId, setPlaceId] = useState(null);
   const [maxPeople, setMaxPeople] = useState("");
   const [isFree, setIsFree] = useState(true);
   const [price, setPrice] = useState("");
@@ -182,6 +187,8 @@ export default function CreateEventScreen({ navigation }) {
     if (d.eventDate) setEventDate(new Date(d.eventDate));
     if (d.recurrenceConfig) setRecurrenceConfig(d.recurrenceConfig);
     if (typeof d.locationDetail === "string") setLocationDetail(d.locationDetail);
+    if (d.locationCoords) setLocationCoords(d.locationCoords);
+    if (d.placeId) setPlaceId(d.placeId);
     if (typeof d.maxPeople === "string") setMaxPeople(d.maxPeople);
     if (typeof d.isFree === "boolean") setIsFree(d.isFree);
     if (typeof d.price === "string") setPrice(d.price);
@@ -307,6 +314,8 @@ export default function CreateEventScreen({ navigation }) {
                       eventDate: eventDate?.toISOString?.() || null,
                       recurrenceConfig,
                       locationDetail,
+                      locationCoords,
+                      placeId,
                       maxPeople,
                       isFree,
                       price,
@@ -486,6 +495,9 @@ export default function CreateEventScreen({ navigation }) {
         languages: selectedLanguages,
         city: selectedCity,
         location: fullLocation,
+        // Optional precise pin from the Places picker (null when typed free-text).
+        locationCoords: locationCoords || null,
+        placeId: placeId || null,
         maxPeople: parseInt(maxPeople),
         price: isFree ? 0 : parseFloat(price),
         currency: "MXN",
@@ -844,35 +856,31 @@ export default function CreateEventScreen({ navigation }) {
           type="location"
         />
 
-        {/* Specific Location/Venue */}
+        {/* Specific Location/Venue — Google Places search (autofills address) */}
         <View style={styles.field}>
           <Text style={[styles.label, { color: colors.text }]}>
             Venue / Address *
           </Text>
-          <View
-            style={[
-              styles.inputWrapper,
-              {
-                backgroundColor: colors.surfaceGlass,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <Icon
-              name="location"
-              size={20}
-              color={colors.textSecondary}
-              type="ui"
-              style={{ marginRight: 12 }}
-            />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="e.g., Beach Club XYZ, Calle 10..."
-              placeholderTextColor={colors.textTertiary}
-              value={locationDetail}
-              onChangeText={setLocationDetail}
-            />
-          </View>
+          <PlaceAutocomplete
+            value={locationDetail}
+            placeholder="Search a place, e.g. Beach Club XYZ"
+            onSelect={(place) => {
+              // Prefer the full formatted address; fall back to typed text.
+              setLocationDetail(place.address || place.description || "");
+              if (
+                typeof place.latitude === "number" &&
+                typeof place.longitude === "number"
+              ) {
+                setLocationCoords({
+                  latitude: place.latitude,
+                  longitude: place.longitude,
+                });
+              } else {
+                setLocationCoords(null);
+              }
+              setPlaceId(place.placeId || null);
+            }}
+          />
         </View>
 
         {/* Event Frequency */}
