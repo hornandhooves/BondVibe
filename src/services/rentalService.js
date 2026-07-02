@@ -144,7 +144,7 @@ export const getMyFleet = async () => {
  * Reserve an available vehicle and open its payment.
  * @param {{ vehicleId:string, startAt:string, endAt:string, eventId?:string }} p
  * @returns {Promise<{success:boolean, rentalId?:string, clientSecret?:string,
- *   depositClientSecret?:string, error?:string}>}
+ *   free?:boolean, error?:string}>}
  */
 export const reserveVehicle = async ({ vehicleId, startAt, endAt, eventId }) => {
   try {
