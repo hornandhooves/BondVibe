@@ -40,7 +40,11 @@ const emptyForm = {
   allowAutoRenew: true,
 };
 
-export default function MembershipPlansScreen({ navigation }) {
+export default function MembershipPlansScreen({ navigation, route }) {
+  // When opened mid event-creation, back returns to the event draft, not Home.
+  const fromEventCreation = route?.params?.fromEventCreation;
+  const goBack = () =>
+    fromEventCreation ? navigation.navigate("CreateEvent") : navigation.goBack();
   const { colors, isDark } = useTheme();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -190,7 +194,7 @@ export default function MembershipPlansScreen({ navigation }) {
       <StatusBar style={isDark ? "light" : "dark"} />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={goBack}>
           <Text style={[styles.backButton, { color: colors.text }]}>←</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
