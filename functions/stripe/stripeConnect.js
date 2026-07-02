@@ -37,6 +37,40 @@ exports.createConnectAccount = onRequest(
         return res.status(400).json({error: "Missing required fields"});
       }
 
+      // Idempotency: never create a second Stripe account for a user who
+      // already has one (e.g. set up via the rental flow, then again for
+      // events). Reuse it and refresh its status.
+      const userRef = admin.firestore().collection("users").doc(userId);
+      const userSnap = await userRef.get();
+      const existingId = userSnap.exists ?
+        userSnap.data()?.stripeConnect?.accountId : null;
+      if (existingId) {
+        try {
+          const existing = await stripe.accounts.retrieve(existingId);
+          await userRef.update({
+            "stripeConnect.chargesEnabled": existing.charges_enabled,
+            "stripeConnect.payoutsEnabled": existing.payouts_enabled,
+            "stripeConnect.detailsSubmitted": existing.details_submitted,
+            "stripeConnect.lastUpdated":
+              admin.firestore.FieldValue.serverTimestamp(),
+          });
+          console.log("♻️ Reusing existing Stripe account:", existingId);
+          return res.json({success: true, accountId: existing.id, reused: true});
+        } catch (retrieveErr) {
+          // Only fall through to create a new account if the stored one no
+          // longer exists on Stripe; otherwise surface the error.
+          const gone = retrieveErr.code === "resource_missing" ||
+            retrieveErr.statusCode === 404;
+          if (!gone) {
+            console.error("❌ Error retrieving account:", retrieveErr.message);
+            return res.status(500).json({
+              error: retrieveErr.message || "Failed to load Connect account",
+            });
+          }
+          console.log("⚠️ Stored account missing on Stripe, creating a new one");
+        }
+      }
+
       console.log("📤 Creating Stripe Connect account for:", userId);
 
       // Create Express account

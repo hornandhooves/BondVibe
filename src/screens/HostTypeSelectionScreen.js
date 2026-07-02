@@ -17,6 +17,7 @@ import * as WebBrowser from "expo-web-browser";
 import {
   createConnectAccount,
   getAccountLink,
+  checkAccountStatus,
 } from "../services/stripeConnectService";
 
 // Deep link the Stripe return page redirects to (intercepted by
@@ -132,19 +133,22 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
         console.log("🌐 Opening Stripe onboarding...");
         await WebBrowser.openAuthSessionAsync(linkResult.url, STRIPE_RETURN_URL);
 
-        // Activate hosting as a Paid Host. canCreatePaidEvents stays false
-        // until Stripe finishes verification (synced from the Stripe Connect
-        // screen / webhook); the user can already create free events.
+        // Activate hosting as a Paid Host. Do NOT hardcode canCreatePaidEvents:
+        // an account already set up (e.g. via the rental flow) may already be
+        // charge-enabled. Derive it from the real Stripe status below.
         await updateDoc(doc(db, "users", auth.currentUser.uid), {
           role: "host",
           "hostConfig.type": "paid",
           "hostConfig.payoutProcessor": "stripe",
-          "hostConfig.canCreatePaidEvents": false,
           "hostConfig.createdAt": new Date().toISOString(),
           "hostConfig.updatedAt": new Date().toISOString(),
         });
 
-        console.log("✅ User set as Paid Host (Stripe verification pending)");
+        // Sync canCreatePaidEvents from Stripe (sets true when charges+details
+        // are ready); never clobbers an already-active account.
+        await checkAccountStatus(auth.currentUser.uid).catch(() => {});
+
+        console.log("✅ User set as Paid Host (status synced from Stripe)");
         goAfterSelection();
       }
     } catch (error) {

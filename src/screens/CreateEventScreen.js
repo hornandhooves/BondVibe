@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -35,6 +35,9 @@ import { EVENT_CATEGORIES, EVENT_LANGUAGES } from "../utils/eventCategories";
 import { LOCATIONS } from "../utils/locations";
 import { uploadEventImages } from "../services/storageService";
 import { getHostMembershipPlans } from "../services/membershipService";
+import { checkAccountStatus } from "../services/stripeConnectService";
+import { useFocusEffect } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import RecurrenceModal from "../components/RecurrenceModal";
 import { generateRecurringDates, getRecurrenceSummary } from "../utils/recurrenceUtils";
@@ -42,6 +45,10 @@ import { usePremium } from "../hooks/usePremium";
 import { generateEventListing, isPremiumRequired } from "../services/aiService";
 
 // Recurrence handled by modal
+
+// AsyncStorage key for the in-progress event draft (preserved across the
+// "create a membership plan" detour so the host never loses their data).
+const EVENT_DRAFT_KEY = "eventDraft";
 
 export default function CreateEventScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -129,21 +136,77 @@ export default function CreateEventScreen({ navigation }) {
   // Filter out "all" from locations for create event
   const cityOptions = LOCATIONS.filter((loc) => loc.id !== "all");
 
-  // Load user profile on mount
-  useEffect(() => {
-    const loadUserProfile = async () => {
-      try {
-        const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
-        if (userDoc.exists()) {
-          setUserProfile(userDoc.data());
-        }
-      } catch (error) {
-        console.error("Error loading user profile:", error);
+  // Load the user profile — refreshed on every focus so returning from the
+  // Stripe Connect screen picks up the latest hostConfig/canCreatePaidEvents.
+  const loadUserProfile = useCallback(async () => {
+    try {
+      const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+      if (userDoc.exists()) {
+        setUserProfile(userDoc.data());
+        return userDoc.data();
       }
-    };
-
-    loadUserProfile();
+    } catch (error) {
+      console.error("Error loading user profile:", error);
+    }
+    return null;
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadUserProfile();
+    }, [loadUserProfile])
+  );
+
+  // Whether the host may create paid events, self-healing a stale flag: if the
+  // flag is false but a Stripe account exists, refresh the real status once and
+  // re-check. Fixes hosts wrongly blocked after completing/onboarding Stripe.
+  const canCreatePaidNow = async () => {
+    if (userProfile?.hostConfig?.canCreatePaidEvents) return true;
+    if (userProfile?.stripeConnect?.accountId) {
+      await checkAccountStatus(auth.currentUser.uid).catch(() => {});
+      const fresh = await loadUserProfile();
+      return !!fresh?.hostConfig?.canCreatePaidEvents;
+    }
+    return false;
+  };
+
+  // Restore an in-progress event draft (saved before the "create a membership
+  // plan" detour) so the host never loses their captured data. The draft only
+  // exists during that round-trip; restore it once, then clear it.
+  const restoreDraft = useCallback((d) => {
+    if (typeof d.title === "string") setTitle(d.title);
+    if (typeof d.description === "string") setDescription(d.description);
+    if (d.selectedCategory) setSelectedCategory(d.selectedCategory);
+    if (Array.isArray(d.selectedLanguages)) setSelectedLanguages(d.selectedLanguages);
+    if (d.selectedCity) setSelectedCity(d.selectedCity);
+    if (d.eventDate) setEventDate(new Date(d.eventDate));
+    if (d.recurrenceConfig) setRecurrenceConfig(d.recurrenceConfig);
+    if (typeof d.locationDetail === "string") setLocationDetail(d.locationDetail);
+    if (typeof d.maxPeople === "string") setMaxPeople(d.maxPeople);
+    if (typeof d.isFree === "boolean") setIsFree(d.isFree);
+    if (typeof d.price === "string") setPrice(d.price);
+    if (Array.isArray(d.eventImages)) setEventImages(d.eventImages);
+    if (typeof d.acceptsMembership === "boolean") setAcceptsMembership(d.acceptsMembership);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        try {
+          const raw = await AsyncStorage.getItem(EVENT_DRAFT_KEY);
+          if (!raw) return;
+          const d = JSON.parse(raw);
+          // Only restore a recent draft (guards against a stale abandoned one).
+          if (d.savedAt && Date.now() - d.savedAt < 2 * 60 * 60 * 1000) {
+            restoreDraft(d);
+          }
+          await AsyncStorage.removeItem(EVENT_DRAFT_KEY);
+        } catch (e) {
+          // ignore
+        }
+      })();
+    }, [restoreDraft])
+  );
 
   const formatDate = (date) => {
     const options = { month: "short", day: "numeric", year: "numeric" };
@@ -229,7 +292,34 @@ export default function CreateEventScreen({ navigation }) {
             { text: "Not now", style: "cancel" },
             {
               text: "Create a plan",
-              onPress: () => navigation.navigate("MembershipPlans"),
+              onPress: async () => {
+                // Persist the in-progress event so the detour to create a
+                // membership plan doesn't lose it.
+                try {
+                  await AsyncStorage.setItem(
+                    EVENT_DRAFT_KEY,
+                    JSON.stringify({
+                      title,
+                      description,
+                      selectedCategory,
+                      selectedLanguages,
+                      selectedCity,
+                      eventDate: eventDate?.toISOString?.() || null,
+                      recurrenceConfig,
+                      locationDetail,
+                      maxPeople,
+                      isFree,
+                      price,
+                      eventImages,
+                      acceptsMembership,
+                      savedAt: Date.now(),
+                    })
+                  );
+                } catch (e) {
+                  // ignore
+                }
+                navigation.navigate("MembershipPlans", { fromEventCreation: true });
+              },
             },
           ]
         );
@@ -291,8 +381,8 @@ export default function CreateEventScreen({ navigation }) {
       );
       return;
     }
-    if (!maxPeople || parseInt(maxPeople) < 2) {
-      Alert.alert("Invalid Max People", "Maximum people must be at least 2.");
+    if (!maxPeople || parseInt(maxPeople) < 1) {
+      Alert.alert("Invalid Max People", "Maximum people must be at least 1.");
       return;
     }
     if (!isFree && (!price || parseFloat(price) <= 0)) {
@@ -303,10 +393,10 @@ export default function CreateEventScreen({ navigation }) {
       return;
     }
 
-    // Validate paid events require Stripe
+    // Validate paid events require Stripe (self-heals a stale flag).
     const eventPrice = parseInt(price) || 0;
     if (eventPrice > 0) {
-      const canCreatePaid = userProfile?.hostConfig?.canCreatePaidEvents;
+      const canCreatePaid = await canCreatePaidNow();
       if (!canCreatePaid) {
         Alert.alert(
           "Cannot Create Paid Event",
@@ -513,6 +603,9 @@ export default function CreateEventScreen({ navigation }) {
           }
         }
       }
+
+      // Event created — drop any saved draft.
+      await AsyncStorage.removeItem(EVENT_DRAFT_KEY).catch(() => {});
 
       setCreatedEventTitle(title.trim());
       setCreatedEventsCount(eventDates.length);
