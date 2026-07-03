@@ -1819,7 +1819,7 @@ function createStyles(colors) {
     freeBadgeText: {
       fontSize: 12,
       fontWeight: "700",
-      color: "#A6FF96",
+      color: colors.success,
       letterSpacing: 0.5,
     },
     priceBadge: {

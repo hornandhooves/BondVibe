@@ -204,13 +204,13 @@ export default function HostCRMScreen({ navigation }) {
                 {(r.flags.inactive || r.flags.membershipExpiring) && (
                   <View style={styles.flags}>
                     {r.flags.inactive && (
-                      <View style={[styles.flag, { backgroundColor: "#FF9F0A22", borderColor: "#FF9F0A" }]}>
-                        <Text style={[styles.flagText, { color: "#FF9F0A" }]}>Broke their streak</Text>
+                      <View style={[styles.flag, { backgroundColor: `${colors.warning}22`, borderColor: colors.warning }]}>
+                        <Text style={[styles.flagText, { color: colors.warning }]}>Broke their streak</Text>
                       </View>
                     )}
                     {r.flags.membershipExpiring && (
-                      <View style={[styles.flag, { backgroundColor: "#E0413A22", borderColor: "#E0413A" }]}>
-                        <Text style={[styles.flagText, { color: "#E0413A" }]}>Membership expiring</Text>
+                      <View style={[styles.flag, { backgroundColor: `${colors.error}22`, borderColor: colors.error }]}>
+                        <Text style={[styles.flagText, { color: colors.error }]}>Membership expiring</Text>
                       </View>
                     )}
                   </View>

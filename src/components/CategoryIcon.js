@@ -23,8 +23,8 @@ export function AvatarFrame({ children, size = 84 }) {
       backgroundColor: colors.surfaceElevated,
       borderWidth: 2, borderColor: colors.borderStrong,
       alignItems: 'center', justifyContent: 'center',
-      shadowColor: colors.hardShadow, shadowOffset: { width: 4, height: 4 },
-      shadowOpacity: 1, shadowRadius: 0, elevation: 6,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
     }}>
       {children}
     </View>

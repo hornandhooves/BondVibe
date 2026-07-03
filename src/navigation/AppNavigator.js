@@ -73,12 +73,14 @@ import MyRentalsScreen from "../screens/MyRentalsScreen";
 import MyFleetScreen from "../screens/MyFleetScreen";
 import PublishVehicleScreen from "../screens/PublishVehicleScreen";
 import VehicleBookingsScreen from "../screens/VehicleBookingsScreen";
-// Social layer (feed / posts / DMs)
+// Social layer (feed / posts / DMs / profiles)
 import FeedScreen from "../screens/FeedScreen";
 import CreatePostScreen from "../screens/CreatePostScreen";
 import PostDetailScreen from "../screens/PostDetailScreen";
 import DMListScreen from "../screens/DMListScreen";
 import DMChatScreen from "../screens/DMChatScreen";
+import UserProfileScreen from "../screens/UserProfileScreen";
+import FollowListScreen from "../screens/FollowListScreen";
 // Community Matching (A1–E4)
 import MatchOptInScreen from "../screens/matching/MatchOptInScreen";
 import MatchConsentScreen from "../screens/matching/MatchConsentScreen";
@@ -349,10 +351,10 @@ const AppNavigator = forwardRef((props, ref) => {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: "#0B0F1A",
+          backgroundColor: "#F1F0F4",
         }}
       >
-        <ActivityIndicator size="large" color="#FF6B9D" />
+        <ActivityIndicator size="large" color="#7C3AED" />
       </View>
     );
   }
@@ -466,6 +468,8 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="PostDetail" component={PostDetailScreen} />
           <Stack.Screen name="DMList" component={DMListScreen} />
           <Stack.Screen name="DMChat" component={DMChatScreen} />
+          <Stack.Screen name="UserProfile" component={UserProfileScreen} />
+          <Stack.Screen name="FollowList" component={FollowListScreen} />
           {/* Community Matching (A1–E4) */}
           <Stack.Screen name="MatchOptIn" component={MatchOptInScreen} />
           <Stack.Screen name="MatchConsent" component={MatchConsentScreen} />

@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
   tip: {
     flexDirection: 'row',
     marginBottom: 20,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: colors.sunken,
     padding: 16,
     borderRadius: Sizes.borderRadius,
   },

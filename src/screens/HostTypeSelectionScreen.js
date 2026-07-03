@@ -354,7 +354,7 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
                 { backgroundColor: "rgba(255, 159, 10, 0.15)" },
               ]}
             >
-              <Text style={[styles.infoText, { color: "#FF9F0A" }]}>
+              <Text style={[styles.infoText, { color: colors.warning }]}>
                 ℹ️ Requires Stripe verification (1-2 days)
               </Text>
             </View>

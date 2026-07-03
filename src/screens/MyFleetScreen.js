@@ -19,8 +19,8 @@ import { formatCentavos } from "../utils/pricing";
 
 const STATUS_META = {
   available: { label: "Available", color: "#34C759" },
-  rented: { label: "Rented", color: "#FF9F0A" },
-  maintenance: { label: "Maintenance", color: "#8A8398" },
+  rented: { label: "Rented", color: "#B45309" },
+  maintenance: { label: "Maintenance", color: "#8a8f9c" },
 };
 
 export default function MyFleetScreen({ navigation }) {
@@ -73,7 +73,7 @@ export default function MyFleetScreen({ navigation }) {
 
           {!payoutsReady && (
             <TouchableOpacity
-              style={[styles.payoutCard, { borderColor: "#FF9F0A" }]}
+              style={[styles.payoutCard, { borderColor: colors.warning }]}
               activeOpacity={0.85}
               onPress={() => navigation.navigate("StripeConnect")}
             >

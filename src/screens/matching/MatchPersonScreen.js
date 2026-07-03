@@ -82,10 +82,16 @@ export default function MatchPersonScreen({ route, navigation }) {
 
         <View style={styles.body}>
           <View style={styles.nameRow}>
-            <Text style={[styles.name, { color: colors.text }]}>
-              {profile.displayName}
-              {profile.age ? `, ${profile.age}` : ""}
-            </Text>
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              onPress={() => navigation.navigate("UserProfile", { userId: profile.userId })}
+              hitSlop={{ top: 6, bottom: 6, left: 0, right: 6 }}
+            >
+              <Text style={[styles.name, { color: colors.text }]}>
+                {profile.displayName}
+                {profile.age ? `, ${profile.age}` : ""}
+              </Text>
+            </TouchableOpacity>
             {typeof profile.compatibility === "number" && (
               <View style={[styles.compat, { backgroundColor: `${colors.primary}18` }]}>
                 <Text style={[styles.compatText, { color: colors.primary }]}>

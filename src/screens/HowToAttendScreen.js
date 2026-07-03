@@ -188,7 +188,7 @@ export default function HowToAttendScreen({ route, navigation }) {
           {hostHasPlans && !hasActiveMembership && (
             <Option
               icon="ai"
-              iconColor="#FF9F0A"
+              iconColor={colors.warning}
               title={
                 membership ? "Renew your membership" : "Get a membership"
               }

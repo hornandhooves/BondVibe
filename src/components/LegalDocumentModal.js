@@ -22,7 +22,7 @@ export default function LegalDocumentModal({
   const renderContent = () => {
     if (!content) {
       return (
-        <Text style={[styles.paragraph, { color: "#FF6B6B" }]}>
+        <Text style={[styles.paragraph, { color: colors.error }]}>
           Error: No content available
         </Text>
       );
@@ -33,7 +33,7 @@ export default function LegalDocumentModal({
 
     if (paragraphs.length === 0) {
       return (
-        <Text style={[styles.paragraph, { color: "#FFA500" }]}>
+        <Text style={[styles.paragraph, { color: colors.warning }]}>
           No paragraphs found
         </Text>
       );

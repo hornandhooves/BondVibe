@@ -148,7 +148,7 @@ export default function ReportScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: colors.sunken,
   },
   header: {
     flexDirection: 'row',
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
   },
   safetyNote: {
     flexDirection: 'row',
-    backgroundColor: '#E8F5E9',
+    backgroundColor: colors.successBg,
     padding: 16,
     borderRadius: Sizes.borderRadius,
     marginBottom: 24,

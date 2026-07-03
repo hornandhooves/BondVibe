@@ -13,12 +13,11 @@ import { useTheme } from "../contexts/ThemeContext";
  * </GradientBackground>
  */
 export default function GradientBackground({ children, style }) {
-  const { isDark } = useTheme();
+  const { isDark, colors } = useTheme();
 
-  // Accent gradient colors
   const gradientColors = isDark
-    ? ["#0B0F1A", "#150D18", "#0B0F1A"] // Dark: subtle magenta hint in middle
-    : ["#FAFAFC", "#FFF9E6", "#FAFAFC"]; // Light: subtle yellow hint in middle
+    ? ["#0B0F1A", "#150D18", "#0B0F1A"]
+    : [colors.background, colors.sunken || colors.background, colors.background];
 
   return (
     <View style={[styles.container, style]}>

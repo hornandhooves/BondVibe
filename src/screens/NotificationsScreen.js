@@ -141,6 +141,7 @@ export default function NotificationsScreen({ navigation }) {
                 createdAt: createdAtValue,
                 createdAtDate: createdAtDate, // ✅ Keep Date object for sorting
                 unreadCount: 0,
+                fromUserId: data.fromUserId ? String(data.fromUserId) : undefined,
                 metadata:
                   data.metadata && typeof data.metadata === "object"
                     ? {
@@ -295,6 +296,12 @@ export default function NotificationsScreen({ navigation }) {
         }
         break;
 
+      case "NEW_FOLLOWER":
+        if (notification.fromUserId) {
+          navigation.navigate("UserProfile", { userId: notification.fromUserId });
+        }
+        break;
+
       case "group_message":
         if (notification.metadata?.groupId) {
           navigation.navigate("GroupChat", {
@@ -363,7 +370,11 @@ export default function NotificationsScreen({ navigation }) {
                 },
               ]}
             >
-              <Text style={styles.iconEmoji}>{safeIcon}</Text>
+              {notification.type === "NEW_FOLLOWER" ? (
+                <Icon name="community" size={22} color={colors.primary} />
+              ) : (
+                <Text style={styles.iconEmoji}>{safeIcon}</Text>
+              )}
               {safeUnreadCount > 0 && (
                 <View
                   style={[

@@ -640,7 +640,7 @@ export default function AdminDashboardScreen({ navigation }) {
                       },
                     ]}
                   >
-                    <Text style={[styles.actionText, { color: "#FF9F0A" }]}>
+                    <Text style={[styles.actionText, { color: colors.warning }]}>
                       Remove Host
                     </Text>
                   </View>
@@ -661,7 +661,7 @@ export default function AdminDashboardScreen({ navigation }) {
                       },
                     ]}
                   >
-                    <Text style={[styles.actionText, { color: "#FF9F0A" }]}>
+                    <Text style={[styles.actionText, { color: colors.warning }]}>
                       Remove Admin
                     </Text>
                   </View>
@@ -682,7 +682,7 @@ export default function AdminDashboardScreen({ navigation }) {
                       },
                     ]}
                   >
-                    <Text style={[styles.actionText, { color: "#FF453A" }]}>
+                    <Text style={[styles.actionText, { color: colors.error }]}>
                       Suspend
                     </Text>
                   </View>
@@ -705,7 +705,7 @@ export default function AdminDashboardScreen({ navigation }) {
                   },
                 ]}
               >
-                <Text style={[styles.actionText, { color: "#007AFF" }]}>
+                <Text style={[styles.actionText, { color: colors.brand }]}>
                   Reset Password
                 </Text>
               </View>
@@ -726,7 +726,7 @@ export default function AdminDashboardScreen({ navigation }) {
                   },
                 ]}
               >
-                <Text style={[styles.actionText, { color: "#FF453A" }]}>
+                <Text style={[styles.actionText, { color: colors.error }]}>
                   Delete
                 </Text>
               </View>
@@ -756,7 +756,7 @@ export default function AdminDashboardScreen({ navigation }) {
       case "host":
         return "#FF9F0A";
       default:
-        return "#007AFF";
+        return "#7C3AED";
     }
   };
 
@@ -1474,7 +1474,7 @@ function createStyles(colors) {
     },
     tabText: { fontSize: 15, fontWeight: "600" },
     badge: {
-      backgroundColor: "#FF453A",
+      backgroundColor: colors.error,
       borderRadius: 10,
       minWidth: 20,
       height: 20,
@@ -1582,7 +1582,7 @@ function createStyles(colors) {
     actionsRow: { flexDirection: "row", gap: 12 },
     rejectButton: { flex: 1, borderRadius: 12, overflow: "hidden" },
     rejectGlass: { borderWidth: 1, paddingVertical: 12, alignItems: "center" },
-    rejectText: { fontSize: 15, fontWeight: "600", color: "#FF453A" },
+    rejectText: { fontSize: 15, fontWeight: "600", color: colors.error },
     approveButton: { flex: 1, borderRadius: 12, overflow: "hidden" },
     approveGlass: { borderWidth: 1, paddingVertical: 12, alignItems: "center" },
     approveText: { fontSize: 15, fontWeight: "600", color: "#34C759" },
@@ -1616,7 +1616,7 @@ function createStyles(colors) {
     suspendedText: {
       fontSize: 12,
       fontWeight: "600",
-      color: "#FF453A",
+      color: colors.error,
       textAlign: "center",
     },
     userActions: {

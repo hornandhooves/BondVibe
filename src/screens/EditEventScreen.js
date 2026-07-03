@@ -1032,7 +1032,7 @@ export default function EditEventScreen({ route, navigation }) {
                   {c.name}
                 </Text>
                 <TouchableOpacity onPress={() => handleRemoveCoHost(c.id)}>
-                  <Text style={{ color: "#E0413A", fontWeight: "700" }}>Remove</Text>
+                  <Text style={{ color: colors.error, fontWeight: "700" }}>Remove</Text>
                 </TouchableOpacity>
               </View>
             ))}

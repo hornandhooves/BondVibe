@@ -165,14 +165,14 @@ export default function HostAnalyticsScreen({ navigation }) {
               icon="calendarCheck"
               label="Classes attended"
               value={data.classesAttended}
-              accent="#0A84FF"
+              accent={colors.brand}
               onPress={() => navigation.navigate("AnalyticsDetail", { metric: "attended" })}
             />
             <StatCard
               icon="clock"
               label="Expiring (7 days)"
               value={data.expiringSoonCount}
-              accent="#FF9F0A"
+              accent={colors.warning}
               onPress={() => navigation.navigate("AnalyticsDetail", { metric: "expiring" })}
             />
             <StatCard
@@ -298,7 +298,7 @@ export default function HostAnalyticsScreen({ navigation }) {
                         expires {exp ? exp.toLocaleDateString() : "—"}
                       </Text>
                     </View>
-                    <Icon name="clock" size={16} color="#FF9F0A" />
+                    <Icon name="clock" size={16} color={colors.warning} />
                   </View>
                 );
               })}

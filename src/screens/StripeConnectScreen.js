@@ -280,7 +280,7 @@ export default function StripeConnectScreen({ navigation }) {
                 },
               ]}
             >
-              <Text style={[styles.detailsTitle, { color: "#FF9F0A" }]}>
+              <Text style={[styles.detailsTitle, { color: colors.warning }]}>
                 ⚠️ Payouts not active yet
               </Text>
               <Text

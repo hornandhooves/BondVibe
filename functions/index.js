@@ -49,6 +49,8 @@ exports.getHostMatchAnalytics = matching.getHostMatchAnalytics;
 const social = require("./social/social");
 exports.onPostLikeWritten = social.onPostLikeWritten;
 exports.onPostCommentWritten = social.onPostCommentWritten;
+exports.onPostCreated = social.onPostCreated;
+exports.onFollowCreated = social.onFollowCreated;
 
 /**
  * Look up a user's email (for Stripe receipts). Returns null if unavailable.

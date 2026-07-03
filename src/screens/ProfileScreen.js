@@ -26,11 +26,14 @@ import { BVBadge } from "../components/BoldPop";
 import { AvatarFrame } from "../components/CategoryIcon";
 import { usePremium } from "../hooks/usePremium";
 import ConnectSpotifyButton from "../components/ConnectSpotifyButton";
+import { getFollowers, getFollowing } from "../services/followService";
 
 export default function ProfileScreen({ navigation }) {
   const { colors, isDark, toggleTheme } = useTheme();
   const { isPremium } = usePremium();
   const [profile, setProfile] = useState(null);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
   const [editing, setEditing] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -52,7 +55,14 @@ export default function ProfileScreen({ navigation }) {
 
   const loadProfile = async () => {
     try {
-      const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+      const uid = auth.currentUser.uid;
+      const [userDoc, followerIds, followingIds] = await Promise.all([
+        getDoc(doc(db, "users", uid)),
+        getFollowers(uid),
+        getFollowing(uid),
+      ]);
+      setFollowersCount(followerIds.length);
+      setFollowingCount(followingIds.length);
       if (userDoc.exists()) {
         const data = userDoc.data();
         setProfile(data);
@@ -229,11 +239,11 @@ export default function ProfileScreen({ navigation }) {
                         backgroundColor: colors.surface,
                         borderColor: colors.borderStrong,
                         borderWidth: 2,
-                        shadowColor: colors.hardShadow,
-                        shadowOffset: { width: 3, height: 3 },
-                        shadowOpacity: 1,
-                        shadowRadius: 0,
-                        elevation: 4,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.06,
+                        shadowRadius: 3,
+                        elevation: 2,
                       },
                     ]}
                   >
@@ -305,11 +315,11 @@ export default function ProfileScreen({ navigation }) {
                         backgroundColor: colors.surface,
                         borderColor: colors.borderStrong,
                         borderWidth: 2,
-                        shadowColor: colors.hardShadow,
-                        shadowOffset: { width: 3, height: 3 },
-                        shadowOpacity: 1,
-                        shadowRadius: 0,
-                        elevation: 4,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.06,
+                        shadowRadius: 3,
+                        elevation: 2,
                       },
                     ]}
                   >
@@ -465,11 +475,11 @@ export default function ProfileScreen({ navigation }) {
                       backgroundColor: colors.surface,
                       borderColor: colors.borderStrong,
                       borderWidth: 2,
-                      shadowColor: colors.hardShadow,
-                      shadowOffset: { width: 3, height: 3 },
-                      shadowOpacity: 1,
-                      shadowRadius: 0,
-                      elevation: 4,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.06,
+                      shadowRadius: 3,
+                      elevation: 2,
                     },
                   ]}
                 >
@@ -547,6 +557,43 @@ export default function ProfileScreen({ navigation }) {
                   />
                 </View>
               )}
+
+              {/* Followers / Following counts */}
+              <View style={styles.statsRow}>
+                <TouchableOpacity
+                  style={styles.stat}
+                  onPress={() =>
+                    navigation.navigate("FollowList", {
+                      userId: auth.currentUser.uid,
+                      type: "followers",
+                    })
+                  }
+                >
+                  <Text style={[styles.statNumber, { color: colors.text }]}>
+                    {followersCount}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                    Followers
+                  </Text>
+                </TouchableOpacity>
+                <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+                <TouchableOpacity
+                  style={styles.stat}
+                  onPress={() =>
+                    navigation.navigate("FollowList", {
+                      userId: auth.currentUser.uid,
+                      type: "following",
+                    })
+                  }
+                >
+                  <Text style={[styles.statNumber, { color: colors.text }]}>
+                    {followingCount}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                    Following
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {profile.bio && (
@@ -557,11 +604,11 @@ export default function ProfileScreen({ navigation }) {
                     backgroundColor: colors.surface,
                     borderColor: colors.borderStrong,
                     borderWidth: 2,
-                    shadowColor: colors.hardShadow,
-                    shadowOffset: { width: 3, height: 3 },
-                    shadowOpacity: 1,
-                    shadowRadius: 0,
-                    elevation: 4,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.06,
+                    shadowRadius: 3,
+                    elevation: 2,
                   },
                 ]}
               >
@@ -579,11 +626,11 @@ export default function ProfileScreen({ navigation }) {
                   backgroundColor: colors.surface,
                   borderColor: colors.borderStrong,
                   borderWidth: 2,
-                  shadowColor: colors.hardShadow,
-                  shadowOffset: { width: 3, height: 3 },
-                  shadowOpacity: 1,
-                  shadowRadius: 0,
-                  elevation: 4,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.06,
+                  shadowRadius: 3,
+                  elevation: 2,
                 },
               ]}
             >
@@ -604,11 +651,11 @@ export default function ProfileScreen({ navigation }) {
                     backgroundColor: colors.surface,
                     borderColor: colors.borderStrong,
                     borderWidth: 2,
-                    shadowColor: colors.hardShadow,
-                    shadowOffset: { width: 3, height: 3 },
-                    shadowOpacity: 1,
-                    shadowRadius: 0,
-                    elevation: 4,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.06,
+                    shadowRadius: 3,
+                    elevation: 2,
                   },
                 ]}
               >
@@ -649,11 +696,11 @@ export default function ProfileScreen({ navigation }) {
                         backgroundColor: colors.surface,
                         borderColor: colors.borderStrong,
                         borderWidth: 2,
-                        shadowColor: colors.hardShadow,
-                        shadowOffset: { width: 3, height: 3 },
-                        shadowOpacity: 1,
-                        shadowRadius: 0,
-                        elevation: 4,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.06,
+                        shadowRadius: 3,
+                        elevation: 2,
                       },
                     ]}
                   >
@@ -781,11 +828,11 @@ export default function ProfileScreen({ navigation }) {
                       backgroundColor: colors.surface,
                       borderColor: colors.borderStrong,
                       borderWidth: 2,
-                      shadowColor: colors.hardShadow,
-                      shadowOffset: { width: 3, height: 3 },
-                      shadowOpacity: 1,
-                      shadowRadius: 0,
-                      elevation: 4,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.06,
+                      shadowRadius: 3,
+                      elevation: 2,
                     },
                   ]}
                 >
@@ -830,11 +877,11 @@ export default function ProfileScreen({ navigation }) {
                       backgroundColor: colors.surface,
                       borderColor: colors.borderStrong,
                       borderWidth: 2,
-                      shadowColor: colors.hardShadow,
-                      shadowOffset: { width: 3, height: 3 },
-                      shadowOpacity: 1,
-                      shadowRadius: 0,
-                      elevation: 4,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.06,
+                      shadowRadius: 3,
+                      elevation: 2,
                     },
                   ]}
                 >
@@ -879,11 +926,11 @@ export default function ProfileScreen({ navigation }) {
                       backgroundColor: colors.surface,
                       borderColor: colors.borderStrong,
                       borderWidth: 2,
-                      shadowColor: colors.hardShadow,
-                      shadowOffset: { width: 3, height: 3 },
-                      shadowOpacity: 1,
-                      shadowRadius: 0,
-                      elevation: 4,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.06,
+                      shadowRadius: 3,
+                      elevation: 2,
                     },
                   ]}
                 >
@@ -929,11 +976,11 @@ export default function ProfileScreen({ navigation }) {
                         backgroundColor: colors.surface,
                         borderColor: colors.borderStrong,
                         borderWidth: 2,
-                        shadowColor: colors.hardShadow,
-                        shadowOffset: { width: 3, height: 3 },
-                        shadowOpacity: 1,
-                        shadowRadius: 0,
-                        elevation: 4,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.06,
+                        shadowRadius: 3,
+                        elevation: 2,
                       },
                     ]}
                   >
@@ -983,11 +1030,11 @@ export default function ProfileScreen({ navigation }) {
                         backgroundColor: colors.surface,
                         borderColor: colors.borderStrong,
                         borderWidth: 2,
-                        shadowColor: colors.hardShadow,
-                        shadowOffset: { width: 3, height: 3 },
-                        shadowOpacity: 1,
-                        shadowRadius: 0,
-                        elevation: 4,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.06,
+                        shadowRadius: 3,
+                        elevation: 2,
                       },
                     ]}
                   >
@@ -1034,11 +1081,11 @@ export default function ProfileScreen({ navigation }) {
                         backgroundColor: colors.surface,
                         borderColor: colors.borderStrong,
                         borderWidth: 2,
-                        shadowColor: colors.hardShadow,
-                        shadowOffset: { width: 3, height: 3 },
-                        shadowOpacity: 1,
-                        shadowRadius: 0,
-                        elevation: 4,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.06,
+                        shadowRadius: 3,
+                        elevation: 2,
                       },
                     ]}
                   >
@@ -1085,11 +1132,11 @@ export default function ProfileScreen({ navigation }) {
                         backgroundColor: colors.surface,
                         borderColor: colors.borderStrong,
                         borderWidth: 2,
-                        shadowColor: colors.hardShadow,
-                        shadowOffset: { width: 3, height: 3 },
-                        shadowOpacity: 1,
-                        shadowRadius: 0,
-                        elevation: 4,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.06,
+                        shadowRadius: 3,
+                        elevation: 2,
                       },
                     ]}
                   >
@@ -1131,11 +1178,11 @@ export default function ProfileScreen({ navigation }) {
                         backgroundColor: colors.surface,
                         borderColor: colors.borderStrong,
                         borderWidth: 2,
-                        shadowColor: colors.hardShadow,
-                        shadowOffset: { width: 3, height: 3 },
-                        shadowOpacity: 1,
-                        shadowRadius: 0,
-                        elevation: 4,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.06,
+                        shadowRadius: 3,
+                        elevation: 2,
                       },
                     ]}
                   >
@@ -1237,11 +1284,11 @@ export default function ProfileScreen({ navigation }) {
                       backgroundColor: colors.surface,
                       borderColor: colors.borderStrong,
                       borderWidth: 2,
-                      shadowColor: colors.hardShadow,
-                      shadowOffset: { width: 3, height: 3 },
-                      shadowOpacity: 1,
-                      shadowRadius: 0,
-                      elevation: 4,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.06,
+                      shadowRadius: 3,
+                      elevation: 2,
                     },
                   ]}
                 >
@@ -1311,11 +1358,11 @@ export default function ProfileScreen({ navigation }) {
                       backgroundColor: colors.surface,
                       borderColor: colors.borderStrong,
                       borderWidth: 2,
-                      shadowColor: colors.hardShadow,
-                      shadowOffset: { width: 3, height: 3 },
-                      shadowOpacity: 1,
-                      shadowRadius: 0,
-                      elevation: 4,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.06,
+                      shadowRadius: 3,
+                      elevation: 2,
                     },
                   ]}
                 >
@@ -1461,6 +1508,17 @@ function createStyles(colors, isDark) {
       color: "#34C759",
       letterSpacing: 0.3,
     },
+
+    // Stats row (followers / following)
+    statsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: 16,
+    },
+    stat: { alignItems: "center", paddingHorizontal: 24 },
+    statNumber: { fontSize: 20, fontWeight: "700", letterSpacing: -0.4 },
+    statLabel: { fontSize: 12, marginTop: 2 },
+    statDivider: { width: 1, height: 28 },
 
     // Bio
     bioCard: {

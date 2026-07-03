@@ -13,7 +13,7 @@ export const useTheme = () => {
 };
 
 export const ThemeProvider = ({ children }) => {
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(false); // Clean (claro) es el default
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,8 +23,17 @@ export const ThemeProvider = ({ children }) => {
   const loadTheme = async () => {
     try {
       const savedTheme = await AsyncStorage.getItem('theme');
-      if (savedTheme !== null) {
+      const migrated = await AsyncStorage.getItem('theme_v2');
+      // v2: Clean es el nuevo default. Si el usuario nunca eligió explícitamente
+      // (migrated nulo) ignoramos la preferencia vieja (que podría ser el dark
+      // forzado de la versión anterior) y aplicamos el default Clean.
+      if (savedTheme !== null && migrated !== null) {
         setIsDark(savedTheme === 'dark');
+      } else {
+        // Primera vez con el nuevo sistema: marcar la migración y quedar en Clean.
+        await AsyncStorage.setItem('theme_v2', '1');
+        await AsyncStorage.removeItem('theme');
+        setIsDark(false);
       }
     } catch (error) {
       console.error('Error loading theme:', error);

@@ -23,8 +23,8 @@ import {
 
 const STATE_META = {
   active: { label: "Active", color: "#34C759" },
-  depleted: { label: "No credits left", color: "#FF9F0A" },
-  expired: { label: "Expired", color: "#EF4444" },
+  depleted: { label: "No credits left", color: "#B45309" },
+  expired: { label: "Expired", color: "#c25b5b" },
 };
 
 export default function MyMembershipsScreen({ navigation }) {

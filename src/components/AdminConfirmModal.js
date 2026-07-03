@@ -341,7 +341,7 @@ function createStyles(colors) {
     warningText: {
       fontSize: 14,
       fontWeight: "600",
-      color: "#FF453A",
+      color: colors.error,
       lineHeight: 20,
     },
     reasonInput: {

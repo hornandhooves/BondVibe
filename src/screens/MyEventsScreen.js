@@ -718,7 +718,7 @@ function createStyles(colors) {
       borderWidth: 1,
       borderColor: "rgba(166, 255, 150, 0.3)",
     },
-    statusText: { fontSize: 11, fontWeight: "600", color: "#A6FF96" },
+    statusText: { fontSize: 11, fontWeight: "600", color: colors.success },
     priceBadge: {
       backgroundColor: "rgba(255, 204, 0, 0.15)",
       paddingVertical: 4,
@@ -727,7 +727,7 @@ function createStyles(colors) {
       borderWidth: 1,
       borderColor: "rgba(255, 204, 0, 0.3)",
     },
-    priceBadgeText: { fontSize: 11, fontWeight: "700", color: "#FFCC00" },
+    priceBadgeText: { fontSize: 11, fontWeight: "700", color: colors.brand },
     endedBadge: {
       backgroundColor: "rgba(255, 159, 10, 0.15)",
       paddingVertical: 4,
@@ -736,7 +736,7 @@ function createStyles(colors) {
       borderWidth: 1,
       borderColor: "rgba(255, 159, 10, 0.3)",
     },
-    endedBadgeText: { fontSize: 11, fontWeight: "600", color: "#FF9F0A" },
+    endedBadgeText: { fontSize: 11, fontWeight: "600", color: colors.warning },
 
     // Rating section styles
     rateSection: {

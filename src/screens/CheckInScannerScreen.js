@@ -100,7 +100,7 @@ export default function CheckInScannerScreen({ route, navigation }) {
           <View
             style={[
               styles.resultBanner,
-              { backgroundColor: result.ok ? "#1F8A6E" : "#E0413A" },
+              { backgroundColor: result.ok ? colors.success : colors.error },
             ]}
           >
             <Text style={styles.resultText}>{result.msg}</Text>

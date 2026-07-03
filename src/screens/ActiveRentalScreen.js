@@ -16,10 +16,10 @@ import { getRental, getVehicle, completeRental } from "../services/rentalService
 import { formatCentavos } from "../utils/pricing";
 
 const STATUS_META = {
-  reserved: { label: "Awaiting payment", color: "#FF9F0A" },
+  reserved: { label: "Awaiting payment", color: "#B45309" },
   active: { label: "Active", color: "#34C759" },
-  completed: { label: "Returned", color: "#8A8398" },
-  cancelled: { label: "Cancelled", color: "#EF4444" },
+  completed: { label: "Returned", color: "#8a8f9c" },
+  cancelled: { label: "Cancelled", color: "#c25b5b" },
 };
 
 export default function ActiveRentalScreen({ route, navigation }) {

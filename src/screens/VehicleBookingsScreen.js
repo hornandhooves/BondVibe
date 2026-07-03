@@ -21,10 +21,10 @@ import { getOwnerRentals, getMyFleet } from "../services/rentalService";
 import { formatCentavos } from "../utils/pricing";
 
 const STATUS_META = {
-  reserved: { label: "Reserved", color: "#FF9F0A" },
+  reserved: { label: "Reserved", color: "#B45309" },
   active: { label: "In use", color: "#34C759" },
-  completed: { label: "Completed", color: "#8A8F9C" },
-  expired: { label: "Expired", color: "#8A8F9C" },
+  completed: { label: "Completed", color: "#8a8f9c" },
+  expired: { label: "Expired", color: "#8a8f9c" },
   cancelled: { label: "Cancelled", color: "#c25b5b" },
 };
 

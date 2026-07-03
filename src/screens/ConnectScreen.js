@@ -74,8 +74,8 @@ export default function ConnectScreen({ route, navigation }) {
     <GradientBackground>
       <StatusBar style={isDark ? "light" : "dark"} />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={[styles.back, { color: colors.text }]}>←</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Icon name="back" size={26} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Connect</Text>
         <View style={{ width: 28 }} />
@@ -97,11 +97,15 @@ export default function ConnectScreen({ route, navigation }) {
           ) : (
             people.map((p) => (
               <View key={p.id} style={[styles.row, { borderColor: colors.border }]}>
-                <AvatarDisplay avatar={normAvatar(p.avatar)} size={44} />
+                <TouchableOpacity onPress={() => navigation.navigate("UserProfile", { userId: p.id })}>
+                  <AvatarDisplay avatar={normAvatar(p.avatar)} size={44} />
+                </TouchableOpacity>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
-                    {p.name}
-                  </Text>
+                  <TouchableOpacity onPress={() => navigation.navigate("UserProfile", { userId: p.id })}>
+                    <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+                      {p.name}
+                    </Text>
+                  </TouchableOpacity>
                   {!!p.location && (
                     <Text style={[styles.loc, { color: colors.textTertiary }]} numberOfLines={1}>
                       {p.location}
@@ -156,7 +160,6 @@ function createStyles(colors, isDark) {
       paddingTop: 60,
       paddingBottom: 16,
     },
-    back: { fontSize: 28 },
     headerTitle: { fontSize: 18, fontWeight: "700" },
     loading: { flex: 1, justifyContent: "center", alignItems: "center" },
     content: { paddingHorizontal: 20, paddingBottom: 20 },

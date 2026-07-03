@@ -87,13 +87,26 @@ export default function PostCard({ post, navigation, onChanged }) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <AvatarDisplay avatar={normAvatar(post.authorAvatar)} size={40} />
-        <View style={{ flex: 1, marginLeft: 10 }}>
+        <TouchableOpacity
+          onPress={() =>
+            navigation?.navigate("UserProfile", { userId: post.authorId })
+          }
+          activeOpacity={0.8}
+        >
+          <AvatarDisplay avatar={normAvatar(post.authorAvatar)} size={40} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ flex: 1, marginLeft: 10 }}
+          onPress={() =>
+            navigation?.navigate("UserProfile", { userId: post.authorId })
+          }
+          activeOpacity={0.8}
+        >
           <Text style={[styles.author, { color: colors.text }]}>{post.authorName}</Text>
           <Text style={[styles.time, { color: colors.textTertiary }]}>
             {timeAgo(post.createdAt)}
           </Text>
-        </View>
+        </TouchableOpacity>
         <TouchableOpacity onPress={menu} hitSlop={hit}>
           <Icon name="more" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
@@ -139,11 +152,16 @@ function createStyles(colors) {
   return StyleSheet.create({
     card: {
       backgroundColor: colors.surface,
-      borderColor: colors.borderStrong,
-      borderWidth: 2,
+      borderColor: colors.border,
+      borderWidth: 1,
       borderRadius: 18,
       padding: 14,
       marginBottom: 14,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.06,
+      shadowRadius: 3,
+      elevation: 2,
     },
     header: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
     author: { fontSize: 15, fontWeight: "700" },
