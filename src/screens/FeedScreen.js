@@ -123,7 +123,7 @@ export default function FeedScreen({ navigation }) {
               {suggestions.length > 0 && (
                 <View style={styles.suggestSection}>
                   <Text style={[styles.suggestTitle, { color: colors.text }]}>
-                    Personas que podrías seguir
+                    People you might follow
                   </Text>
                   {suggestions.map((p) => (
                     <View

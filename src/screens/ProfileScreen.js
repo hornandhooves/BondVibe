@@ -108,7 +108,7 @@ export default function ProfileScreen({ navigation }) {
       setEditing(false);
     } catch (error) {
       console.error("Error updating profile:", error);
-      Alert.alert("Error", "No se pudo guardar el perfil. Inténtalo de nuevo.");
+      Alert.alert("Error", "Could not save profile. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -132,7 +132,7 @@ export default function ProfileScreen({ navigation }) {
       await signOut(auth);
     } catch (error) {
       console.error("Delete account error:", error);
-      alert("Error al eliminar cuenta: " + error.message);
+      alert("Error deleting account: " + error.message);
     } finally {
       setDeleting(false);
       setShowDeleteModal(false);
@@ -180,14 +180,14 @@ export default function ProfileScreen({ navigation }) {
             <View style={s.modalIconCircle}>
               <Icon name="logout" size={32} color={colors.error} />
             </View>
-            <Text style={[s.modalTitle, { color: colors.text }]}>Cerrar sesión</Text>
-            <Text style={[s.modalBody, { color: colors.textSecondary }]}>¿Seguro que quieres cerrar sesión?</Text>
+            <Text style={[s.modalTitle, { color: colors.text }]}>Log out</Text>
+            <Text style={[s.modalBody, { color: colors.textSecondary }]}>Are you sure you want to log out?</Text>
             <View style={s.modalBtns}>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: colors.sunken, borderColor: colors.border }]} onPress={() => setShowLogoutModal(false)}>
-                <Text style={[s.modalBtnText, { color: colors.text }]}>Cancelar</Text>
+                <Text style={[s.modalBtnText, { color: colors.text }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: "rgba(194,91,91,0.12)", borderColor: "rgba(194,91,91,0.3)" }]} onPress={performLogout}>
-                <Text style={[s.modalBtnText, { color: colors.error }]}>Salir</Text>
+                <Text style={[s.modalBtnText, { color: colors.error }]}>Log out</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -201,16 +201,16 @@ export default function ProfileScreen({ navigation }) {
             <View style={s.modalIconCircle}>
               <Icon name="delete" size={32} color={colors.error} />
             </View>
-            <Text style={[s.modalTitle, { color: colors.text }]}>Eliminar cuenta</Text>
+            <Text style={[s.modalTitle, { color: colors.text }]}>Delete account</Text>
             <Text style={[s.modalBody, { color: colors.textSecondary }]}>
-              Esta acción es permanente e irreversible. Se eliminarán todos tus datos, eventos y mensajes.
+              This action is permanent and irreversible. All your data, events, and messages will be deleted.
             </Text>
             <View style={s.modalBtns}>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: colors.sunken, borderColor: colors.border }]} onPress={() => setShowDeleteModal(false)} disabled={deleting}>
-                <Text style={[s.modalBtnText, { color: colors.text }]}>Cancelar</Text>
+                <Text style={[s.modalBtnText, { color: colors.text }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: "rgba(194,91,91,0.12)", borderColor: "rgba(194,91,91,0.3)" }]} onPress={performDeleteAccount} disabled={deleting}>
-                <Text style={[s.modalBtnText, { color: colors.error }]}>{deleting ? "Eliminando…" : "Eliminar"}</Text>
+                <Text style={[s.modalBtnText, { color: colors.error }]}>{deleting ? "Deleting…" : "Delete"}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -230,14 +230,14 @@ export default function ProfileScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={hit}>
           <Icon name="back" size={26} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[s.headerTitle, { color: colors.text }]}>Perfil</Text>
+        <Text style={[s.headerTitle, { color: colors.text }]}>Profile</Text>
         {!editing ? (
           <TouchableOpacity
             onPress={() => setEditing(true)}
             style={[s.editPill, { backgroundColor: colors.brandSoft }]}
           >
             <Icon name="edit" size={13} color={colors.primary} />
-            <Text style={[s.editPillText, { color: colors.primary }]}>Editar</Text>
+            <Text style={[s.editPillText, { color: colors.primary }]}>Edit</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -246,7 +246,7 @@ export default function ProfileScreen({ navigation }) {
             style={[s.editPill, { backgroundColor: colors.primary }]}
           >
             <Text style={[s.editPillText, { color: "#fff" }]}>
-              {saving ? "…" : "Guardar"}
+              {saving ? "…" : "Save"}
             </Text>
           </TouchableOpacity>
         )}
@@ -260,27 +260,27 @@ export default function ProfileScreen({ navigation }) {
               <AvatarFrame size={96}>
                 <AvatarDisplay avatar={editForm.avatar} size={80} />
               </AvatarFrame>
-              <Text style={[s.avatarEditHint, { color: colors.primary }]}>Toca para cambiar</Text>
+              <Text style={[s.avatarEditHint, { color: colors.primary }]}>Tap to change</Text>
             </TouchableOpacity>
 
             <View style={s.formGroup}>
-              <Text style={[s.inputLabel, { color: colors.textSecondary }]}>Nombre completo</Text>
+              <Text style={[s.inputLabel, { color: colors.textSecondary }]}>Full name</Text>
               <TextInput
                 style={[s.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                 value={editForm.fullName}
                 onChangeText={(t) => setEditForm({ ...editForm, fullName: t })}
-                placeholder="Tu nombre"
+                placeholder="Your name"
                 placeholderTextColor={colors.textTertiary}
                 maxLength={50}
               />
             </View>
             <View style={s.formGroup}>
-              <Text style={[s.inputLabel, { color: colors.textSecondary }]}>Ciudad</Text>
+              <Text style={[s.inputLabel, { color: colors.textSecondary }]}>City</Text>
               <TextInput
                 style={[s.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                 value={editForm.location}
                 onChangeText={(t) => setEditForm({ ...editForm, location: t })}
-                placeholder="Ciudad, País"
+                placeholder="City, Country"
                 placeholderTextColor={colors.textTertiary}
                 maxLength={50}
               />
@@ -289,7 +289,7 @@ export default function ProfileScreen({ navigation }) {
               style={[s.cancelRow]}
               onPress={() => { setEditing(false); loadProfile(); }}
             >
-              <Text style={[s.cancelText, { color: colors.textSecondary }]}>Cancelar</Text>
+              <Text style={[s.cancelText, { color: colors.textSecondary }]}>Cancel</Text>
             </TouchableOpacity>
           </>
         ) : (
@@ -306,7 +306,7 @@ export default function ProfileScreen({ navigation }) {
               {profile.role === "host" && (
                 <View style={[s.badge, { backgroundColor: "#E1F5EC" }]}>
                   <Icon name="verified" size={13} color="#1F8A6E" />
-                  <Text style={[s.badgeText, { color: "#1F8A6E" }]}>Host verificado</Text>
+                  <Text style={[s.badgeText, { color: "#1F8A6E" }]}>Verified host</Text>
                 </View>
               )}
               {profile.role === "admin" && (
@@ -322,7 +322,7 @@ export default function ProfileScreen({ navigation }) {
               <View style={[s.identityCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Icon name="lock" size={18} color={colors.primary} />
                 <Text style={[s.identityText, { color: colors.textSecondary }]}>
-                  <Text style={{ fontWeight: "700", color: colors.text }}>Identidad y pagos verificados.</Text>
+                  <Text style={{ fontWeight: "700", color: colors.text }}>Identity & payments verified.</Text>
                   {profile.location ? ` · ${profile.location}` : ""}
                 </Text>
               </View>
@@ -335,7 +335,7 @@ export default function ProfileScreen({ navigation }) {
                 onPress={() => navigation.navigate("FollowList", { userId: auth.currentUser.uid, type: "followers" })}
               >
                 <Text style={[s.statNumber, { color: colors.text }]}>{eventsCount}</Text>
-                <Text style={[s.statLabel, { color: colors.textSecondary }]}>Eventos</Text>
+                <Text style={[s.statLabel, { color: colors.textSecondary }]}>Events</Text>
               </TouchableOpacity>
 
               <View style={s.statCenter}>
@@ -350,7 +350,7 @@ export default function ProfileScreen({ navigation }) {
                 onPress={() => navigation.navigate("FollowList", { userId: auth.currentUser.uid, type: "followers" })}
               >
                 <Text style={[s.statNumber, { color: colors.text }]}>{followersCount}</Text>
-                <Text style={[s.statLabel, { color: colors.textSecondary }]}>Miembros</Text>
+                <Text style={[s.statLabel, { color: colors.textSecondary }]}>Members</Text>
               </TouchableOpacity>
             </View>
 
@@ -369,11 +369,11 @@ export default function ProfileScreen({ navigation }) {
                       <Text style={s.proTitle}>Kinlo Pro</Text>
                       {isPremium && (
                         <View style={s.proActiveBadge}>
-                          <Text style={s.proActiveBadgeText}>ACTIVO</Text>
+                          <Text style={s.proActiveBadgeText}>ACTIVE</Text>
                         </View>
                       )}
                     </View>
-                    <Text style={s.proSub}>Community Matching incluido</Text>
+                    <Text style={s.proSub}>Community Matching included</Text>
                   </View>
                   <Icon name="forward" size={18} color="rgba(255,255,255,0.4)" />
                 </View>
@@ -383,17 +383,17 @@ export default function ProfileScreen({ navigation }) {
             {/* ── Herramientas de anfitrión (host tools 2×2 grid) ── */}
             {canManageStripe && (
               <>
-                <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>HERRAMIENTAS DE ANFITRIÓN</Text>
+                <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>HOST TOOLS</Text>
                 <View style={s.toolGrid}>
                   <TouchableOpacity style={[s.toolCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.navigate("StripeConnect")}>
                     <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
                       <Icon name="payment" size={20} color={colors.primary} />
                     </View>
-                    <Text style={[s.toolTitle, { color: colors.text }]}>Pagos</Text>
-                    <Text style={[s.toolSub, { color: colors.textTertiary }]}>Stripe · Host pagado</Text>
+                    <Text style={[s.toolTitle, { color: colors.text }]}>Payments</Text>
+                    <Text style={[s.toolSub, { color: colors.textTertiary }]}>Stripe · Paid host</Text>
                     {profile.stripeConnect?.status === "active" && (
                       <View style={s.activeDot}>
-                        <Text style={s.activeDotText}>● ACTIVO</Text>
+                        <Text style={s.activeDotText}>● ACTIVE</Text>
                       </View>
                     )}
                   </TouchableOpacity>
@@ -403,8 +403,8 @@ export default function ProfileScreen({ navigation }) {
                       <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
                         <Icon name="ticket" size={20} color={colors.primary} />
                       </View>
-                      <Text style={[s.toolTitle, { color: colors.text }]}>Planes</Text>
-                      <Text style={[s.toolSub, { color: colors.textTertiary }]}>Membresías activas</Text>
+                      <Text style={[s.toolTitle, { color: colors.text }]}>Plans</Text>
+                      <Text style={[s.toolSub, { color: colors.textTertiary }]}>Active memberships</Text>
                     </TouchableOpacity>
                   )}
 
@@ -412,16 +412,16 @@ export default function ProfileScreen({ navigation }) {
                     <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
                       <Icon name="chart" size={20} color={colors.primary} />
                     </View>
-                    <Text style={[s.toolTitle, { color: colors.text }]}>Analíticas</Text>
-                    <Text style={[s.toolSub, { color: colors.textTertiary }]}>Ingresos y miembros</Text>
+                    <Text style={[s.toolTitle, { color: colors.text }]}>Analytics</Text>
+                    <Text style={[s.toolSub, { color: colors.textTertiary }]}>Revenue & members</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity style={[s.toolCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.navigate("HostGroups")}>
                     <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
                       <Icon name="users" size={20} color={colors.primary} />
                     </View>
-                    <Text style={[s.toolTitle, { color: colors.text }]}>Grupos</Text>
-                    <Text style={[s.toolSub, { color: colors.textTertiary }]}>Comunidad</Text>
+                    <Text style={[s.toolTitle, { color: colors.text }]}>Groups</Text>
+                    <Text style={[s.toolSub, { color: colors.textTertiary }]}>Community</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -431,9 +431,9 @@ export default function ProfileScreen({ navigation }) {
             {hasPersonality && (
               <>
                 <View style={s.sectionRow}>
-                  <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>PERSONALIDAD</Text>
+                  <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>PERSONALITY</Text>
                   <TouchableOpacity onPress={() => navigation.navigate("PersonalityQuiz")}>
-                    <Text style={[s.sectionAction, { color: colors.primary }]}>Rehacer</Text>
+                    <Text style={[s.sectionAction, { color: colors.primary }]}>Retake</Text>
                   </TouchableOpacity>
                 </View>
                 <View style={[s.personalityCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -459,7 +459,7 @@ export default function ProfileScreen({ navigation }) {
 
             {!hasPersonality && (
               <>
-                <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>PERSONALIDAD</Text>
+                <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>PERSONALITY</Text>
                 <TouchableOpacity
                   style={[s.personalityPrompt, { backgroundColor: colors.surface, borderColor: colors.border }]}
                   onPress={() => navigation.navigate("PersonalityQuiz")}
@@ -468,8 +468,8 @@ export default function ProfileScreen({ navigation }) {
                     <Icon name="brain" size={20} color={colors.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[s.toolTitle, { color: colors.text }]}>Descubre tu personalidad</Text>
-                    <Text style={[s.toolSub, { color: colors.textTertiary }]}>Quiz de los 5 grandes factores</Text>
+                    <Text style={[s.toolTitle, { color: colors.text }]}>Discover your personality</Text>
+                    <Text style={[s.toolSub, { color: colors.textTertiary }]}>Big Five personality quiz</Text>
                   </View>
                   <Icon name="forward" size={18} color={colors.textTertiary} />
                 </TouchableOpacity>
@@ -477,13 +477,13 @@ export default function ProfileScreen({ navigation }) {
             )}
 
             {/* ── Ajustes ── */}
-            <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>AJUSTES</Text>
+            <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>SETTINGS</Text>
             <View style={[s.ajustesCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <TouchableOpacity style={s.ajustesRow} onPress={() => navigation.navigate("MyMemberships")}>
                 <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
                   <Icon name="ticket" size={18} color={colors.primary} />
                 </View>
-                <Text style={[s.ajustesLabel, { color: colors.text }]}>Mis membresías</Text>
+                <Text style={[s.ajustesLabel, { color: colors.text }]}>My memberships</Text>
                 <Icon name="forward" size={16} color={colors.textTertiary} />
               </TouchableOpacity>
 
@@ -494,8 +494,8 @@ export default function ProfileScreen({ navigation }) {
                   <Icon name={isDark ? "moon" : "sun"} size={18} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[s.ajustesLabel, { color: colors.text }]}>Apariencia</Text>
-                  <Text style={[s.ajustesSub, { color: colors.textTertiary }]}>{isDark ? "Tema Aurora" : "Tema Clean"}</Text>
+                  <Text style={[s.ajustesLabel, { color: colors.text }]}>Appearance</Text>
+                  <Text style={[s.ajustesSub, { color: colors.textTertiary }]}>{isDark ? "Aurora theme" : "Clean theme"}</Text>
                 </View>
                 <Switch
                   value={isDark}
@@ -511,7 +511,7 @@ export default function ProfileScreen({ navigation }) {
                 <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
                   <Icon name="verified" size={18} color={colors.primary} />
                 </View>
-                <Text style={[s.ajustesLabel, { color: colors.text }]}>Centro de seguridad</Text>
+                <Text style={[s.ajustesLabel, { color: colors.text }]}>Safety center</Text>
                 <Icon name="forward" size={16} color={colors.textTertiary} />
               </TouchableOpacity>
             </View>
@@ -519,11 +519,11 @@ export default function ProfileScreen({ navigation }) {
             {/* ── Logout / Delete ── */}
             <TouchableOpacity style={s.logoutRow} onPress={() => setShowLogoutModal(true)}>
               <Icon name="logout" size={18} color={colors.error} />
-              <Text style={[s.logoutText, { color: colors.error }]}>Cerrar sesión</Text>
+              <Text style={[s.logoutText, { color: colors.error }]}>Log out</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={s.deleteRow} onPress={() => setShowDeleteModal(true)}>
-              <Text style={[s.deleteText, { color: colors.textTertiary }]}>Eliminar cuenta</Text>
+              <Text style={[s.deleteText, { color: colors.textTertiary }]}>Delete account</Text>
             </TouchableOpacity>
           </>
         )}

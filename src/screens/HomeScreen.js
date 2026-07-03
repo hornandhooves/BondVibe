@@ -286,8 +286,8 @@ export default function HomeScreen({ navigation }) {
         {/* Pending Ratings Section */}
         {pendingRatingEvents.length > 0 && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Rate Your Experiences
+            <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>
+              RATE YOUR EXPERIENCES
             </Text>
             {pendingRatingEvents.map((event) => {
               const eventDate = event.date ? new Date(event.date) : null;
@@ -350,8 +350,8 @@ export default function HomeScreen({ navigation }) {
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Quick Actions
+          <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>
+            QUICK ACTIONS
           </Text>
           <View style={styles.quickActionsGrid}>
             {quickActions.map((action) => {
@@ -407,8 +407,8 @@ export default function HomeScreen({ navigation }) {
         {featuredEvents.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitleInline, { color: colors.text }]}>
-                ✨ Featured
+              <Text style={[styles.sectionTitleInline, { color: colors.textTertiary }]}>
+                FEATURED
               </Text>
             </View>
             <ScrollView
@@ -446,7 +446,7 @@ export default function HomeScreen({ navigation }) {
                       </View>
                     )}
                     <View style={styles.featuredBadge}>
-                      <Text style={styles.featuredBadgeText}>✨ Featured</Text>
+                      <Text style={styles.featuredBadgeText}>Featured</Text>
                     </View>
                     <View style={{ padding: 12 }}>
                       <Text
@@ -527,8 +527,8 @@ export default function HomeScreen({ navigation }) {
         {/* Browse by Category */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitleInline, { color: colors.text }]}>
-              Browse by Community
+            <Text style={[styles.sectionTitleInline, { color: colors.textTertiary }]}>
+              BROWSE BY COMMUNITY
             </Text>
             <TouchableOpacity
               onPress={() => navigation.navigate("SearchEvents")}
@@ -631,16 +631,16 @@ function createStyles(colors, isDark) {
       marginBottom: 16,
     },
     sectionTitle: {
-      fontSize: 16,
+      fontSize: 11,
       fontWeight: "700",
       paddingHorizontal: 24,
       marginBottom: 14,
-      letterSpacing: 0,
+      letterSpacing: 0.8,
     },
     sectionTitleInline: {
-      fontSize: 16,
+      fontSize: 11,
       fontWeight: "700",
-      letterSpacing: 0,
+      letterSpacing: 0.8,
     },
     seeAll: { fontSize: 14, fontWeight: "600" },
 

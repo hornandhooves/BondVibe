@@ -855,7 +855,7 @@ export default function EventDetailScreen({ route, navigation }) {
                 ]}
               >
                 <Text style={styles.languageBadgeText}>
-                  {event.language === "es" ? "🇲🇽 Español" : "🇺🇸 English"}
+                  {event.language === "es" ? "🇲🇽 Spanish" : "🇺🇸 English"}
                 </Text>
               </View>
             )}
