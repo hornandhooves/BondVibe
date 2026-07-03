@@ -262,6 +262,23 @@ const AppNavigator = forwardRef((props, ref) => {
                 navigateToRoute("Home", { user });
               }
             } else {
+              // No user doc yet. For a BRAND-NEW account (just created via
+              // social/email sign-in) the doc is being written by ensureUserDoc
+              // — wait for the next snapshot instead of signing out. This fixes
+              // the Google/Apple sign-up race where onAuthStateChanged fires
+              // before the Firestore doc exists. Genuinely orphaned/deleted
+              // accounts (old creationTime) still sign out as before.
+              const createdMs = user.metadata?.creationTime
+                ? Date.parse(user.metadata.creationTime)
+                : 0;
+              const isBrandNew = createdMs && Date.now() - createdMs < 120000;
+              if (isBrandNew) {
+                console.log(
+                  "🆕 New account - waiting for user doc to be created",
+                );
+                setLoading(false);
+                return;
+              }
               AsyncStorage.getItem("@account_deleting").then(
                 (isDeletingAccount) => {
                   if (isDeletingAccount === "true") {
