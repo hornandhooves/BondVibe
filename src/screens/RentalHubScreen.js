@@ -1,4 +1,3 @@
-import Icon from "../components/Icon";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   View,

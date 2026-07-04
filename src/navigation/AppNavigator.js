@@ -109,6 +109,7 @@ import ReportScreen from "../screens/ReportScreen";
 import SafetyCenterScreen from "../screens/SafetyCenterScreen";
 import ConversationsScreen from "../screens/ConversationsScreen";
 import ManageScreen from "../screens/ManageScreen";
+import SettingsScreen from "../screens/SettingsScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -568,6 +569,7 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="Report" component={ReportScreen} />
           <Stack.Screen name="SafetyCenter" component={SafetyCenterScreen} />
           <Stack.Screen name="Conversations" component={ConversationsScreen} />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
         </Stack.Navigator>
       </NavigationContainer>
 

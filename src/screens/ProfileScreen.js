@@ -7,13 +7,10 @@ import {
   StyleSheet,
   ScrollView,
   TextInput,
-  Modal,
-  Switch,
   Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   doc,
   getDoc,
@@ -25,8 +22,6 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "../services/firebase";
 import { resolveAvatarForSave } from "../services/storageService";
-import { clearPushToken } from "../utils/messageService";
-import { signOut } from "firebase/auth";
 import { useTheme } from "../contexts/ThemeContext";
 import { useFocusEffect } from "@react-navigation/native";
 import AvatarPicker, { AvatarDisplay } from "../components/AvatarPicker";
@@ -45,16 +40,13 @@ const TRAIT_LABELS = {
 };
 
 export default function ProfileScreen({ navigation }) {
-  const { colors, isDark, toggleTheme } = useTheme();
+  const { colors, isDark } = useTheme();
   const { isPremium } = usePremium();
   const [profile, setProfile] = useState(null);
   const [followersCount, setFollowersCount] = useState(0);
   const [eventsCount, setEventsCount] = useState(0);
   const [editing, setEditing] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [editForm, setEditForm] = useState({
@@ -122,57 +114,19 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
-  const performDeleteAccount = async () => {
-    setDeleting(true);
-    try {
-      await AsyncStorage.setItem("@account_deleting", "true");
-      const userId = auth.currentUser.uid;
-      const response = await fetch(
-        "https://us-central1-bondvibe-dev.cloudfunctions.net/deleteUserAccount",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId }),
-        }
-      );
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Failed to delete account");
-      await signOut(auth);
-    } catch (error) {
-      console.error("Delete account error:", error);
-      alert("Error deleting account: " + error.message);
-    } finally {
-      setDeleting(false);
-      setShowDeleteModal(false);
-    }
-  };
-
-  const performLogout = async () => {
-    setShowLogoutModal(false);
-    try {
-      await clearPushToken(auth.currentUser?.uid);
-      await signOut(auth);
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
-  };
-
   const s = createStyles(colors, isDark);
 
   if (!profile) {
     return (
       <GradientBackground>
         <View style={s.loader}>
-          <Text style={{ color: colors.textSecondary }}>Cargando…</Text>
+          <Text style={{ color: colors.textSecondary }}>Loading…</Text>
         </View>
       </GradientBackground>
     );
   }
 
   const canManageStripe = profile.role === "host" || profile.role === "admin";
-  const canSellMemberships =
-    profile.stripeConnect?.status === "active" ||
-    profile.hostConfig?.type === "paid";
 
   const ratingValue = profile.hostStats?.averageRating
     ? profile.hostStats.averageRating.toFixed(1)
@@ -184,50 +138,6 @@ export default function ProfileScreen({ navigation }) {
     <GradientBackground>
       <StatusBar style={isDark ? "light" : "dark"} />
 
-      {/* ── Logout Modal ─────────────────────────────────── */}
-      <Modal visible={showLogoutModal} transparent animationType="fade" onRequestClose={() => setShowLogoutModal(false)}>
-        <View style={s.modalOverlay}>
-          <View style={[s.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={s.modalIconCircle}>
-              <Icon name="logout" size={32} color={colors.error} />
-            </View>
-            <Text style={[s.modalTitle, { color: colors.text }]}>Log out</Text>
-            <Text style={[s.modalBody, { color: colors.textSecondary }]}>Are you sure you want to log out?</Text>
-            <View style={s.modalBtns}>
-              <TouchableOpacity style={[s.modalBtn, { backgroundColor: colors.sunken, borderColor: colors.border }]} onPress={() => setShowLogoutModal(false)}>
-                <Text style={[s.modalBtnText, { color: colors.text }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[s.modalBtn, { backgroundColor: "rgba(194,91,91,0.12)", borderColor: "rgba(194,91,91,0.3)" }]} onPress={performLogout}>
-                <Text style={[s.modalBtnText, { color: colors.error }]}>Log out</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ── Delete Modal ──────────────────────────────────── */}
-      <Modal visible={showDeleteModal} transparent animationType="fade" onRequestClose={() => setShowDeleteModal(false)}>
-        <View style={s.modalOverlay}>
-          <View style={[s.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={s.modalIconCircle}>
-              <Icon name="delete" size={32} color={colors.error} />
-            </View>
-            <Text style={[s.modalTitle, { color: colors.text }]}>Delete account</Text>
-            <Text style={[s.modalBody, { color: colors.textSecondary }]}>
-              This action is permanent and irreversible. All your data, events, and messages will be deleted.
-            </Text>
-            <View style={s.modalBtns}>
-              <TouchableOpacity style={[s.modalBtn, { backgroundColor: colors.sunken, borderColor: colors.border }]} onPress={() => setShowDeleteModal(false)} disabled={deleting}>
-                <Text style={[s.modalBtnText, { color: colors.text }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[s.modalBtn, { backgroundColor: "rgba(194,91,91,0.12)", borderColor: "rgba(194,91,91,0.3)" }]} onPress={performDeleteAccount} disabled={deleting}>
-                <Text style={[s.modalBtnText, { color: colors.error }]}>{deleting ? "Deleting…" : "Delete"}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       {/* ── Avatar Picker ─────────────────────────────────── */}
       <AvatarPicker
         visible={showAvatarPicker}
@@ -236,12 +146,9 @@ export default function ProfileScreen({ navigation }) {
         onAvatarChange={(a) => setEditForm({ ...editForm, avatar: a })}
       />
 
-      {/* ── Header ───────────────────────────────────────── */}
+      {/* ── Header — tab root: AppHeader shows the title; Edit is local ── */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={hit}>
-          <Icon name="back" size={26} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[s.headerTitle, { color: colors.text }]}>Profile</Text>
+        <View style={{ width: 26 }} />
         {!editing ? (
           <TouchableOpacity
             onPress={() => setEditing(true)}
@@ -391,59 +298,24 @@ export default function ProfileScreen({ navigation }) {
               </TouchableOpacity>
             )}
 
-            {/* ── Herramientas de anfitrión (host tools 2×2 grid) ── */}
+            {/* Host tools now live in Host Mode → Manage (Events tab).
+                A hint card points hosts there. */}
             {canManageStripe && (
-              <>
-                <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>HOST TOOLS</Text>
-                <View style={s.toolGrid}>
-                  <TouchableOpacity style={[s.toolCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.navigate("StripeConnect")}>
-                    <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
-                      <Icon name="payment" size={20} color={colors.primary} />
-                    </View>
-                    <Text style={[s.toolTitle, { color: colors.text }]}>Payments</Text>
-                    <Text style={[s.toolSub, { color: colors.textTertiary }]}>Stripe · Paid host</Text>
-                    {profile.stripeConnect?.status === "active" && (
-                      <View style={s.activeDot}>
-                        <Text style={s.activeDotText}>● ACTIVE</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-
-                  {canSellMemberships && (
-                    <TouchableOpacity style={[s.toolCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.navigate("MembershipPlans")}>
-                      <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
-                        <Icon name="ticket" size={20} color={colors.primary} />
-                      </View>
-                      <Text style={[s.toolTitle, { color: colors.text }]}>Plans</Text>
-                      <Text style={[s.toolSub, { color: colors.textTertiary }]}>Membership plans</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  <TouchableOpacity style={[s.toolCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.navigate("HostAnalytics")}>
-                    <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
-                      <Icon name="chart" size={20} color={colors.primary} />
-                    </View>
-                    <Text style={[s.toolTitle, { color: colors.text }]}>Analytics</Text>
-                    <Text style={[s.toolSub, { color: colors.textTertiary }]}>Revenue & members</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity style={[s.toolCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.navigate("HostGroups")}>
-                    <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
-                      <Icon name="users" size={20} color={colors.primary} />
-                    </View>
-                    <Text style={[s.toolTitle, { color: colors.text }]}>Groups</Text>
-                    <Text style={[s.toolSub, { color: colors.textTertiary }]}>Community</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity style={[s.toolCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.navigate("MyFleet")}>
-                    <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
-                      <Icon name="fleet" size={20} color={colors.primary} />
-                    </View>
-                    <Text style={[s.toolTitle, { color: colors.text }]}>My Fleet</Text>
-                    <Text style={[s.toolSub, { color: colors.textTertiary }]}>Rental vehicles</Text>
-                  </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.hostHint, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={() => navigation.navigate("MainTabs", { screen: "EventsTab" })}
+              >
+                <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
+                  <Icon name="settings" size={18} color={colors.primary} />
                 </View>
-              </>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.toolTitle, { color: colors.text }]}>Host tools moved</Text>
+                  <Text style={[s.toolSub, { color: colors.textTertiary }]}>
+                    Switch to Hosting in the header → Events tab becomes Manage
+                  </Text>
+                </View>
+                <Icon name="forward" size={18} color={colors.textTertiary} />
+              </TouchableOpacity>
             )}
 
             {/* ── Personalidad ── */}
@@ -497,8 +369,8 @@ export default function ProfileScreen({ navigation }) {
               </>
             )}
 
-            {/* ── Ajustes ── */}
-            <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>SETTINGS</Text>
+            {/* ── Account ── */}
+            <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>ACCOUNT</Text>
             <View style={[s.ajustesCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <TouchableOpacity style={s.ajustesRow} onPress={() => navigation.navigate("MyMemberships")}>
                 <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
@@ -508,52 +380,41 @@ export default function ProfileScreen({ navigation }) {
                 <Icon name="forward" size={16} color={colors.textTertiary} />
               </TouchableOpacity>
 
+              {!canManageStripe && (
+                <>
+                  <View style={[s.separator, { backgroundColor: colors.border }]} />
+                  <TouchableOpacity style={s.ajustesRow} onPress={() => navigation.navigate("RequestHost")}>
+                    <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
+                      <Icon name="calendar" size={18} color={colors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.ajustesLabel, { color: colors.text }]}>Switch to hosting</Text>
+                      <Text style={[s.ajustesSub, { color: colors.textTertiary }]}>Create your own experiences</Text>
+                    </View>
+                    <Icon name="forward" size={16} color={colors.textTertiary} />
+                  </TouchableOpacity>
+                </>
+              )}
+
               <View style={[s.separator, { backgroundColor: colors.border }]} />
 
-              <View style={s.ajustesRow}>
+              <TouchableOpacity style={s.ajustesRow} onPress={() => navigation.navigate("Settings")}>
                 <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
-                  <Icon name={isDark ? "moon" : "sun"} size={18} color={colors.primary} />
+                  <Icon name="settings" size={18} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[s.ajustesLabel, { color: colors.text }]}>Appearance</Text>
-                  <Text style={[s.ajustesSub, { color: colors.textTertiary }]}>{isDark ? "Aurora theme" : "Clean theme"}</Text>
+                  <Text style={[s.ajustesLabel, { color: colors.text }]}>Settings</Text>
+                  <Text style={[s.ajustesSub, { color: colors.textTertiary }]}>Appearance, AI, safety, account</Text>
                 </View>
-                <Switch
-                  value={isDark}
-                  onValueChange={toggleTheme}
-                  trackColor={{ false: colors.border, true: colors.primary }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-
-              <View style={[s.separator, { backgroundColor: colors.border }]} />
-
-              <TouchableOpacity style={s.ajustesRow} onPress={() => navigation.navigate("SafetyCenter")}>
-                <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
-                  <Icon name="verified" size={18} color={colors.primary} />
-                </View>
-                <Text style={[s.ajustesLabel, { color: colors.text }]}>Safety center</Text>
                 <Icon name="forward" size={16} color={colors.textTertiary} />
               </TouchableOpacity>
             </View>
-
-            {/* ── Logout / Delete ── */}
-            <TouchableOpacity style={s.logoutRow} onPress={() => setShowLogoutModal(true)}>
-              <Icon name="logout" size={18} color={colors.error} />
-              <Text style={[s.logoutText, { color: colors.error }]}>Log out</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={s.deleteRow} onPress={() => setShowDeleteModal(true)}>
-              <Text style={[s.deleteText, { color: colors.textTertiary }]}>Delete account</Text>
-            </TouchableOpacity>
           </>
         )}
       </ScrollView>
     </GradientBackground>
   );
 }
-
-const hit = { top: 10, bottom: 10, left: 10, right: 10 };
 
 function createStyles(colors, isDark) {
   return StyleSheet.create({
@@ -565,7 +426,7 @@ function createStyles(colors, isDark) {
       alignItems: "center",
       justifyContent: "space-between",
       paddingHorizontal: 20,
-      paddingTop: 60,
+      paddingTop: 4,
       paddingBottom: 16,
     },
     headerTitle: { fontSize: 20, fontWeight: "800", letterSpacing: -0.4 },
@@ -667,6 +528,17 @@ function createStyles(colors, isDark) {
       marginTop: 4,
     },
     sectionAction: { fontSize: 13, fontWeight: "600" },
+
+    hostHint: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      borderRadius: 16,
+      borderWidth: 1,
+      padding: 14,
+      marginHorizontal: 20,
+      marginBottom: 20,
+    },
 
     // Tool grid
     toolGrid: {
