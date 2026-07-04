@@ -49,7 +49,7 @@ export default function MyRentalsScreen({ navigation }) {
           <Icon name="back" size={26} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>My rentals</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("RentalHub")}>
+        <TouchableOpacity onPress={() => navigation.navigate("MainTabs", { screen: "RentalsTab" })}>
           <Text style={[styles.link, { color: colors.primary }]}>Rent</Text>
         </TouchableOpacity>
       </View>
@@ -69,7 +69,7 @@ export default function MyRentalsScreen({ navigation }) {
               </Text>
               <TouchableOpacity
                 style={[styles.cta, { backgroundColor: colors.primary }]}
-                onPress={() => navigation.navigate("RentalHub")}
+                onPress={() => navigation.navigate("MainTabs", { screen: "RentalsTab" })}
                 activeOpacity={0.85}
               >
                 <Text style={styles.ctaTxt}>Browse vehicles</Text>

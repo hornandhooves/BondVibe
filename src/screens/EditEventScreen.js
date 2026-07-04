@@ -514,13 +514,13 @@ export default function EditEventScreen({ route, navigation }) {
         console.log(`🗑️ Deleted ${deletedCount} events from this date onwards`);
 
         Alert.alert("Deleted", `${deletedCount} events deleted successfully`, [
-          { text: "OK", onPress: () => navigation.navigate("Home") },
+          { text: "OK", onPress: () => navigation.navigate("MainTabs", { screen: "HomeTab" }) },
         ]);
       } else {
         // Delete only this event
         await deleteDoc(doc(db, "events", eventId));
         Alert.alert("Deleted", "Event deleted successfully", [
-          { text: "OK", onPress: () => navigation.navigate("Home") },
+          { text: "OK", onPress: () => navigation.navigate("MainTabs", { screen: "HomeTab" }) },
         ]);
       }
     } catch (error) {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, forwardRef } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 import { registerPushToken } from "../utils/messageService";
@@ -10,11 +11,17 @@ import { ActivityIndicator, View } from "react-native";
 
 // Contexts
 import { useAuthContext } from "../contexts/AuthContext";
+import { ModeProvider, useMode } from "../contexts/ModeContext";
+import { useTheme } from "../contexts/ThemeContext";
+import useUserRole from "../hooks/useUserRole";
 
 // Components
 import SuccessModal from "../components/SuccessModal";
+import AppHeader from "../components/AppHeader";
+import Icon from "../components/Icon";
 
 // Auth Screens
+import WelcomeScreen from "../screens/WelcomeScreen";
 import LoginScreen from "../screens/LoginScreen";
 import SignupScreen from "../screens/SignupScreen";
 import LegalScreen from "../screens/LegalScreen";
@@ -101,14 +108,73 @@ import PlusActivatedScreen from "../screens/matching/PlusActivatedScreen";
 import ReportScreen from "../screens/ReportScreen";
 import SafetyCenterScreen from "../screens/SafetyCenterScreen";
 import ConversationsScreen from "../screens/ConversationsScreen";
+import ManageScreen from "../screens/ManageScreen";
 
 const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
+
+// ─── 5-tab shell (kinlo_build/01_REDESIGN_SPEC §1.2) ─────────────────────────
+// Home · Wall · Events · Rentals · Profile. Persistent AppHeader (✉/🔔 + Host
+// Mode toggle) on every tab. All detail screens stay in the parent stack, so
+// every existing navigate("X") keeps working.
+
+/** Events tab root swaps by Host Mode (§1.3): MyEvents ↔ Manage. */
+function EventsTabRoot(props) {
+  const { isHosting } = useMode();
+  const { isHost } = useUserRole();
+  return isHosting && isHost ? <ManageScreen {...props} /> : <MyEventsScreen {...props} />;
+}
+
+const TAB_META = {
+  HomeTab: { title: "Home", icon: "discover" },
+  WallTab: { title: "Wall", icon: "wall" },
+  EventsTab: { title: "Events", icon: "events" },
+  RentalsTab: { title: "Rentals", icon: "bike" },
+  ProfileTab: { title: "Profile", icon: "profile" },
+};
+
+function MainTabs() {
+  const { colors } = useTheme();
+  return (
+    <Tab.Navigator
+      screenOptions={({ route, navigation }) => ({
+        header: () => (
+          <AppHeader
+            title={route.name === "HomeTab" ? "" : TAB_META[route.name].title}
+            navigation={navigation}
+          />
+        ),
+        tabBarIcon: ({ color, focused }) => (
+          <Icon
+            name={TAB_META[route.name].icon}
+            size={23}
+            color={color}
+            strokeWidth={focused ? 2.2 : 1.75}
+          />
+        ),
+        tabBarLabel: TAB_META[route.name].title,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textTertiary,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+        },
+      })}
+    >
+      <Tab.Screen name="HomeTab" component={HomeScreen} />
+      <Tab.Screen name="WallTab" component={FeedScreen} />
+      <Tab.Screen name="EventsTab" component={EventsTabRoot} />
+      <Tab.Screen name="RentalsTab" component={RentalHubScreen} />
+      <Tab.Screen name="ProfileTab" component={ProfileScreen} />
+    </Tab.Navigator>
+  );
+}
 
 const AppNavigator = forwardRef((props, ref) => {
   const { signupInProgress } = useAuthContext();
   const [, setInitialUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [initialRoute, setInitialRoute] = useState("Login");
+  const [initialRoute, setInitialRoute] = useState("Welcome");
   const [initialParams, setInitialParams] = useState({});
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [showUserNotFoundModal, setShowUserNotFoundModal] = useState(false);
@@ -121,7 +187,9 @@ const AppNavigator = forwardRef((props, ref) => {
   // Does NOT block the sequential onboarding flow (legal → profile → home).
   const hasReachedHome = useRef(false);
 
-  const AUTH_SCREENS = ["Login", "Signup"];
+  const AUTH_SCREENS = ["Welcome", "Login", "Signup"];
+  // Inside MainTabs the "current route" is the focused tab, not "MainTabs".
+  const TAB_ROUTES = ["HomeTab", "WallTab", "EventsTab", "RentalsTab", "ProfileTab"];
 
   const navigateToRoute = (routeName, { user = null, params = {} } = {}) => {
     setInitialUser(user);
@@ -131,10 +199,15 @@ const AppNavigator = forwardRef((props, ref) => {
     if (ref?.current?.isReady?.()) {
       const currentRouteName = ref.current.getCurrentRoute()?.name;
 
-      if (routeName === "Login" && AUTH_SCREENS.includes(currentRouteName)) {
+      if (AUTH_SCREENS.includes(routeName) && AUTH_SCREENS.includes(currentRouteName)) {
         console.log(
           `↪️ Ya en flujo de auth (${currentRouteName}), no se fuerza reset`,
         );
+        return;
+      }
+
+      // Already inside the tab shell → don't reset onto it again.
+      if (routeName === "MainTabs" && TAB_ROUTES.includes(currentRouteName)) {
         return;
       }
 
@@ -256,15 +329,15 @@ const AppNavigator = forwardRef((props, ref) => {
                   params: { userEmail: user.email, fullName: "Host" },
                 });
               }
-              // 5. All checks passed - go to Home
+              // 5. All checks passed - go to the tab shell
               else {
-                console.log("✅ All checks passed - navigating to Home");
+                console.log("✅ All checks passed - navigating to MainTabs");
                 hasReachedHome.current = true;
                 if (registeredPushTokenUid.current !== user.uid) {
                   registeredPushTokenUid.current = user.uid;
                   registerPushToken(user.uid);
                 }
-                navigateToRoute("Home", { user });
+                navigateToRoute("MainTabs", { user });
               }
             } else {
               // No user doc yet. For a BRAND-NEW account (just created via
@@ -313,10 +386,10 @@ const AppNavigator = forwardRef((props, ref) => {
           },
         );
       } else {
-        console.log("🚪 No user, showing login");
+        console.log("🚪 No user, showing welcome");
         hasReachedHome.current = false; // reset for next login session
         registeredPushTokenUid.current = null;
-        navigateToRoute("Login");
+        navigateToRoute("Welcome");
         setLoading(false);
       }
     });
@@ -365,7 +438,7 @@ const AppNavigator = forwardRef((props, ref) => {
   console.log("🗺️ AppNavigator rendering, initialRoute:", initialRoute);
 
   return (
-    <>
+    <ModeProvider>
       <NavigationContainer ref={ref}>
         {/* ✅ Un solo Stack, todas las pantallas siempre registradas.
             La navegación entre estados (Login/Legal/ProfileSetup/HostTypeSelection/Home)
@@ -375,6 +448,7 @@ const AppNavigator = forwardRef((props, ref) => {
           initialRouteName={initialRoute}
           screenOptions={{ headerShown: false }}
         >
+          <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Signup" component={SignupScreen} />
           <Stack.Screen name="Legal" component={LegalScreen} />
@@ -384,13 +458,14 @@ const AppNavigator = forwardRef((props, ref) => {
             component={HostTypeSelectionScreen}
             initialParams={initialParams}
           />
-          <Stack.Screen name="Home" component={HomeScreen} />
+          {/* The authed landing: 5-tab shell. Home/Wall/Rentals/Profile live
+              ONLY as tabs; MyEvents stays pushable too (Manage → hosted list). */}
+          <Stack.Screen name="MainTabs" component={MainTabs} />
           <Stack.Screen name="SearchEvents" component={SearchEventsScreen} />
           <Stack.Screen name="EventDetail" component={EventDetailScreen} />
           <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
           <Stack.Screen name="EditEvent" component={EditEventScreen} />
           <Stack.Screen name="MyEvents" component={MyEventsScreen} />
-          <Stack.Screen name="Profile" component={ProfileScreen} />
           <Stack.Screen name="BondVibePro" component={BondVibeProScreen} />
           <Stack.Screen name="CheckInScanner" component={CheckInScannerScreen} />
           <Stack.Screen name="HostCRM" component={HostCRMScreen} />
@@ -511,7 +586,7 @@ const AppNavigator = forwardRef((props, ref) => {
         message="Your account was created but user data is missing. This sometimes happens if signup was interrupted. Please try signing up again or contact support."
         emoji="⚠️"
       />
-    </>
+    </ModeProvider>
   );
 });
 

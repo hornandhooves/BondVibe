@@ -25,7 +25,6 @@ import Icon, { getCategoryIcon } from "../components/Icon";
 import RatingModal from "../components/RatingModal";
 import { getPendingRatings } from "../services/ratingService";
 import { getFeaturedEvents } from "../services/promotionService";
-import { AvatarDisplay } from "../components/AvatarPicker";
 import GradientBackground from "../components/GradientBackground";
 import { BVCard } from "../components/BoldPop";
 
@@ -164,20 +163,6 @@ export default function HomeScreen({ navigation }) {
     return user.fullName || user.name || "Friend";
   };
 
-  const getUserAvatar = () => {
-    if (!user) return { type: "emoji", value: "😊" };
-
-    if (user.avatar && typeof user.avatar === "object") {
-      return user.avatar;
-    }
-
-    if (user.avatar && typeof user.avatar === "string") {
-      return { type: "emoji", value: user.avatar };
-    }
-
-    return { type: "emoji", value: user.emoji || "😊" };
-  };
-
   const isAdmin = user?.role === "admin";
   const isHost = user?.role === "host";
   const canCreateEvents = isAdmin || isHost;
@@ -254,6 +239,8 @@ export default function HomeScreen({ navigation }) {
     <GradientBackground>
       <StatusBar style={isDark ? "light" : "dark"} />
 
+      {/* Tab root — AppHeader (toggle/✉/🔔) is provided by the tab navigator;
+          Profile is now a tab, so the avatar shortcut is gone. */}
       <View style={styles.header}>
         <View>
           <Text style={[styles.greeting, { color: colors.textSecondary }]}>
@@ -263,19 +250,6 @@ export default function HomeScreen({ navigation }) {
             {getUserDisplayName()}
           </Text>
         </View>
-        <TouchableOpacity onPress={() => navigation.navigate("Profile")}>
-          <View
-            style={[
-              styles.avatar,
-              {
-                backgroundColor: `${colors.primary}26`,
-                borderColor: `${colors.primary}66`,
-              },
-            ]}
-          >
-            <AvatarDisplay avatar={getUserAvatar()} size={44} />
-          </View>
-        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -606,7 +580,7 @@ function createStyles(colors, isDark) {
       justifyContent: "space-between",
       alignItems: "center",
       paddingHorizontal: 24,
-      paddingTop: 60,
+      paddingTop: 4,
       paddingBottom: 20,
     },
     greeting: { fontSize: 14, marginBottom: 4 },

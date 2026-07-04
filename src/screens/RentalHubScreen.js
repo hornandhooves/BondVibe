@@ -15,16 +15,23 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTheme } from "../contexts/ThemeContext";
+import { useMode } from "../contexts/ModeContext";
+import useUserRole from "../hooks/useUserRole";
 import GradientBackground from "../components/GradientBackground";
 import DateField from "../components/DateField";
+import ListRow from "../components/ListRow";
+import SectionHeader from "../components/SectionHeader";
 import { getAvailableVehicles, getRentalCities, VEHICLE_TYPES } from "../services/rentalService";
 import { formatCentavos } from "../utils/pricing";
+import { ELEVATION, RADII, SPACING } from "../constants/theme-tokens";
 
 const TYPE_LABEL = { scooter: "Scooters", bike: "Bikes", car: "Cars" };
 const toISO = (d) => (d ? new Date(d).toISOString() : undefined);
 
 export default function RentalHubScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
+  const { isHosting } = useMode();
+  const { isHost } = useUserRole();
   const { eventId, eventTitle } = route.params || {};
   const [type, setType] = useState(null); // null = all
   const [vehicles, setVehicles] = useState([]);
@@ -83,15 +90,41 @@ export default function RentalHubScreen({ route, navigation }) {
   return (
     <GradientBackground>
       <StatusBar style={isDark ? "light" : "dark"} />
+      {/* Tab root — AppHeader is provided by the tab navigator. */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="back" size={26} color={colors.text} />
-        </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Get around 🛴</Text>
         <TouchableOpacity onPress={() => navigation.navigate("MyRentals")}>
           <Text style={[styles.link, { color: colors.primary }]}>My rentals</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Host Mode: fleet management entry (§1.3 — "Rentals gains Your fleet") */}
+      {isHosting && isHost && (
+        <>
+          <SectionHeader title="Your fleet" style={{ marginTop: 0 }} />
+          <View
+            style={[
+              styles.fleetCard,
+              ELEVATION.card,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            <ListRow
+              icon="fleet"
+              title="My fleet"
+              subtitle="Publish & manage your vehicles"
+              onPress={() => navigation.navigate("MyFleet")}
+            />
+            <ListRow
+              icon="calendarCheck"
+              title="Bookings"
+              subtitle="Who booked which dates"
+              onPress={() => navigation.navigate("VehicleBookings")}
+              divider={false}
+            />
+          </View>
+        </>
+      )}
 
       {eventId && (
         <View style={[styles.eventBanner, { borderColor: colors.border }]}>
@@ -304,8 +337,15 @@ function createStyles(colors, isDark) {
       justifyContent: "space-between",
       alignItems: "center",
       paddingHorizontal: 20,
-      paddingTop: 60,
+      paddingTop: 4,
       paddingBottom: 12,
+    },
+    fleetCard: {
+      borderRadius: RADII.card,
+      borderWidth: 1,
+      marginHorizontal: SPACING.screen,
+      marginBottom: SPACING.md,
+      overflow: "hidden",
     },
     headerTitle: { fontSize: 20, fontWeight: "800" },
     link: { fontSize: 14, fontWeight: "700" },

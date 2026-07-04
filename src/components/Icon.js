@@ -99,6 +99,7 @@ import {
   Tent,
   Wallet,
   Car,
+  LayoutGrid,
 } from "lucide-react-native";
 import { useTheme } from "../contexts/ThemeContext";
 
@@ -227,6 +228,7 @@ const NAME_TO_COMPONENT = {
   wallet: Wallet,
   fleet: Car,
   car: Car,
+  wall: LayoutGrid,
 };
 
 /**

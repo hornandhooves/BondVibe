@@ -274,7 +274,7 @@ export default function NotificationsScreen({ navigation }) {
         break;
 
       case "host_rejected":
-        navigation.navigate("Profile");
+        navigation.navigate("MainTabs", { screen: "ProfileTab" });
         break;
 
       case "host_request":

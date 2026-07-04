@@ -373,16 +373,19 @@ export default function MyEventsScreen({ navigation, route }) {
     <GradientBackground>
       <StatusBar style={isDark ? "light" : "dark"} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="back" size={26} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          My Events
-        </Text>
-        <View style={{ width: 28 }} />
-      </View>
+      {/* Header — only when pushed (e.g. Manage → hosted events). As the
+          Events tab root the AppHeader already provides title + actions. */}
+      {route?.name === "MyEvents" && (
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Icon name="back" size={26} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            My Events
+          </Text>
+          <View style={{ width: 28 }} />
+        </View>
+      )}
 
       {/* Main Tabs (Joined/Hosting) */}
       <View style={styles.tabsContainer}>

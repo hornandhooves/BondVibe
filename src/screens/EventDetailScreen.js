@@ -464,7 +464,7 @@ export default function EventDetailScreen({ route, navigation }) {
         `${cancelledCount} events cancelled.${
           totalRefunds > 0 ? ` ${totalRefunds} refunds processed.` : ""
         }`,
-        [{ text: "OK", onPress: () => navigation.navigate("Home") }]
+        [{ text: "OK", onPress: () => navigation.navigate("MainTabs", { screen: "HomeTab" }) }]
       );
     } catch (error) {
       setLoading(false);
@@ -549,7 +549,7 @@ export default function EventDetailScreen({ route, navigation }) {
             "Event Cancelled",
             result.data.message || "All attendees have been refunded."
           );
-          navigation.navigate("Home");
+          navigation.navigate("MainTabs", { screen: "HomeTab" });
         } else {
           throw new Error(result.data.message || "Failed to cancel event");
         }
@@ -589,7 +589,7 @@ export default function EventDetailScreen({ route, navigation }) {
         }
       }
       setLoading(false);
-      navigation.navigate("Home");
+      navigation.navigate("MainTabs", { screen: "HomeTab" });
     } catch (error) {
       setLoading(false);
       Alert.alert("Error", "Failed to cancel event.");
@@ -1000,7 +1000,7 @@ export default function EventDetailScreen({ route, navigation }) {
             style={styles.infoCard}
             activeOpacity={0.85}
             onPress={() =>
-              navigation.navigate("RentalHub", { eventId, eventTitle })
+              navigation.navigate("MainTabs", { screen: "RentalsTab", params: { eventId, eventTitle } })
             }
           >
             <View

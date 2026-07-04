@@ -81,19 +81,12 @@ export default function FeedScreen({ navigation }) {
   return (
     <GradientBackground>
       <StatusBar style={isDark ? "light" : "dark"} />
+      {/* Tab root — the AppHeader (✉/🔔) is provided by the tab navigator.
+          Contextual "+" = compose (spec §1.2). */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={hit}>
-          <Icon name="back" size={26} color={colors.text} />
+        <TouchableOpacity onPress={() => navigation.navigate("CreatePost")} hitSlop={hit}>
+          <Icon name="add" size={26} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.text }]}>Feed</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => navigation.navigate("DMList")} hitSlop={hit}>
-            <Icon name="chat" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate("CreatePost")} hitSlop={hit}>
-            <Icon name="add" size={26} color={colors.text} />
-          </TouchableOpacity>
-        </View>
       </View>
 
       <FlatList
@@ -190,13 +183,10 @@ function createStyles(colors) {
     header: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
+      justifyContent: "flex-end",
       paddingHorizontal: 20,
-      paddingTop: 60,
       paddingBottom: 12,
     },
-    title: { fontSize: 26, fontWeight: "800", letterSpacing: -0.4 },
-    headerActions: { flexDirection: "row", gap: 20, alignItems: "center" },
     list: { paddingHorizontal: 16, paddingBottom: 30, flexGrow: 1 },
     empty: { alignItems: "center", marginTop: 80, paddingHorizontal: 40, gap: 14 },
     emptyText: { fontSize: 14, textAlign: "center", lineHeight: 20 },
