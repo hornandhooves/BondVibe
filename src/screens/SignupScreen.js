@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Icon from "../components/Icon";
+import { Eye, EyeOff } from "lucide-react-native";
 import {
   View,
   Text,
@@ -246,9 +247,9 @@ export default function SignupScreen({ navigation }) {
                   style={styles.eyeButton}
                 >
                   {showPassword ? (
-                    <Icon name="hide" size={20} color={colors.textTertiary} />
+                    <EyeOff size={20} color={colors.textTertiary} />
                   ) : (
-                    <Icon name="view" size={20} color={colors.textTertiary} />
+                    <Eye size={20} color={colors.textTertiary} />
                   )}
                 </TouchableOpacity>
               </View>
@@ -414,9 +415,9 @@ export default function SignupScreen({ navigation }) {
                   style={styles.eyeButton}
                 >
                   {showConfirmPassword ? (
-                    <Icon name="hide" size={20} color={colors.textTertiary} />
+                    <EyeOff size={20} color={colors.textTertiary} />
                   ) : (
-                    <Icon name="view" size={20} color={colors.textTertiary} />
+                    <Eye size={20} color={colors.textTertiary} />
                   )}
                 </TouchableOpacity>
               </View>
