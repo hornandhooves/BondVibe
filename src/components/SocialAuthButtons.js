@@ -44,7 +44,21 @@ export default function SocialAuthButtons() {
         e?.code === "ERR_REQUEST_CANCELED" ||
         e?.code === "12501" || // Google: user cancelled
         e?.code === "-5"; // Google: in progress/cancelled
-      if (!cancelled) Alert.alert("Sign-in failed", msg || "Please try again.");
+      if (cancelled) return;
+      // Apple Sign-In is unreliable on the iOS Simulator: it fails with error
+      // 1000 ("unknown reason") even when correctly configured. Guide the tester
+      // to a real device instead of surfacing Apple's cryptic message.
+      const appleUnknown =
+        which === "apple" &&
+        (e?.code === "ERR_REQUEST_UNKNOWN" || /unknown reason/i.test(msg));
+      if (appleUnknown) {
+        Alert.alert(
+          "Apple Sign-In unavailable",
+          "Sign in with Apple often fails on the iOS Simulator. Please try on a real device."
+        );
+        return;
+      }
+      Alert.alert("Sign-in failed", msg || "Please try again.");
     } finally {
       setBusy(null);
     }
