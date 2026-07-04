@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 // Kinlo — Theme tokens (Warmth = light · Aurora = dark)
 // Drop-in for the `colors` object in src/contexts/ThemeContext.js.
 // Keeps EVERY existing token name so current screens recolor instantly,
@@ -103,6 +105,93 @@ export const AURORA = {
   gradientPrimary: BRAND.gradient,
   dark: '#0A0515',
   lilac: '#C792EA',
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Redesign system tokens (kinlo_build/01_REDESIGN_SPEC.md §3). Everything below
+// is ADDITIVE — no existing token name changes.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// §3.2 Type ramp — one place for font family + size + weight combos.
+// Usage: <Text style={[TYPE.title, { color: colors.text }]}>
+export const TYPE = {
+  display: { fontFamily: FONTS.display, fontSize: 28, lineHeight: 34 },
+  displayLg: { fontFamily: FONTS.display, fontSize: 40, lineHeight: 46 },
+  title: { fontFamily: FONTS.display, fontSize: 18, lineHeight: 24 },
+  titleLg: { fontFamily: FONTS.display, fontSize: 20, lineHeight: 26 },
+  body: { fontFamily: FONTS.body, fontSize: 14.5, lineHeight: 21 },
+  bodySemibold: { fontFamily: FONTS.bodySemibold, fontSize: 14.5, lineHeight: 21 },
+  label: { fontFamily: FONTS.bodySemibold, fontSize: 13, lineHeight: 18 },
+  eyebrow: {
+    fontFamily: FONTS.display,
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  caption: { fontFamily: FONTS.bodyMedium, fontSize: 11.5, lineHeight: 16 },
+};
+
+// §3.3 Spacing (4pt base) & radius. Use these — never ad-hoc numbers.
+export const SPACING = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 24,
+  xxxl: 32,
+  screen: 20, // horizontal screen padding
+  card: 16, // card padding
+};
+
+export const RADII = {
+  pill: 999,
+  card: 18,
+  cardLg: 22,
+  button: 27,
+  tile: 12,
+  sheet: 28, // bottom-sheet top corners
+};
+
+// §3.4 AI signature surfaces — intentionally dark in BOTH themes
+// ("this is Claude" visual signature).
+export const AI = {
+  bg: '#160F22',
+  panel: ['#2A1E3D', '#42265C'], // LinearGradient 135°
+  accent: '#C792EA',
+  textOnDark: '#e6ddf2',
+};
+
+// §3.4 Match-type accents + misc roles shared by both themes.
+export const MATCH_COLORS = {
+  friend: { fg: '#1F8A6E', soft: '#E1F5EC' },
+  professional: { fg: '#4F5BD5', soft: '#E6EAFB' },
+  romantic: { fg: '#E91E8C', soft: '#FBE4F1' },
+};
+
+export const AVATAR_PASTELS = ['#ECE6FB', '#FBE4F1', '#E6EAFB', '#E1F5EC', '#FBEDE4'];
+
+export const LIME_GOOD = '#C3E88D';
+
+// §3.5 Elevation — cross-platform (iOS shadow* / Android elevation).
+// Usage: style={[ELEVATION.card, ...]}  (colors stay theme-agnostic per spec)
+const shadow = (color, offsetY, radius, opacity, elevation) =>
+  Platform.select({
+    ios: {
+      shadowColor: color,
+      shadowOffset: { width: 0, height: offsetY },
+      shadowRadius: radius,
+      shadowOpacity: opacity,
+    },
+    android: { elevation },
+    default: {},
+  });
+
+export const ELEVATION = {
+  card: shadow('#000000', 1, 3, 0.06, 2),
+  floatingBrand: shadow('#7C3AED', 9, 22, 0.28, 8),
+  floatingNeutral: shadow('#1E1432', 10, 30, 0.14, 10),
 };
 
 // In ThemeContext.js:
