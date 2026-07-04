@@ -206,16 +206,18 @@ export default function HomeScreen({ navigation }) {
     },
     {
       id: "feed",
-      label: "Feed",
-      icon: "community",
-      screen: "Feed",
+      label: "Wall",
+      icon: "wall",
+      screen: "MainTabs",
+      params: { screen: "WallTab" },
       badge: 0,
     },
     {
       id: "myevents",
       label: "My Events",
       icon: "calendar",
-      screen: "MyEvents",
+      screen: "MainTabs",
+      params: { screen: "EventsTab" },
       badge: 0,
     },
     {
@@ -229,7 +231,8 @@ export default function HomeScreen({ navigation }) {
       id: "rentals",
       label: "Get around",
       icon: "bike",
-      screen: "RentalHub",
+      screen: "MainTabs",
+      params: { screen: "RentalsTab" },
       badge: 0,
     },
     hostQuickAction,
@@ -333,7 +336,7 @@ export default function HomeScreen({ navigation }) {
                 <TouchableOpacity
                   key={action.id}
                   style={styles.quickAction}
-                  onPress={() => navigation.navigate(action.screen)}
+                  onPress={() => navigation.navigate(action.screen, action.params)}
                   activeOpacity={0.7}
                 >
                   <BVCard

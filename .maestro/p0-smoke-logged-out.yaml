@@ -1,0 +1,10 @@
+# P0 smoke — logged-out shell: Welcome renders with auth entry points.
+appId: com.bondvibe.app
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Kinlo"
+    timeout: 60000
+- assertVisible: "Connect through shared experiences"
+- assertVisible: "Get Started"

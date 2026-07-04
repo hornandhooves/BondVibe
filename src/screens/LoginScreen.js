@@ -219,7 +219,9 @@ export default function LoginScreen({ navigation }) {
       <GradientBackground>
         <StatusBar style={isDark ? "light" : "dark"} />
 
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        {/* accessible={false}: keyboard-dismiss wrapper must not collapse its
+            children into one a11y element (blocks VoiceOver and E2E drivers). */}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           <ScrollView
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
@@ -250,6 +252,7 @@ export default function LoginScreen({ navigation }) {
               >
                 <Text style={styles.inputIcon}>📧</Text>
                 <TextInput
+                  testID="login-email"
                   style={[styles.input, { color: colors.text }]}
                   placeholder="Email"
                   placeholderTextColor={colors.textTertiary}
@@ -272,6 +275,7 @@ export default function LoginScreen({ navigation }) {
               >
                 <Text style={styles.inputIcon}>🔒</Text>
                 <TextInput
+                  testID="login-password"
                   style={[styles.input, { color: colors.text }]}
                   placeholder="Password"
                   placeholderTextColor={colors.textTertiary}

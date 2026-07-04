@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Platform, Linking } from "react-native";
+import { Platform, Linking, LogBox } from "react-native";
 import { joinGroupByCode } from "./src/services/hostGroupService";
 import { AuthProvider } from "./src/contexts/AuthContext";
 import { StripeProvider } from "@stripe/stripe-react-native";
@@ -12,6 +12,13 @@ import * as Notifications from "expo-notifications";
 
 // Capture unhandled JS errors into Firestore as early as possible.
 installCrashLogger();
+
+// Dev-only: disable LogBox toast/overlay UI. Simulators/emulators emit
+// unavoidable noise (push-token registration, expo-notifications keychain,
+// legacy-architecture warning) whose overlays cover the tab bar and block
+// E2E flows. Everything still logs to the Metro console and crashLogger;
+// fatal errors still surface via the ErrorBoundary.
+LogBox.ignoreAllLogs(true);
 import { useFonts } from "expo-font";
 import {
   SpaceGrotesk_600SemiBold,

@@ -154,6 +154,7 @@ function MainTabs() {
           />
         ),
         tabBarLabel: TAB_META[route.name].title,
+        tabBarTestID: `tab-${TAB_META[route.name].title.toLowerCase()}`,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
         tabBarStyle: {

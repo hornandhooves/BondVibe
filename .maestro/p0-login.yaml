@@ -1,0 +1,55 @@
+# P0 helper — email/password login. Credentials come from env so nothing is
+# hardcoded:  maestro test -e KINLO_EMAIL=... -e KINLO_PASSWORD=... p0-login.yaml
+# Handles: dev-client launcher, LogBox overlay, already-logged-in sessions.
+appId: com.bondvibe.app
+---
+- launchApp:
+    clearState: false
+# Dev-client may show its server launcher — pick Metro on 8081.
+- tapOn:
+    text: ".*localhost:8081.*"
+    optional: true
+# iOS notification-permission alert (appears after a state wipe).
+- tapOn:
+    text: "Allow|Permitir"
+    optional: true
+# Dev-client first-run sheet — Continue may land on the dev menu; close it.
+- tapOn:
+    text: "Continue"
+    optional: true
+- runFlow:
+    when:
+      visible: "Fast Refresh" # dev menu is actually open
+      platform: Android
+    commands:
+      - back
+# Known dev-only LogBox overlay (expo-notifications keychain) — dismiss if shown.
+- repeat:
+    while:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+
+# Wait for either Welcome (logged out) or Home (logged in) to paint.
+- extendedWaitUntil:
+    visible: "I have an account"
+    timeout: 60000
+    optional: true
+# Log in only when the Welcome screen is showing.
+- runFlow:
+    when:
+      visible: "I have an account"
+    commands:
+      - tapOn: "I have an account"
+      - extendedWaitUntil:
+          visible: "Log In"
+          timeout: 10000
+      - tapOn: "Email"
+      - inputText: ${KINLO_EMAIL}
+      - tapOn: "Password"
+      - inputText: ${KINLO_PASSWORD}
+      # returnKeyType="done" submits (hideKeyboard is flaky on iOS sims)
+      - pressKey: Enter
+- extendedWaitUntil:
+    visible: "QUICK ACTIONS"
+    timeout: 60000
