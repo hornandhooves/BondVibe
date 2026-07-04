@@ -67,7 +67,7 @@ export default function MyFleetScreen({ navigation }) {
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={[styles.intro, { color: colors.textSecondary }]}>
-            Rent your scooters directly to riders. You receive the full price you set —
+            Rent your vehicles directly to riders. You receive the full price you set —
             Kinlo adds a small service fee for the rider. The deposit and the rental
             agreement are between you and the rider.
           </Text>
@@ -93,7 +93,7 @@ export default function MyFleetScreen({ navigation }) {
             activeOpacity={0.85}
             onPress={() => navigation.navigate("PublishVehicle", {})}
           >
-            <Text style={styles.publishTxt}>+ Publish a scooter</Text>
+            <Text style={styles.publishTxt}>+ Publish a vehicle</Text>
           </TouchableOpacity>
 
           {fleet.length > 0 && (
@@ -113,7 +113,7 @@ export default function MyFleetScreen({ navigation }) {
               <Text style={styles.emptyEmoji}>🛴</Text>
               <Text style={[styles.emptyTitle, { color: colors.text }]}>No vehicles yet</Text>
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                Publish your first scooter to start earning.
+                Publish your first vehicle to start earning.
               </Text>
             </View>
           ) : (
