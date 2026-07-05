@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Image,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -15,7 +14,6 @@ import {
   query,
   where,
   getDocs,
-  onSnapshot,
 } from "firebase/firestore";
 import { auth, db } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
@@ -30,6 +28,7 @@ import { getPendingRatings } from "../services/ratingService";
 import { getFeaturedEvents } from "../services/promotionService";
 import GradientBackground from "../components/GradientBackground";
 import { BVCard } from "../components/BoldPop";
+import FeaturedCarousel from "../components/FeaturedCarousel";
 
 export default function HomeScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -279,7 +278,7 @@ export default function HomeScreen({ navigation }) {
           </View>
         )}
 
-        {/* Featured Events */}
+        {/* Featured — auto-advancing carousel (Fix 6) */}
         {featuredEvents.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -287,61 +286,14 @@ export default function HomeScreen({ navigation }) {
                 FEATURED
               </Text>
             </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 24, gap: 12 }}
-            >
-              {featuredEvents.map((ev) => {
-                const img = Array.isArray(ev.images) ? ev.images[0] : null;
-                return (
-                  <TouchableOpacity
-                    key={ev.id}
-                    activeOpacity={0.85}
-                    onPress={() =>
-                      navigation.navigate("EventDetail", { eventId: ev.id })
-                    }
-                    style={[
-                      styles.featuredCard,
-                      {
-                        backgroundColor: colors.surface,
-                        borderColor: colors.borderStrong,
-                      },
-                    ]}
-                  >
-                    {img ? (
-                      <Image source={{ uri: img }} style={styles.featuredImage} />
-                    ) : (
-                      <View
-                        style={[
-                          styles.featuredImage,
-                          { backgroundColor: `${colors.primary}26`, alignItems: "center", justifyContent: "center" },
-                        ]}
-                      >
-                        <Icon name="ai" size={28} color={colors.primary} />
-                      </View>
-                    )}
-                    <View style={styles.featuredBadge}>
-                      <Text style={styles.featuredBadgeText}>Featured</Text>
-                    </View>
-                    <View style={{ padding: 12 }}>
-                      <Text
-                        style={[styles.featuredTitle, { color: colors.text }]}
-                        numberOfLines={1}
-                      >
-                        {ev.title || "Event"}
-                      </Text>
-                      <Text
-                        style={[styles.featuredMeta, { color: colors.textSecondary }]}
-                        numberOfLines={1}
-                      >
-                        {ev.location || ev.city || ""}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+            <View style={styles.carouselWrap}>
+              <FeaturedCarousel
+                events={featuredEvents}
+                onPressEvent={(ev) =>
+                  navigation.navigate("EventDetail", { eventId: ev.id })
+                }
+              />
+            </View>
           </View>
         )}
 
@@ -550,6 +502,7 @@ function createStyles(colors, isDark) {
       alignItems: "center",
       justifyContent: "center",
     },
+    carouselWrap: { paddingHorizontal: 24 },
     zeroState: {
       alignItems: "center",
       gap: 8,
@@ -627,25 +580,6 @@ function createStyles(colors, isDark) {
     },
 
     // Admin Card
-    featuredCard: {
-      width: 240,
-      borderRadius: 20,
-      borderWidth: 1,
-      overflow: "hidden",
-    },
-    featuredImage: { width: "100%", height: 120 },
-    featuredBadge: {
-      position: "absolute",
-      top: 10,
-      left: 10,
-      backgroundColor: "rgba(0,0,0,0.55)",
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 10,
-    },
-    featuredBadgeText: { color: "#FFFFFF", fontSize: 11, fontWeight: "700" },
-    featuredTitle: { fontSize: 15, fontWeight: "700", letterSpacing: -0.2 },
-    featuredMeta: { fontSize: 12, marginTop: 3 },
     adminCard: {
       marginHorizontal: 24,
     },
