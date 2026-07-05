@@ -27,7 +27,7 @@ const AI_DEFAULTS = {
   anthropicVersion: "2023-06-01",
   dailyCallLimit: 40, // per user, across AI features
   features: {
-    smart_wall: {maxTokens: 900, candidateLimit: 25, cacheTtlMinutes: 90},
+    smart_wall: {maxTokens: 1400, candidateLimit: 20, cacheTtlMinutes: 90},
     ask_kinlo: {
       maxTokens: 700,
       // Freemium taste (spec §1.8): free users get N questions per week.
@@ -232,7 +232,7 @@ const PROMPTS = {
     system: SYSTEM_BASE +
       " Schema: {\"digest\":{\"text\":string}," +
       "\"feed\":[{\"eventId\":string,\"reason\":string,\"score\":number}]}" +
-      " Rank ALL candidate events by fit (interests, personality, friends " +
+      " Rank the BEST 8 candidate events by fit (interests, personality, friends " +
       "going, time proximity). reason = one short grounded line. Only use " +
       "eventIds from the context. digest.text = 1-2 sentence weekly framing.",
     user: JSON.stringify(ctx),

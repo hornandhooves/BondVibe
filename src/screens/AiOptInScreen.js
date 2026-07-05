@@ -28,7 +28,9 @@ export default function AiOptInScreen({ navigation, route }) {
     } catch {
       // Non-blocking: default stays off; Settings can change it later.
     }
-    if (fromOnboarding) {
+    // Cold boots land here via initialRouteName (no params, no back stack):
+    // treat "nowhere to go back to" the same as onboarding.
+    if (fromOnboarding || !navigation.canGoBack()) {
       navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
     } else {
       navigation.goBack();
