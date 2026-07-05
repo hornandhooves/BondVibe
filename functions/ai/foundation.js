@@ -390,6 +390,15 @@ function buildCallClaude(db, anthropicKey) {
       }
       const isPlus = u.plan === "kinlo_plus";
 
+      // Feature-specific access gate (Pro requirement / freemium taste).
+      if (p2.GATES[feature]) {
+        const denial = await p2.GATES[feature](db, uid, u, cfg);
+        if (denial) {
+          await log("denied", {reason: denial.error});
+          return {ok: false, fallback: true, ...denial};
+        }
+      }
+
       const budget = await consumeBudget(db, uid, feature, cfg, isPlus);
       if (!budget.allowed) {
         await log("denied", {reason: budget.reason});
@@ -429,7 +438,10 @@ function buildCallClaude(db, anthropicKey) {
           inputTokens: attempt.usage.input_tokens || 0,
           outputTokens: attempt.usage.output_tokens || 0,
         });
-        return {ok: true, data: attempt.json};
+        // Server-side taste enforcement (§1.8) — clients can't bypass.
+        const data = p2.POSTPROCESS[feature] ?
+          p2.POSTPROCESS[feature](attempt.json, u) : attempt.json;
+        return {ok: true, data};
       } catch (e) {
         console.error("callClaude error:", e);
         await log("error", {reason: String(e.message || e).slice(0, 120)});
