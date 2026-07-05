@@ -27,6 +27,7 @@ import { detectProhibitedContent, PROHIBITED_MESSAGE } from "../utils/contentGua
 import { reportProhibitedContent } from "../services/reportService";
 import {
   getGroup,
+  updateGroup,
   subscribeGroupMessages,
   sendGroupMessage,
   sendEventInvite,
@@ -46,6 +47,9 @@ export default function GroupChatScreen({ route, navigation }) {
   const [pollQuestion, setPollQuestion] = useState("");
   const [pollOptions, setPollOptions] = useState(["", ""]);
   const [pollAnon, setPollAnon] = useState(false);
+  const [spotifyVisible, setSpotifyVisible] = useState(false);
+  const [spotifyDraft, setSpotifyDraft] = useState("");
+  const [spotifySaving, setSpotifySaving] = useState(false);
   const scrollRef = useRef(null);
   const uid = auth.currentUser?.uid;
 
@@ -138,6 +142,25 @@ export default function GroupChatScreen({ route, navigation }) {
     }
   };
 
+  const saveSpotify = async () => {
+    const url = spotifyDraft.trim();
+    if (!/spotify\.com|^spotify:/i.test(url)) {
+      Alert.alert("Invalid link", "Paste a Spotify playlist link (open.spotify.com/…).");
+      return;
+    }
+    setSpotifySaving(true);
+    try {
+      await updateGroup(groupId, { spotifyUrl: url });
+      setGroup((g) => ({ ...g, spotifyUrl: url }));
+      setSpotifyVisible(false);
+      setSpotifyDraft("");
+    } catch (e) {
+      Alert.alert("Couldn't save", e.message || "Please try again.");
+    } finally {
+      setSpotifySaving(false);
+    }
+  };
+
   const styles = createStyles(colors, isDark);
 
   return (
@@ -147,6 +170,52 @@ export default function GroupChatScreen({ route, navigation }) {
     >
       <GradientBackground>
         <StatusBar style={isDark ? "light" : "dark"} />
+        {/* Connect Spotify playlist (Fix 4) — host-only focused flow.
+            Spotify green is the one allowed non-brand accent. */}
+        <Modal
+          visible={spotifyVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setSpotifyVisible(false)}
+        >
+          <View style={styles.spotifyOverlay}>
+            <View style={[styles.spotifyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.spotifyTitleRow}>
+                <Icon name="music2" size={20} color="#1DB954" />
+                <Text style={[styles.spotifyTitle, { color: colors.text }]}>
+                  Connect Spotify playlist
+                </Text>
+              </View>
+              <Text style={[styles.spotifyHint, { color: colors.textSecondary }]}>
+                Paste the playlist link — everyone in the group will be able to open it.
+              </Text>
+              <TextInput
+                style={[styles.spotifyInput, { backgroundColor: colors.sunken, borderColor: colors.border, color: colors.text }]}
+                placeholder="https://open.spotify.com/playlist/…"
+                placeholderTextColor={colors.textTertiary}
+                value={spotifyDraft}
+                onChangeText={setSpotifyDraft}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <View style={styles.spotifyActions}>
+                <TouchableOpacity onPress={() => setSpotifyVisible(false)} style={styles.spotifyCancel}>
+                  <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={saveSpotify}
+                  disabled={spotifySaving}
+                  style={[styles.spotifyConnect, spotifySaving && { opacity: 0.6 }]}
+                >
+                  <Text style={styles.spotifyConnectText}>
+                    {spotifySaving ? "Saving…" : "Connect"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Icon name="back" size={26} color={colors.text} />
@@ -161,10 +230,9 @@ export default function GroupChatScreen({ route, navigation }) {
                 <Icon name="music2" size={22} color="#1DB954" />
               </TouchableOpacity>
             ) : isHost ? (
-              // Host without a playlist yet: tap to add one in group settings.
-              <TouchableOpacity
-                onPress={() => navigation.navigate("GroupManage", { groupId })}
-              >
+              // Host without a playlist yet: ♪ opens the focused Spotify
+              // connect flow (Fix 4) — settings stays on the gear.
+              <TouchableOpacity onPress={() => setSpotifyVisible(true)}>
                 <Icon name="music2" size={22} color={colors.textTertiary} />
               </TouchableOpacity>
             ) : null}
@@ -235,7 +303,7 @@ export default function GroupChatScreen({ route, navigation }) {
           })}
           {messages.length === 0 && (
             <Text style={[styles.empty, { color: colors.textTertiary }]}>
-              No messages yet. Say hi 👋
+              No messages yet. Say hi
             </Text>
           )}
         </ScrollView>
@@ -243,19 +311,19 @@ export default function GroupChatScreen({ route, navigation }) {
         {group?.hostOnly && !isHost ? (
           <View style={[styles.inputBar, { borderTopColor: colors.border, justifyContent: "center" }]}>
             <Text style={{ color: colors.textTertiary, textAlign: "center" }}>
-              🔒 Only the host can post here. You can still read and vote in polls.
+              Only the host can post here. You can still read and vote in polls.
             </Text>
           </View>
         ) : (
           <View style={[styles.inputBar, { borderTopColor: colors.border }]}>
             {isHost && (
               <TouchableOpacity style={styles.iconBtn} onPress={openInvite}>
-                <Text style={{ fontSize: 20 }}>🎟️</Text>
+                <Icon name="ticket" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
             {isHost && (
               <TouchableOpacity style={styles.iconBtn} onPress={() => setPollVisible(true)}>
-                <Text style={{ fontSize: 20 }}>📊</Text>
+                <Icon name="chart" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
             <TextInput
@@ -323,7 +391,7 @@ export default function GroupChatScreen({ route, navigation }) {
           <View style={styles.modalOverlay}>
             <View style={[styles.modalCard, { backgroundColor: colors.background }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>
-                Create a poll 📊
+                Create a poll
               </Text>
               <TextInput
                 style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
@@ -395,6 +463,22 @@ function createStyles(colors, isDark) {
       gap: 12,
     },
     headerRight: { flexDirection: "row", alignItems: "center", gap: 16 },
+    spotifyOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      justifyContent: "center",
+      padding: 24,
+    },
+    spotifyCard: { borderRadius: 20, borderWidth: 1, padding: 20, gap: 12 },
+    spotifyTitleRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+    spotifyTitle: { fontSize: 17, fontWeight: "700" },
+    spotifyHint: { fontSize: 13, lineHeight: 18 },
+    spotifyInput: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14 },
+    spotifyActions: { flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 16, marginTop: 4 },
+    spotifyCancel: { paddingVertical: 8 },
+    // Spotify green — the one allowed non-brand accent (design system).
+    spotifyConnect: { backgroundColor: "#1DB954", borderRadius: 999, paddingHorizontal: 22, paddingVertical: 10 },
+    spotifyConnectText: { color: "#FFFFFF", fontWeight: "700", fontSize: 14 },
     headerTitle: { fontSize: 18, fontWeight: "700", flex: 1, textAlign: "center" },
     messages: { paddingHorizontal: 16, paddingVertical: 12 },
     bubble: {
