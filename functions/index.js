@@ -61,6 +61,10 @@ const aiRecaps = require("./ai/recaps");
 exports.onRecapPhotoCreated =
   aiRecaps.buildOnRecapPhotoCreated(db, anthropicKey);
 
+// Ask Kinlo live streaming (SSE).
+const aiStream = require("./ai/stream");
+exports.askKinloStream = aiStream.buildAskKinloStream(db, anthropicKey);
+
 /**
  * Weekly Digest push (ai_features/14) — Mondays: nudge AI-opted-in users
  * that their week is ready. The digest itself is generated on open (one
