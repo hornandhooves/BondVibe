@@ -19,6 +19,9 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
+import { useMode } from "../contexts/ModeContext";
+import { LinearGradient } from "expo-linear-gradient";
+import { BRAND, ELEVATION } from "../constants/theme-tokens";
 import { useFocusEffect } from "@react-navigation/native";
 import { EVENT_CATEGORIES } from "../utils/eventCategories";
 import Icon, { getCategoryIcon } from "../components/Icon";
@@ -30,8 +33,8 @@ import { BVCard } from "../components/BoldPop";
 
 export default function HomeScreen({ navigation }) {
   const { colors, isDark } = useTheme();
+  const { isHosting } = useMode();
   const [user, setUser] = useState(null);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [pendingHostRequests, setPendingHostRequests] = useState(0);
 
   // Rating state
@@ -55,37 +58,6 @@ export default function HomeScreen({ navigation }) {
       console.error("Error loading featured events:", e);
     }
   };
-
-  useEffect(() => {
-    if (!auth.currentUser) return;
-
-    const notifQuery = query(
-      collection(db, "notifications"),
-      where("userId", "==", auth.currentUser.uid),
-      where("read", "==", false),
-    );
-
-    const unsubscribe = onSnapshot(
-      notifQuery,
-      (snapshot) => {
-        let totalCount = 0;
-        snapshot.docs.forEach((docSnap) => {
-          const data = docSnap.data();
-          if (data.type === "event_messages" && data.unreadCount) {
-            totalCount += data.unreadCount;
-          } else {
-            totalCount += 1;
-          }
-        });
-        setUnreadNotifications(totalCount);
-      },
-      (error) => {
-        console.error("Error in notifications listener:", error);
-      },
-    );
-
-    return () => unsubscribe();
-  }, [auth.currentUser?.uid]);
 
   useFocusEffect(
     useCallback(() => {
@@ -166,77 +138,8 @@ export default function HomeScreen({ navigation }) {
   const isAdmin = user?.role === "admin";
   const isHost = user?.role === "host";
   const canCreateEvents = isAdmin || isHost;
-  // Approved as host but hasn't chosen a type yet → prompt them to choose,
-  // not to re-apply for hosting.
-  const isApprovedPendingHostType = user?.hostApproved && !canCreateEvents;
 
   const styles = createStyles(colors, isDark);
-
-  const hostQuickAction = canCreateEvents
-    ? {
-        id: "create",
-        label: "Create",
-        icon: "ai",
-        screen: "CreateEvent",
-        badge: 0,
-      }
-    : isApprovedPendingHostType
-    ? {
-        id: "choosehost",
-        label: "Choose Type",
-        icon: "ai",
-        screen: "HostTypeSelection",
-        badge: 0,
-      }
-    : {
-        id: "behost",
-        label: "Be a Host",
-        icon: "tent",
-        screen: "RequestHost",
-        badge: 0,
-      };
-
-  const quickActions = [
-    {
-      id: "explore",
-      label: "Explore",
-      icon: "search",
-      screen: "SearchEvents",
-      badge: 0,
-    },
-    {
-      id: "feed",
-      label: "Wall",
-      icon: "wall",
-      screen: "MainTabs",
-      params: { screen: "WallTab" },
-      badge: 0,
-    },
-    {
-      id: "myevents",
-      label: "My Events",
-      icon: "calendar",
-      screen: "MainTabs",
-      params: { screen: "EventsTab" },
-      badge: 0,
-    },
-    {
-      id: "notifications",
-      label: "Notifications",
-      icon: "bell",
-      screen: "Notifications",
-      badge: unreadNotifications,
-    },
-    {
-      id: "rentals",
-      label: "Get around",
-      icon: "bike",
-      screen: "MainTabs",
-      params: { screen: "RentalsTab" },
-      badge: 0,
-    },
-    hostQuickAction,
-  ];
 
   return (
     <GradientBackground>
@@ -351,61 +254,6 @@ export default function HomeScreen({ navigation }) {
             })}
           </View>
         )}
-
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>
-            QUICK ACTIONS
-          </Text>
-          <View style={styles.quickActionsGrid}>
-            {quickActions.map((action) => {
-              return (
-                <TouchableOpacity
-                  key={action.id}
-                  style={styles.quickAction}
-                  onPress={() => navigation.navigate(action.screen, action.params)}
-                  activeOpacity={0.7}
-                >
-                  <BVCard
-                    style={{ alignItems: "center", paddingVertical: 22, width: "100%" }}
-                  >
-                    <View style={styles.quickActionIconContainer}>
-                      <View
-                        style={[
-                          styles.iconCircleLarge,
-                          {
-                            backgroundColor: isDark
-                              ? `${colors.primary}20`
-                              : `${colors.primary}15`,
-                          },
-                        ]}
-                      >
-                        <Icon name={action.icon} size={28} color={colors.primary} />
-                      </View>
-                      {action.badge > 0 && (
-                        <View
-                          style={[
-                            styles.badge,
-                            { backgroundColor: colors.accent },
-                          ]}
-                        >
-                          <Text style={styles.badgeText}>
-                            {action.badge > 99 ? "99+" : action.badge}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text
-                      style={[styles.quickActionText, { color: colors.text }]}
-                    >
-                      {action.label}
-                    </Text>
-                  </BVCard>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
 
         {/* Zero state (§2.2): no featured events near the user yet */}
         {featuredEvents.length === 0 && (
@@ -613,6 +461,26 @@ export default function HomeScreen({ navigation }) {
         </View>
       </ScrollView>
 
+      {/* Contextual Create — Host Mode only (§Fix 2): the single allowed
+          shortcut; attendees don't create events. */}
+      {isHosting && canCreateEvents && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => navigation.navigate("CreateEvent")}
+          activeOpacity={0.85}
+          testID="home-create-fab"
+        >
+          <LinearGradient
+            colors={BRAND.gradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.fabInner, ELEVATION.floatingBrand]}
+          >
+            <Icon name="add" size={26} color="#FFFFFF" />
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
+
       {/* Rating Modal */}
       <RatingModal
         visible={showRatingModal}
@@ -674,6 +542,14 @@ function createStyles(colors, isDark) {
       marginBottom: 20,
     },
     searchPlaceholder: { fontSize: 14.5 },
+    fab: { position: "absolute", right: 20, bottom: 24 },
+    fabInner: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     zeroState: {
       alignItems: "center",
       gap: 8,
@@ -735,13 +611,6 @@ function createStyles(colors, isDark) {
       alignItems: "center",
       marginRight: 12,
     },
-    iconCircleLarge: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      justifyContent: "center",
-      alignItems: "center",
-    },
 
     // Rating card
     ratingCard: {
@@ -750,35 +619,12 @@ function createStyles(colors, isDark) {
     },
 
     // Quick Actions
-    quickActionsGrid: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      paddingHorizontal: 24,
-      gap: 12,
-    },
-    quickAction: {
-      width: "48%",
-    },
     quickActionCard: {
       borderWidth: 1,
       borderRadius: 16,
       paddingVertical: 24,
       alignItems: "center",
     },
-    quickActionIconContainer: { position: "relative", marginBottom: 12 },
-    badge: {
-      position: "absolute",
-      top: -4,
-      right: -8,
-      minWidth: 20,
-      height: 20,
-      borderRadius: 10,
-      justifyContent: "center",
-      alignItems: "center",
-      paddingHorizontal: 6,
-    },
-    badgeText: { color: "#FFFFFF", fontSize: 11, fontWeight: "700" },
-    quickActionText: { fontSize: 14, fontWeight: "600", letterSpacing: -0.1 },
 
     // Admin Card
     featuredCard: {
