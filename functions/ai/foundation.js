@@ -20,6 +20,7 @@
  */
 
 const {onCall} = require("firebase-functions/v2/https");
+const p2 = require("./features");
 
 // ─── Tunables: defaults, overridable via Firestore config/ai ────────────────
 const AI_DEFAULTS = {
@@ -34,6 +35,7 @@ const AI_DEFAULTS = {
       freeTastePerWeek: 3,
       searchLimit: 12,
     },
+    ...p2.DEFAULTS,
   },
 };
 
@@ -47,22 +49,14 @@ async function getAiConfig(db) {
     const snap = await db.collection("config").doc("ai").get();
     if (!snap.exists) return AI_DEFAULTS;
     const remote = snap.data() || {};
-    return {
-      ...AI_DEFAULTS,
-      ...remote,
-      features: {
-        ...AI_DEFAULTS.features,
-        ...(remote.features || {}),
-        smart_wall: {
-          ...AI_DEFAULTS.features.smart_wall,
-          ...((remote.features || {}).smart_wall || {}),
-        },
-        ask_kinlo: {
-          ...AI_DEFAULTS.features.ask_kinlo,
-          ...((remote.features || {}).ask_kinlo || {}),
-        },
-      },
-    };
+    const features = {};
+    for (const key of Object.keys(AI_DEFAULTS.features)) {
+      features[key] = {
+        ...AI_DEFAULTS.features[key],
+        ...((remote.features || {})[key] || {}),
+      };
+    }
+    return {...AI_DEFAULTS, ...remote, features};
   } catch (e) {
     console.error("config/ai read failed, using defaults:", e);
     return AI_DEFAULTS;
@@ -334,7 +328,10 @@ async function callAnthropic(cfg, apiKey, system, user, maxTokens) {
 const CONTEXT_LOADERS = {
   smart_wall: loadSmartWallContext,
   ask_kinlo: loadAskKinloContext,
+  ...p2.CONTEXT_LOADERS,
 };
+Object.assign(PROMPTS, p2.PROMPTS);
+Object.assign(VALIDATORS, p2.VALIDATORS);
 
 /**
  * Register the callClaude callable on the given admin app/db.
@@ -402,7 +399,7 @@ function buildCallClaude(db, anthropicKey) {
       }
 
       try {
-        const ctx = await CONTEXT_LOADERS[feature](db, uid, cfg);
+        const ctx = await CONTEXT_LOADERS[feature](db, uid, cfg, input);
         const {system, user} = PROMPTS[feature](ctx, input);
         const maxTokens = cfg.features[feature].maxTokens;
 
