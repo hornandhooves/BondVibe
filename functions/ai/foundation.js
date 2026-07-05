@@ -107,7 +107,10 @@ async function consumeBudget(db, uid, feature, cfg, isPlus) {
       }
     }
 
+    // Preserve unrelated keys (copilotDrafts, digestMonth/Count from the
+    // feature gates) — a plain overwrite here silently reset the tastes.
     tx.set(ref, {
+      ...data,
       day: dayKey,
       calls: (day.calls || 0) + 1,
       week,

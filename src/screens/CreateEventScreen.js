@@ -48,6 +48,7 @@ import RecurrenceModal from "../components/RecurrenceModal";
 import { generateRecurringDates, getRecurrenceSummary } from "../utils/recurrenceUtils";
 import { usePremium } from "../hooks/usePremium";
 import { generateEventListing, isPremiumRequired } from "../services/aiService";
+import DraftWithAI from "../components/ai/DraftWithAI";
 
 // Recurrence handled by modal
 
@@ -759,6 +760,19 @@ export default function CreateEventScreen({ navigation }) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        {/* Host Copilot (ai_features/12): idea → full draft + price/turnout */}
+        <DraftWithAI
+          navigation={navigation}
+          onApply={(d) => {
+            setTitle(d.title);
+            setDescription(d.description);
+            if (d.priceSuggestion?.amount) {
+              setIsFree(false);
+              setPrice(String(d.priceSuggestion.amount));
+            }
+          }}
+        />
+
         {/* Title */}
         <View style={styles.field}>
           <Text style={[styles.label, { color: colors.text }]}>Title *</Text>

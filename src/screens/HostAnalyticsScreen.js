@@ -14,6 +14,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import Icon from "../components/Icon";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
+import MonthReadCard from "../components/ai/MonthReadCard";
 import { AvatarDisplay } from "../components/AvatarPicker";
 import { auth } from "../services/firebase";
 import {
@@ -127,6 +128,8 @@ export default function HostAnalyticsScreen({ navigation }) {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {/* AI Analytics (ai_features/16A) */}
+          <MonthReadCard navigation={navigation} />
           <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>
             REVENUE
           </Text>

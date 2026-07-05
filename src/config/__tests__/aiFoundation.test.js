@@ -167,3 +167,46 @@ describe("getAiConfig", () => {
     expect((await getAiConfig(broken)).model).toBe(AI_DEFAULTS.model);
   });
 });
+
+// ─── P2 feature validators + postprocess (server-enforced tastes) ───────────
+
+const p2 = require("../../../functions/ai/features");
+
+describe("P2 validators", () => {
+  test("host_copilot accepts draft with null predictions (thin history)", () => {
+    const d = { title: "T", description: "D", priceSuggestion: null, turnoutPrediction: null };
+    expect(p2.VALIDATORS.host_copilot(d)).toBeNull();
+  });
+  test("host_copilot rejects malformed price", () => {
+    const d = { title: "T", description: "D", priceSuggestion: { amount: "x" }, turnoutPrediction: null };
+    expect(p2.VALIDATORS.host_copilot(d)).toMatch(/price/);
+  });
+  test("weekly_digest rejects ungrounded picks", () => {
+    const ctx = { upcoming: [{ eventId: "a" }], openingSoon: [] };
+    const d = { greeting: "g", narrative: "n", picks: [{ eventId: "ghost", cta: "go" }] };
+    expect(p2.VALIDATORS.weekly_digest(d, ctx)).toMatch(/ungrounded/);
+  });
+  test("match_intel requires rationale + icebreakers", () => {
+    expect(p2.VALIDATORS.match_intel({ rationale: "r", icebreakers: ["a", "b", "c"] })).toBeNull();
+    expect(p2.VALIDATORS.match_intel({ rationale: "", icebreakers: [] })).toMatch(/rationale/);
+  });
+});
+
+describe("P2 postprocess (client can't bypass tastes)", () => {
+  test("match_intel strips icebreakers for non-Plus", () => {
+    const data = { rationale: "r", icebreakers: ["a", "b", "c"] };
+    const free = p2.POSTPROCESS.match_intel(data, { plan: null });
+    expect(free.icebreakers).toEqual([]);
+    expect(free.icebreakersLocked).toBe(true);
+    const plus = p2.POSTPROCESS.match_intel(data, { plan: "kinlo_plus" });
+    expect(plus.icebreakers.length).toBe(3);
+  });
+  test("ai_analytics strips recommendations for non-Pro", () => {
+    const data = { narrative: "n", recommendations: [{ text: "x" }] };
+    const free = p2.POSTPROCESS.ai_analytics(data, { isPremium: false });
+    expect(free.recommendations).toEqual([]);
+    expect(free.locked).toBe(true);
+    const pro = p2.POSTPROCESS.ai_analytics(data, { isPremium: true });
+    expect(pro.recommendations.length).toBe(1);
+  });
+});

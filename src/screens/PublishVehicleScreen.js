@@ -17,6 +17,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
 import { useTheme } from "../contexts/ThemeContext";
+import DraftWithAI from "../components/ai/DraftWithAI";
 import GradientBackground from "../components/GradientBackground";
 import DateField from "../components/DateField";
 import {
@@ -190,6 +191,15 @@ export default function PublishVehicleScreen({ route, navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {/* Draft listing with AI (inventory: Rentals → Your Fleet, pro) */}
+        <DraftWithAI
+          navigation={navigation}
+          placeholder="e.g. red 150cc scooter, helmet included, near centro…"
+          onApply={(d) => {
+            setTitle(d.title);
+          }}
+        />
+
         <Text style={[styles.label, { color: colors.textSecondary }]}>Type</Text>
         <View style={styles.chipsRow}>
           {VEHICLE_TYPES.map((t) => {

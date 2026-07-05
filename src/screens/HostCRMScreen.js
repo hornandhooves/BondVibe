@@ -18,6 +18,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db, auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
+import MemberPulseCard from "../components/ai/MemberPulseCard";
 import KeyboardAccessory from "../components/KeyboardAccessory";
 import { AvatarDisplay } from "../components/AvatarPicker";
 import { usePremium } from "../hooks/usePremium";
@@ -180,6 +181,8 @@ export default function HostCRMScreen({ navigation }) {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Member Intelligence (ai_features/13) */}
+          <MemberPulseCard navigation={navigation} />
           {filtered.length === 0 ? (
             <Text style={[styles.empty, { color: colors.textSecondary }]}>
               {segment === "risk"

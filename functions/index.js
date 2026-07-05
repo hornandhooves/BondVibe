@@ -57,6 +57,33 @@ const aiFoundation = require("./ai/foundation");
 exports.callClaude = aiFoundation.buildCallClaude(db, anthropicKey);
 
 /**
+ * Weekly Digest push (ai_features/14) — Mondays: nudge AI-opted-in users
+ * that their week is ready. The digest itself is generated on open (one
+ * cached Claude call per user per week, client-side; server enforces the
+ * non-Plus monthly taste), so this job stays cheap: pushes only.
+ */
+exports.sendWeeklyDigestPush = onSchedule(
+  {schedule: "every monday 10:00", timeZone: "America/Mexico_City"},
+  async () => {
+    const snap = await db.collection("users")
+      .where("aiOptIn", "==", true).limit(500).get();
+    const targets = snap.docs
+      .map((d) => ({uid: d.id, ...d.data()}))
+      .filter((u) => u.pushToken);
+    console.log(`✨ Weekly digest push → ${targets.length} users`);
+    if (targets.length === 0) return;
+    await sendBatchPushNotifications(
+      targets.map((u) => ({
+        pushToken: u.pushToken,
+        title: "Your week on Kinlo ✨",
+        body: "Kinlo AI curated your week — see your picks.",
+        data: {type: "weekly_digest", screen: "YourWeek"},
+      })),
+    );
+  },
+);
+
+/**
  * Look up a user's email (for Stripe receipts). Returns null if unavailable.
  * @param {string} userId
  * @return {Promise<string|null>}

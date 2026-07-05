@@ -16,6 +16,7 @@ import {
   Alert,
 } from "react-native";
 import { useTheme } from "../../contexts/ThemeContext";
+import MatchIntelCard from "../../components/ai/MatchIntelCard";
 import { likeAttendee, MATCH_TYPE_COLORS } from "../../services/matchingService";
 
 export default function MatchPersonScreen({ route, navigation }) {
@@ -138,6 +139,12 @@ export default function MatchPersonScreen({ route, navigation }) {
             </View>
           )}
         </View>
+        {/* Match Intelligence (ai_features/15): rationale free, icebreakers Plus */}
+        <MatchIntelCard
+          eventId={eventId}
+          otherUid={profile.userId}
+          navigation={navigation}
+        />
       </ScrollView>
 
       <View style={styles.footer}>

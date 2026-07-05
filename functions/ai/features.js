@@ -33,10 +33,13 @@ const DEFAULTS = {
  * @return {Promise<object>} context
  */
 async function loadHostCopilot(db, uid) {
+  // No composite index needed: filter by creator only, sort in memory.
   const snap = await db.collection("events")
-    .where("creatorId", "==", uid)
-    .orderBy("date", "desc").limit(12).get();
-  const pastEvents = snap.docs.map((d) => {
+    .where("creatorId", "==", uid).limit(60).get();
+  const docs = [...snap.docs].sort((a, b) =>
+    String(b.data().date || "").localeCompare(String(a.data().date || "")))
+    .slice(0, 12);
+  const pastEvents = docs.map((d) => {
     const e = d.data();
     return {
       title: e.title || "",
@@ -47,7 +50,7 @@ async function loadHostCopilot(db, uid) {
     };
   });
   const memberCount = new Set(
-    snap.docs.flatMap((d) => d.data().attendees || [])).size;
+    docs.flatMap((d) => d.data().attendees || [])).size;
   return {host: {pastEvents, memberCount}};
 }
 
@@ -62,7 +65,7 @@ async function loadMemberIntel(db, uid) {
   const threeWeeksAgo = nowMs - 21 * 86400000;
   const [eventsSnap, ratingsSnap] = await Promise.all([
     db.collection("events").where("creatorId", "==", uid)
-      .orderBy("date", "desc").limit(30).get(),
+      .limit(80).get(),
     db.collection("ratings").where("hostId", "==", uid)
       .orderBy("createdAt", "desc").limit(40).get().catch(() => null),
   ]);
@@ -111,7 +114,7 @@ async function loadAiAnalytics(db, uid) {
   const monthAgo = nowMs - 30 * 86400000;
   const prevMonth = nowMs - 60 * 86400000;
   const snap = await db.collection("events").where("creatorId", "==", uid)
-    .orderBy("date", "desc").limit(40).get();
+    .limit(80).get();
   const events = snap.docs.map((d) => d.data());
   const inWindow = (e, from, to) => {
     const t = e.date ? new Date(e.date).getTime() : 0;

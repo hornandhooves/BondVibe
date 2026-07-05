@@ -260,6 +260,20 @@ export default function HomeScreen({ navigation }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Weekly Digest banner (§2.2 / ai_features/14) */}
+        <TouchableOpacity
+          style={styles.digestBanner}
+          onPress={() => navigation.navigate("YourWeek")}
+          activeOpacity={0.85}
+          testID="home-digest"
+        >
+          <Icon name="ai" size={16} color="#C792EA" />
+          <Text style={styles.digestText} numberOfLines={1}>
+            Your week, curated by Kinlo AI
+          </Text>
+          <Icon name="forward" size={16} color="#C792EA" />
+        </TouchableOpacity>
+
         {/* Search entry (§2.2) */}
         <TouchableOpacity
           style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -636,6 +650,18 @@ function createStyles(colors, isDark) {
     },
     scrollView: { flex: 1 },
     scrollContent: { paddingBottom: 40 },
+    digestBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      backgroundColor: "#2A1E3D",
+      borderRadius: 14,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      marginHorizontal: 24,
+      marginBottom: 12,
+    },
+    digestText: { flex: 1, color: "#e6ddf2", fontSize: 14, fontWeight: "600" },
     searchBar: {
       flexDirection: "row",
       alignItems: "center",
