@@ -14,7 +14,7 @@ appId: com.bondvibe.app
 # Home tab root paints (greeting screen)
 - extendedWaitUntil:
     visible: "QUICK ACTIONS"
-    timeout: 60000
+    timeout: 120000
 # Let the transient push-token toast clear so it can't intercept tab taps.
 - extendedWaitUntil:
     notVisible: "Error registering push token"

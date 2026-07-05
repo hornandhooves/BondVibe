@@ -398,7 +398,7 @@ export default function ProfileScreen({ navigation }) {
 
               <View style={[s.separator, { backgroundColor: colors.border }]} />
 
-              <TouchableOpacity style={s.ajustesRow} onPress={() => navigation.navigate("Settings")}>
+              <TouchableOpacity style={s.ajustesRow} testID="profile-settings" onPress={() => navigation.navigate("Settings")}>
                 <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
                   <Icon name="settings" size={18} color={colors.primary} />
                 </View>

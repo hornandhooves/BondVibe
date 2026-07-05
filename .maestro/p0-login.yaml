@@ -7,7 +7,7 @@ appId: com.bondvibe.app
     clearState: false
 # Dev-client may show its server launcher — pick Metro on 8081.
 - tapOn:
-    text: ".*localhost:8081.*"
+    text: ".*(localhost|10\\.0\\.2\\.2):8081.*"
     optional: true
 # iOS notification-permission alert (appears after a state wipe).
 - tapOn:
