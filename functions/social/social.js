@@ -81,9 +81,9 @@ const onPostCreated = onDocumentCreated("posts/{postId}", async (event) => {
     notifications.push({
       pushToken: token,
       title: authorName || "Someone",
-      body: post.text
-        ? post.text.slice(0, 100)
-        : "shared a new post",
+      body: post.text ?
+        post.text.slice(0, 100) :
+        "shared a new post",
       data: {type: "NEW_POST", postId: event.params.postId, authorId},
     });
   }
