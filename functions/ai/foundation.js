@@ -161,6 +161,10 @@ async function loadSmartWallContext(db, uid, cfg) {
       city: e.city || null,
       price: e.price || 0,
       friendsGoing,
+      // §2.4 signals feed the ranking: the user's own soft-interest is a
+      // strong boost; overall interest is social proof.
+      userInterested: (e.interested || []).includes(uid),
+      interestedCount: (e.interested || []).length,
       spotsLeft: e.maxAttendees ?
         Math.max(0, e.maxAttendees - (e.attendees || []).length) : null,
     };

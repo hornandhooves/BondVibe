@@ -128,7 +128,10 @@ service cloud.firestore {
                                     'creatorId', 'coHosts', 'matching'])) ||
                         onlyUpdating(['attendees']) ||
                         onlyUpdating(['attendees', 'waitlist']) ||
-                        onlyUpdating(['waitlist']));
+                        onlyUpdating(['waitlist']) ||
+                        // Wall signals (§2.4): any signed-in user can toggle
+                        // their soft-interest in an event.
+                        onlyUpdating(['interested']));
       
       allow delete: if isSignedIn() && 
                        (resource.data.creatorId == request.auth.uid || isAdmin());

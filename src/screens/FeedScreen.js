@@ -28,6 +28,7 @@ import { getFeed } from "../services/postService";
 import { followUser, unfollowUser } from "../services/followService";
 import useClaude from "../hooks/useClaude";
 import useAiOptIn from "../hooks/useAiOptIn";
+import { toggleInterested } from "../services/signalsService";
 import { TYPE, SPACING, RADII, ELEVATION } from "../constants/theme-tokens";
 
 const normAvatar = (a) =>
@@ -45,6 +46,7 @@ function SmartWallHeader({ navigation }) {
     { enabled: aiOptIn, cacheKey: "smart_wall", ttlMs: WALL_CACHE_TTL_MS }
   );
   const [events, setEvents] = useState({}); // eventId -> event data
+  const [interestedMap, setInterestedMap] = useState({}); // eventId -> uids after toggle
 
   const top = (data?.feed || []).slice(0, 5);
 
@@ -100,6 +102,9 @@ function SmartWallHeader({ navigation }) {
               day: "numeric",
             })
           : "";
+        const interested = (interestedMap[item.eventId] ?? ev.interested ?? []).includes(
+          auth.currentUser?.uid
+        );
         return (
           <View
             key={item.eventId}
@@ -113,13 +118,45 @@ function SmartWallHeader({ navigation }) {
               {when}
               {ev.city ? ` · ${ev.city}` : ""}
             </Text>
-            <TouchableOpacity
-              style={[sw.cta, { backgroundColor: colors.primary }]}
-              onPress={() => navigation.navigate("EventDetail", { eventId: item.eventId })}
-              activeOpacity={0.85}
-            >
-              <Text style={[TYPE.label, sw.ctaText]}>I'm in</Text>
-            </TouchableOpacity>
+            {/* Signals row (§2.4): Going · Interested — no likes */}
+            <View style={sw.signals}>
+              <TouchableOpacity
+                style={[sw.cta, { backgroundColor: colors.primary }]}
+                onPress={() => navigation.navigate("EventDetail", { eventId: item.eventId })}
+                activeOpacity={0.85}
+              >
+                <Text style={[TYPE.label, sw.ctaText]}>I'm in</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  sw.interestBtn,
+                  interested
+                    ? { backgroundColor: colors.brandSoft, borderColor: colors.primary }
+                    : { borderColor: colors.border },
+                ]}
+                onPress={async () => {
+                  const next = await toggleInterested(item.eventId, interested).catch(() => interested);
+                  setInterestedMap((prev) => ({
+                    ...prev,
+                    [item.eventId]: next
+                      ? [...(ev.interested || []), auth.currentUser?.uid]
+                      : (ev.interested || []).filter((u) => u !== auth.currentUser?.uid),
+                  }));
+                }}
+                activeOpacity={0.8}
+              >
+                <Icon
+                  name="star"
+                  size={14}
+                  color={interested ? colors.primary : colors.textTertiary}
+                />
+                <Text
+                  style={[TYPE.label, { color: interested ? colors.primary : colors.textSecondary }]}
+                >
+                  Interested
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         );
       })}
@@ -143,6 +180,16 @@ const sw = StyleSheet.create({
     paddingVertical: SPACING.sm,
   },
   ctaText: { color: "#FFFFFF" },
+  signals: { flexDirection: "row", alignItems: "center", gap: SPACING.sm },
+  interestBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: RADII.pill,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+  },
 });
 
 export default function FeedScreen({ navigation }) {

@@ -364,6 +364,23 @@ export default function MyEventsScreen({ navigation, route }) {
               )}
             </View>
           )}
+
+          {/* Met signal (§2.4): past events roll into matching retention */}
+          {showRateButton && (
+            <TouchableOpacity
+              style={[styles.metRow, { borderColor: colors.border }]}
+              onPress={(e) => {
+                e.stopPropagation();
+                navigation.navigate("PeopleYouMet", { eventId: event.id });
+              }}
+            >
+              <Icon name="community" size={16} color={colors.primary} />
+              <Text style={[styles.metText, { color: colors.primary }]}>
+                People you met here
+              </Text>
+              <Icon name="forward" size={14} color={colors.textTertiary} />
+            </TouchableOpacity>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -747,6 +764,16 @@ function createStyles(colors) {
       borderTopWidth: 1,
       borderTopColor: "rgba(255, 255, 255, 0.08)",
     },
+    metRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      borderTopWidth: 1,
+      marginTop: 10,
+      paddingTop: 10,
+    },
+    metText: { fontSize: 13, fontWeight: "700", flexShrink: 1 },
     rateButton: {
       borderRadius: 10,
       overflow: "hidden",
