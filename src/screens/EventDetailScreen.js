@@ -578,7 +578,7 @@ export default function EventDetailScreen({ route, navigation }) {
               type: "event_cancelled",
               title: "Event Cancelled",
               message: `"${event.title}" has been cancelled. ${reason}`,
-              icon: "🚫",
+              icon: "block",
               metadata: {
                 eventId: event.id,
                 eventTitle: event.title,
@@ -616,7 +616,9 @@ export default function EventDetailScreen({ route, navigation }) {
       <View
         style={[styles.errorContainer, { backgroundColor: colors.background }]}
       >
-        <Text style={styles.errorEmoji}>😕</Text>
+        <View style={{ width: 72, height: 72, borderRadius: 20, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
+          <Icon name="alert" size={36} color={colors.primary} />
+        </View>
         <Text style={[styles.errorTitle, { color: colors.text }]}>
           Event Not Found
         </Text>
@@ -843,7 +845,7 @@ export default function EventDetailScreen({ route, navigation }) {
                 <Text
                   style={[styles.recurringBadgeText, { color: colors.primary }]}
                 >
-                  🔄 Recurring
+                  Recurring
                 </Text>
               </View>
             )}
@@ -855,7 +857,7 @@ export default function EventDetailScreen({ route, navigation }) {
                 ]}
               >
                 <Text style={styles.languageBadgeText}>
-                  {event.language === "es" ? "🇲🇽 Spanish" : "🇺🇸 English"}
+                  {event.language === "es" ? "Spanish" : "English"}
                 </Text>
               </View>
             )}
@@ -866,7 +868,7 @@ export default function EventDetailScreen({ route, navigation }) {
                   { backgroundColor: "rgba(100, 200, 100, 0.15)" },
                 ]}
               >
-                <Text style={styles.languageBadgeText}>🌎 Bilingual</Text>
+                <Text style={styles.languageBadgeText}>Bilingual</Text>
               </View>
             )}
             {event.averageRating > 0 && (
@@ -901,7 +903,7 @@ export default function EventDetailScreen({ route, navigation }) {
               ]}
             >
               <Text style={[styles.cancelledText, { color: colors.error }]}>
-                🚫 Event Cancelled
+                Event Cancelled
               </Text>
             </View>
           )}
@@ -1157,7 +1159,7 @@ export default function EventDetailScreen({ route, navigation }) {
                     avatar={
                       typeof f.avatar === "string"
                         ? { type: "emoji", value: f.avatar }
-                        : f.avatar || { type: "emoji", value: "😊" }
+                        : f.avatar || null
                     }
                     size={30}
                   />
@@ -1191,7 +1193,7 @@ export default function EventDetailScreen({ route, navigation }) {
                 { color: matchInsight.strong ? "#34C759" : "#F59E0B" },
               ]}
             >
-              ✨ {matchInsight.label} with the host
+              {matchInsight.label} with the host
             </Text>
             {!!matchInsight.why && (
               <Text style={[styles.matchWhy, { color: colors.textSecondary }]}>
@@ -1506,7 +1508,7 @@ export default function EventDetailScreen({ route, navigation }) {
               ]}
             >
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                📋 Cancellation Policy
+                Cancellation Policy
               </Text>
               <View style={styles.policyItem}>
                 <Text style={[styles.policyDot, { color: colors.primary }]}>
@@ -1583,7 +1585,7 @@ export default function EventDetailScreen({ route, navigation }) {
                       },
                     ]}
                   >
-                    <AvatarDisplay avatar={attendee.avatar || { type: "emoji", value: attendee.emoji || "😊" }} size={36} />
+                    <AvatarDisplay avatar={attendee.avatar || null} size={36} />
                   </View>
                   <Text style={[styles.attendeeName, { color: colors.text }]}>
                     {attendee.fullName || attendee.name || "Anonymous"}

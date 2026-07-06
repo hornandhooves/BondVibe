@@ -30,7 +30,8 @@ export default function RequestHostScreen({ navigation }) {
     visible: false,
     title: '',
     message: '',
-    emoji: '🎉'
+    icon: 'party',
+    tone: 'success'
   });
 
   const handleSubmit = async () => {
@@ -62,7 +63,8 @@ export default function RequestHostScreen({ navigation }) {
           visible: true,
           title: 'Request Already Submitted',
           message: 'You already have a pending host request. Please wait for admin review. We\'ll notify you once a decision has been made.',
-          emoji: '⏳'
+          icon: 'clock',
+          tone: 'brand'
         });
         return;
       }
@@ -87,7 +89,8 @@ export default function RequestHostScreen({ navigation }) {
         visible: true,
         title: 'Application Submitted!',
         message: 'Your host request has been submitted successfully. Our team will review it soon and notify you of the decision.',
-        emoji: '🎉'
+        icon: 'party',
+        tone: 'success'
       });
       
     } catch (error) {
@@ -246,7 +249,7 @@ export default function RequestHostScreen({ navigation }) {
 
         <View style={styles.noteSection}>
           <Text style={[styles.noteText, { color: colors.textTertiary }]}>
-            📋 Your application will be reviewed by our team. We'll notify you once a decision has been made.
+            Your application will be reviewed by our team. We'll notify you once a decision has been made.
           </Text>
         </View>
       </ScrollView>
@@ -256,7 +259,8 @@ export default function RequestHostScreen({ navigation }) {
         onClose={handleModalClose}
         title={modalConfig.title}
         message={modalConfig.message}
-        emoji={modalConfig.emoji}
+        icon={modalConfig.icon}
+        tone={modalConfig.tone}
       />
     </KeyboardAvoidingView>
   );

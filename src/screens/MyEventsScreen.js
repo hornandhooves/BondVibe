@@ -188,7 +188,7 @@ export default function MyEventsScreen({ navigation, route }) {
 
   const handleRatingSuccess = (rating, comment) => {
     Alert.alert(
-      "Thank you! ⭐",
+      "Thank you!",
       "Your feedback helps hosts improve their events.",
       [{ text: "OK" }]
     );
@@ -217,7 +217,7 @@ export default function MyEventsScreen({ navigation, route }) {
     try {
       await shareRecapPhoto(event.id, result.assets[0].uri);
       Alert.alert(
-        "Moment shared 🎉",
+        "Moment shared",
         "It'll appear in the event recap on the Wall, visible to everyone who attended."
       );
     } catch (e) {
@@ -283,11 +283,7 @@ export default function MyEventsScreen({ navigation, route }) {
                     { backgroundColor: `${colors.primary}22` },
                   ]}
                 >
-                  <Text
-                    style={[styles.recurringText, { color: colors.primary }]}
-                  >
-                    🔄
-                  </Text>
+                  <Icon name="repeat" size={10} color={colors.primary} />
                 </View>
               )}
             </View>
@@ -611,13 +607,19 @@ export default function MyEventsScreen({ navigation, route }) {
         </View>
       ) : displayedEvents.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>
-            {timeFilter === "past"
-              ? "📦"
-              : activeTab === "joined"
-              ? "🎯"
-              : "🌟"}
-          </Text>
+          <View style={styles.emptyArt}>
+            <Icon
+              name={
+                timeFilter === "past"
+                  ? "archive"
+                  : activeTab === "joined"
+                  ? "ticket"
+                  : "star"
+              }
+              size={36}
+              color={colors.primary}
+            />
+          </View>
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
             {timeFilter === "past"
               ? "No past events"
@@ -756,8 +758,9 @@ function createStyles(colors) {
       paddingVertical: 4,
       paddingHorizontal: 6,
       borderRadius: 6,
+      alignItems: "center",
+      justifyContent: "center",
     },
-    recurringText: { fontSize: 10 },
     eventDate: { fontSize: 13, fontWeight: "600" },
     eventTitle: {
       fontSize: 17,
@@ -863,7 +866,15 @@ function createStyles(colors) {
       alignItems: "center",
       paddingHorizontal: 40,
     },
-    emptyEmoji: { fontSize: 64, marginBottom: 20 },
+    emptyArt: {
+      width: 72,
+      height: 72,
+      borderRadius: 20,
+      backgroundColor: colors.brandSoft,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 20,
+    },
     emptyTitle: {
       fontSize: 20,
       fontWeight: "700",

@@ -78,7 +78,7 @@ export default function MyFleetScreen({ navigation }) {
               activeOpacity={0.85}
               onPress={() => navigation.navigate("StripeConnect")}
             >
-              <Text style={styles.payoutEmoji}>⚠️</Text>
+              <Icon name="alert" size={20} color={colors.warning} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.payoutTitle, { color: colors.text }]}>Set up payouts</Text>
                 <Text style={[styles.payoutText, { color: colors.textSecondary }]}>
@@ -110,7 +110,9 @@ export default function MyFleetScreen({ navigation }) {
 
           {fleet.length === 0 ? (
             <View style={styles.empty}>
-              <Text style={styles.emptyEmoji}>🛴</Text>
+              <View style={styles.emptyArt}>
+                <Icon name="bike" size={32} color={colors.primary} />
+              </View>
               <Text style={[styles.emptyTitle, { color: colors.text }]}>No vehicles yet</Text>
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                 Publish your first vehicle to start earning.
@@ -167,7 +169,6 @@ function createStyles(colors, isDark) {
       flexDirection: "row", alignItems: "center", gap: 12,
       borderWidth: 1.5, borderRadius: 14, padding: 14, marginBottom: 16,
     },
-    payoutEmoji: { fontSize: 22 },
     payoutTitle: { fontSize: 15, fontWeight: "800" },
     payoutText: { fontSize: 12, marginTop: 2, lineHeight: 16 },
     publishBtn: { borderRadius: 26, paddingVertical: 15, alignItems: "center", marginBottom: 12 },
@@ -190,7 +191,15 @@ function createStyles(colors, isDark) {
     pill: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
     pillText: { fontSize: 11, fontWeight: "800" },
     empty: { alignItems: "center", paddingTop: 40, paddingHorizontal: 30 },
-    emptyEmoji: { fontSize: 52, marginBottom: 16 },
+    emptyArt: {
+      width: 64,
+      height: 64,
+      borderRadius: 18,
+      backgroundColor: colors.brandSoft,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 16,
+    },
     emptyTitle: { fontSize: 18, fontWeight: "800", marginBottom: 8 },
     emptyText: { fontSize: 14, textAlign: "center", lineHeight: 20 },
   });

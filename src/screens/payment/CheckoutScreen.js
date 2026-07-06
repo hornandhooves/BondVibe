@@ -124,7 +124,7 @@ export default function CheckoutScreen({ route, navigation }) {
       await startMercadoPagoCheckout(eventId, amount);
       const ok = await waitForAttendance(eventId, auth.currentUser.uid, 90000);
       Alert.alert(
-        ok ? "Payment successful! 🎉" : "Almost there",
+        ok ? "Payment successful!" : "Almost there",
         ok
           ? `You've joined "${eventTitle}".`
           : "We'll confirm your spot as soon as the payment is processed.",
@@ -196,7 +196,7 @@ export default function CheckoutScreen({ route, navigation }) {
 
       // Show success and navigate with reload flag
       Alert.alert(
-        "Payment Successful! 🎉",
+        "Payment Successful!",
         `You've successfully joined "${eventTitle}". The host will be notified.`,
         [
           {
@@ -423,7 +423,7 @@ export default function CheckoutScreen({ route, navigation }) {
 
                 {/* Security Message */}
                 <View style={styles.securityRow}>
-                  <Text style={styles.lockIcon}>🔒</Text>
+                  <Icon name="lock" size={16} color={colors.textSecondary} />
                   <Text
                     style={[styles.securityText, { color: colors.textSecondary }]}
                   >

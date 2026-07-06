@@ -32,13 +32,6 @@ export const getHostFeedbackInsights = async () => {
 };
 
 /**
- * Convert rating number to stars string
- */
-const getRatingStars = (rating) => {
-  return "★".repeat(rating) + "☆".repeat(5 - rating);
-};
-
-/**
  * Submit a rating for an event
  * @param {Object} ratingData - Rating data
  * @returns {Promise<Object>} - Result with success status
@@ -77,7 +70,7 @@ export const submitRating = async (ratingData) => {
       hostId,
       userId,
       userName,
-      userAvatar: userData?.avatar || userData?.emoji || "😊",
+      userAvatar: userData?.avatar || userData?.emoji || null,
       rating,
       comment: comment?.trim() || "",
       createdAt: serverTimestamp(),
@@ -93,9 +86,9 @@ export const submitRating = async (ratingData) => {
     try {
       await createNotification(hostId, {
         type: "event_rating",
-        title: "New Rating Received! ⭐",
-        message: `${userName} rated "${eventTitle}" ${getRatingStars(rating)}`,
-        icon: "⭐",
+        title: "New Rating Received!",
+        message: `${userName} rated "${eventTitle}" ${rating}/5`,
+        icon: "star",
         metadata: {
           eventId,
           eventTitle,
@@ -303,19 +296,4 @@ export const getPendingRatings = async () => {
     console.error("❌ Error getting pending ratings:", error);
     return [];
   }
-};
-
-/**
- * Format rating as stars string
- * @param {number} rating - Rating value (1-5)
- * @returns {string} - Star string representation
- */
-export const formatRatingStars = (rating) => {
-  const fullStars = Math.floor(rating);
-  const hasHalfStar = rating % 1 >= 0.5;
-  const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
-
-  return (
-    "★".repeat(fullStars) + (hasHalfStar ? "½" : "") + "☆".repeat(emptyStars)
-  );
 };

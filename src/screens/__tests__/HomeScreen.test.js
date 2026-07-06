@@ -16,6 +16,9 @@ jest.mock("@react-navigation/native", () => ({
     React.useEffect(() => cb(), []);
   },
 }));
+jest.mock("../../contexts/ModeContext", () => ({
+  useMode: () => ({ mode: "attending", isHosting: false, setMode: jest.fn() }),
+}));
 jest.mock("../../contexts/ThemeContext", () => ({
   useTheme: () => ({
     colors: {
@@ -40,7 +43,7 @@ beforeEach(() => {
   });
   getDocs.mockResolvedValue({ forEach: () => {}, size: 0, docs: [], empty: true });
   getPendingRatings.mockResolvedValue([]);
-  setUser({ fullName: "Test User", avatar: "😊", role: "user" });
+  setUser({ fullName: "Test User", role: "user" });
 });
 
 describe("HomeScreen", () => {
@@ -60,26 +63,28 @@ describe("HomeScreen", () => {
     expect(hasGreeting).toBe(true);
   });
 
-  it("shows the Explore action and navigates to SearchEvents", async () => {
-    const { getByText } = render(<HomeScreen navigation={nav} />);
-    await waitFor(() => getByText("Explore"));
-    fireEvent.press(getByText("Explore"));
+  it("search bar navigates to SearchEvents (nav lives in tab bar + header)", async () => {
+    const { getByTestId } = render(<HomeScreen navigation={nav} />);
+    await waitFor(() => getByTestId("home-search"));
+    fireEvent.press(getByTestId("home-search"));
     expect(nav.navigate).toHaveBeenCalledWith("SearchEvents");
   });
 
-  it("shows 'Be a Host' for regular users", async () => {
-    const { getByText } = render(<HomeScreen navigation={nav} />);
-    await waitFor(() => expect(getByText("Be a Host")).toBeTruthy());
+  it("does not render the removed Quick Actions grid", async () => {
+    const { queryByText } = render(<HomeScreen navigation={nav} />);
+    await waitFor(() => expect(queryByText("QUICK ACTIONS")).toBeNull());
+    expect(queryByText("Explore")).toBeNull();
+    expect(queryByText("Be a Host")).toBeNull();
   });
 
-  it("shows 'Create' for hosts", async () => {
-    setUser({ fullName: "Host User", avatar: "🎪", role: "host" });
-    const { getByText } = render(<HomeScreen navigation={nav} />);
-    await waitFor(() => expect(getByText("Create")).toBeTruthy());
+  it("hides the Create FAB outside Host Mode", async () => {
+    setUser({ fullName: "Host User", role: "host" });
+    const { queryByTestId } = render(<HomeScreen navigation={nav} />);
+    await waitFor(() => expect(queryByTestId("home-create-fab")).toBeNull());
   });
 
   it("shows Admin Dashboard for admins", async () => {
-    setUser({ fullName: "Admin", avatar: "👑", role: "admin" });
+    setUser({ fullName: "Admin", role: "admin" });
     const { getByText } = render(<HomeScreen navigation={nav} />);
     await waitFor(() => expect(getByText("Admin Dashboard")).toBeTruthy());
   });

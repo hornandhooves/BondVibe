@@ -31,6 +31,39 @@ import {
   orderBy,
 } from "firebase/firestore";
 
+// Legacy notification docs (and older code paths) stored an emoji in the
+// `icon` field. Map those to central Icon names; new writes use names.
+const LEGACY_ICON = {
+  "🔔": "bell",
+  "💬": "chat",
+  "👑": "pro",
+  "🎪": "tent",
+  "👤": "user",
+  "⚠️": "alert",
+  "🚫": "block",
+  "✅": "successCircle",
+  "💜": "heart",
+  "📣": "broadcast",
+  "🎟️": "ticket",
+  "⭐": "star",
+  "👋": "users",
+  "🎉": "party",
+  "📬": "bell",
+  "📝": "clipboard",
+  "⏰": "clock",
+};
+
+const KNOWN_ICONS = new Set([
+  "bell", "chat", "pro", "tent", "alert", "block", "successCircle", "heart",
+  "broadcast", "party", "ticket", "star", "user", "users", "calendar",
+  "clock", "location", "moon", "lock", "close", "check", "delete", "repeat",
+  "refresh", "dollar", "info", "clipboard", "car", "bike", "chart", "ai",
+  "globe", "languages", "edit", "errorCircle", "mail", "search",
+]);
+
+const resolveIconName = (raw) =>
+  LEGACY_ICON[raw] || (KNOWN_ICONS.has(raw) ? raw : "bell");
+
 export default function NotificationsScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const [notifications, setNotifications] = useState([]);
@@ -117,7 +150,7 @@ export default function NotificationsScreen({ navigation }) {
                   data.lastMessage || ""
                 }`,
                 read: data.read || false,
-                icon: "💬",
+                icon: "chat",
                 createdAt: createdAtValue,
                 createdAtDate: createdAtDate, // ✅ Keep Date object for sorting
                 unreadCount: data.unreadCount || 0,
@@ -136,7 +169,7 @@ export default function NotificationsScreen({ navigation }) {
                 type: String(data.type || ""),
                 title: String(data.title || "Notification"),
                 message: String(data.message || ""),
-                icon: String(data.icon || "🔔"),
+                icon: String(data.icon || "bell"),
                 read: Boolean(data.read),
                 createdAt: createdAtValue,
                 createdAtDate: createdAtDate, // ✅ Keep Date object for sorting
@@ -169,11 +202,11 @@ export default function NotificationsScreen({ navigation }) {
               {
                 id: "demo1",
                 type: "welcome",
-                title: "Welcome to Kinlo! 👋",
+                title: "Welcome to Kinlo!",
                 message: "Start exploring events and connect with people",
                 time: "Just now",
                 read: false,
-                icon: "🎉",
+                icon: "party",
                 action: () => navigation.navigate("SearchEvents"),
                 isDemo: true,
               },
@@ -312,9 +345,9 @@ export default function NotificationsScreen({ navigation }) {
 
       case "welcome":
         Alert.alert(
-          notification.title || "Welcome to Kinlo! 🎉",
+          notification.title || "Welcome to Kinlo!",
           notification.message || notification.body,
-          [{ text: "Let's go! 🚀", onPress: () => navigation.navigate("SearchEvents") }]
+          [{ text: "Let's go", onPress: () => navigation.navigate("SearchEvents") }]
         );
         break;
 
@@ -333,7 +366,7 @@ export default function NotificationsScreen({ navigation }) {
   const NotificationCard = ({ notification }) => {
     try {
       // Sanitize ALL values before using
-      const safeIcon = String(notification.icon || "📬");
+      const safeIcon = String(notification.icon || "bell");
       const safeTitle = String(notification.title || "");
       const safeMessage = String(notification.message || "").replace(
         /\n/g,
@@ -373,7 +406,11 @@ export default function NotificationsScreen({ navigation }) {
               {notification.type === "NEW_FOLLOWER" ? (
                 <Icon name="community" size={22} color={colors.primary} />
               ) : (
-                <Text style={styles.iconEmoji}>{safeIcon}</Text>
+                <Icon
+                  name={resolveIconName(safeIcon)}
+                  size={22}
+                  color={colors.primary}
+                />
               )}
               {safeUnreadCount > 0 && (
                 <View
@@ -665,7 +702,6 @@ function createStyles(colors) {
       marginRight: 14,
       position: "relative",
     },
-    iconEmoji: { fontSize: 22 },
     unreadBadge: {
       position: "absolute",
       top: -4,

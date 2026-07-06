@@ -38,8 +38,8 @@ const DAY_OF_MONTH_OPTIONS = Array.from({ length: 31 }, (_, i) => i + 1);
 
 // Lunar phase options
 const LUNAR_OPTIONS = [
-  { id: "full", label: "Full Moon", emoji: "🌕" },
-  { id: "new", label: "New Moon", emoji: "🌑" },
+  { id: "full", label: "Full Moon", icon: "moon" },
+  { id: "new", label: "New Moon", icon: "moon" },
 ];
 
 // Recurrence type options
@@ -267,7 +267,7 @@ export default function RecurrenceModal({
     if (recurrenceType === "none") return "One-time event";
     
     if (recurrenceType === "lunar") {
-      return lunarPhase === "full" ? "🌕 Every Full Moon" : "🌑 Every New Moon";
+      return lunarPhase === "full" ? "Every Full Moon" : "Every New Moon";
     }
 
     if (recurrenceType === "monthly" && monthlyMode === "dayOfMonth") {
@@ -441,7 +441,12 @@ export default function RecurrenceModal({
                       ]}
                       onPress={() => setLunarPhase(option.id)}
                     >
-                      <Text style={styles.lunarEmoji}>{option.emoji}</Text>
+                      <Icon
+                        name={option.icon}
+                        size={32}
+                        color={lunarPhase === option.id ? "#FFFFFF" : colors.text}
+                        style={styles.lunarIcon}
+                      />
                       <Text style={[styles.lunarLabel, { color: lunarPhase === option.id ? "#FFFFFF" : colors.text }]}>
                         {option.label}
                       </Text>
@@ -597,7 +602,7 @@ export default function RecurrenceModal({
             {/* Summary with Date List */}
             {recurrenceType !== "none" && previewDates.length > 0 && (
               <View style={[styles.summaryCard, { backgroundColor: `${colors.primary}11`, borderColor: `${colors.primary}33` }]}>
-                <Text style={[styles.summaryTitle, { color: colors.primary }]}>📊 Summary</Text>
+                <Text style={[styles.summaryTitle, { color: colors.primary }]}>Summary</Text>
                 <Text style={[styles.summaryText, { color: colors.text }]}>{getSummaryText()}</Text>
                 <Text style={[styles.summaryCount, { color: colors.textSecondary, marginBottom: 12 }]}>
                   {previewDates.length === 52 ? "52+ events (max)" : `${previewDates.length} event${previewDates.length !== 1 ? "s" : ""}`} will be created
@@ -869,8 +874,7 @@ function createStyles(colors) {
       borderWidth: 1.5,
       alignItems: "center",
     },
-    lunarEmoji: {
-      fontSize: 32,
+    lunarIcon: {
       marginBottom: 8,
     },
     lunarLabel: {

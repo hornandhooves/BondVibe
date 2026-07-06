@@ -97,7 +97,9 @@ export default function VehicleBookingsScreen({ navigation }) {
         <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
       ) : rows.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyEmoji}>📅</Text>
+          <View style={styles.emptyArt}>
+            <Icon name="calendar" size={32} color={colors.primary} />
+          </View>
           <Text style={[styles.emptyTitle, { color: colors.text }]}>No bookings yet</Text>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
             Reservations for your vehicles will show up here.
@@ -154,7 +156,15 @@ function createStyles(colors, isDark) {
     pill: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
     pillText: { fontSize: 12, fontWeight: "700" },
     empty: { alignItems: "center", marginTop: 80, paddingHorizontal: 40 },
-    emptyEmoji: { fontSize: 44, marginBottom: 12 },
+    emptyArt: {
+      width: 64,
+      height: 64,
+      borderRadius: 18,
+      backgroundColor: colors.brandSoft,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 12,
+    },
     emptyTitle: { fontSize: 18, fontWeight: "800" },
     emptyText: { fontSize: 14, textAlign: "center", marginTop: 6, lineHeight: 20 },
   });

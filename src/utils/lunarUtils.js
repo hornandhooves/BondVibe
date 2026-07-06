@@ -134,12 +134,3 @@ export function generateMoonPhaseDates(startDate, endDate, phaseType) {
   
   return dates;
 }
-
-/**
- * Get emoji for moon phase
- * @param {'full' | 'new'} phaseType 
- * @returns {string}
- */
-export function getMoonEmoji(phaseType) {
-  return phaseType === 'full' ? '🌕' : '🌑';
-}

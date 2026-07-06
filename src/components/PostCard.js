@@ -120,7 +120,7 @@ export default function PostCard({ post, navigation, onChanged }) {
           </Text>
           {(post.attendeeIds || []).includes(me) && (
             <View style={[styles.thereBadge, { backgroundColor: "#E1F5EC" }]}>
-              <Text style={styles.thereText}>You were there ✓</Text>
+              <Text style={styles.thereText}>You were there</Text>
             </View>
           )}
         </View>

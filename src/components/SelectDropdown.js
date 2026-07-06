@@ -20,7 +20,7 @@ import Icon, { getCategoryIcon, getLocationIcon } from "./Icon";
  * @param {string} label - Label text above the dropdown
  * @param {string|array} value - Currently selected value(s) (id or array of ids for multiSelect)
  * @param {function} onValueChange - Callback when value changes
- * @param {array} options - Array of options: [{ id, label, emoji? }]
+ * @param {array} options - Array of options: [{ id, label, icon? }]
  * @param {string} placeholder - Placeholder text when no value selected
  * @param {string} type - "category" | "location" | "language" | "default" (affects icon rendering)
  * @param {boolean} multiSelect - Enable multi-select mode with checkboxes
@@ -90,8 +90,8 @@ export default function SelectDropdown({
       return (
         <IconComponent size={iconSize} color={iconColor} strokeWidth={2} />
       );
-    } else if (option.emoji) {
-      return <Text style={styles.optionEmoji}>{option.emoji}</Text>;
+    } else if (option.icon) {
+      return <Icon name={option.icon} size={iconSize} color={iconColor} />;
     }
     return null;
   };
@@ -343,9 +343,6 @@ function createStyles(colors, isDark) {
       alignItems: "center",
       gap: 14,
       flex: 1,
-    },
-    optionEmoji: {
-      fontSize: 22,
     },
     optionLabel: {
       fontSize: 16,

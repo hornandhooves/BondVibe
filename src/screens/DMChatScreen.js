@@ -93,7 +93,7 @@ export default function DMChatScreen({ route, navigation }) {
             );
           }}
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: colors.textTertiary }]}>Say hi 👋</Text>
+            <Text style={[styles.empty, { color: colors.textTertiary }]}>Say hi</Text>
           }
         />
         <View style={[styles.inputBar, { borderTopColor: colors.border }]}>

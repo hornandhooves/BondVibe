@@ -114,7 +114,7 @@ export default function HostCRMScreen({ navigation }) {
         <StatusBar style={isDark ? "light" : "dark"} />
         {Header}
         <View style={styles.center}>
-          <Text style={[styles.upsellTitle, { color: colors.text }]}>CRM is Pro ✨</Text>
+          <Text style={[styles.upsellTitle, { color: colors.text }]}>CRM is Pro</Text>
           <Text style={[styles.upsellText, { color: colors.textSecondary }]}>
             Know your regulars and re-engage the ones who drift away.
           </Text>
@@ -169,8 +169,9 @@ export default function HostCRMScreen({ navigation }) {
           ]}
           onPress={() => setAnnounceVisible(true)}
         >
+          <Icon name="broadcast" size={16} color={colors.primary} />
           <Text style={[styles.announceBtnText, { color: colors.primary }]}>
-            📣 Send announcement to {filtered.length}
+            Send announcement to {filtered.length}
           </Text>
         </TouchableOpacity>
       )}
@@ -186,7 +187,7 @@ export default function HostCRMScreen({ navigation }) {
           {filtered.length === 0 ? (
             <Text style={[styles.empty, { color: colors.textSecondary }]}>
               {segment === "risk"
-                ? "Nobody at risk right now 🎉"
+                ? "Nobody at risk right now"
                 : "No attendees in this segment yet."}
             </Text>
           ) : (
@@ -221,7 +222,10 @@ export default function HostCRMScreen({ navigation }) {
                 )}
 
                 {sent[r.id] ? (
-                  <Text style={[styles.sentMsg, { color: colors.success }]}>Message sent ✓</Text>
+                  <View style={styles.sentRow}>
+                    <Icon name="check" size={14} color={colors.success} />
+                    <Text style={[styles.sentMsg, { color: colors.success }]}>Message sent</Text>
+                  </View>
                 ) : (
                   <View style={styles.actions}>
                     <TouchableOpacity style={[styles.action, { borderColor: colors.borderStrong }]} onPress={() => act(r, "reminder")}>
@@ -317,14 +321,18 @@ function createStyles(colors, isDark) {
     actions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
     action: { borderWidth: 1, borderRadius: 20, paddingVertical: 8, paddingHorizontal: 14 },
     actionText: { fontSize: 13, fontWeight: "700" },
-    sentMsg: { fontSize: 13, fontWeight: "700", marginTop: 12 },
+    sentRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 12 },
+    sentMsg: { fontSize: 13, fontWeight: "700" },
     announceBtn: {
       marginHorizontal: 24,
       marginBottom: 10,
       borderWidth: 1,
       borderRadius: 14,
       paddingVertical: 12,
+      flexDirection: "row",
+      justifyContent: "center",
       alignItems: "center",
+      gap: 6,
     },
     announceBtnText: { fontSize: 14, fontWeight: "700" },
     modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" },

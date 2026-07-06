@@ -58,7 +58,7 @@ export default function PromoteEventScreen({ route, navigation }) {
       }
       await new Promise((r) => setTimeout(r, 2000));
       Alert.alert(
-        "Your event is featured! ⭐",
+        "Your event is featured!",
         `"${eventTitle}" will appear in Featured for ${plan.days} days.`,
         [{ text: "Done", onPress: () => navigation.goBack() }]
       );

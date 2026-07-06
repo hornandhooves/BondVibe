@@ -76,16 +76,17 @@ export default function ProfileScreen({ navigation }) {
       if (userDoc.exists()) {
         const data = userDoc.data();
         setProfile(data);
+        // Legacy avatars (emoji strings / abstract ids) display as the
+        // branded-initial fallback; only real photos round-trip.
         let avatarData = data.avatar;
-        if (typeof data.avatar === "string" && !data.avatar.startsWith("{")) {
-          avatarData = { type: "emoji", value: data.avatar };
-        } else if (typeof data.avatar === "string") {
+        if (typeof data.avatar === "string") {
           try { avatarData = JSON.parse(data.avatar); }
-          catch { avatarData = { type: "emoji", value: "😊" }; }
+          catch { avatarData = null; }
         }
+        if (avatarData && avatarData.type !== "photo") avatarData = null;
         setEditForm({
           fullName: data.fullName || "",
-          avatar: avatarData || { type: "emoji", value: "😊" },
+          avatar: avatarData,
           location: data.location || "",
         });
       }
@@ -144,6 +145,7 @@ export default function ProfileScreen({ navigation }) {
         onClose={() => setShowAvatarPicker(false)}
         currentAvatar={editForm.avatar}
         onAvatarChange={(a) => setEditForm({ ...editForm, avatar: a })}
+        name={editForm.fullName}
       />
 
       {/* ── Header — tab root: AppHeader shows the title; Edit is local ── */}
@@ -176,7 +178,7 @@ export default function ProfileScreen({ navigation }) {
           <>
             <TouchableOpacity style={s.avatarEditWrap} onPress={() => setShowAvatarPicker(true)}>
               <AvatarFrame size={96}>
-                <AvatarDisplay avatar={editForm.avatar} size={80} />
+                <AvatarDisplay avatar={editForm.avatar} size={80} name={editForm.fullName} />
               </AvatarFrame>
               <Text style={[s.avatarEditHint, { color: colors.primary }]}>Tap to change</Text>
             </TouchableOpacity>
@@ -216,7 +218,7 @@ export default function ProfileScreen({ navigation }) {
             {/* ── User info ── */}
             <View style={s.userSection}>
               <AvatarFrame size={80}>
-                <AvatarDisplay avatar={profile.avatar} size={66} />
+                <AvatarDisplay avatar={profile.avatar} size={66} name={profile.fullName} />
               </AvatarFrame>
               <Text style={[s.name, { color: colors.text }]}>{profile.fullName}</Text>
               <Text style={[s.email, { color: colors.textSecondary }]}>{auth.currentUser?.email}</Text>
@@ -258,7 +260,10 @@ export default function ProfileScreen({ navigation }) {
 
               <View style={s.statCenter}>
                 <LinearGradient colors={BRAND.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.statCenterGrad}>
-                  <Text style={s.statCenterNumber}>{ratingValue}★</Text>
+                  <View style={s.statCenterNumberRow}>
+                    <Text style={s.statCenterNumber}>{ratingValue}</Text>
+                    <Icon name="star" size={12} color={colors.onPrimary} fill={colors.onPrimary} />
+                  </View>
                   <Text style={s.statCenterLabel}>Rating</Text>
                 </LinearGradient>
               </View>
@@ -465,6 +470,7 @@ function createStyles(colors, isDark) {
     statLabel: { fontSize: 12, marginTop: 3, fontWeight: "500" },
     statCenter: { flex: 1.1 },
     statCenterGrad: { alignItems: "center", paddingVertical: 18, borderRadius: 0 },
+    statCenterNumberRow: { flexDirection: "row", alignItems: "center", gap: 3 },
     statCenterNumber: { fontSize: 22, fontWeight: "800", color: "#fff", letterSpacing: -0.5 },
     statCenterLabel: { fontSize: 12, marginTop: 3, color: "rgba(255,255,255,0.8)", fontWeight: "500" },
 

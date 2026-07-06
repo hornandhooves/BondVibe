@@ -7,10 +7,41 @@ import {
   Modal,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import Icon from './Icon';
 
-export default function SuccessModal({ visible, onClose, title, message, emoji = '🎉' }) {
+// Legacy callers passed emoji as modal art; production rule is icons only
+// (Fix 1). Map the old emoji props to semantic icon names + tone.
+const EMOJI_TO_ICON = {
+  '🎉': { icon: 'party', tone: 'success' },
+  '📧': { icon: 'mail', tone: 'brand' },
+  '⚠️': { icon: 'alert', tone: 'warning' },
+  '❌': { icon: 'errorCircle', tone: 'error' },
+  '🧠': { icon: 'brain', tone: 'brand' },
+};
+
+export default function SuccessModal({
+  visible,
+  onClose,
+  title,
+  message,
+  icon,
+  tone,
+  emoji, // legacy prop — mapped to an icon, never rendered as a glyph
+}) {
   const { colors } = useTheme();
-  
+
+  const legacy = emoji ? EMOJI_TO_ICON[emoji] : null;
+  const iconName = icon || legacy?.icon || 'successCircle';
+  const iconTone = tone || legacy?.tone || 'success';
+  const toneColor =
+    iconTone === 'error'
+      ? colors.error
+      : iconTone === 'warning'
+      ? colors.warning
+      : iconTone === 'success'
+      ? colors.success
+      : colors.primary;
+
   useEffect(() => {
     if (visible) {
       console.log('✅ SuccessModal is now visible');
@@ -40,7 +71,9 @@ export default function SuccessModal({ visible, onClose, title, message, emoji =
         
         <View style={[styles.modal, { backgroundColor: colors.surface }]}>
           <View style={styles.content}>
-            <Text style={styles.emoji}>{emoji}</Text>
+            <View style={[styles.iconTile, { backgroundColor: colors.brandSoft }]}>
+              <Icon name={iconName} size={36} color={toneColor} />
+            </View>
             <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
             <Text style={[styles.message, { color: colors.textSecondary }]}>
               {message}
@@ -100,8 +133,12 @@ function createStyles(colors) {
       marginBottom: 28,
       width: '100%',
     },
-    emoji: {
-      fontSize: 72,
+    iconTile: {
+      width: 72,
+      height: 72,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
       marginBottom: 20,
     },
     title: {

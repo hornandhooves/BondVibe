@@ -81,7 +81,7 @@ export default function CreateEventScreen({ navigation }) {
       if (Array.isArray(r.titles) && r.titles[0]) setTitle(r.titles[0]);
       if (r.description) setDescription(r.description);
     } else if (isPremiumRequired(r)) {
-      Alert.alert("Pro feature ✨", "The AI generator is part of Kinlo Pro.", [
+      Alert.alert("Pro feature", "The AI generator is part of Kinlo Pro.", [
         { text: "Not now", style: "cancel" },
         { text: "See Pro", onPress: () => navigation.navigate("BondVibePro") },
       ]);
@@ -841,9 +841,12 @@ export default function CreateEventScreen({ navigation }) {
             {aiGenLoading ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <Text style={[styles.aiGenText, { color: colors.primary }]}>
-                ✨ Generate title & description with AI
-              </Text>
+              <>
+                <Icon name="ai" size={14} color={colors.primary} />
+                <Text style={[styles.aiGenText, { color: colors.primary }]}>
+                  Generate title & description with AI
+                </Text>
+              </>
             )}
           </TouchableOpacity>
         </View>
@@ -1214,14 +1217,14 @@ export default function CreateEventScreen({ navigation }) {
             ]}
           >
             <Text style={[styles.infoText, { color: colors.primary }]}>
-              💰 You'll receive 100% of each ticket sale. Platform and
+              You'll receive 100% of each ticket sale. Platform and
               processing fees are added at checkout.
             </Text>
             
             {/* Cancellation Policy Disclosure */}
             <View style={[styles.refundPolicyCard, { backgroundColor: `${colors.primary}11`, borderColor: `${colors.primary}33` }]}>
               <Text style={[styles.refundPolicyTitle, { color: colors.text }]}>
-                📋 Cancellation Policy for Attendees
+                Cancellation Policy for Attendees
               </Text>
               <View style={styles.refundPolicyItem}>
                 <Text style={[styles.refundPolicyBullet, { color: colors.primary }]}>•</Text>
@@ -1265,7 +1268,7 @@ export default function CreateEventScreen({ navigation }) {
           ]}
         >
           <Text style={[styles.tipsTitle, { color: colors.primary }]}>
-            💡 Tips for great events
+            Tips for great events
           </Text>
           <Text style={[styles.tipsText, { color: colors.textSecondary }]}>
             • Be specific about the vibe{"\n"}• Choose public, accessible
@@ -1402,8 +1405,10 @@ function createStyles(colors) {
       borderWidth: 1,
       borderRadius: 14,
       paddingVertical: 12,
+      flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
+      gap: 6,
     },
     aiGenText: { fontSize: 14, fontWeight: "700" },
     toggleRow: { flexDirection: "row", gap: 12 },

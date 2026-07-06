@@ -62,7 +62,9 @@ export default function MyRentalsScreen({ navigation }) {
         <ScrollView contentContainerStyle={styles.content}>
           {rentals.length === 0 ? (
             <View style={styles.empty}>
-              <Text style={styles.emptyEmoji}>🛴</Text>
+              <View style={styles.emptyArt}>
+                <Icon name="bike" size={32} color={colors.primary} />
+              </View>
               <Text style={[styles.emptyTitle, { color: colors.text }]}>No rentals yet</Text>
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                 Rent a scooter, bike or car to get around.
@@ -126,7 +128,15 @@ function createStyles(colors, isDark) {
     pill: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
     pillText: { fontSize: 11, fontWeight: "800" },
     empty: { alignItems: "center", paddingTop: 80, paddingHorizontal: 30 },
-    emptyEmoji: { fontSize: 52, marginBottom: 16 },
+    emptyArt: {
+      width: 64,
+      height: 64,
+      borderRadius: 18,
+      backgroundColor: colors.brandSoft,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 16,
+    },
     emptyTitle: { fontSize: 18, fontWeight: "800", marginBottom: 8 },
     emptyText: { fontSize: 14, textAlign: "center", lineHeight: 20, marginBottom: 20 },
     cta: { borderRadius: 24, paddingVertical: 14, paddingHorizontal: 28 },

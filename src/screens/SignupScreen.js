@@ -210,7 +210,12 @@ export default function SignupScreen({ navigation }) {
                   },
                 ]}
               >
-                <Text style={styles.inputIcon}>📧</Text>
+                <Icon
+                  name="mail"
+                  size={18}
+                  color={colors.textTertiary}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
                   placeholder="Email"
@@ -232,7 +237,12 @@ export default function SignupScreen({ navigation }) {
                   },
                 ]}
               >
-                <Text style={styles.inputIcon}>🔒</Text>
+                <Icon
+                  name="lock"
+                  size={18}
+                  color={colors.textTertiary}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
                   placeholder="Create a password"
@@ -257,26 +267,24 @@ export default function SignupScreen({ navigation }) {
               {/* Password Requirements */}
               <View style={styles.passwordRequirements}>
                 <View style={styles.requirementRow}>
-                  <Text
-                    style={[
-                      styles.requirementIcon,
-                      {
-                        color:
-                          password.length >= 8
-                            ? "#34C759"
-                            : colors.textTertiary,
-                      },
-                    ]}
-                  >
-                    {password.length >= 8 ? "✓" : "○"}
-                  </Text>
+                  <View style={styles.requirementIcon}>
+                    <Icon
+                      name={password.length >= 8 ? "check" : "circle"}
+                      size={14}
+                      color={
+                        password.length >= 8
+                          ? colors.success
+                          : colors.textTertiary
+                      }
+                    />
+                  </View>
                   <Text
                     style={[
                       styles.requirementText,
                       {
                         color:
                           password.length >= 8
-                            ? "#34C759"
+                            ? colors.success
                             : colors.textTertiary,
                       },
                     ]}
@@ -285,24 +293,23 @@ export default function SignupScreen({ navigation }) {
                   </Text>
                 </View>
                 <View style={styles.requirementRow}>
-                  <Text
-                    style={[
-                      styles.requirementIcon,
-                      {
-                        color: /[A-Z]/.test(password)
-                          ? "#34C759"
-                          : colors.textTertiary,
-                      },
-                    ]}
-                  >
-                    {/[A-Z]/.test(password) ? "✓" : "○"}
-                  </Text>
+                  <View style={styles.requirementIcon}>
+                    <Icon
+                      name={/[A-Z]/.test(password) ? "check" : "circle"}
+                      size={14}
+                      color={
+                        /[A-Z]/.test(password)
+                          ? colors.success
+                          : colors.textTertiary
+                      }
+                    />
+                  </View>
                   <Text
                     style={[
                       styles.requirementText,
                       {
                         color: /[A-Z]/.test(password)
-                          ? "#34C759"
+                          ? colors.success
                           : colors.textTertiary,
                       },
                     ]}
@@ -311,24 +318,23 @@ export default function SignupScreen({ navigation }) {
                   </Text>
                 </View>
                 <View style={styles.requirementRow}>
-                  <Text
-                    style={[
-                      styles.requirementIcon,
-                      {
-                        color: /[a-z]/.test(password)
-                          ? "#34C759"
-                          : colors.textTertiary,
-                      },
-                    ]}
-                  >
-                    {/[a-z]/.test(password) ? "✓" : "○"}
-                  </Text>
+                  <View style={styles.requirementIcon}>
+                    <Icon
+                      name={/[a-z]/.test(password) ? "check" : "circle"}
+                      size={14}
+                      color={
+                        /[a-z]/.test(password)
+                          ? colors.success
+                          : colors.textTertiary
+                      }
+                    />
+                  </View>
                   <Text
                     style={[
                       styles.requirementText,
                       {
                         color: /[a-z]/.test(password)
-                          ? "#34C759"
+                          ? colors.success
                           : colors.textTertiary,
                       },
                     ]}
@@ -337,24 +343,23 @@ export default function SignupScreen({ navigation }) {
                   </Text>
                 </View>
                 <View style={styles.requirementRow}>
-                  <Text
-                    style={[
-                      styles.requirementIcon,
-                      {
-                        color: /[0-9]/.test(password)
-                          ? "#34C759"
-                          : colors.textTertiary,
-                      },
-                    ]}
-                  >
-                    {/[0-9]/.test(password) ? "✓" : "○"}
-                  </Text>
+                  <View style={styles.requirementIcon}>
+                    <Icon
+                      name={/[0-9]/.test(password) ? "check" : "circle"}
+                      size={14}
+                      color={
+                        /[0-9]/.test(password)
+                          ? colors.success
+                          : colors.textTertiary
+                      }
+                    />
+                  </View>
                   <Text
                     style={[
                       styles.requirementText,
                       {
                         color: /[0-9]/.test(password)
-                          ? "#34C759"
+                          ? colors.success
                           : colors.textTertiary,
                       },
                     ]}
@@ -363,24 +368,27 @@ export default function SignupScreen({ navigation }) {
                   </Text>
                 </View>
                 <View style={styles.requirementRow}>
-                  <Text
-                    style={[
-                      styles.requirementIcon,
-                      {
-                        color: /[!@#$%^&*(),.?":{}|<>]/.test(password)
-                          ? "#34C759"
-                          : colors.textTertiary,
-                      },
-                    ]}
-                  >
-                    {/[!@#$%^&*(),.?":{}|<>]/.test(password) ? "✓" : "○"}
-                  </Text>
+                  <View style={styles.requirementIcon}>
+                    <Icon
+                      name={
+                        /[!@#$%^&*(),.?":{}|<>]/.test(password)
+                          ? "check"
+                          : "circle"
+                      }
+                      size={14}
+                      color={
+                        /[!@#$%^&*(),.?":{}|<>]/.test(password)
+                          ? colors.success
+                          : colors.textTertiary
+                      }
+                    />
+                  </View>
                   <Text
                     style={[
                       styles.requirementText,
                       {
                         color: /[!@#$%^&*(),.?":{}|<>]/.test(password)
-                          ? "#34C759"
+                          ? colors.success
                           : colors.textTertiary,
                       },
                     ]}
@@ -399,7 +407,12 @@ export default function SignupScreen({ navigation }) {
                   },
                 ]}
               >
-                <Text style={styles.inputIcon}>🔒</Text>
+                <Icon
+                  name="lock"
+                  size={18}
+                  color={colors.textTertiary}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
                   placeholder="Confirm Password"
@@ -489,7 +502,8 @@ export default function SignupScreen({ navigation }) {
           onClose={handleModalClose}
           title="Verify Your Email"
           message="We've sent a verification link to your email. Please check your inbox (and spam folder) and click the link to verify your account before logging in."
-          emoji="📧"
+          icon="mail"
+          tone="brand"
         />
       </GradientBackground>
     </KeyboardAvoidingView>
@@ -526,7 +540,7 @@ function createStyles(colors) {
       paddingHorizontal: 16,
       marginBottom: 16,
     },
-    inputIcon: { fontSize: 20, marginRight: 12 },
+    inputIcon: { marginRight: 12 },
     eyeButton: { padding: 8, marginLeft: 4 },
     input: { flex: 1, fontSize: 16, paddingVertical: 16 },
     signupButton: {
@@ -548,7 +562,6 @@ function createStyles(colors) {
       marginBottom: 6,
     },
     requirementIcon: {
-      fontSize: 12,
       marginRight: 8,
       width: 16,
     },

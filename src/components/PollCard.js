@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import Icon from "./Icon";
 import { useTheme } from "../contexts/ThemeContext";
 import { auth } from "../services/firebase";
 import {
@@ -53,7 +54,10 @@ export default function PollCard({ parent, pollId, isHost }) {
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
-        <Text style={styles.badge}>📊 POLL{poll.closed ? " · CLOSED" : ""}</Text>
+        <View style={styles.badgeRow}>
+          <Icon name="chart" size={11} color={colors.primary} />
+          <Text style={styles.badge}>POLL{poll.closed ? " · CLOSED" : ""}</Text>
+        </View>
         {isHost && !poll.closed && (
           <TouchableOpacity onPress={() => closePoll(parent, pollId)}>
             <Text style={[styles.close, { color: colors.primary }]}>Close</Text>
@@ -148,6 +152,7 @@ function createStyles(colors, isDark) {
       alignItems: "center",
       marginBottom: 6,
     },
+    badgeRow: { flexDirection: "row", alignItems: "center", gap: 4 },
     badge: { fontSize: 11, fontWeight: "800", color: colors.primary, letterSpacing: 0.5 },
     close: { fontSize: 13, fontWeight: "700" },
     question: { fontSize: 15, fontWeight: "700", marginBottom: 12 },

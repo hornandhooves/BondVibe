@@ -12,6 +12,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from "@react-navigation/native";
 import Icon from "../components/Icon";
+import StarRow from "../components/StarRow";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import MonthReadCard from "../components/ai/MonthReadCard";
@@ -80,7 +81,7 @@ export default function HostAnalyticsScreen({ navigation }) {
       r.error === "premium_required"
     ) {
       Alert.alert(
-        "Premium feature ✨",
+        "Premium feature",
         "AI recommendations are part of Kinlo Pro. Upgrade to get coaching on how to improve your events, based on your real reviews."
       );
     } else {
@@ -231,9 +232,12 @@ export default function HostAnalyticsScreen({ navigation }) {
                   const pct = reviews.length ? (count / reviews.length) * 100 : 0;
                   return (
                     <View key={star} style={styles.distRow}>
-                      <Text style={[styles.distStar, { color: colors.textSecondary }]}>
-                        {star}★
-                      </Text>
+                      <View style={styles.distStarRow}>
+                        <Text style={[styles.distStar, { color: colors.textSecondary }]}>
+                          {star}
+                        </Text>
+                        <Icon name="star" size={10} color={colors.textSecondary} fill={colors.textSecondary} />
+                      </View>
                       <View
                         style={[
                           styles.distTrack,
@@ -264,9 +268,7 @@ export default function HostAnalyticsScreen({ navigation }) {
                     <Text style={[styles.reviewName, { color: colors.text }]} numberOfLines={1}>
                       {r.userName || "Someone"}
                     </Text>
-                    <Text style={styles.reviewStars}>
-                      {"★".repeat(Math.round(r.rating))}
-                    </Text>
+                    <StarRow rating={r.rating} size={13} showEmpty={false} />
                   </View>
                   <Text style={[styles.reviewComment, { color: colors.textSecondary }]} numberOfLines={3}>
                     {r.comment}
@@ -328,7 +330,7 @@ export default function HostAnalyticsScreen({ navigation }) {
               )}
               {!!aiInsights?.sentiment && (
                 <View style={{ marginTop: 14 }}>
-                  <Text style={[styles.aiListTitle, { color: colors.text }]}>😊 Sentiment</Text>
+                  <Text style={[styles.aiListTitle, { color: colors.text }]}>Sentiment</Text>
                   <Text style={[styles.aiListItem, { color: colors.textSecondary }]}>
                     {aiInsights.sentiment}
                   </Text>
@@ -336,15 +338,15 @@ export default function HostAnalyticsScreen({ navigation }) {
               )}
               {!!aiInsights?.trend && (
                 <View style={{ marginTop: 14 }}>
-                  <Text style={[styles.aiListTitle, { color: colors.text }]}>📈 Trend</Text>
+                  <Text style={[styles.aiListTitle, { color: colors.text }]}>Trend</Text>
                   <Text style={[styles.aiListItem, { color: colors.textSecondary }]}>
                     {aiInsights.trend}
                   </Text>
                 </View>
               )}
-              <AiList title="✅ Strengths" items={aiInsights?.strengths} colors={colors} styles={styles} />
-              <AiList title="🛠 To improve" items={aiInsights?.improvements} colors={colors} styles={styles} />
-              <AiList title="🎯 Next event" items={aiInsights?.nextEvent || aiInsights?.suggestions} colors={colors} styles={styles} />
+              <AiList title="Strengths" items={aiInsights?.strengths} colors={colors} styles={styles} />
+              <AiList title="To improve" items={aiInsights?.improvements} colors={colors} styles={styles} />
+              <AiList title="Next event" items={aiInsights?.nextEvent || aiInsights?.suggestions} colors={colors} styles={styles} />
             </ScrollView>
             <TouchableOpacity
               style={[styles.aiClose, { backgroundColor: colors.primary }]}
@@ -472,7 +474,8 @@ function createStyles(colors, isDark) {
       gap: 8,
     },
     distRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-    distStar: { width: 28, fontSize: 13, fontWeight: "600" },
+    distStarRow: { width: 28, flexDirection: "row", alignItems: "center", gap: 2 },
+    distStar: { fontSize: 13, fontWeight: "600" },
     distTrack: { flex: 1, height: 8, borderRadius: 4, overflow: "hidden" },
     distFill: { height: 8, borderRadius: 4, backgroundColor: "#FFD700" },
     distCount: { width: 24, fontSize: 12, textAlign: "right" },
@@ -486,7 +489,6 @@ function createStyles(colors, isDark) {
     },
     reviewHead: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
     reviewName: { flex: 1, fontSize: 14, fontWeight: "700" },
-    reviewStars: { fontSize: 13, color: "#FFD700" },
     reviewComment: { fontSize: 14, lineHeight: 19 },
     reviewEvent: { fontSize: 12, marginTop: 6 },
 

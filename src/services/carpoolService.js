@@ -50,7 +50,7 @@ export const createCarpool = async (eventId, input) => {
     await addDoc(collection(db, "events", eventId, "messages"), {
       senderId: uid,
       type: "carpool",
-      text: `🚗 Offering a ride · ${seats} seat${seats === 1 ? "" : "s"}`,
+      text: `Offering a ride · ${seats} seat${seats === 1 ? "" : "s"}`,
       data: { carpoolId: ref.id },
       createdAt: new Date().toISOString(),
       deliveredTo: {},

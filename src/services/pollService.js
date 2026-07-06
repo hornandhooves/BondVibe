@@ -54,7 +54,7 @@ export const createPoll = async (parent, { question, options, anonymous = false 
     await addDoc(messagesCol(parent), {
       senderId: uid,
       type: "poll",
-      text: `📊 ${question.trim()}`,
+      text: question.trim(),
       data: { pollId: pollRef.id },
       createdAt: new Date().toISOString(),
       deliveredTo: {},

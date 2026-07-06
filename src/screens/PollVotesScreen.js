@@ -104,7 +104,8 @@ export default function PollVotesScreen({ route, navigation }) {
       ) : poll.anonymous ? (
         <View style={styles.loading}>
           <Text style={[styles.anon, { color: colors.textSecondary }]}>
-            🕶️ This poll is anonymous — individual votes are hidden.
+            <Icon name="hide" size={14} color={colors.textSecondary} /> This
+            poll is anonymous — individual votes are hidden.
           </Text>
         </View>
       ) : (
@@ -130,7 +131,7 @@ export default function PollVotesScreen({ route, navigation }) {
             NOT VOTED YET ({notVoted.length})
           </Text>
           {notVoted.length === 0 ? (
-            <Text style={[styles.muted, { color: colors.textTertiary }]}>Everyone voted 🎉</Text>
+            <Text style={[styles.muted, { color: colors.textTertiary }]}>Everyone voted</Text>
           ) : (
             notVoted.map((m) => <Row key={m.id} m={m} />)
           )}

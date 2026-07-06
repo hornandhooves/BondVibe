@@ -13,6 +13,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import { db, auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
+import Icon from "../components/Icon";
 import * as WebBrowser from "expo-web-browser";
 import {
   createConnectAccount,
@@ -181,7 +182,9 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.introSection}>
-          <Text style={styles.introEmoji}>🎉</Text>
+          <View style={styles.introIconTile}>
+            <Icon name="tent" size={36} color={colors.primary} />
+          </View>
           <Text style={[styles.introTitle, { color: colors.text }]}>
             Congratulations!
           </Text>
@@ -215,7 +218,9 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
             ]}
           >
             <View style={styles.optionHeader}>
-              <Text style={styles.optionEmoji}>🆓</Text>
+              <View style={styles.optionIconTile}>
+                <Icon name="calendar" size={24} color={colors.primary} />
+              </View>
               <View style={styles.optionTitleContainer}>
                 <Text style={[styles.optionTitle, { color: colors.text }]}>
                   Hosting Free Events Only
@@ -230,33 +235,39 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
                 </Text>
               </View>
               {selectedType === "free" && (
-                <Text style={[styles.checkmark, { color: colors.primary }]}>
-                  ✓
-                </Text>
+                <Icon name="check" size={22} color={colors.primary} />
               )}
             </View>
 
             <View style={styles.featuresList}>
               <View style={styles.featureRow}>
-                <Text style={styles.featureBullet}>✓</Text>
+                <View style={styles.featureBullet}>
+                  <Icon name="check" size={14} color={colors.success} />
+                </View>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Create unlimited free events
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureBullet}>✓</Text>
+                <View style={styles.featureBullet}>
+                  <Icon name="check" size={14} color={colors.success} />
+                </View>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Build your community
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureBullet}>✓</Text>
+                <View style={styles.featureBullet}>
+                  <Icon name="check" size={14} color={colors.success} />
+                </View>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Get started immediately
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureBullet}>✓</Text>
+                <View style={styles.featureBullet}>
+                  <Icon name="check" size={14} color={colors.success} />
+                </View>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Upgrade to paid events anytime
                 </Text>
@@ -300,7 +311,9 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
             ]}
           >
             <View style={styles.optionHeader}>
-              <Text style={styles.optionEmoji}>💰</Text>
+              <View style={styles.optionIconTile}>
+                <Icon name="dollar" size={24} color={colors.primary} />
+              </View>
               <View style={styles.optionTitleContainer}>
                 <Text style={[styles.optionTitle, { color: colors.text }]}>
                   Hosting Free and Paid Events
@@ -315,33 +328,39 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
                 </Text>
               </View>
               {selectedType === "paid" && (
-                <Text style={[styles.checkmark, { color: colors.primary }]}>
-                  ✓
-                </Text>
+                <Icon name="check" size={22} color={colors.primary} />
               )}
             </View>
 
             <View style={styles.featuresList}>
               <View style={styles.featureRow}>
-                <Text style={styles.featureBullet}>✓</Text>
+                <View style={styles.featureBullet}>
+                  <Icon name="check" size={14} color={colors.success} />
+                </View>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Create paid events
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureBullet}>✓</Text>
+                <View style={styles.featureBullet}>
+                  <Icon name="check" size={14} color={colors.success} />
+                </View>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Also create free events
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureBullet}>✓</Text>
+                <View style={styles.featureBullet}>
+                  <Icon name="check" size={14} color={colors.success} />
+                </View>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Receive payments directly (100%)
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureBullet}>✓</Text>
+                <View style={styles.featureBullet}>
+                  <Icon name="check" size={14} color={colors.success} />
+                </View>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Platform and processing fees covered by attendees
                 </Text>
@@ -354,8 +373,9 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
                 { backgroundColor: "rgba(255, 159, 10, 0.15)" },
               ]}
             >
+              <Icon name="info" size={14} color={colors.warning} />
               <Text style={[styles.infoText, { color: colors.warning }]}>
-                ℹ️ Requires Stripe verification (1-2 days)
+                Requires Stripe verification (1-2 days)
               </Text>
             </View>
           </View>
@@ -412,7 +432,7 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
                   </Text>
                 </View>
                 {payoutProcessor === opt.id && (
-                  <Text style={[styles.checkmark, { color: colors.primary }]}>✓</Text>
+                  <Icon name="check" size={22} color={colors.primary} />
                 )}
               </TouchableOpacity>
             ))}
@@ -493,7 +513,15 @@ function createStyles(colors) {
     scrollView: { flex: 1 },
     scrollContent: { paddingHorizontal: 24, paddingBottom: 40 },
     introSection: { alignItems: "center", marginBottom: 32 },
-    introEmoji: { fontSize: 64, marginBottom: 16 },
+    introIconTile: {
+      width: 72,
+      height: 72,
+      borderRadius: 20,
+      backgroundColor: colors.brandSoft,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 16,
+    },
     introTitle: {
       fontSize: 28,
       fontWeight: "700",
@@ -513,18 +541,25 @@ function createStyles(colors) {
       alignItems: "center",
       marginBottom: 16,
     },
-    optionEmoji: { fontSize: 36, marginRight: 14 },
+    optionIconTile: {
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      backgroundColor: colors.brandSoft,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 14,
+    },
     optionTitleContainer: { flex: 1 },
     optionTitle: { fontSize: 20, fontWeight: "700", marginBottom: 4 },
     optionSubtitle: { fontSize: 13 },
-    checkmark: { fontSize: 28, fontWeight: "700" },
     featuresList: { marginBottom: 16 },
     featureRow: {
       flexDirection: "row",
       alignItems: "flex-start",
       marginBottom: 10,
     },
-    featureBullet: { fontSize: 16, marginRight: 10, color: "#34C759" },
+    featureBullet: { marginRight: 10, marginTop: 3 },
     featureText: { fontSize: 14, flex: 1, lineHeight: 20 },
     recommendBadge: {
       paddingVertical: 8,
@@ -537,7 +572,10 @@ function createStyles(colors) {
       paddingVertical: 8,
       paddingHorizontal: 14,
       borderRadius: 10,
+      flexDirection: "row",
       alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
     },
     infoText: { fontSize: 13, fontWeight: "600" },
     processorSection: { marginBottom: 16 },

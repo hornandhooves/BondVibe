@@ -203,7 +203,14 @@ export default function EventRatings({ eventId, isHost }) {
         {/* Empty State */}
         {!loading && ratings.length === 0 && (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>⭐</Text>
+            <View
+              style={[
+                styles.emptyIconTile,
+                { backgroundColor: colors.brandSoft },
+              ]}
+            >
+              <Icon name="star" size={32} color={colors.primary} />
+            </View>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
               No ratings yet
             </Text>
@@ -318,8 +325,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 16,
   },
-  emptyEmoji: {
-    fontSize: 32,
+  emptyIconTile: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 8,
   },
   emptyText: {

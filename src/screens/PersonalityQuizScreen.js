@@ -111,9 +111,10 @@ export default function PersonalityQuizScreen({ navigation }) {
       <SuccessModal
         visible={showSuccessModal}
         onClose={handleSuccessClose}
-        title="Profile Complete! 🎉"
+        title="Profile Complete!"
         message="Your personality profile has been saved. We'll use this to match you with compatible groups."
-        emoji="🧠"
+        icon="brain"
+        tone="brand"
       />
 
       {/* Incomplete Modal */}
@@ -122,7 +123,8 @@ export default function PersonalityQuizScreen({ navigation }) {
         onClose={() => setShowIncompleteModal(false)}
         title="Almost There!"
         message="Please answer all 44 questions before submitting your personality quiz."
-        emoji="⚠️"
+        icon="alert"
+        tone="warning"
       />
 
       {/* Header */}
@@ -171,9 +173,12 @@ export default function PersonalityQuizScreen({ navigation }) {
           ]}
         >
           <View style={styles.dimensionBadge}>
-            <Text style={styles.dimensionIcon}>
-              {DIMENSION_INFO[currentQuestion.dimension].icon}
-            </Text>
+            <Icon
+              name={DIMENSION_INFO[currentQuestion.dimension].icon}
+              size={20}
+              color={colors.primary}
+              style={styles.dimensionIcon}
+            />
             <Text
               style={[styles.dimensionText, { color: colors.textSecondary }]}
             >
@@ -210,7 +215,12 @@ export default function PersonalityQuizScreen({ navigation }) {
                 onPress={() => handleAnswer(option.value)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.optionEmoji}>{option.emoji}</Text>
+                <Icon
+                  name={option.icon}
+                  size={24}
+                  color={isSelected ? "#FFFFFF" : colors.text}
+                  style={styles.optionIcon}
+                />
                 <Text
                   style={[
                     styles.optionLabel,
@@ -291,7 +301,7 @@ export default function PersonalityQuizScreen({ navigation }) {
         {/* Help Text */}
         <View style={styles.helpContainer}>
           <Text style={[styles.helpText, { color: colors.textTertiary }]}>
-            💡 Be honest - there are no right or wrong answers. Your responses
+            Be honest - there are no right or wrong answers. Your responses
             help us match you with compatible groups.
           </Text>
         </View>
@@ -359,7 +369,6 @@ function createStyles(colors) {
       marginBottom: 16,
     },
     dimensionIcon: {
-      fontSize: 20,
       marginRight: 8,
     },
     dimensionText: {
@@ -389,8 +398,7 @@ function createStyles(colors) {
       flexDirection: "row",
       alignItems: "center",
     },
-    optionEmoji: {
-      fontSize: 24,
+    optionIcon: {
       marginRight: 12,
     },
     optionLabel: {

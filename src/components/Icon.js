@@ -100,6 +100,15 @@ import {
   Wallet,
   Car,
   LayoutGrid,
+  Mail,
+  AlertTriangle,
+  XCircle,
+  ClipboardList,
+  Info,
+  Frown,
+  Meh,
+  Smile,
+  PartyPopper as Party,
 } from "lucide-react-native";
 import { useTheme } from "../contexts/ThemeContext";
 
@@ -229,7 +238,24 @@ const NAME_TO_COMPONENT = {
   fleet: Car,
   car: Car,
   wall: LayoutGrid,
+  mail: Mail,
+  alert: AlertTriangle,
+  errorCircle: XCircle,
+  clipboard: ClipboardList,
+  info: Info,
+  frown: Frown,
+  meh: Meh,
+  smile: Smile,
+  party: Party,
 };
+
+// Lookup lowercases the requested name, but several semantic keys are
+// camelCase (successCircle, checkAll, …) — register lowercase aliases so
+// every documented name resolves instead of silently falling back to Circle.
+for (const k of Object.keys(NAME_TO_COMPONENT)) {
+  const lower = k.toLowerCase();
+  if (!(lower in NAME_TO_COMPONENT)) NAME_TO_COMPONENT[lower] = NAME_TO_COMPONENT[k];
+}
 
 /**
  * @param {string} name - semantic name (NAME_TO_COMPONENT) or, with `type`,

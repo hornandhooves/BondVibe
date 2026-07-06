@@ -41,9 +41,9 @@ export const makeUserAdmin = async (userId) => {
 
     await createNotification(userId, {
       type: "role_change",
-      title: "You are now an Admin! 👑",
+      title: "You are now an Admin!",
       message: "You have been promoted to administrator. Welcome to the team!",
-      icon: "👑",
+      icon: "pro",
     });
 
     console.log("✅ User upgraded to admin:", userId);
@@ -73,10 +73,10 @@ export const makeUserHost = async (userId) => {
 
     await createNotification(userId, {
       type: "role_change",
-      title: "You are now a Host! 🎪",
+      title: "You are now a Host!",
       message:
         "You can now create and manage events. Start building your community!",
-      icon: "🎪",
+      icon: "tent",
     });
 
     console.log("✅ User upgraded to host:", userId);
@@ -108,7 +108,7 @@ export const removeAdminRole = async (userId) => {
       title: "Role Updated",
       message:
         "Your admin privileges have been removed. You are now a regular user.",
-      icon: "👤",
+      icon: "user",
     });
 
     console.log("✅ Admin role removed:", userId);
@@ -164,7 +164,7 @@ export const removeHostRole = async (userId, adminMessage = "") => {
       type: "role_change",
       title: "Host Role Removed",
       message: `Your host privileges have been removed. ${eventsSnapshot.size} event(s) have been cancelled. ${adminMessage}`,
-      icon: "⚠️",
+      icon: "alert",
     });
 
     console.log("✅ Host role removed and events cancelled:", userId);
@@ -224,7 +224,7 @@ export const suspendUser = async (userId, reason = "", suspendedByAdminId) => {
       type: "suspension",
       title: "Account Suspended",
       message: `Your account has been suspended. Reason: ${reason}`,
-      icon: "🚫",
+      icon: "block",
     });
 
     console.log("✅ User suspended:", userId);
@@ -256,7 +256,7 @@ export const unsuspendUser = async (userId) => {
       type: "unsuspension",
       title: "Account Reactivated",
       message: "Your account has been reactivated. Welcome back!",
-      icon: "✅",
+      icon: "successCircle",
     });
 
     console.log("✅ User unsuspended:", userId);

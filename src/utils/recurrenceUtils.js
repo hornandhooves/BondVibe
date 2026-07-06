@@ -250,8 +250,8 @@ export function getRecurrenceSummary(config) {
       return `${weekLabels[weekOfMonth]} ${DAYS[selectedDays[0]]} of each month`;
     }
     case "lunar": {
-      if (lunarPhase === "full") return "🌕 Every Full Moon";
-      if (lunarPhase === "new") return "🌑 Every New Moon";
+      if (lunarPhase === "full") return "Every Full Moon";
+      if (lunarPhase === "new") return "Every New Moon";
       return "Select moon phase";
     }
     default:

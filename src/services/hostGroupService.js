@@ -171,12 +171,12 @@ export const sendEventInvite = async (groupId, event) => {
   await addDoc(collection(db, "hostGroups", groupId, "messages"), {
     senderId: uid,
     type: "event_invite",
-    text: `🎟️ Invitation: ${event.title || "an event"}`,
+    text: `Invitation: ${event.title || "an event"}`,
     data: { eventId: event.id, eventTitle: event.title || "" },
     createdAt: new Date().toISOString(),
   });
   await updateDoc(doc(db, "hostGroups", groupId), {
-    lastMessage: `🎟️ Invited you to ${event.title || "an event"}`,
+    lastMessage: `Invited you to ${event.title || "an event"}`,
     lastMessageAt: serverTimestamp(),
   });
 };

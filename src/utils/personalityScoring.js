@@ -189,15 +189,15 @@ export const calculateGroupCompatibility = (userProfile, attendeeProfiles) => {
   // Generate recommendation
   let recommendation;
   if (averageCompatibility >= 80) {
-    recommendation = 'Excellent match! 🌟';
+    recommendation = 'Excellent match!';
   } else if (averageCompatibility >= 65) {
-    recommendation = 'Great fit! ✨';
+    recommendation = 'Great fit!';
   } else if (averageCompatibility >= 50) {
-    recommendation = 'Good potential 👍';
+    recommendation = 'Good potential';
   } else if (averageCompatibility >= 35) {
-    recommendation = 'Moderate match 🤔';
+    recommendation = 'Moderate match';
   } else {
-    recommendation = 'Diverse group 🌈';
+    recommendation = 'Diverse group';
   }
 
   return {

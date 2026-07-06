@@ -71,7 +71,7 @@ export default function MatchChatScreen({ route, navigation }) {
         }}
         ListEmptyComponent={
           <Text style={[styles.empty, { color: colors.textTertiary }]}>
-            Say hi 👋
+            Say hi
           </Text>
         }
       />

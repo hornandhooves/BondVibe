@@ -10,6 +10,7 @@ import {
   Keyboard,
 } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
+import Icon from "./Icon";
 
 export default function CancelEventModal({
   visible,
@@ -55,7 +56,7 @@ export default function CancelEventModal({
                   { backgroundColor: `${colors.error}20` },
                 ]}
               >
-                <Text style={styles.icon}>🚫</Text>
+                <Icon name="block" size={36} color={colors.error} />
               </View>
 
               {/* Title */}
@@ -176,9 +177,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 24,
-  },
-  icon: {
-    fontSize: 48,
   },
   title: {
     fontSize: 28,

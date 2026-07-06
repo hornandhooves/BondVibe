@@ -8,6 +8,7 @@ import {
   ScrollView,
   Platform,
 } from "react-native";
+import Icon from './Icon';
 import { useTheme } from "../contexts/ThemeContext";
 
 export default function LegalDocumentModal({
@@ -61,9 +62,7 @@ export default function LegalDocumentModal({
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={[styles.closeText, { color: colors.textSecondary }]}>
-                ✕
-              </Text>
+              <Icon name="close" size={22} color={colors.text} />
             </TouchableOpacity>
           </View>
 

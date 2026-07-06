@@ -119,7 +119,8 @@ export default function AnalyticsDetailScreen({ route, navigation }) {
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <View style={[styles.tip, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}33` }]}>
-            <Text style={[styles.tipText, { color: colors.text }]}>💡 {cfg.tip}</Text>
+            <Icon name="info" size={14} color={colors.primary} style={styles.tipIcon} />
+            <Text style={[styles.tipText, { color: colors.text }]}>{cfg.tip}</Text>
           </View>
           <Text style={[styles.count, { color: colors.textSecondary }]}>
             {rows.length} {rows.length === 1 ? "entry" : "entries"}
@@ -162,8 +163,16 @@ function createStyles(colors, isDark) {
     headerTitle: { fontSize: 18, fontWeight: "700" },
     loading: { flex: 1, justifyContent: "center", alignItems: "center" },
     content: { paddingHorizontal: 20, paddingBottom: 20 },
-    tip: { borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 16 },
-    tipText: { fontSize: 14, lineHeight: 20 },
+    tip: {
+      borderWidth: 1,
+      borderRadius: 14,
+      padding: 14,
+      marginBottom: 16,
+      flexDirection: "row",
+      gap: 8,
+    },
+    tipIcon: { marginTop: 3 },
+    tipText: { fontSize: 14, lineHeight: 20, flex: 1 },
     count: { fontSize: 12, fontWeight: "700", letterSpacing: 1, marginBottom: 10 },
     muted: { fontSize: 13 },
     row: {

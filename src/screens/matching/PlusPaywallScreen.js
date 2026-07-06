@@ -34,9 +34,10 @@ export default function PlusPaywallScreen({ route, navigation }) {
             "Priority in the grid",
             "Cancel anytime",
           ].map((p) => (
-            <Text key={p} style={[styles.perk, { color: colors.text }]}>
-              ✓ {p}
-            </Text>
+            <View key={p} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Icon name="check" size={14} color={colors.success} />
+              <Text style={[styles.perk, { color: colors.text }]}>{p}</Text>
+            </View>
           ))}
         </View>
       </View>

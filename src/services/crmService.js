@@ -109,15 +109,15 @@ export const getHostCRM = async (hostId = null) => {
 export const nudgeAttendee = (userId, hostName, kind) => {
   const templates = {
     reminder: {
-      title: "We'd love to see you! 👋",
+      title: "We'd love to see you!",
       message: `${hostName} has new events coming up. Hope to see you soon!`,
     },
     checkin: {
-      title: "How have you been? 💜",
+      title: "How have you been?",
       message: `${hostName} is checking in on you. Come back anytime!`,
     },
     renew: {
-      title: "Your membership is expiring ⏳",
+      title: "Your membership is expiring",
       message: `Renew with ${hostName} so you don't lose your credits.`,
     },
   };
@@ -126,7 +126,7 @@ export const nudgeAttendee = (userId, hostName, kind) => {
     type: "host_nudge",
     title: t.title,
     message: t.message,
-    icon: "💜",
+    icon: "heart",
   });
 };
 
@@ -144,9 +144,9 @@ export const sendAnnouncement = async (userIds, message) => {
     ids.map((uid) =>
       createNotification(uid, {
         type: "host_announcement",
-        title: "📣 Announcement",
+        title: "Announcement",
         message: text,
-        icon: "📣",
+        icon: "broadcast",
       })
     )
   );

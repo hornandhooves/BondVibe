@@ -3,21 +3,21 @@
 
 // Main category export - array of objects with full information
 export const EVENT_CATEGORIES = [
-  { id: "social", emoji: "🎉", label: "Social" },
-  { id: "sports", emoji: "⚽", label: "Sports" },
-  { id: "food", emoji: "🍕", label: "Food" },
-  { id: "arts", emoji: "🎨", label: "Arts" },
-  { id: "learning", emoji: "📚", label: "Learning" },
-  { id: "adventure", emoji: "🏔️", label: "Adventure" },
-  { id: "wellness", emoji: "🧘", label: "Wellness" },
-  { id: "music", emoji: "🎵", label: "Music" },
-  { id: "games", emoji: "🎮", label: "Games" },
-  { id: "outdoors", emoji: "🌲", label: "Outdoors" },
-  { id: "nightlife", emoji: "🍸", label: "Nightlife" },
-  { id: "networking", emoji: "💼", label: "Networking" },
-  { id: "pets", emoji: "🐕", label: "Pets" },
-  { id: "travel", emoji: "✈️", label: "Travel" },
-  { id: "kids", emoji: "🧸", label: "Kids events" },
+  { id: "social", label: "Social" },
+  { id: "sports", label: "Sports" },
+  { id: "food", label: "Food" },
+  { id: "arts", label: "Arts" },
+  { id: "learning", label: "Learning" },
+  { id: "adventure", label: "Adventure" },
+  { id: "wellness", label: "Wellness" },
+  { id: "music", label: "Music" },
+  { id: "games", label: "Games" },
+  { id: "outdoors", label: "Outdoors" },
+  { id: "nightlife", label: "Nightlife" },
+  { id: "networking", label: "Networking" },
+  { id: "pets", label: "Pets" },
+  { id: "travel", label: "Travel" },
+  { id: "kids", label: "Kids events" },
 ];
 
 // Simple string array for backwards compatibility
@@ -136,12 +136,6 @@ export const isValidCategory = (category) => {
 export const getCategoryById = (id) => {
   const lowerId = id?.toLowerCase();
   return EVENT_CATEGORIES.find((cat) => cat.id === lowerId || cat.label === id);
-};
-
-// Get category emoji by id or label
-export const getCategoryEmoji = (id) => {
-  const category = getCategoryById(id);
-  return category?.emoji || "🎉";
 };
 
 // Get category label by id

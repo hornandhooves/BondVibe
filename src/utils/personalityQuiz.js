@@ -286,11 +286,11 @@ export const PERSONALITY_QUESTIONS = [
 ];
 
 export const SCALE_OPTIONS = [
-  { value: 1, label: "Strongly Disagree", emoji: "😟" },
-  { value: 2, label: "Disagree", emoji: "🤔" },
-  { value: 3, label: "Neutral", emoji: "😐" },
-  { value: 4, label: "Agree", emoji: "🙂" },
-  { value: 5, label: "Strongly Agree", emoji: "😊" },
+  { value: 1, label: "Strongly Disagree", icon: "frown" },
+  { value: 2, label: "Disagree", icon: "frown" },
+  { value: 3, label: "Neutral", icon: "meh" },
+  { value: 4, label: "Agree", icon: "smile" },
+  { value: 5, label: "Strongly Agree", icon: "smile" },
 ];
 
 export const DIMENSION_INFO = {
@@ -298,7 +298,7 @@ export const DIMENSION_INFO = {
     title: "Openness to Experience",
     description:
       "Appreciation for art, emotion, adventure, unusual ideas, curiosity, and variety of experience.",
-    icon: "🎨",
+    icon: "art",
     lowTrait: "Practical",
     highTrait: "Creative",
   },
@@ -306,7 +306,7 @@ export const DIMENSION_INFO = {
     title: "Conscientiousness",
     description:
       "Tendency to be organized, dependable, and show self-discipline. Aim for achievement against measures or outside expectations.",
-    icon: "📋",
+    icon: "clipboard",
     lowTrait: "Spontaneous",
     highTrait: "Organized",
   },
@@ -314,7 +314,7 @@ export const DIMENSION_INFO = {
     title: "Extraversion",
     description:
       "Energy, positive emotions, assertiveness, sociability and the tendency to seek stimulation in the company of others.",
-    icon: "🎉",
+    icon: "party",
     lowTrait: "Reserved",
     highTrait: "Outgoing",
   },
@@ -322,7 +322,7 @@ export const DIMENSION_INFO = {
     title: "Agreeableness",
     description:
       "Tendency to be compassionate and cooperative rather than suspicious and antagonistic towards others.",
-    icon: "🤝",
+    icon: "users",
     lowTrait: "Competitive",
     highTrait: "Cooperative",
   },
@@ -330,7 +330,7 @@ export const DIMENSION_INFO = {
     title: "Emotional Stability",
     description:
       "Tendency to experience unpleasant emotions easily. Those who score high tend to be more emotionally reactive.",
-    icon: "😌",
+    icon: "heart",
     lowTrait: "Calm",
     highTrait: "Sensitive",
   },

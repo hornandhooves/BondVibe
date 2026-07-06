@@ -597,7 +597,8 @@ const AppNavigator = forwardRef((props, ref) => {
         onClose={handleVerificationModalClose}
         title="Verify Your Email"
         message="Please verify your email address before logging in. Check your inbox (and spam folder) and click the verification link we sent you."
-        emoji="📧"
+        icon="mail"
+        tone="brand"
       />
 
       <SuccessModal
@@ -605,7 +606,8 @@ const AppNavigator = forwardRef((props, ref) => {
         onClose={handleUserNotFoundModalClose}
         title="Account Issue"
         message="Your account was created but user data is missing. This sometimes happens if signup was interrupted. Please try signing up again or contact support."
-        emoji="⚠️"
+        icon="alert"
+        tone="warning"
       />
     </ModeProvider>
   );

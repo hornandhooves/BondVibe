@@ -126,7 +126,7 @@ export default function ReportScreen({ route, navigation }) {
         </View>
 
         <View style={styles.safetyNote}>
-          <Text style={styles.safetyIcon}>🛡️</Text>
+          <Icon name="privacy" size={22} color={colors.primary} />
           <Text style={styles.safetyText}>
             Your report is anonymous. We take all reports seriously and will investigate promptly.
           </Text>

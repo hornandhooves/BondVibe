@@ -104,7 +104,9 @@ export default function LegalScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.icon}>📋</Text>
+          <View style={styles.heroIconTile}>
+            <Icon name="clipboard" size={36} color={colors.primary} />
+          </View>
           <Text style={[styles.title, { color: colors.text }]}>
             Legal Stuff
           </Text>
@@ -142,7 +144,9 @@ export default function LegalScreen({ navigation }) {
                   },
                 ]}
               >
-                {termsAccepted && <Text style={styles.checkmark}>✓</Text>}
+                {termsAccepted && (
+                  <Icon name="check" size={16} color={colors.onPrimary} />
+                )}
               </View>
             </View>
             <View style={styles.agreementText}>
@@ -202,7 +206,9 @@ export default function LegalScreen({ navigation }) {
                   },
                 ]}
               >
-                {privacyAccepted && <Text style={styles.checkmark}>✓</Text>}
+                {privacyAccepted && (
+                  <Icon name="check" size={16} color={colors.onPrimary} />
+                )}
               </View>
             </View>
             <View style={styles.agreementText}>
@@ -305,7 +311,15 @@ function createStyles(colors) {
     scrollView: { flex: 1 },
     content: { padding: 24, paddingTop: 20 },
     header: { alignItems: "center", marginBottom: 48 },
-    icon: { fontSize: 72, marginBottom: 16 },
+    heroIconTile: {
+      width: 72,
+      height: 72,
+      borderRadius: 20,
+      backgroundColor: colors.brandSoft,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 16,
+    },
     title: {
       fontSize: 32,
       fontWeight: "700",
@@ -329,7 +343,6 @@ function createStyles(colors) {
       alignItems: "center",
       justifyContent: "center",
     },
-    checkmark: { color: "#FFF", fontSize: 16, fontWeight: "700" },
     agreementText: { flex: 1 },
     agreementTitle: { fontSize: 18, fontWeight: "700", marginBottom: 4 },
     agreementSubtitle: { fontSize: 14, marginBottom: 8 },

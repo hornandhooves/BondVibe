@@ -49,7 +49,7 @@ describe("BondVibeProScreen — subscription CTA", () => {
   it("premium: shows the 'You're Pro' hero and hides the CTA", () => {
     usePremium.mockReturnValue({ isPremium: true, loading: false });
     const { getByText, queryByText } = render(<BondVibeProScreen navigation={nav} />);
-    expect(getByText("You're Pro ✓")).toBeTruthy();
+    expect(getByText("You're Pro")).toBeTruthy();
     expect(queryByText("Go Pro · $199 MXN / mo")).toBeNull();
   });
 });

@@ -15,6 +15,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
+import { AvatarDisplay } from "../components/AvatarPicker";
 import { getAttendeeIds } from "../utils/eventHelpers";
 import {
   getEventReservations,
@@ -49,14 +50,13 @@ export default function EventCheckInScreen({ route, navigation }) {
       const built = await Promise.all(
         attendeeIds.map(async (uid) => {
           let name = "Member";
-          let avatar = "🙂";
+          let avatar = null;
           try {
             const u = await getDoc(doc(db, "users", uid));
             if (u.exists()) {
               const d = u.data();
               name = d.fullName || d.name || "Member";
-              if (typeof d.avatar === "string") avatar = d.avatar;
-              else if (typeof d.emoji === "string") avatar = d.emoji;
+              if (d.avatar) avatar = d.avatar;
             }
           } catch (e) {
             // ignore individual load failure
@@ -94,7 +94,7 @@ export default function EventCheckInScreen({ route, navigation }) {
     const redeemed = res?.status === "redeemed";
     return (
       <View key={row.uid} style={styles.row}>
-        <Text style={styles.avatar}>{row.avatar}</Text>
+        <AvatarDisplay avatar={row.avatar} size={36} name={row.name} />
         <View style={{ flex: 1 }}>
           <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
             {row.name}
@@ -205,7 +205,6 @@ function createStyles(colors, isDark) {
       padding: 14,
       marginBottom: 10,
     },
-    avatar: { fontSize: 26 },
     name: { fontSize: 15, fontWeight: "700" },
     metaRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 },
     meta: { fontSize: 12, fontWeight: "500" },

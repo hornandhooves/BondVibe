@@ -2,7 +2,7 @@
  * Tests for ratingService.js
  * 
  * These tests cover the core business logic of the rating system:
- * - formatRatingStars utility function
+ * - utility function
  * - Rating calculations
  * - Data validation
  * 
@@ -55,41 +55,6 @@ describe('ratingService', () => {
     jest.clearAllMocks();
   });
 
-  describe('formatRatingStars', () => {
-    it('should return 5 empty stars for rating 0', () => {
-      expect(formatRatingStars(0)).toBe('☆☆☆☆☆');
-    });
-
-    it('should return 1 full star and 4 empty for rating 1', () => {
-      expect(formatRatingStars(1)).toBe('★☆☆☆☆');
-    });
-
-    it('should return 3 full stars and 2 empty for rating 3', () => {
-      expect(formatRatingStars(3)).toBe('★★★☆☆');
-    });
-
-    it('should return 5 full stars for rating 5', () => {
-      expect(formatRatingStars(5)).toBe('★★★★★');
-    });
-
-    it('should handle half stars for 4.5', () => {
-      expect(formatRatingStars(4.5)).toBe('★★★★½');
-    });
-
-    it('should handle half stars for 2.5', () => {
-      expect(formatRatingStars(2.5)).toBe('★★½☆☆');
-    });
-
-    it('should handle 3.7 (rounds down, no half star)', () => {
-      // 3.7 % 1 = 0.7 >= 0.5, so hasHalfStar = true
-      expect(formatRatingStars(3.7)).toBe('★★★½☆');
-    });
-
-    it('should handle 3.2 (no half star)', () => {
-      // 3.2 % 1 = 0.2 < 0.5, so hasHalfStar = false
-      expect(formatRatingStars(3.2)).toBe('★★★☆☆');
-    });
-  });
 
   describe('getUserRatingForEvent', () => {
     it('should return null when no user is logged in', async () => {

@@ -87,7 +87,9 @@ export default function PersonalityResultsScreen({ route, navigation }) {
             },
           ]}
         >
-          <Text style={styles.successEmoji}>🎉</Text>
+          <View style={styles.successIconTile}>
+            <Icon name="successCircle" size={36} color={colors.primary} />
+          </View>
           <Text style={[styles.successTitle, { color: colors.text }]}>
             Profile Complete!
           </Text>
@@ -117,7 +119,12 @@ export default function PersonalityResultsScreen({ route, navigation }) {
               return (
                 <View key={dim.key} style={styles.dimensionRow}>
                   <View style={styles.dimensionInfo}>
-                    <Text style={styles.dimensionIcon}>{info.icon}</Text>
+                    <Icon
+                      name={info.icon}
+                      size={24}
+                      color={colors.primary}
+                      style={styles.dimensionIcon}
+                    />
                     <View style={styles.dimensionLabels}>
                       <Text style={[styles.dimensionName, { color: colors.text }]}>
                         {info.title.split(' ')[0]}
@@ -173,7 +180,12 @@ export default function PersonalityResultsScreen({ route, navigation }) {
                 ]}
               >
                 <View style={styles.insightHeader}>
-                  <Text style={styles.insightIcon}>{info.icon}</Text>
+                  <Icon
+                    name={info.icon}
+                    size={24}
+                    color={colors.primary}
+                    style={styles.insightIcon}
+                  />
                   <Text style={[styles.insightTitle, { color: colors.text }]}>
                     {info.title}
                   </Text>
@@ -195,13 +207,13 @@ export default function PersonalityResultsScreen({ route, navigation }) {
           style={[styles.actionButton, { backgroundColor: colors.primary }]}
           onPress={() => navigation.navigate('SearchEvents')}
         >
-          <Text style={styles.actionButtonText}>Find Compatible Events 🎯</Text>
+          <Text style={styles.actionButtonText}>Find Compatible Events</Text>
         </TouchableOpacity>
 
         {/* Info Footer */}
         <View style={styles.infoFooter}>
           <Text style={[styles.infoText, { color: colors.textTertiary }]}>
-            💡 Your personality profile is private and only used for matching. You
+            Your personality profile is private and only used for matching. You
             can retake the quiz anytime from your profile settings.
           </Text>
         </View>
@@ -250,8 +262,13 @@ function createStyles(colors) {
       alignItems: 'center',
       marginBottom: 24,
     },
-    successEmoji: {
-      fontSize: 48,
+    successIconTile: {
+      width: 72,
+      height: 72,
+      borderRadius: 20,
+      backgroundColor: colors.brandSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
       marginBottom: 12,
     },
     successTitle: {
@@ -289,7 +306,6 @@ function createStyles(colors) {
       marginBottom: 8,
     },
     dimensionIcon: {
-      fontSize: 24,
       marginRight: 12,
     },
     dimensionLabels: {
@@ -346,7 +362,6 @@ function createStyles(colors) {
       marginBottom: 8,
     },
     insightIcon: {
-      fontSize: 24,
       marginRight: 12,
     },
     insightTitle: {

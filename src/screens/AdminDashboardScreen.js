@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Icon from "../components/Icon";
+import { AvatarDisplay } from "../components/AvatarPicker";
 import {
   View,
   Text,
@@ -298,9 +299,9 @@ export default function AdminDashboardScreen({ navigation }) {
 
       await createNotification(currentRequest.userId, {
         type: "host_approved",
-        title: "Congratulations! 🎉",
+        title: "Congratulations!",
         message: `Your host request has been approved! Admin says: "${message}"`,
-        icon: "🎪",
+        icon: "tent",
       });
 
       console.log("✅ Host request approved");
@@ -337,7 +338,7 @@ export default function AdminDashboardScreen({ navigation }) {
         type: "host_rejected",
         title: "Host Request Update",
         message: `Your host request was reviewed. Admin says: "${message}"`,
-        icon: "📝",
+        icon: "clipboard",
       });
 
       console.log("✅ Host request rejected");
@@ -555,19 +556,12 @@ export default function AdminDashboardScreen({ navigation }) {
       >
         {/* User Header */}
         <View style={styles.userHeader}>
-          <View
-            style={[
-              styles.userAvatar,
-              {
-                backgroundColor: `${colors.primary}26`,
-                borderColor: `${colors.primary}4D`,
-              },
-            ]}
-          >
-            <Text style={styles.avatarText}>
-              {user.emoji || (typeof user.avatar === "string" ? user.avatar : "👤")}
-            </Text>
-          </View>
+          <AvatarDisplay
+            avatar={user.avatar}
+            size={48}
+            name={getUserDisplayName(user)}
+            style={{ marginRight: 12 }}
+          />
           <View style={styles.userInfo}>
             {/* ✅ FIX: Use getUserDisplayName */}
             <Text style={[styles.userName, { color: colors.text }]}>
@@ -598,7 +592,7 @@ export default function AdminDashboardScreen({ navigation }) {
         {user.suspended && (
           <View style={styles.suspendedBanner}>
             <Text style={styles.suspendedText}>
-              🚫 SUSPENDED{" "}
+              SUSPENDED{" "}
               {user.suspensionReason ? `• ${user.suspensionReason}` : ""}
             </Text>
           </View>
@@ -942,9 +936,13 @@ export default function AdminDashboardScreen({ navigation }) {
               },
             ]}
           >
-            <Text style={styles.statIcon}>
-              {activeTab === "requests" ? "⏳" : "👥"}
-            </Text>
+            <View style={styles.statIcon}>
+              <Icon
+                name={activeTab === "requests" ? "clock" : "users"}
+                size={28}
+                color={colors.primary}
+              />
+            </View>
             <Text style={[styles.statValue, { color: colors.text }]}>
               {activeTab === "requests" ? stats.pending : stats.regular}
             </Text>
@@ -962,9 +960,13 @@ export default function AdminDashboardScreen({ navigation }) {
               },
             ]}
           >
-            <Text style={styles.statIcon}>
-              {activeTab === "requests" ? "🎉" : "👑"}
-            </Text>
+            <View style={styles.statIcon}>
+              <Icon
+                name={activeTab === "requests" ? "party" : "pro"}
+                size={28}
+                color={colors.primary}
+              />
+            </View>
             <Text style={[styles.statValue, { color: colors.text }]}>
               {activeTab === "requests" ? stats.events : stats.admins}
             </Text>
@@ -982,9 +984,13 @@ export default function AdminDashboardScreen({ navigation }) {
               },
             ]}
           >
-            <Text style={styles.statIcon}>
-              {activeTab === "requests" ? "👥" : "🎪"}
-            </Text>
+            <View style={styles.statIcon}>
+              <Icon
+                name={activeTab === "requests" ? "users" : "tent"}
+                size={28}
+                color={colors.primary}
+              />
+            </View>
             <Text style={[styles.statValue, { color: colors.text }]}>
               {activeTab === "requests" ? stats.regular : stats.hosts}
             </Text>
@@ -1004,7 +1010,9 @@ export default function AdminDashboardScreen({ navigation }) {
 
             {pendingRequests.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyEmoji}>✅</Text>
+                <View style={styles.emptyArt}>
+                  <Icon name="successCircle" size={36} color={colors.primary} />
+                </View>
                 <Text
                   style={[styles.emptyText, { color: colors.textSecondary }]}
                 >
@@ -1024,17 +1032,12 @@ export default function AdminDashboardScreen({ navigation }) {
                     ]}
                   >
                     <View style={styles.requestHeader}>
-                      <View
-                        style={[
-                          styles.userAvatar,
-                          {
-                            backgroundColor: `${colors.primary}26`,
-                            borderColor: `${colors.primary}4D`,
-                          },
-                        ]}
-                      >
-                        <Text style={styles.avatarText}>👤</Text>
-                      </View>
+                      <AvatarDisplay
+                        avatar={null}
+                        size={48}
+                        name={request.userName}
+                        style={{ marginRight: 12 }}
+                      />
                       <View style={styles.requestInfo}>
                         <Text
                           style={[styles.requestName, { color: colors.text }]}
@@ -1146,7 +1149,7 @@ export default function AdminDashboardScreen({ navigation }) {
                           <Text style={styles.approveText}>
                             {hostRequestsProcessing === request.id
                               ? "Processing..."
-                              : "✓ Approve"}
+                              : "Approve"}
                           </Text>
                         </View>
                       </TouchableOpacity>
@@ -1163,7 +1166,7 @@ export default function AdminDashboardScreen({ navigation }) {
           <View style={styles.section}>
             {crashes.length === 0 ? (
               <Text style={{ color: colors.textSecondary, textAlign: "center", marginTop: 24 }}>
-                No crashes reported 🎉
+                No crashes reported
               </Text>
             ) : (
               crashes.map((c) => (
@@ -1207,7 +1210,12 @@ export default function AdminDashboardScreen({ navigation }) {
                 },
               ]}
             >
-              <Text style={styles.searchIcon}>🔍</Text>
+              <Icon
+                name="search"
+                size={18}
+                color={colors.textTertiary}
+                style={styles.searchIcon}
+              />
               <TextInput
                 style={[styles.searchInput, { color: colors.text }]}
                 placeholder="Search users..."
@@ -1268,7 +1276,9 @@ export default function AdminDashboardScreen({ navigation }) {
               </View>
             ) : filteredUsers.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyEmoji}>👥</Text>
+                <View style={styles.emptyArt}>
+                  <Icon name="users" size={36} color={colors.primary} />
+                </View>
                 <Text
                   style={[styles.emptyText, { color: colors.textSecondary }]}
                 >
@@ -1497,7 +1507,7 @@ function createStyles(colors) {
       padding: 16,
       alignItems: "center",
     },
-    statIcon: { fontSize: 32, marginBottom: 8 },
+    statIcon: { marginBottom: 8 },
     statValue: { fontSize: 28, fontWeight: "700", marginBottom: 4 },
     statLabel: {
       fontSize: 12,
@@ -1528,7 +1538,7 @@ function createStyles(colors) {
       paddingVertical: 14,
       marginBottom: 16,
     },
-    searchIcon: { fontSize: 20, marginRight: 10 },
+    searchIcon: { marginRight: 10 },
     searchInput: { flex: 1, fontSize: 15 },
     roleFilters: {
       flexDirection: "row",
@@ -1556,16 +1566,6 @@ function createStyles(colors) {
       alignItems: "center",
       marginBottom: 16,
     },
-    userAvatar: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      borderWidth: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      marginRight: 12,
-    },
-    avatarText: { fontSize: 24 },
     requestInfo: { flex: 1 },
     requestName: { fontSize: 16, fontWeight: "700", marginBottom: 4 },
     requestDate: { fontSize: 12 },
@@ -1640,7 +1640,15 @@ function createStyles(colors) {
       fontWeight: "600",
     },
     emptyState: { alignItems: "center", paddingVertical: 40 },
-    emptyEmoji: { fontSize: 64, marginBottom: 12 },
+    emptyArt: {
+      width: 72,
+      height: 72,
+      borderRadius: 20,
+      backgroundColor: colors.brandSoft,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 12,
+    },
     emptyText: { fontSize: 14 },
     // Pricing form
     feeHint: { fontSize: 13, lineHeight: 19, marginBottom: 20 },

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import Icon from "../components/Icon";
+import StarRow from "../components/StarRow";
 import {
   View,
   Text,
@@ -56,7 +57,7 @@ export default function RatingDetailScreen({ route, navigation }) {
       setText(r.reply);
     } else if (isPremiumRequired(r)) {
       Alert.alert(
-        "Pro feature ✨",
+        "Pro feature",
         "AI replies are part of Kinlo Pro.",
         [
           { text: "Not now", style: "cancel" },
@@ -111,9 +112,9 @@ export default function RatingDetailScreen({ route, navigation }) {
       if (recipient) {
         await createNotification(recipient, {
           type: "rating_reply",
-          title: "New message about your review 💬",
+          title: "New message about your review",
           message: body.length > 80 ? `${body.slice(0, 80)}…` : body,
-          icon: "💬",
+          icon: "chat",
           metadata: { ratingId },
         });
       }
@@ -177,16 +178,7 @@ export default function RatingDetailScreen({ route, navigation }) {
                 <Text style={[styles.userName, { color: colors.text }]}>
                   {rating.userName || "Attendee"}
                 </Text>
-                <View style={{ flexDirection: "row", marginTop: 4 }}>
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <Icon name="star"
-                      key={s}
-                      size={16}
-                      color={s <= rating.rating ? "#FFD700" : colors.border}
-                      fill={s <= rating.rating ? "#FFD700" : "transparent"}
-                    />
-                  ))}
-                </View>
+                <StarRow rating={rating.rating} size={16} style={{ marginTop: 4 }} />
               </View>
             </View>
             {!!rating.eventTitle && (

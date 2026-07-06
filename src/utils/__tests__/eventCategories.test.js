@@ -6,19 +6,17 @@ import {
   normalizeCategory,
   isValidCategory,
   getCategoryById,
-  getCategoryEmoji,
   getCategoryLabel,
   getCategoryId,
 } from "../eventCategories";
 
 describe("eventCategories", () => {
   describe("EVENT_CATEGORIES", () => {
-    it("is a non-empty list of {id, emoji, label} objects", () => {
+    it("is a non-empty list of {id, label} objects", () => {
       expect(Array.isArray(EVENT_CATEGORIES)).toBe(true);
       expect(EVENT_CATEGORIES.length).toBeGreaterThan(0);
       EVENT_CATEGORIES.forEach((cat) => {
         expect(typeof cat.id).toBe("string");
-        expect(typeof cat.emoji).toBe("string");
         expect(typeof cat.label).toBe("string");
         expect(cat.id).toBe(cat.id.toLowerCase());
       });
@@ -95,11 +93,6 @@ describe("eventCategories", () => {
       expect(getCategoryById("social")?.label).toBe("Social");
       expect(getCategoryById("Social")?.id).toBe("social");
       expect(getCategoryById("nope")).toBeUndefined();
-    });
-
-    it("getCategoryEmoji returns the emoji, with a default fallback", () => {
-      expect(getCategoryEmoji("food")).toBe("🍕");
-      expect(getCategoryEmoji("does-not-exist")).toBe("🎉");
     });
 
     it("getCategoryLabel and getCategoryId round-trip", () => {

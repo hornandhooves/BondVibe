@@ -10,6 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
+import Icon from "./Icon";
 
 /**
  * AdminConfirmModal - Confirmation dialog for dangerous admin actions
@@ -58,7 +59,7 @@ export default function AdminConfirmModal({
     switch (actionType) {
       case "remove_host":
         return {
-          title: "⚠️ Remove Host Role",
+          title: "Remove Host Role",
           description: `Remove host privileges from ${userName}?`,
           warning: "This will CANCEL all their active events!",
           confirmText: "I understand this will cancel all their events",
@@ -69,7 +70,7 @@ export default function AdminConfirmModal({
         };
       case "remove_admin":
         return {
-          title: "⚠️ Remove Admin Role",
+          title: "Remove Admin Role",
           description: `Demote ${userName} to regular user?`,
           warning: "They will lose all admin privileges.",
           confirmText: "I understand they will lose admin access",
@@ -79,7 +80,7 @@ export default function AdminConfirmModal({
         };
       case "suspend":
         return {
-          title: "🚫 Suspend User",
+          title: "Suspend User",
           description: `Suspend ${userName}'s account?`,
           warning: "This will CANCEL all their events and block their access!",
           confirmText: "I understand this will cancel all their events",
@@ -90,7 +91,7 @@ export default function AdminConfirmModal({
         };
       case "unsuspend":
         return {
-          title: "✅ Unsuspend User",
+          title: "Unsuspend User",
           description: `Reactivate ${userName}'s account?`,
           warning: "They will regain access to the platform.",
           confirmText: "I confirm unsuspending this user",
@@ -100,7 +101,7 @@ export default function AdminConfirmModal({
         };
       default:
         return {
-          title: "⚠️ Confirm Action",
+          title: "Confirm Action",
           description: "Are you sure?",
           warning: "This action cannot be undone.",
           confirmText: "I understand",
@@ -179,7 +180,10 @@ export default function AdminConfirmModal({
                 },
               ]}
             >
-              <Text style={styles.warningText}>⚠️ {config.warning}</Text>
+              <Text style={styles.warningText}>
+                <Icon name="alert" size={14} color={colors.warning} />{" "}
+                {config.warning}
+              </Text>
             </View>
 
             {/* Reason input (if required) */}
@@ -217,7 +221,9 @@ export default function AdminConfirmModal({
                   },
                 ]}
               >
-                {confirmed && <Text style={styles.checkmark}>✓</Text>}
+                {confirmed && (
+                  <Icon name="check" size={14} color={colors.onPrimary} />
+                )}
               </View>
               <Text style={[styles.checkboxText, { color: colors.text }]}>
                 {config.confirmText}
@@ -367,11 +373,6 @@ function createStyles(colors) {
       justifyContent: "center",
       alignItems: "center",
       marginTop: 2,
-    },
-    checkmark: {
-      color: "#FFFFFF",
-      fontSize: 16,
-      fontWeight: "700",
     },
     checkboxText: {
       flex: 1,

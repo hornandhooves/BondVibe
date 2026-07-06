@@ -28,7 +28,7 @@ export default function CheckInScannerScreen({ route, navigation }) {
     const r = await checkInFromScan(eventId, data);
     setResult(
       r.success
-        ? { ok: true, msg: r.already ? `${r.name} already checked in` : `✓ ${r.name} checked in` }
+        ? { ok: true, msg: r.already ? `${r.name} already checked in` : `${r.name} checked in` }
         : { ok: false, msg: r.error }
     );
     setTimeout(() => {

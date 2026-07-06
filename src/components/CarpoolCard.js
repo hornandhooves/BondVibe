@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { doc, getDoc } from "firebase/firestore";
+import Icon from "./Icon";
 import { useTheme } from "../contexts/ThemeContext";
 import { auth, db } from "../services/firebase";
 import {
@@ -59,7 +60,10 @@ export default function CarpoolCard({ eventId, carpoolId, currentUserName }) {
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
-        <Text style={styles.badge}>🚗 CAR POOL{closed ? " · FULL" : ""}</Text>
+        <View style={styles.badgeRow}>
+          <Icon name="car" size={11} color={colors.primary} />
+          <Text style={styles.badge}>CAR POOL{closed ? " · FULL" : ""}</Text>
+        </View>
         {isDriver && carpool.status !== "closed" && (
           <TouchableOpacity onPress={() => closeCarpool(eventId, carpoolId)}>
             <Text style={[styles.close, { color: colors.primary }]}>Close</Text>
@@ -72,12 +76,19 @@ export default function CarpoolCard({ eventId, carpoolId, currentUserName }) {
       </Text>
       {driverSeatsShared > 0 && (
         <Text style={[styles.loyalty, { color: colors.primary }]}>
-          🚗 Has helped {driverSeatsShared} {driverSeatsShared === 1 ? "person" : "people"} get to events
+          Has helped {driverSeatsShared} {driverSeatsShared === 1 ? "person" : "people"} get to events
         </Text>
       )}
       <Text style={[styles.detail, { color: colors.textSecondary }]}>
-        📍 From {carpool.from}
-        {carpool.departureTime ? ` · 🕘 ${carpool.departureTime}` : ""}
+        <Icon name="location" size={12} color={colors.textSecondary} /> From{" "}
+        {carpool.from}
+        {carpool.departureTime ? (
+          <>
+            {" · "}
+            <Icon name="clock" size={12} color={colors.textSecondary} />{" "}
+            {carpool.departureTime}
+          </>
+        ) : null}
       </Text>
       {!!carpool.notes && (
         <Text style={[styles.notes, { color: colors.textTertiary }]}>{carpool.notes}</Text>
@@ -115,7 +126,8 @@ export default function CarpoolCard({ eventId, carpoolId, currentUserName }) {
       {/* Approved riders */}
       {approved.length > 0 && (
         <Text style={[styles.riders, { color: colors.textSecondary }]}>
-          🟢 {approved.map((r) => r.name).join(", ")}
+          <Icon name="successCircle" size={12} color={colors.success} />{" "}
+          {approved.map((r) => r.name).join(", ")}
         </Text>
       )}
 
@@ -142,7 +154,7 @@ export default function CarpoolCard({ eventId, carpoolId, currentUserName }) {
           )}
           {mine?.status === "approved" && (
             <Text style={[styles.confirmed, { color: "#34C759" }]}>
-              ✓ You're in! See you there.
+              You're in! See you there.
             </Text>
           )}
           {mine?.status === "declined" && (
@@ -167,6 +179,7 @@ function createStyles(colors, isDark) {
       width: 270,
     },
     headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
+    badgeRow: { flexDirection: "row", alignItems: "center", gap: 4 },
     badge: { fontSize: 11, fontWeight: "800", color: colors.primary, letterSpacing: 0.5 },
     close: { fontSize: 13, fontWeight: "700" },
     driver: { fontSize: 15, fontWeight: "700", marginBottom: 4 },

@@ -50,7 +50,7 @@ export const notifyHostApproved = async (userId) => {
   await sendNotification({
     userId,
     type: NotificationTypes.HOST_APPROVED,
-    title: '🎉 You\'re now a Verified Host!',
+    title: 'You\'re now a Verified Host!',
     body: 'Your host request has been approved. You can now create and manage events!',
   });
 };
@@ -74,7 +74,7 @@ export const notifyEventReminder = async (userId, eventId, eventTitle) => {
   await sendNotification({
     userId,
     type: NotificationTypes.EVENT_REMINDER,
-    title: '⏰ Event Tomorrow!',
+    title: 'Event Tomorrow!',
     body: `Don't forget: "${eventTitle}" is happening tomorrow!`,
     relatedEventId: eventId,
   });
@@ -87,7 +87,7 @@ export const notifyUserJoinedEvent = async (hostId, eventId, userName, eventTitl
   await sendNotification({
     userId: hostId,
     type: NotificationTypes.USER_JOINED_YOUR_EVENT,
-    title: '👥 New Attendee!',
+    title: 'New Attendee!',
     body: `${userName} just joined your event "${eventTitle}"`,
     relatedEventId: eventId,
   });
@@ -102,7 +102,7 @@ export const notifyNewMessage = async (attendeeIds, eventId, senderName, eventTi
     sendNotification({
       userId,
       type: NotificationTypes.NEW_MESSAGE,
-      title: '💬 New Message',
+      title: 'New Message',
       body: `${senderName} sent a message in "${eventTitle}"`,
       relatedEventId: eventId,
     })
@@ -118,7 +118,7 @@ export const notifyEventCancelled = async (userId, eventId, eventTitle) => {
   await sendNotification({
     userId,
     type: NotificationTypes.EVENT_CANCELLED,
-    title: '🚫 Event Cancelled',
+    title: 'Event Cancelled',
     body: `"${eventTitle}" has been cancelled by the host.`,
     relatedEventId: eventId,
   });
@@ -131,7 +131,7 @@ export const notifyEventUpdated = async (userId, eventId, eventTitle) => {
   await sendNotification({
     userId,
     type: NotificationTypes.EVENT_UPDATED,
-    title: '✏️ Event Updated',
+    title: 'Event Updated',
     body: `"${eventTitle}" has been updated. Check the new details!`,
     relatedEventId: eventId,
   });

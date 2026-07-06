@@ -93,7 +93,14 @@ export default function RatingModal({ visible, onClose, onSuccess, event }) {
             >
               {/* Header */}
               <View style={styles.header}>
-                <Text style={styles.headerEmoji}>⭐</Text>
+                <View
+                  style={[
+                    styles.headerIconTile,
+                    { backgroundColor: colors.brandSoft },
+                  ]}
+                >
+                  <Icon name="star" size={36} color={colors.primary} />
+                </View>
                 <Text style={[styles.title, { color: colors.text }]}>
                   Rate this Event
                 </Text>
@@ -266,8 +273,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 24,
   },
-  headerEmoji: {
-    fontSize: 48,
+  headerIconTile: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 12,
   },
   title: {

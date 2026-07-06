@@ -68,7 +68,7 @@ export default function BondVibeProScreen({ navigation }) {
         <View style={[styles.hero, { borderColor: `${colors.primary}55`, backgroundColor: `${colors.primary}12` }]}>
           <Icon name="pro" size={40} color={colors.primary} />
           <Text style={[styles.heroTitle, { color: colors.text }]}>
-            {isPremium ? "You're Pro ✓" : "Take your events to the next level"}
+            {isPremium ? "You're Pro" : "Take your events to the next level"}
           </Text>
           <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
             {isPremium

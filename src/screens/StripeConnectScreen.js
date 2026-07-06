@@ -198,9 +198,11 @@ export default function StripeConnectScreen({ navigation }) {
               },
             ]}
           >
-            <Text style={styles.statusEmoji}>
-              {isActive ? "✅" : isPending ? "⏳" : "🔗"}
-            </Text>
+            <Icon
+              name={isActive ? "successCircle" : isPending ? "clock" : "payment"}
+              size={40}
+              color={isActive ? colors.success : isPending ? colors.warning : colors.primary}
+            />
             <Text style={[styles.statusTitle, { color: colors.text }]}>
               {isActive
                 ? "Account Active"
@@ -224,7 +226,7 @@ export default function StripeConnectScreen({ navigation }) {
                 ]}
               >
                 <Text style={styles.featureBadgeText}>
-                  ✓ Paid Events Enabled
+                  Paid Events Enabled
                 </Text>
               </View>
             )}
@@ -242,13 +244,11 @@ export default function StripeConnectScreen({ navigation }) {
               },
             ]}
           >
-            <Text style={styles.hostTypeEmoji}>
-              {hostConfig?.type === "paid"
-                ? "💰"
-                : hostConfig?.type === "free"
-                ? "🆓"
-                : "✨"}
-            </Text>
+            <Icon
+              name={hostConfig?.type === "paid" ? "dollar" : hostConfig?.type === "free" ? "calendar" : "pro"}
+              size={28}
+              color={colors.primary}
+            />
             <Text style={[styles.hostTypeTitle, { color: colors.text }]}>
               Current:{" "}
               {hostConfig?.type === "paid"
@@ -282,7 +282,7 @@ export default function StripeConnectScreen({ navigation }) {
               ]}
             >
               <Text style={[styles.detailsTitle, { color: colors.warning }]}>
-                ⚠️ Payouts not active yet
+                Payouts not active yet
               </Text>
               <Text
                 style={[styles.statusText, { color: colors.textSecondary, textAlign: "left", marginBottom: 12 }]}
@@ -403,7 +403,7 @@ export default function StripeConnectScreen({ navigation }) {
               },
             ]}
           >
-            <Text style={styles.infoEmoji}>💰</Text>
+            <Icon name="dollar" size={28} color={colors.primary} />
             <Text style={[styles.infoTitle, { color: colors.text }]}>
               How Payments Work
             </Text>
@@ -486,14 +486,14 @@ export default function StripeConnectScreen({ navigation }) {
             ]}
           >
             <Text style={[styles.refreshText, { color: colors.text }]}>
-              🔄 Refresh Status
+              Refresh Status
             </Text>
           </View>
         </TouchableOpacity>
 
         <View style={styles.noteSection}>
           <Text style={[styles.noteText, { color: colors.textTertiary }]}>
-            💡 Stripe verification typically takes 1-2 business days. You'll be
+            Stripe verification typically takes 1-2 business days. You'll be
             notified when your account is ready.
           </Text>
         </View>

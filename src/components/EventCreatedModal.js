@@ -8,6 +8,7 @@ import {
   Animated,
 } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
+import Icon from "./Icon";
 
 export default function EventCreatedModal({
   visible,
@@ -40,10 +41,14 @@ export default function EventCreatedModal({
           <View
             style={[
               styles.iconContainer,
-              { backgroundColor: `${colors.primary}22` },
+              { backgroundColor: colors.brandSoft },
             ]}
           >
-            <Text style={styles.icon}>{isRecurring ? "🔄" : "🎉"}</Text>
+            <Icon
+              name={isRecurring ? "repeat" : "successCircle"}
+              size={36}
+              color={colors.primary}
+            />
           </View>
 
           {/* Title */}
@@ -127,9 +132,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
-  },
-  icon: {
-    fontSize: 40,
   },
   title: {
     fontSize: 24,

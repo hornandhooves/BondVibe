@@ -17,6 +17,7 @@ import { auth, db } from "../services/firebase";
 import { resolveAvatarForSave } from "../services/storageService";
 import { useTheme } from "../contexts/ThemeContext";
 import AvatarPicker, { AvatarDisplay } from "../components/AvatarPicker";
+import Icon from "../components/Icon";
 import SelectDropdown from "../components/SelectDropdown";
 import PhoneInput from "../components/PhoneInput";
 import { LOCATIONS } from "../utils/locations";
@@ -31,7 +32,7 @@ export default function ProfileSetupScreen() {
 
   const [form, setForm] = useState({
     fullName: "",
-    avatar: { type: "emoji", value: "😊" },
+    avatar: null,
     location: "",
     phone: "",
   });
@@ -80,9 +81,9 @@ export default function ProfileSetupScreen() {
       // Create welcome notification
       await createNotification(auth.currentUser.uid, {
         type: "welcome",
-        title: "Welcome to Kinlo! 🎉",
-        message: "Hey! We're so hyped you're here. This app was built with tons of love for people like you who want real connections, not just likes. Go explore some events, meet awesome humans, and let's make some memories! You got this 💪✨",
-        icon: "🎉",
+        title: "Welcome to Kinlo!",
+        message: "Hey! We're so hyped you're here. This app was built with tons of love for people like you who want real connections, not just likes. Go explore some events, meet awesome humans, and let's make some memories! You got this",
+        icon: "party",
       });
 
       console.log("✅ Profile setup completed!");
@@ -139,7 +140,7 @@ export default function ProfileSetupScreen() {
               },
             ]}
           >
-            <AvatarDisplay avatar={form.avatar} size={80} />
+            <AvatarDisplay avatar={form.avatar} size={80} name={form.fullName} />
           </View>
           <Text style={[styles.avatarText, { color: colors.primary }]}>
             Tap to change avatar
@@ -185,6 +186,7 @@ export default function ProfileSetupScreen() {
                 })
               }
               options={CITY_OPTIONS}
+              type="location"
               placeholder="Select your city"
             />
           </View>
@@ -223,7 +225,9 @@ export default function ProfileSetupScreen() {
                   },
                 ]}
               >
-                {isOver18 && <Text style={styles.checkmark}>✓</Text>}
+                {isOver18 && (
+                  <Icon name="check" size={14} color={colors.onPrimary} />
+                )}
               </View>
             </View>
             <View style={styles.checkboxTextContainer}>
@@ -251,7 +255,9 @@ export default function ProfileSetupScreen() {
               },
             ]}
           >
-            <Text style={styles.infoNoteIcon}>💡</Text>
+            <View style={styles.infoNoteIcon}>
+              <Icon name="info" size={18} color={colors.primary} />
+            </View>
             <Text
               style={[styles.infoNoteText, { color: colors.textSecondary }]}
             >
@@ -346,7 +352,6 @@ function createStyles(colors) {
       alignItems: "center",
       justifyContent: "center",
     },
-    checkmark: { color: "#FFF", fontSize: 14, fontWeight: "700" },
     checkboxTextContainer: { flex: 1 },
     checkboxTitle: { fontSize: 15, fontWeight: "600", marginBottom: 4 },
     checkboxSubtitle: { fontSize: 13 },
@@ -357,7 +362,7 @@ function createStyles(colors) {
       flexDirection: "row",
       alignItems: "flex-start",
     },
-    infoNoteIcon: { fontSize: 20, marginRight: 12 },
+    infoNoteIcon: { marginRight: 12, marginTop: 1 },
     infoNoteText: { flex: 1, fontSize: 13, lineHeight: 20 },
     continueButton: { borderRadius: 16, overflow: "hidden", marginBottom: 16 },
     continueGlass: { paddingVertical: 18, alignItems: "center" },

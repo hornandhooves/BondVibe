@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from "@react-navigation/native";
+import Icon from "../components/Icon";
 import { useTheme } from "../contexts/ThemeContext";
 import { useMode } from "../contexts/ModeContext";
 import useUserRole from "../hooks/useUserRole";
@@ -91,7 +92,7 @@ export default function RentalHubScreen({ route, navigation }) {
       <StatusBar style={isDark ? "light" : "dark"} />
       {/* Tab root — AppHeader is provided by the tab navigator. */}
       <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Get around 🛴</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Get around</Text>
         <TouchableOpacity onPress={() => navigation.navigate("MyRentals")}>
           <Text style={[styles.link, { color: colors.primary }]}>My rentals</Text>
         </TouchableOpacity>
@@ -184,7 +185,9 @@ export default function RentalHubScreen({ route, navigation }) {
         <ScrollView contentContainerStyle={styles.content}>
           {vehicles.length === 0 ? (
             <View style={styles.empty}>
-              <Text style={styles.emptyEmoji}>🛵</Text>
+              <View style={styles.emptyArt}>
+                <Icon name="bike" size={32} color={colors.primary} />
+              </View>
               <Text style={[styles.emptyTitle, { color: colors.text }]}>No vehicles yet</Text>
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                 No rides available here right now. Check back soon.
@@ -406,7 +409,15 @@ function createStyles(colors, isDark) {
     price: { fontSize: 15, fontWeight: "800" },
     priceUnit: { fontSize: 11, marginTop: 2 },
     empty: { alignItems: "center", paddingTop: 80, paddingHorizontal: 30 },
-    emptyEmoji: { fontSize: 52, marginBottom: 16 },
+    emptyArt: {
+      width: 64,
+      height: 64,
+      borderRadius: 18,
+      backgroundColor: colors.brandSoft,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 16,
+    },
     emptyTitle: { fontSize: 18, fontWeight: "800", marginBottom: 8 },
     emptyText: { fontSize: 14, textAlign: "center", lineHeight: 20 },
   });

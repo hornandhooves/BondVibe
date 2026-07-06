@@ -2,8 +2,11 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Colors from '../constants/Colors';
 import Sizes from '../constants/Sizes';
+import Icon from './Icon';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function EventCard({ event, onPress }) {
+  const { colors } = useTheme();
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     const options = { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
@@ -42,17 +45,32 @@ export default function EventCard({ event, onPress }) {
       {/* Details */}
       <View style={styles.details}>
         <View style={styles.detailRow}>
-          <Text style={styles.detailIcon}>📅</Text>
+          <Icon
+            name="calendar"
+            size={13}
+            color={colors.textSecondary}
+            style={styles.detailIcon}
+          />
           <Text style={styles.detailText}>{formatDate(event.date)}</Text>
         </View>
 
         <View style={styles.detailRow}>
-          <Text style={styles.detailIcon}>📍</Text>
+          <Icon
+            name="location"
+            size={13}
+            color={colors.textSecondary}
+            style={styles.detailIcon}
+          />
           <Text style={styles.detailText}>{event.location}</Text>
         </View>
 
         <View style={styles.detailRow}>
-          <Text style={styles.detailIcon}>⏱️</Text>
+          <Icon
+            name="clock"
+            size={13}
+            color={colors.textSecondary}
+            style={styles.detailIcon}
+          />
           <Text style={styles.detailText}>{event.duration}</Text>
         </View>
       </View>
@@ -154,7 +172,6 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   detailIcon: {
-    fontSize: 14,
     marginRight: 8,
   },
   detailText: {
@@ -183,7 +200,7 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 4,
-    backgroundColor: colors.border,
+    backgroundColor: Colors.border,
     borderRadius: 2,
     overflow: 'hidden',
     width: 100,

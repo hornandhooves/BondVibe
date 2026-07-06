@@ -250,7 +250,12 @@ export default function LoginScreen({ navigation }) {
                   },
                 ]}
               >
-                <Text style={styles.inputIcon}>📧</Text>
+                <Icon
+                  name="mail"
+                  size={18}
+                  color={colors.textTertiary}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   testID="login-email"
                   style={[styles.input, { color: colors.text }]}
@@ -273,7 +278,12 @@ export default function LoginScreen({ navigation }) {
                   },
                 ]}
               >
-                <Text style={styles.inputIcon}>🔒</Text>
+                <Icon
+                  name="lock"
+                  size={18}
+                  color={colors.textTertiary}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   testID="login-password"
                   style={[styles.input, { color: colors.text }]}
@@ -407,7 +417,9 @@ export default function LoginScreen({ navigation }) {
                   { backgroundColor: colors.surface },
                 ]}
               >
-                <Text style={styles.modalEmoji}>❌</Text>
+                <View style={styles.modalIconTile}>
+                  <Icon name="errorCircle" size={36} color={colors.error} />
+                </View>
                 <Text style={[styles.modalTitle, { color: colors.text }]}>
                   {errorModal.title}
                 </Text>
@@ -490,7 +502,8 @@ export default function LoginScreen({ navigation }) {
             onClose={handleSimpleModalClose}
             title={errorModal.title}
             message={errorModal.message}
-            emoji="❌"
+            icon="errorCircle"
+            tone="error"
           />
         )}
       </GradientBackground>
@@ -527,7 +540,7 @@ function createStyles(colors) {
       paddingHorizontal: 16,
       marginBottom: 16,
     },
-    inputIcon: { fontSize: 20, marginRight: 12 },
+    inputIcon: { marginRight: 12 },
     eyeButton: { padding: 8, marginLeft: 4 },
     input: { flex: 1, fontSize: 16, paddingVertical: 16 },
     loginButton: { borderRadius: 16, overflow: "hidden", marginBottom: 20 },
@@ -566,7 +579,15 @@ function createStyles(colors) {
       shadowRadius: 30,
       elevation: 20,
     },
-    modalEmoji: { fontSize: 72, marginBottom: 20 },
+    modalIconTile: {
+      width: 72,
+      height: 72,
+      borderRadius: 20,
+      backgroundColor: colors.brandSoft,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 20,
+    },
     modalTitle: {
       fontSize: 24,
       fontWeight: "700",

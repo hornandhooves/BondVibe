@@ -19,6 +19,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { StatusBar } from "expo-status-bar";
 import * as Location from "expo-location";
 import PollCard from "../components/PollCard";
+import { AvatarDisplay } from "../components/AvatarPicker";
 import { createPoll } from "../services/pollService";
 import { detectProhibitedContent, PROHIBITED_MESSAGE } from "../utils/contentGuard";
 import { reportProhibitedContent } from "../services/reportService";
@@ -26,7 +27,7 @@ import CarpoolCard from "../components/CarpoolCard";
 import KeyboardAccessory from "../components/KeyboardAccessory";
 import { createCarpool } from "../services/carpoolService";
 import { useTheme } from "../contexts/ThemeContext";
-import { auth } from "../services/firebase";
+import { auth , db } from "../services/firebase";
 import {
   sendMessage,
   sendLocationMessage,
@@ -38,7 +39,6 @@ import {
   markMessagesAsDelivered,
 } from "../utils/messageService";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "../services/firebase";
 import {
   getEventCreatorId,
   getAttendeeIds,
@@ -444,7 +444,7 @@ export default function EventChatScreen({ route, navigation }) {
 
     if (otherIds.length === 0) {
       // Solo chat — sent tick only
-      return { icon: "✓", color: colors.textTertiary };
+      return { icon: "check", color: colors.textTertiary };
     }
 
     // New per-user map format
@@ -453,34 +453,24 @@ export default function EventChatScreen({ route, navigation }) {
       const deliveredTo = message.deliveredTo || {};
 
       const allRead = otherIds.every((uid) => readBy[uid]);
-      if (allRead) return { icon: "✓✓", color: colors.primary }; // blue — all read
+      if (allRead) return { icon: "checkAll", color: colors.primary }; // blue — all read
 
       const anyDelivered = otherIds.some((uid) => deliveredTo[uid] || readBy[uid]);
-      if (anyDelivered) return { icon: "✓✓", color: colors.textTertiary }; // grey double — delivered to some
+      if (anyDelivered) return { icon: "checkAll", color: colors.textTertiary }; // grey double — delivered to some
 
-      return { icon: "✓", color: colors.textTertiary }; // grey single — sent
+      return { icon: "check", color: colors.textTertiary }; // grey single — sent
     }
 
     // Legacy boolean format fallback (old messages)
-    if (message.read) return { icon: "✓✓", color: colors.primary };
-    if (message.delivered) return { icon: "✓✓", color: colors.textTertiary };
-    return { icon: "✓", color: colors.textTertiary };
+    if (message.read) return { icon: "checkAll", color: colors.primary };
+    if (message.delivered) return { icon: "checkAll", color: colors.textTertiary };
+    return { icon: "check", color: colors.textTertiary };
   };
 
   // ✅ HELPER: Get user display name (handles both fullName and name fields)
   const getUserDisplayName = (user) => {
     if (!user) return "User";
     return user.fullName || user.name || "User";
-  };
-
-  // ✅ HELPER: Extract emoji string from avatar (stored as {type, value} object)
-  const getAvatarEmoji = (user) => {
-    if (!user) return "😊";
-    const avatar = user.avatar;
-    if (!avatar) return user.emoji || "😊";
-    if (typeof avatar === "string") return avatar;
-    if (avatar.type === "emoji") return avatar.value || "😊";
-    return "😊"; // photo avatars — fall back to default in chat bubbles
   };
 
   const styles = createStyles(colors);
@@ -556,19 +546,12 @@ export default function EventChatScreen({ route, navigation }) {
         >
           {!isMe && (
             <View style={styles.senderInfo}>
-              <View
-                style={[
-                  styles.senderAvatar,
-                  {
-                    backgroundColor: `${colors.primary}26`,
-                    borderColor: `${colors.primary}4D`,
-                  },
-                ]}
-              >
-                <Text style={styles.senderEmoji}>
-                  {getAvatarEmoji(user)}
-                </Text>
-              </View>
+              <AvatarDisplay
+                avatar={user?.avatar}
+                size={24}
+                name={getUserDisplayName(user)}
+                style={styles.senderAvatarSpacing}
+              />
               <Text
                 style={[styles.senderName, { color: colors.textSecondary }]}
               >
@@ -590,7 +573,12 @@ export default function EventChatScreen({ route, navigation }) {
               openInMaps(message.location.latitude, message.location.longitude)
             }
           >
-            <Text style={styles.locationIcon}>📍</Text>
+            <Icon
+              name="location"
+              size={14}
+              color={colors.primary}
+              style={styles.locationIcon}
+            />
             <Text style={[styles.locationText, { color: colors.text }]}>
               {message.location.address}
             </Text>
@@ -604,9 +592,7 @@ export default function EventChatScreen({ route, navigation }) {
                 {time}
               </Text>
               {status && (
-                <Text style={[styles.statusIcon, { color: status.color }]}>
-                  {status.icon}
-                </Text>
+                <Icon name={status.icon} size={12} color={status.color} />
               )}
             </View>
           </TouchableOpacity>
@@ -623,19 +609,12 @@ export default function EventChatScreen({ route, navigation }) {
       >
         {!isMe && (
           <View style={styles.senderInfo}>
-            <View
-              style={[
-                styles.senderAvatar,
-                {
-                  backgroundColor: `${colors.primary}26`,
-                  borderColor: `${colors.primary}4D`,
-                },
-              ]}
-            >
-              <Text style={styles.senderEmoji}>
-                {getAvatarEmoji(user)}
-              </Text>
-            </View>
+            <AvatarDisplay
+              avatar={user?.avatar}
+              size={24}
+              name={getUserDisplayName(user)}
+              style={styles.senderAvatarSpacing}
+            />
             <Text style={[styles.senderName, { color: colors.textSecondary }]}>
               {getUserDisplayName(user)}
             </Text>
@@ -660,9 +639,7 @@ export default function EventChatScreen({ route, navigation }) {
               {time}
             </Text>
             {status && (
-              <Text style={[styles.statusIcon, { color: status.color }]}>
-                {status.icon}
-              </Text>
+              <Icon name={status.icon} size={12} color={status.color} />
             )}
           </View>
         </View>
@@ -766,7 +743,9 @@ export default function EventChatScreen({ route, navigation }) {
       >
         {messages.length === 0 ? (
           <View style={styles.emptyChat}>
-            <Text style={styles.emptyChatEmoji}>👋</Text>
+            <View style={styles.emptyChatArt}>
+              <Icon name="chat" size={32} color={colors.primary} />
+            </View>
             <Text
               style={[styles.emptyChatText, { color: colors.textSecondary }]}
             >
@@ -808,14 +787,16 @@ export default function EventChatScreen({ route, navigation }) {
             onPress={handleShareLocation}
             disabled={sendingLocation}
           >
-            <Text style={styles.locationButtonIcon}>
-              {sendingLocation ? "⏳" : "📍"}
-            </Text>
+            {sendingLocation ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Icon name="location" size={20} color={colors.textSecondary} />
+            )}
           </TouchableOpacity>
 
           {isHost && (
             <TouchableOpacity style={styles.locationButton} onPress={openPollModal}>
-              <Text style={styles.locationButtonIcon}>📊</Text>
+              <Icon name="chart" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
 
@@ -823,7 +804,7 @@ export default function EventChatScreen({ route, navigation }) {
             style={styles.locationButton}
             onPress={() => setCarpoolModalVisible(true)}
           >
-            <Text style={styles.locationButtonIcon}>🚗</Text>
+            <Icon name="car" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
 
           <TextInput
@@ -854,7 +835,11 @@ export default function EventChatScreen({ route, navigation }) {
                 },
               ]}
             >
-              <Text style={styles.sendIcon}>{sending ? "⏳" : "↑"}</Text>
+              {sending ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Text style={styles.sendIcon}>↑</Text>
+              )}
             </View>
           </TouchableOpacity>
         </View>
@@ -928,7 +913,7 @@ export default function EventChatScreen({ route, navigation }) {
         <View style={styles.pollModalOverlay}>
           <View style={[styles.pollModalCard, { backgroundColor: colors.background }]}>
             <Text style={[styles.pollModalTitle, { color: colors.text }]}>
-              Offer a ride 🚗
+              Offer a ride
             </Text>
             <TextInput
               style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
@@ -1033,22 +1018,21 @@ function createStyles(colors) {
     messagesContainer: { flex: 1 },
     messagesContent: { paddingHorizontal: 24, paddingVertical: 20 },
     emptyChat: { alignItems: "center", marginTop: 100 },
-    emptyChatEmoji: { fontSize: 56, marginBottom: 12 },
+    emptyChatArt: {
+      width: 72,
+      height: 72,
+      borderRadius: 20,
+      backgroundColor: colors.brandSoft,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 12,
+    },
     emptyChatText: { fontSize: 14 },
     messageBubble: { marginBottom: 16, maxWidth: "80%" },
     myMessage: { alignSelf: "flex-end" },
     theirMessage: { alignSelf: "flex-start" },
     senderInfo: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
-    senderAvatar: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      borderWidth: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      marginRight: 8,
-    },
-    senderEmoji: { fontSize: 14 },
+    senderAvatarSpacing: { marginRight: 8 },
     senderName: { fontSize: 12, fontWeight: "600" },
     bubbleGlass: {
       borderWidth: 1,
@@ -1064,8 +1048,7 @@ function createStyles(colors) {
       gap: 4,
     },
     timeStamp: { fontSize: 11 },
-    statusIcon: { fontSize: 12 },
-    locationIcon: { fontSize: 32, marginBottom: 8, textAlign: "center" },
+    locationIcon: { alignSelf: "center", marginBottom: 8 },
     locationText: { fontSize: 14, fontWeight: "600", marginBottom: 4 },
     locationSubtext: { fontSize: 11, marginBottom: 8 },
     typingContainer: {
@@ -1086,7 +1069,6 @@ function createStyles(colors) {
       paddingVertical: 8,
     },
     locationButton: { padding: 4, marginRight: 4 },
-    locationButtonIcon: { fontSize: 20 },
     pollModalOverlay: {
       flex: 1,
       justifyContent: "flex-end",

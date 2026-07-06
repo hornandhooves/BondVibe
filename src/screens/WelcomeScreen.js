@@ -8,6 +8,9 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '../contexts/ThemeContext';
 import GradientBackground from "../components/GradientBackground";
+import BondVibeLogo from "../components/BondVibeLogo";
+import BondMark from "../components/BondMark";
+import Icon from "../components/Icon";
 
 export default function WelcomeScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -22,7 +25,9 @@ export default function WelcomeScreen({ navigation }) {
       <View style={styles.content}>
         {/* Logo/Hero */}
         <View style={styles.heroSection}>
-          <Text style={styles.heroEmoji}>🎉</Text>
+          <View style={styles.heroLogo}>
+            <BondVibeLogo size={96} variant="withBackground" />
+          </View>
           <Text style={[styles.appName, { color: colors.text }]}>Kinlo</Text>
           <Text style={[styles.tagline, { color: colors.textSecondary }]}>
             Connect through shared experiences
@@ -32,19 +37,25 @@ export default function WelcomeScreen({ navigation }) {
         {/* Features */}
         <View style={styles.featuresSection}>
           <View style={styles.feature}>
-            <Text style={styles.featureIcon}>👥</Text>
+            <View style={styles.featureIconTile}>
+              <Icon name="users" size={22} color={colors.primary} />
+            </View>
             <Text style={[styles.featureText, { color: colors.text }]}>
               Group Events
             </Text>
           </View>
           <View style={styles.feature}>
-            <Text style={styles.featureIcon}>✨</Text>
+            <View style={styles.featureIconTile}>
+              <BondMark size={22} />
+            </View>
             <Text style={[styles.featureText, { color: colors.text }]}>
               Personality Matching
             </Text>
           </View>
           <View style={styles.feature}>
-            <Text style={styles.featureIcon}>🔒</Text>
+            <View style={styles.featureIconTile}>
+              <Icon name="privacy" size={22} color={colors.primary} />
+            </View>
             <Text style={[styles.featureText, { color: colors.text }]}>
               Safe & Inclusive
             </Text>
@@ -100,8 +111,7 @@ function createStyles(colors) {
       alignItems: 'center',
       marginBottom: 60,
     },
-    heroEmoji: {
-      fontSize: 80,
+    heroLogo: {
       marginBottom: 24,
     },
     appName: {
@@ -123,8 +133,13 @@ function createStyles(colors) {
       alignItems: 'center',
       gap: 16,
     },
-    featureIcon: {
-      fontSize: 32,
+    featureIconTile: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: colors.brandSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     featureText: {
       fontSize: 16,

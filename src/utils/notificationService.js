@@ -25,7 +25,7 @@ export const createNotification = async (userId, notification) => {
       type: notification.type,
       title: notification.title,
       message: notification.message,
-      icon: notification.icon || "🔔",
+      icon: notification.icon || "bell",
       read: false,
       metadata: notification.metadata || {},
       createdAt: new Date().toISOString(),
@@ -68,7 +68,7 @@ export const getUserNotifications = async (userId) => {
         type: String(data.type || ""),
         title: String(data.title || "Notification"),
         message: String(data.message || ""),
-        icon: String(data.icon || "🔔"),
+        icon: String(data.icon || "bell"),
         read: Boolean(data.read),
         createdAt: createdAtValue,
         readAt: data.readAt ? String(data.readAt) : undefined,
@@ -147,7 +147,7 @@ export const notifyEventJoin = async (
     type: "event_joined",
     title: "New attendee!",
     message: `${joinerName} joined your "${eventTitle}" event`,
-    icon: "👋",
+    icon: "users",
     metadata: { eventTitle, eventId },
   });
 };
@@ -168,7 +168,7 @@ export const notifyEventReminder = async (
     type: "event_reminder",
     title: "Event Tomorrow",
     message: `Don't forget: "${eventTitle}" starts at ${eventTime}`,
-    icon: "⏰",
+    icon: "clock",
     metadata: { eventTitle, eventTime, eventId },
   });
 };

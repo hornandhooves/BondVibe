@@ -63,7 +63,7 @@ export default function HowToAttendScreen({ route, navigation }) {
     setWorking(false);
     if (r.success) {
       Alert.alert(
-        "Spot reserved! 🎟️",
+        "Spot reserved!",
         "You're booked with your membership. The host will check you in at the event.",
         [{ text: "Done", onPress: () => navigation.goBack() }]
       );
@@ -89,7 +89,7 @@ export default function HowToAttendScreen({ route, navigation }) {
         Alert.alert("Couldn't join", r.error);
         return;
       }
-      Alert.alert("Joined! 🎉", "You're going to this event.", [
+      Alert.alert("Joined!", "You're going to this event.", [
         { text: "Done", onPress: () => navigation.goBack() },
       ]);
     } catch (e) {

@@ -125,7 +125,7 @@ export default function ActiveRentalScreen({ route, navigation }) {
         )}
         {rental.status === "completed" && (
           <Text style={[styles.tip, { color: colors.textSecondary }]}>
-            Returned. Thanks for riding with us! 🎉
+            Returned. Thanks for riding with us!
           </Text>
         )}
       </ScrollView>

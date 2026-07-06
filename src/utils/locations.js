@@ -3,10 +3,10 @@
 
 // Main locations export - array of objects with full information
 export const LOCATIONS = [
-  { id: "all", label: "All Locations", emoji: "🌎" },
-  { id: "tulum", label: "Tulum", emoji: "🏝️" },
-  { id: "playa-del-carmen", label: "Playa del Carmen", emoji: "🏖️" },
-  { id: "cancun", label: "Cancún", emoji: "🌴" },
+  { id: "all", label: "All Locations" },
+  { id: "tulum", label: "Tulum" },
+  { id: "playa-del-carmen", label: "Playa del Carmen" },
+  { id: "cancun", label: "Cancún" },
 ];
 
 // Simple string array for backwards compatibility
@@ -66,12 +66,6 @@ export const getLocationById = (id) => {
   return LOCATIONS.find(
     (loc) => loc.id === lowerId || loc.label.toLowerCase() === lowerId,
   );
-};
-
-// Get location emoji by id or label
-export const getLocationEmoji = (id) => {
-  const location = getLocationById(id);
-  return location?.emoji || "📍";
 };
 
 // Get location label by id

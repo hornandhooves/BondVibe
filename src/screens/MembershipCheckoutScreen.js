@@ -75,7 +75,7 @@ export default function MembershipCheckoutScreen({ route, navigation }) {
       await new Promise((r) => setTimeout(r, 2000));
 
       Alert.alert(
-        "Membership active! 🎉",
+        "Membership active!",
         `You purchased "${plan.name}".`,
         [
           {

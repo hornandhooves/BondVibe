@@ -657,16 +657,17 @@ export default function EditEventScreen({ route, navigation }) {
                 { backgroundColor: `${colors.primary}22` },
               ]}
             >
+              <Icon name="repeat" size={12} color={colors.primary} />
               <Text
                 style={[styles.recurringBadgeText, { color: colors.primary }]}
               >
-                🔄 Recurring
+                Recurring
               </Text>
             </View>
           )}
         </View>
         <TouchableOpacity onPress={handleDelete}>
-          <Text style={styles.deleteButton}>🗑️</Text>
+          <Icon name="delete" size={20} color={colors.error} />
         </TouchableOpacity>
       </View>
 
@@ -689,7 +690,7 @@ export default function EditEventScreen({ route, navigation }) {
             <Text
               style={[styles.recurringBannerText, { color: colors.primary }]}
             >
-              🔄 This is part of a recurring series ({futureEventsCount} future
+              This is part of a recurring series ({futureEventsCount} future
               events)
             </Text>
             <Text
@@ -879,7 +880,12 @@ export default function EditEventScreen({ route, navigation }) {
                   },
                 ]}
               >
-                <Text style={styles.dateTimeIcon}>📅</Text>
+                <Icon
+                  name="calendar"
+                  size={18}
+                  tone="muted"
+                  style={styles.dateTimeIcon}
+                />
                 <Text
                   style={[styles.dateTimeText, { color: colors.text }]}
                   numberOfLines={1}
@@ -909,7 +915,12 @@ export default function EditEventScreen({ route, navigation }) {
                   },
                 ]}
               >
-                <Text style={styles.dateTimeIcon}>🕐</Text>
+                <Icon
+                  name="clock"
+                  size={18}
+                  tone="muted"
+                  style={styles.dateTimeIcon}
+                />
                 <Text
                   style={[styles.dateTimeText, { color: colors.text }]}
                   numberOfLines={1}
@@ -932,7 +943,12 @@ export default function EditEventScreen({ route, navigation }) {
         <View style={styles.section}>
           <Text style={[styles.label, { color: colors.text }]}>Location *</Text>
           <View style={styles.inputWrapper}>
-            <Text style={styles.inputIcon}>📍</Text>
+            <Icon
+              name="location"
+              size={18}
+              tone="muted"
+              style={styles.inputIcon}
+            />
             <TextInput
               style={[
                 styles.input,
@@ -1075,7 +1091,7 @@ export default function EditEventScreen({ route, navigation }) {
             ]}
           >
             <Text style={styles.saveButtonText}>
-              {saving ? "Saving..." : "💾 Save Changes"}
+              {saving ? "Saving..." : "Save Changes"}
             </Text>
           </View>
         </TouchableOpacity>
@@ -1137,6 +1153,9 @@ function createStyles(colors) {
       letterSpacing: -0.3,
     },
     recurringBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
       paddingHorizontal: 10,
       paddingVertical: 4,
       borderRadius: 8,
@@ -1145,9 +1164,6 @@ function createStyles(colors) {
     recurringBadgeText: {
       fontSize: 12,
       fontWeight: "600",
-    },
-    deleteButton: {
-      fontSize: 22,
     },
     scrollView: {
       flex: 1,
@@ -1201,7 +1217,6 @@ function createStyles(colors) {
       paddingLeft: 0,
     },
     inputIcon: {
-      fontSize: 18,
       marginLeft: 16,
       marginRight: 8,
     },
@@ -1242,7 +1257,6 @@ function createStyles(colors) {
       borderRadius: 12,
     },
     dateTimeIcon: {
-      fontSize: 16,
       marginRight: 8,
     },
     dateTimeText: {

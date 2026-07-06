@@ -15,6 +15,12 @@ import GradientBackground from "../components/GradientBackground";
 import { auth, db } from "../services/firebase";
 import { getUserConversations } from "../utils/messageService";
 import { collection, query, where, getDocs } from "firebase/firestore";
+import { AvatarDisplay } from "../components/AvatarPicker";
+
+// Accept legacy string avatars and {type,value} objects; AvatarDisplay
+// renders a photo or a branded-initial fallback — never an emoji.
+const normAvatar = (a) =>
+  !a ? null : typeof a === "string" ? { type: "emoji", value: a } : a;
 
 export default function ConversationsScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -103,25 +109,12 @@ export default function ConversationsScreen({ navigation }) {
           },
         ]}
       >
-        <View
-          style={[
-            styles.avatar,
-            {
-              backgroundColor: `${colors.primary}26`,
-              borderColor: `${colors.primary}4D`,
-            },
-          ]}
-        >
-          <Text style={styles.avatarEmoji}>
-{(() => {
-              const a = conversation.otherUser?.avatar;
-              if (!a) return "😊";
-              if (typeof a === "string") return a;
-              if (a.type === "emoji") return a.value || "😊";
-              return "😊";
-            })()}
-          </Text>
-        </View>
+        <AvatarDisplay
+          avatar={normAvatar(conversation.otherUser?.avatar)}
+          size={52}
+          name={conversation.otherUser?.fullName}
+          style={styles.avatar}
+        />
 
         <View style={styles.conversationContent}>
           <View style={styles.conversationHeader}>
@@ -195,7 +188,9 @@ export default function ConversationsScreen({ navigation }) {
         </View>
       ) : conversations.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>💬</Text>
+          <View style={styles.emptyArt}>
+            <Icon name="chat" size={32} color={colors.primary} />
+          </View>
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
             No messages yet
           </Text>
@@ -263,16 +258,7 @@ function createStyles(colors) {
       flexDirection: "row",
       alignItems: "center",
     },
-    avatar: {
-      width: 52,
-      height: 52,
-      borderRadius: 26,
-      borderWidth: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      marginRight: 14,
-    },
-    avatarEmoji: { fontSize: 26 },
+    avatar: { marginRight: 14 },
     conversationContent: { flex: 1 },
     conversationHeader: {
       flexDirection: "row",
@@ -299,7 +285,15 @@ function createStyles(colors) {
       alignItems: "center",
       paddingHorizontal: 40,
     },
-    emptyEmoji: { fontSize: 64, marginBottom: 20 },
+    emptyArt: {
+      width: 64,
+      height: 64,
+      borderRadius: 18,
+      backgroundColor: colors.brandSoft,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 20,
+    },
     emptyTitle: {
       fontSize: 20,
       fontWeight: "700",
