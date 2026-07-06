@@ -1,5 +1,29 @@
 # Kinlo — Security Audit & Pentest (Round 1)
 
+> ## ✅ Remediation status (2026-07-06)
+> **All CRITICAL + HIGH findings fixed and live-verified against bondvibe-dev.**
+> | Finding | Status |
+> |---|---|
+> | C1 self-grant admin | **FIXED** — `role` owner-writable only to user/host; `role:'admin'` → 403 (verified) |
+> | C2 deleteUserAccount unauth | **FIXED** — ID-token required; no token → 401, other userId → 403 (verified) |
+> | H1 attendee IDOR | **FIXED** — self-remove-only; cross-user rewrite → 403 (verified) |
+> | H2 client-controlled price | **FIXED** — price read from event doc server-side (Stripe + MP) |
+> | H3 Stripe Connect unauth | **FIXED** — ID-token required; no token → 401 (verified) |
+> | H4/M4 storage world-write | **FIXED** — uploads namespaced by uploader uid + owner-only |
+> | H5 rating forgery | **FIXED** — hostId==creatorId + deterministic id (one/user/event) |
+> | H6 PII world-read | **FIXED** — email→Auth, phone→private subcollection; enumerating users exposes no PII (verified); 119 docs migrated |
+> | H7 payment endpoints unauth | **FIXED** — ID-token required; clients send Bearer |
+> | M1 event-create server fields | **FIXED** — averageRating/totalRatings/matching/featured* blocked |
+> | M3 match_intel leak | **FIXED** — re-checks caller check-in + target visibility |
+> | M5 Places key | **MITIGATED** — was already API-restricted to Places; recommend a billing quota + proxy |
+> | L4 SVG content-type | **FIXED** — whitelist png/jpeg/webp/heic |
+> | pushToken cross-write | **FIXED** — cross-user branch may only CLEAR (null), not hijack |
+> | INFO MP webhook signature | **MITIGATED** — handler independently re-fetches the payment from MP's API |
+>
+> **Still open (documented, lower risk):** M2 notification spoofing (needs server-side creation), L1 legacy `conversations` collection (delete the orphaned screen+collection), L3/L5 storage recap-gating/rate-cap. See "Anything else" below.
+
+
+
 **Target:** `bondvibe-dev` (Firebase project) · Expo/React Native client + Firestore + Storage + Cloud Functions
 **Date:** 2026-07-06 · **Scope:** dev only (never prod) · **Method:** static rule/function analysis (multi-agent, adversarially verified) + non-destructive live probing with a test account's ID token.
 **Threat model:** an attacker with a *valid Firebase account* (mints their own ID token, calls Firestore/Storage/Functions REST directly, bypassing the app UI). This is the realistic model — the app's rules & functions are the only real boundary.
@@ -71,3 +95,20 @@ Membership/payment/rental/promotion **writes** are server-only (rules deny clien
 
 ## E2E coverage (this session)
 Attendee core journey driven on the iOS simulator (Maestro): login → 5-tab shell renders → Home (search + Weekly-Digest banner, **no** Quick-Actions grid) → Wall (Smart Wall AI card + Ask Kinlo) → header Inbox (Ask Kinlo pinned + Event/Match chats + DMs) → Rentals tab → Profile (Settings, **no** "Host tools moved"). City dropdown verified on-device (Tulum/Playa/Cancún). Group-chat Spotify flow + Admin cities editor verified earlier this session. AI features (smart_wall, ask_kinlo, host_copilot, member_intel, ai_analytics, weekly_digest) verified live against the deployed `callClaude` with correct freemium gating.
+
+---
+
+## "Anything else we should fix?" — beyond the audit findings
+
+Fixed above closes every account-takeover / money / PII-exposure hole. Recommended follow-ups (defense-in-depth, not currently exploitable takeovers):
+
+1. **Move admin authority to a Firebase Auth custom claim** (`admin:true`) instead of the Firestore `role` field. `role` is now write-restricted so escalation is blocked, but a custom claim is the gold standard — rules read `request.auth.token.admin` and no Firestore field can ever grant admin. (`makeAdmin` would `admin.auth().setCustomUserClaims`.)
+2. **Enable Firebase App Check.** The entire "attacker calls the REST API directly, bypassing the app" threat model is mitigated at the edge if App Check binds API access to genuine, attested app instances. Rules + function auth remain the real boundary, but App Check raises the bar.
+3. **Move notification creation server-side (M2).** Today any authenticated user can write a notification to any user (in-app phishing). The clean fix is Cloud Function triggers (like `onFollowCreated` already does) — remove the client `create` path and set `notifications` create to `if false`.
+4. **Delete the legacy `conversations` collection + orphaned `ConversationsScreen`** (world-readable, unused — DMs use `dms`, which is correctly scoped).
+5. **Paid-host verification (residual).** `users/{uid}/stripeConnect` is owner-writable, so `chargesEnabled` is client-forgeable. The payment price is now server-authoritative (H2), so a buyer can't underpay; but a non-verified host could *create* a paid event. Real payout still requires genuine Stripe onboarding, so impact is low — for full correctness, verify paid-host capability via the Stripe API server-side rather than the client flag.
+6. **Places API key:** set a **daily billing quota** on the Places API (bounds cost if the key is extracted) and consider **proxying Places through a Cloud Function** so the key never ships in the bundle.
+7. **Storage rate/size caps (L5)** and **recap upload check-in gating (L3)** — low priority; the Firestore `recapPhotos` doc is check-in-gated even though the raw Storage object isn't.
+
+## Deploy state
+All fixes deployed to **bondvibe-dev** (Firestore rules, Storage rules, Cloud Functions). Places key restriction applied in Google Cloud. 119 user docs migrated (PII). Not deployed to prod (you manage releases).
