@@ -29,7 +29,8 @@ import {
   normalizeCategory,
   getCategoryLabel,
 } from "../utils/eventCategories";
-import { LOCATIONS, locationMatchesFilter } from "../utils/locations";
+import { locationMatchesFilter } from "../utils/locations";
+import useCities from "../hooks/useCities";
 import { EVENT_LANGUAGES } from "../utils/eventCategories";
 import { isEventPast } from "../utils/eventFilters";
 import { useFocusEffect } from "@react-navigation/native";
@@ -59,6 +60,7 @@ const mapEventDocs = (docs) =>
 
 export default function SearchEventsScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
+  const { cities: LOCATIONS } = useCities({ includeAll: true });
   const [searchQuery, setSearchQuery] = useState("");
   const [events, setEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);

@@ -37,7 +37,7 @@ import {
   EVENT_LANGUAGES,
   EVENT_DURATIONS,
 } from "../utils/eventCategories";
-import { LOCATIONS } from "../utils/locations";
+import useCities from "../hooks/useCities";
 import { uploadEventImages } from "../services/storageService";
 import { getHostMembershipPlans } from "../services/membershipService";
 import { checkAccountStatus } from "../services/stripeConnectService";
@@ -145,7 +145,7 @@ export default function CreateEventScreen({ navigation }) {
   const [checkingPlans, setCheckingPlans] = useState(false);
 
   // Filter out "all" from locations for create event
-  const cityOptions = LOCATIONS.filter((loc) => loc.id !== "all");
+  const { cities: cityOptions } = useCities();
 
   // Load the user profile — refreshed on every focus so returning from the
   // Stripe Connect screen picks up the latest hostConfig/canCreatePaidEvents.
@@ -238,7 +238,7 @@ export default function CreateEventScreen({ navigation }) {
 
   // Get city label from id
   const getCityLabel = (cityId) => {
-    const city = LOCATIONS.find((loc) => loc.id === cityId);
+    const city = cityOptions.find((loc) => loc.id === cityId);
     return city?.label || cityId;
   };
 

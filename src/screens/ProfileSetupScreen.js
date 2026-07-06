@@ -20,12 +20,12 @@ import AvatarPicker, { AvatarDisplay } from "../components/AvatarPicker";
 import Icon from "../components/Icon";
 import SelectDropdown from "../components/SelectDropdown";
 import PhoneInput from "../components/PhoneInput";
-import { LOCATIONS } from "../utils/locations";
+import useCities from "../hooks/useCities";
 
-const CITY_OPTIONS = LOCATIONS.filter((l) => l.id !== "all");
 
 export default function ProfileSetupScreen() {
   const { colors, isDark } = useTheme();
+  const { cities: CITY_OPTIONS } = useCities();
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isOver18, setIsOver18] = useState(false);

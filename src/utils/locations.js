@@ -49,7 +49,9 @@ export const normalizeLocation = (location) => {
     "cancún, quintana roo": "cancun",
   };
 
-  return locationMap[normalized] || null;
+  // Admin-added cities (config/cities) aren't in the static map — pass the
+  // slugified value through so identity matching still works for them.
+  return locationMap[normalized] || normalized.replace(/\s+/g, "-") || null;
 };
 
 // Helper to validate if a location is valid

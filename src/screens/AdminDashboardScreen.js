@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { StatusBar } from "expo-status-bar";
-import {
+import { setDoc,
   collection,
   query,
   where,
@@ -27,6 +27,8 @@ import {
 } from "firebase/firestore";
 import { db, auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
+import { slugifyCity } from "../hooks/useCities";
+import { LOCATIONS } from "../utils/locations";
 import GradientBackground from "../components/GradientBackground";
 import { createNotification } from "../utils/notificationService";
 import AdminMessageModal from "../components/AdminMessageModal";
@@ -86,6 +88,11 @@ export default function AdminDashboardScreen({ navigation }) {
   // Pricing config (admin-tunable fees). Percents shown as whole numbers (5 = 5%),
   // Stripe fixed fee shown in pesos.
   const [pricingForm, setPricingForm] = useState(null);
+  // Operating cities (config/cities) — the single source for every city
+  // dropdown in the app (events, profile, vehicles, search filters).
+  const [citiesList, setCitiesList] = useState(null);
+  const [newCityLabel, setNewCityLabel] = useState("");
+  const [citySaving, setCitySaving] = useState(false);
   const [pricingSaving, setPricingSaving] = useState(false);
 
   // Subscription pricing (Kinlo Pro + Kinlo Plus), edited as major-unit amounts.
@@ -140,6 +147,18 @@ export default function AdminDashboardScreen({ navigation }) {
     if (authorized && activeTab === "crashes") {
       loadCrashes();
     }
+    if (authorized && activeTab === "pricing" && !citiesList) {
+      getDoc(doc(db, "config", "cities"))
+        .then((snap) => {
+          const list = snap.exists() ? snap.data().cities : null;
+          setCitiesList(
+            Array.isArray(list) && list.length
+              ? list
+              : LOCATIONS.filter((l) => l.id !== "all")
+          );
+        })
+        .catch(() => setCitiesList(LOCATIONS.filter((l) => l.id !== "all")));
+    }
     if (authorized && activeTab === "pricing" && !pricingForm) {
       loadPricing();
       loadSubscriptions();
@@ -179,6 +198,50 @@ export default function AdminDashboardScreen({ navigation }) {
     } finally {
       setSubSaving(false);
     }
+  };
+
+  const persistCities = async (next) => {
+    setCitySaving(true);
+    try {
+      await setDoc(doc(db, "config", "cities"), { cities: next }, { merge: false });
+      setCitiesList(next);
+    } catch (e) {
+      Alert.alert("Couldn't save", e.message || "Please try again.");
+    } finally {
+      setCitySaving(false);
+    }
+  };
+
+  const addCity = () => {
+    const label = newCityLabel.trim();
+    if (!label) return;
+    const id = slugifyCity(label);
+    if (!id) return;
+    if ((citiesList || []).some((c) => c.id === id)) {
+      Alert.alert("Already listed", `${label} is already an operating city.`);
+      return;
+    }
+    setNewCityLabel("");
+    persistCities([...(citiesList || []), { id, label }]);
+  };
+
+  const removeCity = (city) => {
+    if ((citiesList || []).length <= 1) {
+      Alert.alert("Can't remove", "At least one operating city is required.");
+      return;
+    }
+    Alert.alert(
+      "Remove city",
+      `Remove ${city.label}? It will disappear from every city dropdown. Existing events/vehicles in ${city.label} keep their data.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: () => persistCities(citiesList.filter((c) => c.id !== city.id)),
+        },
+      ]
+    );
   };
 
   const savePricing = async () => {
@@ -1369,6 +1432,52 @@ export default function AdminDashboardScreen({ navigation }) {
                   )}
                 </TouchableOpacity>
 
+                {/* Operating cities — feeds every city dropdown in the app */}
+                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 32 }]}>
+                  Operating cities
+                </Text>
+                <Text style={[styles.feeHint, { color: colors.textSecondary }]}>
+                  These cities appear in every city selector (events, profiles,
+                  vehicles, search). Removing one hides it from selectors but
+                  keeps existing data.
+                </Text>
+                {!citiesList ? (
+                  <ActivityIndicator color={colors.primary} style={{ marginTop: 12 }} />
+                ) : (
+                  <>
+                    <View style={styles.cityChips}>
+                      {citiesList.map((c) => (
+                        <View
+                          key={c.id}
+                          style={[styles.cityChip, { backgroundColor: colors.surfaceGlass, borderColor: colors.border }]}
+                        >
+                          <Text style={[styles.cityChipText, { color: colors.text }]}>{c.label}</Text>
+                          <TouchableOpacity onPress={() => removeCity(c)} hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}>
+                            <Icon name="close" size={14} color={colors.textTertiary} />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                    <View style={styles.cityAddRow}>
+                      <TextInput
+                        style={[styles.feeInput, { flex: 1, marginBottom: 0, color: colors.text, borderColor: colors.border, backgroundColor: colors.surfaceGlass }]}
+                        value={newCityLabel}
+                        onChangeText={setNewCityLabel}
+                        placeholder="e.g. Mérida"
+                        placeholderTextColor={colors.textTertiary}
+                        onSubmitEditing={addCity}
+                      />
+                      <TouchableOpacity
+                        style={[styles.saveFeeBtn, { backgroundColor: colors.primary, paddingHorizontal: 18, marginTop: 0, opacity: citySaving ? 0.6 : 1 }]}
+                        onPress={addCity}
+                        disabled={citySaving}
+                      >
+                        <Text style={styles.saveFeeTxt}>Add</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+
                 {/* Subscriptions — Kinlo Pro (host) + Kinlo Plus (attendee) */}
                 <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 32 }]}>
                   Subscriptions
@@ -1451,6 +1560,13 @@ export default function AdminDashboardScreen({ navigation }) {
 
 function createStyles(colors) {
   return StyleSheet.create({
+    cityChips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12, marginBottom: 12 },
+    cityChip: {
+      flexDirection: "row", alignItems: "center", gap: 8,
+      borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8,
+    },
+    cityChipText: { fontSize: 14, fontWeight: "600" },
+    cityAddRow: { flexDirection: "row", alignItems: "center", gap: 10 },
     container: { flex: 1 },
     loadingContainer: {
       flex: 1,

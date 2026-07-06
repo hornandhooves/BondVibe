@@ -17,7 +17,7 @@ export const EVENT_CATEGORIES = [
   { id: "networking", label: "Networking" },
   { id: "pets", label: "Pets" },
   { id: "travel", label: "Travel" },
-  { id: "kids", label: "Kids events" },
+  { id: "kids", label: "Kids" },
 ];
 
 // Simple string array for backwards compatibility

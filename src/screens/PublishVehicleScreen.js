@@ -17,6 +17,8 @@ import {
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
 import { useTheme } from "../contexts/ThemeContext";
+import useCities from "../hooks/useCities";
+import SelectDropdown from "../components/SelectDropdown";
 import DraftWithAI from "../components/ai/DraftWithAI";
 import GradientBackground from "../components/GradientBackground";
 import DateField from "../components/DateField";
@@ -50,6 +52,7 @@ const toPesos = (centavos) => (centavos ? String(centavos / 100) : "");
 
 export default function PublishVehicleScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
+  const { cities } = useCities();
   const { vehicleId } = route.params || {};
   const editing = !!vehicleId;
 
@@ -251,7 +254,19 @@ export default function PublishVehicleScreen({ route, navigation }) {
         </Text>
 
         <Field c={colors} st={styles} label="Title" value={title} onChangeText={setTitle} placeholder="e.g. City scooter" />
-        <Field c={colors} st={styles} label="City" value={city} onChangeText={setCity} placeholder="e.g. Mexico City" />
+        <View style={{ marginBottom: 14 }}>
+          <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>City</Text>
+          <SelectDropdown
+            value={cities.find((c) => c.label === city)?.id || null}
+            onValueChange={(id) => {
+              const picked = cities.find((c) => c.id === id);
+              if (picked) setCity(picked.label);
+            }}
+            options={cities}
+            type="location"
+            placeholder="Select a city"
+          />
+        </View>
         <Field c={colors} st={styles} label="Pickup point" value={pickupLabel} onChangeText={setPickupLabel} placeholder="e.g. Insurgentes metro" />
         <Field c={colors} st={styles} label="Price per day (MXN)" value={pricePerDay} onChangeText={setPricePerDay} placeholder="0" keyboardType="numeric" />
         <Field
