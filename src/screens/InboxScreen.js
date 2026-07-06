@@ -113,7 +113,7 @@ export default function InboxScreen({ navigation }) {
           icon="calendar"
           title="Event chats"
           subtitle="Group chats for your events"
-          onPress={() => navigation.navigate("MainTabs", { screen: "EventsTab" })}
+          onPress={() => navigation.navigate("EventChats")}
         />
         <ListRow
           icon="heart"
