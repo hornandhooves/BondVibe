@@ -1,0 +1,55 @@
+# E2E — attendee core journey: login → 5 tabs → search → wall(AI) → inbox → profile.
+# Requires the AI-opted-in test account (p0.smoke). Run:
+#   maestro --device <sim> test .maestro/e2e-attendee.yaml
+appId: com.bondvibe.app
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 60000
+# --- Tab bar renders all 5 ---
+- assertVisible:
+    id: "tab-wall"
+- assertVisible:
+    id: "tab-events"
+- assertVisible:
+    id: "tab-rentals"
+- assertVisible:
+    id: "tab-profile"
+# --- Home: search + digest + browse, NO quick-actions grid (Fix 2) ---
+- assertVisible:
+    id: "home-search"
+- assertNotVisible: "QUICK ACTIONS"
+- assertVisible: "Your week, curated by Kinlo AI"
+# --- Wall: Smart Wall AI card ---
+- tapOn:
+    id: "tab-wall"
+- extendedWaitUntil:
+    visible: "Curated for you.*|AI picks are taking a break.*"
+    timeout: 45000
+- assertVisible: "Ask Kinlo"
+# --- Header inbox: groups + DMs + pinned Ask Kinlo (Fix 5) ---
+- tapOn:
+    id: "header-messages"
+- extendedWaitUntil:
+    visible: "Messages"
+    timeout: 20000
+- back
+# --- Notifications reachable from header bell ---
+- tapOn:
+    id: "header-notifications"
+- back
+# --- Rentals tab (un-buried pillar) ---
+- tapOn:
+    id: "tab-rentals"
+- extendedWaitUntil:
+    visible: "Get around"
+    timeout: 20000
+# --- Profile: slim hub with Settings, NO 'Host tools moved' (Fix 3) ---
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible: "Settings"
+    timeout: 15000
+- assertNotVisible: "Host tools moved"

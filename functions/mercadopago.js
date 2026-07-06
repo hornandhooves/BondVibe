@@ -30,9 +30,12 @@ exports.createMercadoPagoPreference = onRequest(
       return res.status(405).json({error: "Method not allowed"});
     }
     try {
-      const {eventId, userId} = req.body;
-      const eventPrice = req.body.eventPriceCentavos || req.body.amount;
-      if (!eventId || !userId || !eventPrice) {
+      const {verifyBearer} = require("./lib/auth");
+      const caller = await verifyBearer(req);
+      if (!caller) return res.status(401).json({error: "unauthenticated"});
+      const userId = caller.uid; // payer = verified caller
+      const {eventId} = req.body;
+      if (!eventId) {
         return res.status(400).json({error: "Missing required fields"});
       }
 
@@ -40,6 +43,8 @@ exports.createMercadoPagoPreference = onRequest(
       const eventSnap = await db.collection("events").doc(eventId).get();
       if (!eventSnap.exists) return res.status(404).json({error: "Event not found"});
       const eventData = eventSnap.data();
+      // PRICE authoritative from the event doc — never a client amount.
+      const eventPrice = Math.round((eventData.price || 0) * 100);
 
       const {getPricingConfig} = require("./stripe/pricing");
       const mpCfg = await getPricingConfig(db);

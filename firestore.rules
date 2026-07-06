@@ -49,6 +49,28 @@ service cloud.firestore {
     function onlyUpdating(allowedFields) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedFields);
     }
+
+    function changing(field) {
+      return field in request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // A list field changed by EXACTLY the caller adding themselves (all prior
+    // members retained + one new element = the caller). Lets a user join a
+    // list without being able to add anyone else or touch other entries.
+    function selfAdded(field) {
+      let oldL = resource.data.get(field, []);
+      let newL = request.resource.data.get(field, []);
+      return newL.hasAll(oldL) && newL.size() == oldL.size() + 1 &&
+             (request.auth.uid in newL) && !(request.auth.uid in oldL);
+    }
+
+    // A list field changed by EXACTLY the caller removing themselves.
+    function selfRemoved(field) {
+      let oldL = resource.data.get(field, []);
+      let newL = request.resource.data.get(field, []);
+      return oldL.hasAll(newL) && newL.size() == oldL.size() - 1 &&
+             (request.auth.uid in oldL) && !(request.auth.uid in newL);
+    }
     
     // ============================================
     // USERS COLLECTION
@@ -56,24 +78,33 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isSignedIn();
       // Server-computed reputation fields + the premium entitlement can't be
-      // set by the user, not even at account creation.
+      // set by the user, not even at account creation. New accounts must be a
+      // plain 'user' — 'admin' is granted only by an existing admin.
       allow create: if isSignedIn() && isOwner(userId) &&
                        !request.resource.data.keys()
                           .hasAny(['hostStats', 'carpoolStats', 'isPremium',
-                                   'plan', 'matchCountByEvent']);
+                                   'plan', 'matchCountByEvent']) &&
+                       request.resource.data.get('role', 'user') in ['user', 'host'];
 
       // The owner can edit their profile but NOT hostStats/carpoolStats (host
-      // ratings + loyalty are computed server-side) nor isPremium (the premium
-      // entitlement is granted server-side only). Any signed-in user may
-      // (un)set a pushToken on any doc, so the login/logout de-dupe can clear
-      // stale device tokens.
+      // ratings + loyalty are computed server-side), nor isPremium/plan (the
+      // subscription entitlements are granted server-side), nor hostApproved
+      // (admin approval). Crucially, the owner may set role only to
+      // 'user'/'host' — self-promotion to 'admin' is blocked; admin is granted
+      // exclusively through the isAdmin() branch (an existing admin).
       allow update: if isAdmin() ||
                        (isOwner(userId) &&
                         !request.resource.data.diff(resource.data)
                           .affectedKeys()
                           .hasAny(['hostStats', 'carpoolStats', 'isPremium',
-                                   'plan', 'matchCountByEvent'])) ||
-                       onlyUpdating(['pushToken', 'pushTokenUpdatedAt']);
+                                   'plan', 'matchCountByEvent', 'hostApproved']) &&
+                        (!changing('role') ||
+                         request.resource.data.role in ['user', 'host'])) ||
+                       // Cross-account push-token de-dup: any user may CLEAR a
+                       // stale token (set null) on any doc, but cannot point
+                       // another user's token at their own device (hijack).
+                       (onlyUpdating(['pushToken', 'pushTokenUpdatedAt']) &&
+                        request.resource.data.get('pushToken', null) == null);
       
       allow delete: if isOwner(userId) || isAdmin();
       
@@ -100,11 +131,14 @@ service cloud.firestore {
     // ============================================
     match /events/{eventId} {
       allow read: if isSignedIn();
-      // Hosts can't self-promote for free: featured fields are set only by the
-      // server (the promotion payment webhook, via the Admin SDK).
+      // Hosts can't self-promote for free: featured + rating-aggregate +
+      // matching (Kinlo Pro) fields are set only by the server (Admin SDK).
       allow create: if isSignedIn() &&
                        request.resource.data.creatorId == request.auth.uid &&
-                       request.resource.data.get('featured', false) == false;
+                       request.resource.data.get('featured', false) == false &&
+                       !request.resource.data.keys()
+                          .hasAny(['featuredUntil', 'featuredTier',
+                                   'averageRating', 'totalRatings', 'matching']);
 
       // - Admin: full control.
       // - Creator: anything except server-owned fields (featured/* and the
@@ -126,12 +160,18 @@ service cloud.firestore {
                            .hasAny(['featured', 'featuredUntil', 'featuredTier',
                                     'averageRating', 'totalRatings',
                                     'creatorId', 'coHosts', 'matching'])) ||
-                        onlyUpdating(['attendees']) ||
-                        onlyUpdating(['attendees', 'waitlist']) ||
-                        onlyUpdating(['waitlist']) ||
-                        // Wall signals (§2.4): any signed-in user can toggle
-                        // their soft-interest in an event.
-                        onlyUpdating(['interested']));
+                        // Attendees: a user may only REMOVE themselves (leave).
+                        // Joining is server-side (joinEvent Cloud Function /
+                        // payment webhook, Admin SDK) so capacity + payment are
+                        // enforced. No one can add/remove anyone else.
+                        (onlyUpdating(['attendees']) && selfRemoved('attendees')) ||
+                        // Waitlist: a user may add/remove only themselves.
+                        (onlyUpdating(['waitlist']) &&
+                         (selfAdded('waitlist') || selfRemoved('waitlist'))) ||
+                        // Wall signal (§2.4): a user toggles only their own
+                        // soft-interest — cannot rewrite the whole list.
+                        (onlyUpdating(['interested']) &&
+                         (selfAdded('interested') || selfRemoved('interested'))));
       
       allow delete: if isSignedIn() && 
                        (resource.data.creatorId == request.auth.uid || isAdmin());
@@ -218,10 +258,15 @@ service cloud.firestore {
     match /ratings/{ratingId} {
       allow read: if isSignedIn();
       // Only an attendee (not the host) of the rated event may create a rating,
-      // and only as themselves. Enforced server-side, not just in the client.
+      // as themselves, and hostId MUST be the event's real creator (prevents
+      // aiming a bad rating at an arbitrary host to tank their average).
       allow create: if isSignedIn() &&
                        request.resource.data.userId == request.auth.uid &&
-                       isEventAttendeeNotCreator(request.resource.data.eventId);
+                       isEventAttendeeNotCreator(request.resource.data.eventId) &&
+                       request.resource.data.hostId ==
+                         get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.creatorId &&
+                       // One rating per user per event: deterministic doc id.
+                       ratingId == request.resource.data.eventId + '_' + request.auth.uid;
       // Ratings are immutable from the client (averages are recomputed by a
       // Cloud Function); the host can't edit/inflate them.
       allow update, delete: if false;

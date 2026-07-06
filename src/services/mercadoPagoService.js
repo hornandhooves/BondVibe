@@ -16,12 +16,11 @@ const FN_URL = `https://us-central1-${PROJECT}.cloudfunctions.net/createMercadoP
 export const createMercadoPagoPreference = async (eventId, eventPriceCentavos) => {
   const res = await fetch(FN_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      eventId,
-      userId: auth.currentUser?.uid,
-      eventPriceCentavos,
-    }),
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${await auth.currentUser.getIdToken()}`,
+    },
+    body: JSON.stringify({ eventId }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

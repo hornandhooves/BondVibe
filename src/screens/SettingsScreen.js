@@ -69,13 +69,17 @@ export default function SettingsScreen({ navigation }) {
     setDeleting(true);
     try {
       await AsyncStorage.setItem("@account_deleting", "true");
-      const userId = auth.currentUser.uid;
+      const token = await auth.currentUser.getIdToken();
       const response = await fetch(
         "https://us-central1-bondvibe-dev.cloudfunctions.net/deleteUserAccount",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId }),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          // Server deletes the token's own account; body userId is ignored.
+          body: JSON.stringify({}),
         }
       );
       const result = await response.json();

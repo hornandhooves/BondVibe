@@ -5,6 +5,7 @@
  */
 
 const {onRequest} = require("firebase-functions/v2/https");
+const {verifyBearer, isAdminUid} = require("../lib/auth");
 const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
 
@@ -31,7 +32,10 @@ exports.createConnectAccount = onRequest(
         stripe = require("stripe")(stripeSecretKey.value());
       }
 
-      const {userId, email} = req.body;
+      const caller = await verifyBearer(req);
+      if (!caller) return res.status(401).json({error: "unauthenticated"});
+      const userId = caller.uid; // act only on the caller's own account
+      const {email} = req.body;
 
       if (!userId || !email) {
         return res.status(400).json({error: "Missing required fields"});
@@ -134,7 +138,14 @@ exports.createAccountLink = onRequest(
         stripe = require("stripe")(stripeSecretKey.value());
       }
 
-      const {userId} = req.body;
+      const bodyUserId = req.body.userId;
+      const caller = await verifyBearer(req);
+      if (!caller) return res.status(401).json({error: "unauthenticated"});
+      // Own account only; an admin may inspect another (read-only status).
+      const userId = (bodyUserId && bodyUserId !== caller.uid) ?
+        (await isAdminUid(caller.uid) ? bodyUserId : null) :
+        caller.uid;
+      if (!userId) return res.status(403).json({error: "forbidden"});
 
       if (!userId) {
         return res.status(400).json({error: "Missing userId"});
@@ -205,7 +216,14 @@ exports.getAccountStatus = onRequest(
         stripe = require("stripe")(stripeSecretKey.value());
       }
 
-      const {userId} = req.body;
+      const bodyUserId = req.body.userId;
+      const caller = await verifyBearer(req);
+      if (!caller) return res.status(401).json({error: "unauthenticated"});
+      // Own account only; an admin may inspect another (read-only status).
+      const userId = (bodyUserId && bodyUserId !== caller.uid) ?
+        (await isAdminUid(caller.uid) ? bodyUserId : null) :
+        caller.uid;
+      if (!userId) return res.status(403).json({error: "forbidden"});
 
       if (!userId) {
         return res.status(400).json({error: "Missing userId"});

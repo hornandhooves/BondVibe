@@ -4,7 +4,7 @@ import {
   getDownloadURL,
   deleteObject,
 } from "firebase/storage";
-import { storage } from "./firebase";
+import { storage , auth} from "./firebase";
 import * as ImageManipulator from "expo-image-manipulator";
 
 /**
@@ -80,7 +80,7 @@ export const uploadGroupPhoto = async (groupId, imageUri) => {
   const compressedUri = await compressImage(imageUri);
   const response = await fetch(compressedUri);
   const blob = await response.blob();
-  const photoRef = ref(storage, `groups/${groupId}/photo.jpg`);
+  const photoRef = ref(storage, `groups/${groupId}/${auth.currentUser.uid}/photo.jpg`);
   await uploadBytes(photoRef, blob);
   return getDownloadURL(photoRef);
 };
@@ -100,7 +100,7 @@ export const uploadReportEvidence = async (groupId, imageUri) => {
   const compressedUri = await compressImage(imageUri);
   const response = await fetch(compressedUri);
   const blob = await response.blob();
-  const evRef = ref(storage, `groups/${groupId}/evidence_${Date.now()}.jpg`);
+  const evRef = ref(storage, `groups/${groupId}/${auth.currentUser.uid}/evidence_${Date.now()}.jpg`);
   await uploadBytes(evRef, blob);
   return getDownloadURL(evRef);
 };
@@ -132,7 +132,7 @@ export const uploadEventImage = async (eventId, imageUri, index) => {
     const blob = await response.blob();
 
     // Create storage reference
-    const imageRef = ref(storage, `events/${eventId}/image_${index}.jpg`);
+    const imageRef = ref(storage, `events/${eventId}/${auth.currentUser.uid}/image_${index}.jpg`);
 
     // Upload blob
     await uploadBytes(imageRef, blob);
@@ -185,7 +185,7 @@ export const uploadVehicleImage = async (vehicleId, imageUri, index) => {
   const compressedUri = await compressImage(imageUri);
   const response = await fetch(compressedUri);
   const blob = await response.blob();
-  const imageRef = ref(storage, `vehicles/${vehicleId}/image_${index}.jpg`);
+  const imageRef = ref(storage, `vehicles/${vehicleId}/${auth.currentUser.uid}/image_${index}.jpg`);
   await uploadBytes(imageRef, blob);
   return getDownloadURL(imageRef);
 };

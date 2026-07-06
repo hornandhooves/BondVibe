@@ -47,18 +47,18 @@ export const calculateCheckoutBreakdown = (eventPriceCentavos) => {
  * @param {string} userId 
  * @param {number} eventPriceCentavos - Event price (NOT total, backend calculates fees)
  */
+import { auth } from "./firebase";
+
 export const createEventPaymentIntent = async (eventId, userId, eventPriceCentavos) => {
   try {
     const response = await fetch(`${FUNCTIONS_BASE_URL}/createEventPaymentIntent`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        // Identity from this token; price read from the event doc server-side.
+        Authorization: `Bearer ${await auth.currentUser.getIdToken()}`,
       },
-      body: JSON.stringify({
-        eventId,
-        userId,
-        eventPriceCentavos, // Send event price, backend adds fees
-      }),
+      body: JSON.stringify({ eventId }),
     });
 
     const data = await response.json();

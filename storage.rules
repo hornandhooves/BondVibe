@@ -11,16 +11,21 @@ service firebase.storage {
     }
 
     function isImageUnder(maxBytes) {
+      // Whitelist raster types — reject SVG (stored-XSS vector) and the
+      // client-declared image/* wildcard.
       return request.resource.size < maxBytes &&
-             request.resource.contentType.matches('image/.*');
+             request.resource.contentType in
+               ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic'];
     }
 
-    // Event images — any signed-in user can view (so attendees on any device
-    // see them); any signed-in user can upload (the app writes only under the
-    // events they create; Storage rules can't read Firestore to verify owner).
-    match /events/{eventId}/{fileName} {
+    // Event images — readable by any signed-in user; uploads namespaced by the
+    // uploader's uid so nobody can overwrite another user's (or the host's)
+    // event images. The event doc references only the host's uploaded URLs, so
+    // a stranger's uid-subfolder blobs are inert.
+    match /events/{eventId}/{userId}/{fileName} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && isImageUnder(10 * 1024 * 1024);
+      allow write: if isSignedIn() && request.auth.uid == userId &&
+                      isImageUnder(10 * 1024 * 1024);
     }
 
     // Avatars — one folder per user. Anyone signed in can view; only the owner
@@ -32,20 +37,20 @@ service firebase.storage {
                       isImageUnder(5 * 1024 * 1024);
     }
 
-    // Group photos — any signed-in user can view; any signed-in user can upload
-    // (Storage can't verify the host; the client only lets the host change it
-    // and Firestore rules gate the group doc write).
-    match /groups/{groupId}/{fileName} {
+    // Group photos — namespaced by uploader uid (prevents overwriting another
+    // group's photo or planting moderation-evidence images).
+    match /groups/{groupId}/{userId}/{fileName} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && isImageUnder(5 * 1024 * 1024);
+      allow write: if isSignedIn() && request.auth.uid == userId &&
+                      isImageUnder(5 * 1024 * 1024);
     }
 
-    // Vehicle photos — any signed-in user can view (browse); any signed-in user
-    // can upload (Storage can't verify the owner; Firestore rules gate the
-    // vehicle doc write to its owner).
-    match /vehicles/{vehicleId}/{fileName} {
+    // Vehicle photos — namespaced by uploader uid (prevents tampering with
+    // another owner's rental-listing photos).
+    match /vehicles/{vehicleId}/{userId}/{fileName} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && isImageUnder(10 * 1024 * 1024);
+      allow write: if isSignedIn() && request.auth.uid == userId &&
+                      isImageUnder(10 * 1024 * 1024);
     }
 
     // Social post images — a user uploads under their own uid.

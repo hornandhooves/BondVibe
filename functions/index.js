@@ -23,6 +23,9 @@ let stripe;
 admin.initializeApp();
 const db = admin.firestore();
 
+// Shared auth for HTTP endpoints (verify ID token, derive identity server-side).
+const {verifyBearer, isAdminUid} = require("./lib/auth");
+
 // Import refunds AFTER Firebase is initialized
 const {cancelEventAttendance, hostCancelEvent} = require("./stripe/refunds");
 
@@ -314,12 +317,15 @@ exports.createEventPaymentIntent = onRequest(
         stripe = require("stripe")(stripeSecretKey.value());
       }
 
-      const {eventId, userId, eventPriceCentavos} = req.body;
+      // AUTH: the payer is the verified caller, not a body-supplied userId.
+      const caller = await verifyBearer(req);
+      if (!caller) {
+        return res.status(401).json({error: "unauthenticated"});
+      }
+      const userId = caller.uid;
+      const {eventId} = req.body;
 
-      // Support both old 'amount' param and new 'eventPriceCentavos'
-      const eventPrice = eventPriceCentavos || req.body.amount;
-
-      if (!eventId || !userId || !eventPrice) {
+      if (!eventId) {
         return res.status(400).json({error: "Missing required fields"});
       }
 
@@ -331,6 +337,9 @@ exports.createEventPaymentIntent = onRequest(
 
       const eventData = eventDoc.data();
       const hostId = getEventCreatorId(eventData);
+
+      // PRICE is authoritative from the event doc — NEVER trust a client price.
+      const eventPrice = Math.round((eventData.price || 0) * 100);
 
       // Get host's Stripe Connect account
       const hostDoc = await db.collection("users").doc(hostId).get();
@@ -1772,10 +1781,19 @@ exports.deleteUserAccount = onRequest(
     }
 
     try {
-      const {userId} = req.body;
-
+      // AUTH: identity comes from the verified ID token, never the body.
+      // A user may delete only their OWN account (admins may delete any).
+      const caller = await verifyBearer(req);
+      if (!caller) {
+        return res.status(401).json({error: "unauthenticated"});
+      }
+      const bodyUserId = req.body.userId;
+      const userId =
+        bodyUserId && bodyUserId !== caller.uid ?
+          (await isAdminUid(caller.uid) ? bodyUserId : null) :
+          caller.uid;
       if (!userId) {
-        return res.status(400).json({error: "Missing userId"});
+        return res.status(403).json({error: "forbidden"});
       }
 
       console.log("🗑️ Starting account deletion for user:", userId);

@@ -174,6 +174,16 @@ async function loadMatchIntel(db, uid, cfg, input) {
   if (!mineSnap.exists || !theirsSnap.exists) {
     throw new Error("both attendees must have opt-in match profiles");
   }
+  // Privacy: the caller must be checked in, and the other person must be
+  // discoverable (same gate the grid enforces in rules) — the Admin SDK
+  // bypasses rules, so re-check here or we'd leak hidden/unavailable profiles.
+  const myCheckin = await db.collection("events").doc(eventId)
+    .collection("checkins").doc(uid).get();
+  if (!myCheckin.exists) throw new Error("caller not checked in");
+  const them = theirsSnap.data() || {};
+  if (them.available !== true || them.visibility === "hidden") {
+    throw new Error("target profile is not discoverable");
+  }
   const pick = (s) => {
     const p = s.data() || {};
     return {

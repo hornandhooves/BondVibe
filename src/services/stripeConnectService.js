@@ -1,3 +1,4 @@
+import { auth } from "./firebase";
 /**
  * Stripe Connect Service
  * Handles all Stripe Connect API calls
@@ -21,6 +22,7 @@ export const createConnectAccount = async (userId, email, fullName) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${await auth.currentUser.getIdToken()}`,
       },
       body: JSON.stringify({
         userId,
@@ -56,6 +58,7 @@ export const getAccountLink = async (userId) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${await auth.currentUser.getIdToken()}`,
       },
       body: JSON.stringify({ userId }),
     });
@@ -87,6 +90,7 @@ export const checkAccountStatus = async (userId) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${await auth.currentUser.getIdToken()}`,
       },
       body: JSON.stringify({ userId }),
     });

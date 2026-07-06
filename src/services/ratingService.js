@@ -1,7 +1,7 @@
 import {
+  setDoc,
   collection,
   doc,
-  addDoc,
   getDoc,
   getDocs,
   query,
@@ -76,10 +76,12 @@ export const submitRating = async (ratingData) => {
       createdAt: serverTimestamp(),
     };
 
-    // Add to ratings collection. The event's and host's average ratings are
-    // recomputed server-side by the onRatingCreated Cloud Function so they
-    // can't be manipulated by the host.
-    const ratingRef = await addDoc(collection(db, "ratings"), ratingDoc);
+    // Deterministic id = one rating per user per event (rules enforce this id
+    // + reject a mismatched hostId). Averages are recomputed server-side by
+    // the onRatingCreated Cloud Function so the host can't manipulate them.
+    const ratingId = `${eventId}_${userId}`;
+    await setDoc(doc(db, "ratings", ratingId), ratingDoc);
+    const ratingRef = { id: ratingId };
     console.log("✅ Rating submitted:", ratingRef.id);
 
     // Send notification to host
