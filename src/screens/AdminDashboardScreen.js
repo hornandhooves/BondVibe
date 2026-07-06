@@ -317,7 +317,16 @@ export default function AdminDashboardScreen({ navigation }) {
     setLoading(true);
     try {
       const allUsers = await getAllUsers(filter);
-      setUsers(allUsers);
+      // Emails are no longer in the world-readable users doc — fetch them
+      // from Firebase Auth via the admin-gated Cloud Function and merge.
+      let emails = {};
+      try {
+        const fn = httpsCallable(getFunctions(), "adminListUserEmails");
+        emails = (await fn()).data.emails || {};
+      } catch (e) {
+        console.warn("Could not load emails:", e.message);
+      }
+      setUsers(allUsers.map((u) => ({ ...u, email: emails[u.id] || u.email || null })));
     } catch (error) {
       console.error("Error loading users:", error);
     } finally {

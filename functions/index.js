@@ -55,6 +55,25 @@ exports.onPostCommentWritten = social.onPostCommentWritten;
 exports.onPostCreated = social.onPostCreated;
 exports.onFollowCreated = social.onFollowCreated;
 
+// Admin: user emails come from Firebase Auth (no longer stored in the
+// world-readable users doc). Admin-gated.
+exports.adminListUserEmails = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid || !(await isAdminUid(uid))) {
+    throw new HttpsError("permission-denied", "admin only");
+  }
+  const emails = {};
+  let pageToken;
+  do {
+    const res = await admin.auth().listUsers(1000, pageToken);
+    res.users.forEach((u) => {
+      emails[u.uid] = u.email || null;
+    });
+    pageToken = res.pageToken;
+  } while (pageToken);
+  return {emails};
+});
+
 // AI Foundation — single gateway to Claude (kinlo_build/ai_features/02).
 const aiFoundation = require("./ai/foundation");
 exports.callClaude = aiFoundation.buildCallClaude(db, anthropicKey);
@@ -102,8 +121,10 @@ exports.sendWeeklyDigestPush = onSchedule(
  */
 async function getUserEmail(userId) {
   try {
-    const snap = await db.collection("users").doc(userId).get();
-    return snap.exists ? snap.data().email || null : null;
+    // Email lives in Firebase Auth (the login identity), not in the
+    // world-readable users doc — read the authoritative source.
+    const rec = await admin.auth().getUser(userId);
+    return rec.email || null;
   } catch (e) {
     console.warn("⚠️ Could not load user email:", e.message);
     return null;

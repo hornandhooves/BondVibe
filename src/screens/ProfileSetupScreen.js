@@ -11,7 +11,7 @@ import {
   Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc , setDoc} from "firebase/firestore";
 import { createNotification } from "../utils/notificationService";
 import { auth, db } from "../services/firebase";
 import { resolveAvatarForSave } from "../services/storageService";
@@ -71,12 +71,17 @@ export default function ProfileSetupScreen() {
         fullName: form.fullName.trim(),
         avatar,
         location: form.location.trim(),
-        phone: form.phone.replace(/[^0-9+]/g, ""),
         isOver18: true,
         profileCompleted: true,
         profileCompletedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
+      // Phone is private PII — not in the world-readable users doc.
+      await setDoc(
+        doc(db, "users", auth.currentUser.uid, "private", "contact"),
+        { phone: form.phone.replace(/[^0-9+]/g, "") },
+        { merge: true }
+      );
 
       // Create welcome notification
       await createNotification(auth.currentUser.uid, {

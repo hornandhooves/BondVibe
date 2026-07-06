@@ -95,7 +95,6 @@ export default function SignupScreen({ navigation }) {
       // 2. Crear documento en Firestore
       console.log("📄 Creating Firestore document...");
       await setDoc(doc(db, "users", user.uid), {
-        email: user.email,
         createdAt: new Date().toISOString(),
         profileCompleted: false,
         emailVerified: false,

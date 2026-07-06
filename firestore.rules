@@ -124,6 +124,15 @@ service cloud.firestore {
       match /blocks/{blockedUid} {
         allow read, write: if isSignedIn() && isOwner(userId);
       }
+
+      // Private contact info (phone, …). The main users doc is world-readable
+      // to signed-in users for social features, so sensitive PII lives here —
+      // only the owner (and admins) may read it. Email is NOT stored here; it
+      // lives in Firebase Auth and is served to admins via a Cloud Function.
+      match /private/{doc} {
+        allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
+        allow write: if isSignedIn() && isOwner(userId);
+      }
     }
     
     // ============================================

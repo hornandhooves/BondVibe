@@ -50,7 +50,6 @@ const ensureUserDoc = async (user, fields = {}) => {
   const snap = await getDoc(ref);
   if (!snap.exists()) {
     await setDoc(ref, {
-      email: user.email || null,
       fullName: user.displayName || fields.fullName || "",
       createdAt: new Date().toISOString(),
       profileCompleted: false,
