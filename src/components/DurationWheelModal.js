@@ -1,8 +1,10 @@
 /**
- * DurationWheelModal — a two-wheel (amount × unit) duration picker, like the
- * iOS timer. Pure JS (ScrollView + snapToInterval), no native module. Lets a
- * host dial in ANY length — 45 min, 7 hours, 9 hours, 3 days — instead of a
- * fixed shortlist.
+ * DurationWheelModal — friendly event-length picker.
+ *
+ * Primary: the OS-native hours:minutes wheel (iOS countdown mode of
+ * @react-native-community/datetimepicker — the same smooth picker used for
+ * date/time, no extra native module). Android falls back to JS wheels.
+ * A small Hours/Days segment keeps multi-day events selectable.
  */
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -12,34 +14,37 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Platform,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useTheme } from "../contexts/ThemeContext";
 import Icon from "./Icon";
 
 const ITEM_H = 44;
-const VISIBLE = 5; // odd → one centered row
+const VISIBLE = 5;
 const PAD = ITEM_H * Math.floor(VISIBLE / 2);
 
-const UNITS = [
-  { key: "min", label: "min", mult: 1,
-    values: [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55] },
-  { key: "hr", label: "hours", mult: 60,
-    values: Array.from({ length: 23 }, (_, i) => i + 1) },
-  { key: "day", label: "days", mult: 1440,
-    values: Array.from({ length: 14 }, (_, i) => i + 1) },
-];
+const HOURS = Array.from({ length: 24 }, (_, i) => i); // 0..23
+const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5); // 0,5,..,55
+const DAYS = Array.from({ length: 14 }, (_, i) => i + 1); // 1..14 days
 
-/** Human label for a minute count, e.g. 45→"45 min", 420→"7 hours", 2880→"2 days". */
+/** Human label, e.g. 45→"45 min", 150→"2h 30m", 420→"7 hours", 2880→"2 days". */
 export function formatDuration(min) {
   const m = parseInt(min, 10) || 0;
   if (m < 60) return `${m} min`;
   if (m < 1440) {
-    const h = m / 60;
-    return `${Number.isInteger(h) ? h : h.toFixed(1)} ${h === 1 ? "hour" : "hours"}`;
+    const h = Math.floor(m / 60);
+    const r = m % 60;
+    return r ? `${h}h ${r}m` : `${h} ${h === 1 ? "hour" : "hours"}`;
   }
   const d = m / 1440;
   return `${Number.isInteger(d) ? d : d.toFixed(1)} ${d === 1 ? "day" : "days"}`;
 }
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const durationToDate = (min) =>
+  new Date(2000, 0, 1, Math.floor((min % 1440) / 60), min % 60, 0, 0);
+const dateToMinutes = (d) => d.getHours() * 60 + d.getMinutes();
 
 function nearestIdx(arr, target) {
   let best = 0;
@@ -54,18 +59,9 @@ function nearestIdx(arr, target) {
   return best;
 }
 
-// Split a minute count into the friendliest {unitIdx, amount}.
-function decompose(min) {
-  const m = parseInt(min, 10) || 180;
-  if (m >= 1440 && m % 1440 === 0) return { unitIdx: 2, amount: m / 1440 };
-  if (m >= 60 && m % 60 === 0) return { unitIdx: 1, amount: m / 60 };
-  return { unitIdx: 0, amount: Math.max(5, Math.round(m / 5) * 5) };
-}
-
+// A single JS wheel column (Android fallback + Days wheel).
 function WheelColumn({ data, index, onIndexChange, formatter, align, colors }) {
   const ref = useRef(null);
-
-  // Keep the scroll position synced to `index` (external changes: open, unit swap).
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       ref.current?.scrollTo({ y: index * ITEM_H, animated: false });
@@ -75,8 +71,8 @@ function WheelColumn({ data, index, onIndexChange, formatter, align, colors }) {
 
   const onEnd = (e) => {
     const raw = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
-    const clamped = Math.max(0, Math.min(data.length - 1, raw));
-    if (clamped !== index) onIndexChange(clamped);
+    const c = clamp(raw, 0, data.length - 1);
+    if (c !== index) onIndexChange(c);
   };
 
   return (
@@ -95,8 +91,9 @@ function WheelColumn({ data, index, onIndexChange, formatter, align, colors }) {
           activeOpacity={0.7}
           style={[
             styles.item,
-            { alignItems: align === "right" ? "flex-end" : "flex-start" },
-            align === "right" ? { paddingRight: 14 } : { paddingLeft: 14 },
+            align === "right" ? { alignItems: "flex-end", paddingRight: 14 } : null,
+            align === "left" ? { alignItems: "flex-start", paddingLeft: 14 } : null,
+            align === "center" ? { alignItems: "center" } : null,
           ]}
           onPress={() => {
             onIndexChange(i);
@@ -122,33 +119,59 @@ function WheelColumn({ data, index, onIndexChange, formatter, align, colors }) {
 
 export default function DurationWheelModal({ visible, value, onSelect, onClose }) {
   const { colors } = useTheme();
-  const [unitIdx, setUnitIdx] = useState(0);
-  const [amtIdx, setAmtIdx] = useState(0);
+  const [mode, setMode] = useState("hours"); // 'hours' | 'days'
+  const [iosDate, setIosDate] = useState(durationToDate(180));
+  const [hIdx, setHIdx] = useState(3); // Android hours index
+  const [mIdx, setMIdx] = useState(0); // Android minutes index
+  const [dIdx, setDIdx] = useState(0); // days index
 
-  // On open, decompose the current value onto the two wheels.
+  // On open, decompose the incoming value onto the controls.
   useEffect(() => {
     if (!visible) return;
-    const { unitIdx: u, amount } = decompose(value);
-    setUnitIdx(u);
-    setAmtIdx(nearestIdx(UNITS[u].values, amount));
+    const m = parseInt(value, 10) || 180;
+    if (m >= 1440 && m % 1440 === 0) {
+      setMode("days");
+      setDIdx(clamp(m / 1440 - 1, 0, DAYS.length - 1));
+    } else {
+      setMode("hours");
+      setIosDate(durationToDate(m));
+      setHIdx(clamp(Math.floor(m / 60), 0, 23));
+      setMIdx(nearestIdx(MINUTES, m % 60));
+    }
   }, [visible, value]);
 
-  const amounts = UNITS[unitIdx].values;
-  const currentAmount = amounts[Math.min(amtIdx, amounts.length - 1)];
-  const totalMinutes = currentAmount * UNITS[unitIdx].mult;
-
-  // Switching unit preserves the amount number when the new unit offers it,
-  // else snaps to the nearest available.
-  const changeUnit = (newUnitIdx) => {
-    const curAmount = amounts[amtIdx];
-    const newVals = UNITS[newUnitIdx].values;
-    setUnitIdx(newUnitIdx);
-    setAmtIdx(nearestIdx(newVals, curAmount));
-  };
+  let total;
+  if (mode === "days") total = DAYS[dIdx] * 1440;
+  else if (Platform.OS === "ios") total = dateToMinutes(iosDate);
+  else total = HOURS[hIdx] * 60 + MINUTES[mIdx];
 
   const done = () => {
-    onSelect(String(totalMinutes));
+    onSelect(String(Math.max(5, total)));
     onClose();
+  };
+
+  const Segment = ({ id, label }) => {
+    const active = mode === id;
+    return (
+      <TouchableOpacity
+        onPress={() => setMode(id)}
+        activeOpacity={0.8}
+        style={[
+          styles.segment,
+          { backgroundColor: active ? colors.primary : "transparent" },
+        ]}
+      >
+        <Text
+          style={{
+            color: active ? "#FFFFFF" : colors.textSecondary,
+            fontWeight: "700",
+            fontSize: 14,
+          }}
+        >
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
   };
 
   return (
@@ -159,7 +182,7 @@ export default function DurationWheelModal({ visible, value, onSelect, onClose }
             <View>
               <Text style={[styles.title, { color: colors.text }]}>Event length</Text>
               <Text style={[styles.preview, { color: colors.textSecondary }]}>
-                {formatDuration(totalMinutes)}
+                {formatDuration(Math.max(5, total))}
               </Text>
             </View>
             <TouchableOpacity
@@ -170,37 +193,63 @@ export default function DurationWheelModal({ visible, value, onSelect, onClose }
             </TouchableOpacity>
           </View>
 
-          <View style={[styles.wheelRow, { height: ITEM_H * VISIBLE }]}>
-            {/* Center selection band spans both columns */}
-            <View
-              pointerEvents="none"
-              style={[
-                styles.centerBand,
-                {
-                  top: PAD,
-                  height: ITEM_H,
-                  borderColor: colors.border,
-                  backgroundColor: `${colors.primary}12`,
-                },
-              ]}
-            />
-            <WheelColumn
-              data={amounts}
-              index={Math.min(amtIdx, amounts.length - 1)}
-              onIndexChange={setAmtIdx}
-              formatter={(n) => String(n)}
-              align="right"
-              colors={colors}
-            />
-            <WheelColumn
-              data={UNITS}
-              index={unitIdx}
-              onIndexChange={changeUnit}
-              formatter={(u) => u.label}
-              align="left"
-              colors={colors}
-            />
+          <View style={[styles.segmentRow, { backgroundColor: colors.sunken }]}>
+            <Segment id="hours" label="Hours & minutes" />
+            <Segment id="days" label="Days" />
           </View>
+
+          {mode === "hours" && Platform.OS === "ios" && (
+            <DateTimePicker
+              mode="countdown"
+              display="spinner"
+              value={iosDate}
+              minuteInterval={5}
+              onChange={(e, d) => d && setIosDate(d)}
+              style={{ height: ITEM_H * VISIBLE }}
+            />
+          )}
+
+          {mode === "hours" && Platform.OS !== "ios" && (
+            <View style={[styles.wheelRow, { height: ITEM_H * VISIBLE }]}>
+              <View
+                pointerEvents="none"
+                style={[styles.centerBand, bandStyle(colors)]}
+              />
+              <WheelColumn
+                data={HOURS}
+                index={hIdx}
+                onIndexChange={setHIdx}
+                formatter={(n) => `${n} h`}
+                align="right"
+                colors={colors}
+              />
+              <WheelColumn
+                data={MINUTES}
+                index={mIdx}
+                onIndexChange={setMIdx}
+                formatter={(n) => `${String(n).padStart(2, "0")} m`}
+                align="left"
+                colors={colors}
+              />
+            </View>
+          )}
+
+          {mode === "days" && (
+            <View style={[styles.wheelRow, { height: ITEM_H * VISIBLE }]}>
+              <View
+                pointerEvents="none"
+                style={[styles.centerBand, bandStyle(colors)]}
+              />
+              <WheelColumn
+                data={DAYS}
+                index={dIdx}
+                onIndexChange={setDIdx}
+                formatter={(n) => `${n} ${n === 1 ? "day" : "days"}`}
+                align="center"
+                colors={colors}
+              />
+            </View>
+          )}
 
           <TouchableOpacity
             style={[styles.doneBtn, { backgroundColor: colors.primary }]}
@@ -215,6 +264,13 @@ export default function DurationWheelModal({ visible, value, onSelect, onClose }
   );
 }
 
+const bandStyle = (colors) => ({
+  top: PAD,
+  height: ITEM_H,
+  borderColor: colors.border,
+  backgroundColor: `${colors.primary}12`,
+});
+
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   sheet: {
@@ -228,10 +284,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   title: { fontSize: 20, fontWeight: "700", letterSpacing: -0.3 },
   preview: { fontSize: 14, marginTop: 2 },
+  segmentRow: {
+    flexDirection: "row",
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 8,
+  },
+  segment: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 9,
+    alignItems: "center",
+  },
   wheelRow: { flexDirection: "row", justifyContent: "center" },
   centerBand: {
     position: "absolute",
