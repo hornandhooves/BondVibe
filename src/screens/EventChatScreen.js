@@ -66,6 +66,7 @@ export default function EventChatScreen({ route, navigation }) {
     seatsTotal: "",
     from: "",
     departureTime: "",
+    departureDate: null,
     notes: "",
   });
   const [showDepPicker, setShowDepPicker] = useState(false);
@@ -406,7 +407,13 @@ export default function EventChatScreen({ route, navigation }) {
     setCreatingCarpool(false);
     if (result.success) {
       setCarpoolModalVisible(false);
-      setCarpoolForm({ seatsTotal: "", from: "", departureTime: "", notes: "" });
+      setCarpoolForm({
+        seatsTotal: "",
+        from: "",
+        departureTime: "",
+        departureDate: null,
+        notes: "",
+      });
     } else {
       Alert.alert("Couldn't offer ride", result.error || "Please try again.");
     }
@@ -944,7 +951,7 @@ export default function EventChatScreen({ route, navigation }) {
             {showDepPicker && (
               <View>
                 <DateTimePicker
-                  value={new Date()}
+                  value={carpoolForm.departureDate || new Date()}
                   mode="time"
                   display={Platform.OS === "ios" ? "spinner" : "default"}
                   onChange={(e, d) => {
@@ -954,7 +961,11 @@ export default function EventChatScreen({ route, navigation }) {
                         hour: "numeric",
                         minute: "2-digit",
                       });
-                      setCarpoolForm((f) => ({ ...f, departureTime: t }));
+                      setCarpoolForm((f) => ({
+                        ...f,
+                        departureTime: t,
+                        departureDate: d,
+                      }));
                     }
                   }}
                 />
