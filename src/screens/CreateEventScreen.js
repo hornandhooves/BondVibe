@@ -35,7 +35,6 @@ import Icon from "../components/Icon";
 import {
   EVENT_CATEGORIES,
   EVENT_LANGUAGES,
-  EVENT_DURATIONS,
 } from "../utils/eventCategories";
 import useCities from "../hooks/useCities";
 import { uploadEventImages } from "../services/storageService";
@@ -47,6 +46,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import RecurrenceModal from "../components/RecurrenceModal";
 import { generateRecurringDates, getRecurrenceSummary } from "../utils/recurrenceUtils";
 import DraftWithAI from "../components/ai/DraftWithAI";
+import DurationWheelModal, { formatDuration } from "../components/DurationWheelModal";
 
 // Recurrence handled by modal
 
@@ -100,6 +100,11 @@ export default function CreateEventScreen({ navigation }) {
   const [placeId, setPlaceId] = useState(null);
   const [maxPeople, setMaxPeople] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("180"); // 3h default
+  const [showDurationModal, setShowDurationModal] = useState(false);
+  // Feature-at-creation: when on, we route the host to the paid promotion flow
+  // right after the event is created (featured is set server-side only).
+  const [featureAfterCreate, setFeatureAfterCreate] = useState(false);
+  const [createdEventId, setCreatedEventId] = useState(null);
   const [isFree, setIsFree] = useState(true);
   const [price, setPrice] = useState("");
   const [loading, setLoading] = useState(false);
@@ -517,6 +522,7 @@ export default function CreateEventScreen({ navigation }) {
         };
 
         const eventDocRef = await addDoc(collection(db, "events"), eventData);
+        setCreatedEventId(eventDocRef.id);
 
         // Upload images if any
         if (eventImages.length > 0) {
@@ -595,6 +601,8 @@ export default function CreateEventScreen({ navigation }) {
             console.error("⚠️ Error uploading images:", imageError);
           }
         }
+        // Feature-at-create promotes the first event of the series.
+        setCreatedEventId(firstEventId);
       }
 
       // Event created — drop any saved draft.
@@ -1080,15 +1088,73 @@ export default function CreateEventScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        {/* Feature this event — routes to the paid promotion flow after create */}
+        <View style={styles.field}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setFeatureAfterCreate((v) => !v)}
+            style={[
+              styles.membershipToggle,
+              {
+                backgroundColor: featureAfterCreate
+                  ? `${colors.primary}1A`
+                  : colors.surfaceGlass,
+                borderColor: featureAfterCreate ? colors.primary : colors.border,
+              },
+            ]}
+          >
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={[styles.label, { color: colors.text, marginBottom: 2 }]}>
+                Feature this event
+              </Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                Boost visibility with a promoted spot. You'll pick a plan right
+                after creating.
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.switchTrack,
+                { backgroundColor: featureAfterCreate ? colors.primary : colors.border },
+              ]}
+            >
+              <View
+                style={[
+                  styles.switchKnob,
+                  { alignSelf: featureAfterCreate ? "flex-end" : "flex-start" },
+                ]}
+              />
+            </View>
+          </TouchableOpacity>
+        </View>
+
         {/* Event length — sets the end time; drives when Community Matching opens */}
-        <SelectDropdown
-          label="Event length"
-          value={durationMinutes}
-          onValueChange={setDurationMinutes}
-          options={EVENT_DURATIONS}
-          placeholder="Select duration"
-          type="default"
-        />
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: colors.text }]}>Event length</Text>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setShowDurationModal(true)}
+            style={[
+              styles.inputWrapper,
+              {
+                backgroundColor: colors.surfaceGlass,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Icon
+              name="clock"
+              size={20}
+              color={colors.textSecondary}
+              type="ui"
+              style={{ marginRight: 12 }}
+            />
+            <Text style={[styles.input, { color: colors.text }]}>
+              {formatDuration(durationMinutes)}
+            </Text>
+            <Icon name="down" size={20} color={colors.textSecondary} type="ui" />
+          </TouchableOpacity>
+        </View>
 
         {/* Max People and Price */}
         <View style={styles.row}>
@@ -1265,10 +1331,27 @@ export default function CreateEventScreen({ navigation }) {
         visible={showSuccessModal}
         onClose={() => {
           setShowSuccessModal(false);
-          navigation.goBack();
+          // If the host opted to feature the event, send them straight to the
+          // paid promotion flow (featured is applied server-side on payment).
+          if (featureAfterCreate && createdEventId) {
+            navigation.replace("PromoteEvent", {
+              eventId: createdEventId,
+              eventTitle: createdEventTitle,
+            });
+          } else {
+            navigation.goBack();
+          }
         }}
         eventTitle={createdEventTitle}
         eventsCount={createdEventsCount}
+      />
+
+      {/* Event length wheel picker */}
+      <DurationWheelModal
+        visible={showDurationModal}
+        value={durationMinutes}
+        onSelect={setDurationMinutes}
+        onClose={() => setShowDurationModal(false)}
       />
 
       {/* Recurrence Modal */}
