@@ -8,6 +8,7 @@ import {
   ScrollView,
   Platform,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import Icon from './Icon';
 import { useTheme } from "../contexts/ThemeContext";
 
@@ -18,13 +19,14 @@ export default function LegalDocumentModal({
   content,
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   // Split content into paragraphs for better rendering
   const renderContent = () => {
     if (!content) {
       return (
         <Text style={[styles.paragraph, { color: colors.error }]}>
-          Error: No content available
+          {t("legalDocumentModal.errorNoContent")}
         </Text>
       );
     }
@@ -35,7 +37,7 @@ export default function LegalDocumentModal({
     if (paragraphs.length === 0) {
       return (
         <Text style={[styles.paragraph, { color: colors.warning }]}>
-          No paragraphs found
+          {t("legalDocumentModal.noParagraphsFound")}
         </Text>
       );
     }
@@ -92,7 +94,7 @@ export default function LegalDocumentModal({
                 ]}
               >
                 <Text style={[styles.buttonText, { color: colors.primary }]}>
-                  Close
+                  {t("legalDocumentModal.close")}
                 </Text>
               </View>
             </TouchableOpacity>

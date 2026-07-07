@@ -1,4 +1,15 @@
 {
+  "navigation": {
+    "attending": "Attending",
+    "hosting": "Hosting",
+    "tabs": {
+      "home": "Home",
+      "wall": "Wall",
+      "events": "Events",
+      "rentals": "Rentals",
+      "profile": "Profile"
+    }
+  },
   "common": {
     "cancel": "Cancel",
     "done": "Done",
@@ -19,6 +30,9 @@
   },
   "welcome": {
     "tagline": "Connect through shared experiences",
+    "groupEvents": "Group Events",
+    "personalityMatching": "Personality Matching",
+    "safeAndInclusive": "Safe & Inclusive",
     "getStarted": "Get started",
     "haveAccount": "I already have an account"
   },
@@ -2534,5 +2548,34 @@
     "tapToChange": "tap to change",
     "tapToVote": "tap to vote",
     "viewVotes": "View votes"
+  },
+  "primitives": {
+    "verifiedHost": "Verified host"
+  },
+  "successModal": {
+    "gotIt": "Got it!"
+  },
+  "legalDocumentModal": {
+    "errorNoContent": "Error: No content available",
+    "noParagraphsFound": "No paragraphs found",
+    "close": "Close"
+  },
+  "availabilityCalendar": {
+    "booked": "Booked",
+    "available": "Available",
+    "months": {
+      "january": "January",
+      "february": "February",
+      "march": "March",
+      "april": "April",
+      "may": "May",
+      "june": "June",
+      "july": "July",
+      "august": "August",
+      "september": "September",
+      "october": "October",
+      "november": "November",
+      "december": "December"
+    }
   }
 }

@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Modal,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
 import Icon from './Icon';
 
@@ -29,6 +30,7 @@ export default function SuccessModal({
   emoji, // legacy prop — mapped to an icon, never rendered as a glyph
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const legacy = emoji ? EMOJI_TO_ICON[emoji] : null;
   const iconName = icon || legacy?.icon || 'successCircle';
@@ -90,7 +92,7 @@ export default function SuccessModal({
               borderColor: `${colors.primary}66`
             }]}>
               <Text style={[styles.buttonText, { color: colors.primary }]}>
-                Got it!
+                {t("successModal.gotIt")}
               </Text>
             </View>
           </TouchableOpacity>

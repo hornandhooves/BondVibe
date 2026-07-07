@@ -214,7 +214,7 @@ export default function HomeScreen({ navigation }) {
                   activeOpacity={0.8}
                 >
                   <BVCard
-                    shadowColor="#FFD700"
+                    shadow={false}
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
@@ -222,6 +222,7 @@ export default function HomeScreen({ navigation }) {
                       backgroundColor: isDark
                         ? "rgba(255, 215, 0, 0.10)"
                         : "rgba(255, 215, 0, 0.14)",
+                      borderColor: "rgba(255, 215, 0, 0.4)",
                     }}
                   >
                     <View

@@ -61,6 +61,7 @@ export default function EventRosterScreen({ route, navigation }) {
         setRows(
           aUsers.map((u) => ({
             ...u,
+            tagKind: isFree ? "free" : membershipIds.has(u.id) ? "membership" : "paid",
             tag: isFree
               ? t("eventRoster.free")
               : membershipIds.has(u.id)
@@ -91,7 +92,7 @@ export default function EventRosterScreen({ route, navigation }) {
       name={u.name}
       avatar={u.avatar}
       subtitle={u.tag && !PAYMENT.includes(u.tag) ? u.tag : undefined}
-      right={u.tag && PAYMENT.includes(u.tag) ? <PaymentPill status={u.tag} /> : undefined}
+      right={u.tag && PAYMENT.includes(u.tag) ? <PaymentPill status={u.tag} kind={u.tagKind} /> : undefined}
       status={u.status ? STATUS[u.status].label : undefined}
       statusColor={u.status ? STATUS[u.status].color : undefined}
     />

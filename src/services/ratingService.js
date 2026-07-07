@@ -280,11 +280,17 @@ export const getPendingRatings = async () => {
         return isNotCreator && isPast && isActive;
       });
 
-    // Filter out events user has already rated
+    // Only prompt for events the host actually checked the user in for —
+    // RSVP'ing ("attendees" array) alone doesn't mean they showed up.
+    // events/{eventId}/checkins/{userId} is written only by a host scan
+    // (see checkinService.js), so its presence is the real attendance signal.
     const unratedEvents = [];
     for (const event of attendedPastEvents) {
-      const existingRating = await getUserRatingForEvent(event.id, userId);
-      if (!existingRating) {
+      const [checkinSnap, existingRating] = await Promise.all([
+        getDoc(doc(db, "events", event.id, "checkins", userId)),
+        getUserRatingForEvent(event.id, userId),
+      ]);
+      if (checkinSnap.exists() && !existingRating) {
         unratedEvents.push(event);
       }
     }

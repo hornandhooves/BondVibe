@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
+import { useTranslation } from "react-i18next";
 import { registerPushToken } from "../utils/messageService";
 import { logger } from "../utils/logger";
 import { ActivityIndicator, View } from "react-native";
@@ -132,21 +133,22 @@ function EventsTabRoot(props) {
 }
 
 const TAB_META = {
-  HomeTab: { title: "Home", icon: "discover" },
-  WallTab: { title: "Wall", icon: "wall" },
-  EventsTab: { title: "Events", icon: "events" },
-  RentalsTab: { title: "Rentals", icon: "bike" },
-  ProfileTab: { title: "Profile", icon: "profile" },
+  HomeTab: { labelKey: "navigation.tabs.home", icon: "discover" },
+  WallTab: { labelKey: "navigation.tabs.wall", icon: "wall" },
+  EventsTab: { labelKey: "navigation.tabs.events", icon: "events" },
+  RentalsTab: { labelKey: "navigation.tabs.rentals", icon: "bike" },
+  ProfileTab: { labelKey: "navigation.tabs.profile", icon: "profile" },
 };
 
 function MainTabs() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   return (
     <Tab.Navigator
       screenOptions={({ route, navigation }) => ({
         header: () => (
           <AppHeader
-            title={route.name === "HomeTab" ? "" : TAB_META[route.name].title}
+            title={route.name === "HomeTab" ? "" : t(TAB_META[route.name].labelKey)}
             navigation={navigation}
           />
         ),
@@ -158,8 +160,8 @@ function MainTabs() {
             strokeWidth={focused ? 2.2 : 1.75}
           />
         ),
-        tabBarLabel: TAB_META[route.name].title,
-        tabBarTestID: `tab-${TAB_META[route.name].title.toLowerCase()}`,
+        tabBarLabel: t(TAB_META[route.name].labelKey),
+        tabBarTestID: `tab-${route.name.replace("Tab", "").toLowerCase()}`,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
         tabBarStyle: {

@@ -49,7 +49,7 @@ export default function WelcomeScreen({ navigation }) {
               <Icon name="users" size={22} color={colors.primary} />
             </View>
             <Text style={[styles.featureText, { color: colors.text }]}>
-              Group Events
+              {t("welcome.groupEvents")}
             </Text>
           </View>
           <View style={styles.feature}>
@@ -57,7 +57,7 @@ export default function WelcomeScreen({ navigation }) {
               <BondMark size={22} />
             </View>
             <Text style={[styles.featureText, { color: colors.text }]}>
-              Personality Matching
+              {t("welcome.personalityMatching")}
             </Text>
           </View>
           <View style={styles.feature}>
@@ -65,7 +65,7 @@ export default function WelcomeScreen({ navigation }) {
               <Icon name="privacy" size={22} color={colors.primary} />
             </View>
             <Text style={[styles.featureText, { color: colors.text }]}>
-              Safe & Inclusive
+              {t("welcome.safeAndInclusive")}
             </Text>
           </View>
         </View>

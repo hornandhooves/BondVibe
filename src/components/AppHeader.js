@@ -10,6 +10,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon";
 import { useTheme } from "../contexts/ThemeContext";
 import { useMode } from "../contexts/ModeContext";
@@ -18,6 +19,7 @@ import { TYPE, SPACING, RADII } from "../constants/theme-tokens";
 
 export default function AppHeader({ title, navigation }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { mode, setMode } = useMode();
   const { isHost } = useUserRole();
@@ -51,7 +53,7 @@ export default function AppHeader({ title, navigation }) {
                     { color: active ? colors.primary : colors.textTertiary },
                   ]}
                 >
-                  {m === "attending" ? "Attending" : "Hosting"}
+                  {m === "attending" ? t("navigation.attending") : t("navigation.hosting")}
                 </Text>
               </TouchableOpacity>
             );

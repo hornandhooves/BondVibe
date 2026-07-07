@@ -54,6 +54,7 @@ export default function MyEventsScreen({ navigation, route }) {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [ratedEvents, setRatedEvents] = useState({}); // { eventId: true }
+  const [checkedInEvents, setCheckedInEvents] = useState({}); // { eventId: true }
 
   // Update tabs when navigation params change
   useEffect(() => {
@@ -108,13 +109,21 @@ export default function MyEventsScreen({ navigation, route }) {
 
   const checkRatedEvents = async () => {
     const rated = {};
+    const checkedIn = {};
     for (const event of displayedEvents) {
-      const existingRating = await getUserRatingForEvent(event.id);
+      const [existingRating, wasCheckedIn] = await Promise.all([
+        getUserRatingForEvent(event.id),
+        hasMyCheckin(event.id),
+      ]);
       if (existingRating) {
         rated[event.id] = existingRating.rating;
       }
+      if (wasCheckedIn) {
+        checkedIn[event.id] = true;
+      }
     }
     setRatedEvents(rated);
+    setCheckedInEvents(checkedIn);
   };
 
   // Sort events by date
@@ -241,7 +250,7 @@ export default function MyEventsScreen({ navigation, route }) {
 
   const EventCard = ({ event }) => {
     const isPast = isEventPast(event.date);
-    const showRateButton = activeTab === "joined" && isPast;
+    const showRateButton = activeTab === "joined" && isPast && !!checkedInEvents[event.id];
     const existingRating = ratedEvents[event.id];
 
     return (

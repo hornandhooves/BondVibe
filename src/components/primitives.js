@@ -6,22 +6,25 @@
 import React from "react";
 import Icon from "./Icon";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import { AvatarDisplay } from "./AvatarPicker";
 
 const normAvatar = (a) =>
   !a ? null : typeof a === "string" ? { type: "emoji", value: a } : a;
 
+// Keyed on a stable, non-translated status kind — never on the displayed label,
+// which may already be translated by the caller (see EventRosterScreen).
 const PAYMENT_TONES = {
-  Paid: "#34C759",
-  Membership: "#7C3AED",
-  Free: "#8A8398",
-  Pending: "#FF9F0A",
+  paid: "#34C759",
+  membership: "#7C3AED",
+  free: "#8A8398",
+  pending: "#FF9F0A",
 };
 
 /** Small pill for a payment state (Paid / Pending / Membership / Free). */
-export function PaymentPill({ status }) {
-  const tone = PAYMENT_TONES[status] || "#8A8398";
+export function PaymentPill({ status, kind }) {
+  const tone = PAYMENT_TONES[kind] || PAYMENT_TONES[String(status).toLowerCase()] || "#8A8398";
   return (
     <View style={[styles.pill, { backgroundColor: `${tone}22`, borderColor: `${tone}55` }]}>
       <Text style={[styles.pillText, { color: tone }]}>{status}</Text>
@@ -32,11 +35,12 @@ export function PaymentPill({ status }) {
 /** Verified-host badge. */
 export function HostBadge({ small }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   return (
     <View style={[styles.hostBadge, { backgroundColor: `${colors.secondary || "#1F8A6E"}22` }]}>
       <Icon name="privacy" size={small ? 12 : 14} color={colors.secondary || "#1F8A6E"} />
       <Text style={[styles.hostBadgeText, { color: colors.secondary || "#1F8A6E", fontSize: small ? 11 : 12 }]}>
-        Verified host
+        {t("primitives.verifiedHost")}
       </Text>
     </View>
   );

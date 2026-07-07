@@ -7,13 +7,14 @@
  */
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon";
 import { useTheme } from "../contexts/ThemeContext";
 
 const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+const MONTH_KEYS = [
+  "january", "february", "march", "april", "may", "june",
+  "july", "august", "september", "october", "november", "december",
 ];
 
 const startOfDay = (d) => {
@@ -30,6 +31,7 @@ export default function AvailabilityCalendar({
   selectedEnd,
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
     return { year: d.getFullYear(), month: d.getMonth() };
@@ -87,7 +89,7 @@ export default function AvailabilityCalendar({
           <Icon name="back" size={22} color={colors.textSecondary} />
         </TouchableOpacity>
         <Text style={[styles.month, { color: colors.text }]}>
-          {MONTHS[cursor.month]} {cursor.year}
+          {t(`availabilityCalendar.months.${MONTH_KEYS[cursor.month]}`)} {cursor.year}
         </Text>
         <TouchableOpacity onPress={() => shift(1)} hitSlop={hit}>
           <Icon name="forward" size={22} color={colors.textSecondary} />
@@ -128,11 +130,11 @@ export default function AvailabilityCalendar({
       <View style={styles.legend}>
         <View style={styles.legendItem}>
           <View style={[styles.swatch, { backgroundColor: "#F2C4C4" }]} />
-          <Text style={[styles.legendText, { color: colors.textSecondary }]}>Booked</Text>
+          <Text style={[styles.legendText, { color: colors.textSecondary }]}>{t("availabilityCalendar.booked")}</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.swatch, { borderWidth: 1, borderColor: colors.border }]} />
-          <Text style={[styles.legendText, { color: colors.textSecondary }]}>Available</Text>
+          <Text style={[styles.legendText, { color: colors.textSecondary }]}>{t("availabilityCalendar.available")}</Text>
         </View>
       </View>
     </View>

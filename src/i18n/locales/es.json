@@ -1,4 +1,15 @@
 {
+  "navigation": {
+    "attending": "Asistente",
+    "hosting": "Anfitrión",
+    "tabs": {
+      "home": "Inicio",
+      "wall": "Muro",
+      "events": "Eventos",
+      "rentals": "Rentas",
+      "profile": "Perfil"
+    }
+  },
   "common": {
     "cancel": "Cancelar",
     "done": "Listo",
@@ -19,6 +30,9 @@
   },
   "welcome": {
     "tagline": "Conecta a través de experiencias compartidas",
+    "groupEvents": "Eventos grupales",
+    "personalityMatching": "Emparejamiento por personalidad",
+    "safeAndInclusive": "Seguro e inclusivo",
     "getStarted": "Empezar",
     "haveAccount": "Ya tengo cuenta"
   },
@@ -2534,5 +2548,34 @@
     "tapToChange": "toca para cambiar",
     "tapToVote": "toca para votar",
     "viewVotes": "Ver votos"
+  },
+  "primitives": {
+    "verifiedHost": "Anfitrión verificado"
+  },
+  "successModal": {
+    "gotIt": "¡Entendido!"
+  },
+  "legalDocumentModal": {
+    "errorNoContent": "Error: No hay contenido disponible",
+    "noParagraphsFound": "No se encontraron párrafos",
+    "close": "Cerrar"
+  },
+  "availabilityCalendar": {
+    "booked": "Reservado",
+    "available": "Disponible",
+    "months": {
+      "january": "Enero",
+      "february": "Febrero",
+      "march": "Marzo",
+      "april": "Abril",
+      "may": "Mayo",
+      "june": "Junio",
+      "july": "Julio",
+      "august": "Agosto",
+      "september": "Septiembre",
+      "october": "Octubre",
+      "november": "Noviembre",
+      "december": "Diciembre"
+    }
   }
 }
