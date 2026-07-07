@@ -2582,5 +2582,139 @@
       "november": "Noviembre",
       "december": "Diciembre"
     }
+  },
+  "business": {
+    "manageRow": {
+      "title": "Kinlo para Negocios",
+      "subtitle": "Miembros, paquetes, finanzas — todo tu negocio"
+    },
+    "common": {
+      "errorTitle": "Algo salió mal",
+      "tryAgain": "Inténtalo de nuevo.",
+      "cancel": "Cancelar",
+      "ok": "Aceptar"
+    },
+    "status": {
+      "active": "Activo",
+      "atRisk": "En riesgo",
+      "inactive": "Inactivo"
+    },
+    "verticals": {
+      "dance": { "label": "Danza", "sessionNoun": "clase", "tags": ["Principiante", "Intermedio", "Avanzado", "Salsa", "Bachata"] },
+      "gym": { "label": "Gimnasio / Estudio", "sessionNoun": "sesión", "tags": ["Principiante", "Regular", "Entrenador", "Pesas"] },
+      "yoga": { "label": "Yoga / Pilates", "sessionNoun": "clase", "tags": ["Principiante", "Prenatal", "Avanzado"] },
+      "retreat": { "label": "Retiro", "sessionNoun": "sesión", "tags": ["VIP", "Recurrente"] },
+      "school": { "label": "Escuela", "sessionNoun": "clase", "tags": ["Nuevo", "Becado"] },
+      "coaching": { "label": "Coaching", "sessionNoun": "sesión", "tags": ["1:1", "Grupo"] },
+      "tours": { "label": "Tours", "sessionNoun": "tour", "tags": ["Privado", "Grupo"] },
+      "nightlife": { "label": "Vida nocturna", "sessionNoun": "evento", "tags": ["VIP", "Regular"] },
+      "community": { "label": "Comunidad", "sessionNoun": "sesión", "tags": ["Miembro", "Voluntario"] },
+      "events": { "label": "Eventos", "sessionNoun": "evento", "tags": ["VIP", "Ponente"] },
+      "other": { "label": "Otro", "sessionNoun": "sesión", "tags": [] }
+    },
+    "hub": {
+      "title": "Kinlo para Negocios",
+      "defaultName": "tu negocio",
+      "proBadge": "PRO",
+      "setupTitle": "Configura tu negocio",
+      "setupText": "Maneja toda tu operación desde el teléfono — miembros, paquetes, asistencia y finanzas. Funciona 100% manual, incluso para clientes que no usan la app.",
+      "setupCta": "Empezar",
+      "communitySection": "Comunidad",
+      "membersTitle": "Miembros",
+      "membersSubtitle_one": "{{count}} miembro",
+      "membersSubtitle_other": "{{count}} miembros",
+      "moreSoon": "Panel, paquetes, finanzas y más llegan conforme los habilitemos."
+    },
+    "setup": {
+      "title": "Nuevo negocio",
+      "intro": "Elige lo que mejor describa tu negocio — solo ajusta algunas etiquetas y sugerencias. Puedes cambiarlo después.",
+      "nameLabel": "Nombre del negocio",
+      "namePlaceholder": "ej. Ritmo Studio",
+      "verticalLabel": "Tipo de negocio",
+      "presetHint": "Un preset solo cambia etiquetas y valores por defecto — nunca tus datos.",
+      "create": "Crear negocio",
+      "nameRequiredTitle": "Falta el nombre",
+      "nameRequiredMsg": "Dale un nombre a tu negocio para continuar."
+    },
+    "members": {
+      "title": "Miembros",
+      "searchPlaceholder": "Buscar {{count}} miembros",
+      "filterAll": "Todos {{count}}",
+      "filterActive": "Activos {{count}}",
+      "filterAtRisk": "En riesgo {{count}}",
+      "emptyTitle": "Aún no hay miembros",
+      "emptyText": "Agrega tu primer miembro a mano — sin necesidad de cuenta en la app. Los registros por app y check-ins con QR se vinculan al mismo registro después.",
+      "addFirst": "Agregar un miembro",
+      "importCsv": "Importar desde CSV",
+      "creditsLeft_one": "{{count}} crédito",
+      "creditsLeft_other": "{{count}} créditos",
+      "manual": "manual",
+      "unnamed": "Miembro sin nombre"
+    },
+    "form": {
+      "newTitle": "Nuevo miembro",
+      "editTitle": "Editar miembro",
+      "name": "Nombre",
+      "namePlaceholder": "Nombre completo",
+      "phone": "Teléfono",
+      "emailOptional": "Correo (opcional)",
+      "tags": "Etiquetas",
+      "addTag": "Agregar una etiqueta…",
+      "notes": "Notas",
+      "notesPlaceholder": "Algo que valga la pena recordar…",
+      "smsConsentTitle": "Recordatorios por SMS",
+      "smsConsentSub": "El miembro acepta recibir mensajes de clases y de su cuenta. Apagado por defecto; puede darse de baja cuando quiera (STOP). Consulta el Aviso de Privacidad.",
+      "save": "Guardar miembro",
+      "autoLinkNote": "Se vincula automáticamente si luego se une a Kinlo.",
+      "nameRequiredTitle": "Falta el nombre",
+      "nameRequiredMsg": "Ingresa el nombre del miembro."
+    },
+    "record": {
+      "title": "Miembro",
+      "notFound": "Miembro no encontrado.",
+      "setStatus": "Estado",
+      "appAccess": "Acceso a la app",
+      "tags": "Etiquetas",
+      "credits": "Créditos",
+      "creditsEmpty": "Los paquetes y créditos llegan en el siguiente bloque.",
+      "attendance": "Asistencia",
+      "attendanceEmpty": "La asistencia aparece cuando se habilite el check-in.",
+      "notes": "Notas",
+      "deleteTitle": "¿Eliminar miembro?",
+      "deleteMsg": "Esto elimina permanentemente al miembro y su registro.",
+      "delete": "Eliminar miembro"
+    },
+    "guestCode": {
+      "title": "Código de invitado",
+      "hint": "Compártelo para que el miembro vincule su cuenta de Kinlo y desbloquee su pase de check-in con QR.",
+      "share": "Compartir código",
+      "regenerate": "Nuevo código",
+      "linked": "Vinculado a una cuenta de la app",
+      "shareMessage": "{{business}} en Kinlo: ingresa el código {{code}} para vincular tu cuenta y desbloquear tu pase de check-in."
+    },
+    "csv": {
+      "title": "Importar CSV",
+      "intro": "Pega tu lista de miembros (con fila de encabezados). Mapea las columnas y luego importa. Nunca asumimos consentimiento SMS de una lista.",
+      "placeholder": "nombre,telefono,correo,etiquetas\nLucía Ramírez,+52...,lucia@...,Principiante",
+      "parse": "Leer CSV",
+      "detected": "{{rows}} filas · {{cols}} columnas",
+      "field": {
+        "name": "Nombre",
+        "phone": "Teléfono",
+        "email": "Correo",
+        "tags": "Etiquetas",
+        "sms_consent": "Consentimiento SMS"
+      },
+      "colN": "Columna {{n}}",
+      "consentNote": "Los miembros importados tienen el SMS apagado salvo que mapees una columna de consentimiento con un valor afirmativo (yes / sí / 1 / x).",
+      "import_one": "Importar {{count}} miembro",
+      "import_other": "Importar {{count}} miembros",
+      "doneTitle": "Importación completa",
+      "doneMsg": "Creados {{created}}, omitidos {{skipped}}.",
+      "emptyTitle": "Nada que importar",
+      "emptyMsg": "Pega un CSV con fila de encabezados y al menos un miembro.",
+      "nameRequiredTitle": "Mapea la columna Nombre",
+      "nameRequiredMsg": "Elige qué columna contiene el nombre del miembro."
+    }
   }
 }

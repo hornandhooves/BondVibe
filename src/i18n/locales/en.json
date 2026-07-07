@@ -2582,5 +2582,139 @@
       "november": "November",
       "december": "December"
     }
+  },
+  "business": {
+    "manageRow": {
+      "title": "Kinlo for Business",
+      "subtitle": "Members, packages, finance — run it all"
+    },
+    "common": {
+      "errorTitle": "Something went wrong",
+      "tryAgain": "Please try again.",
+      "cancel": "Cancel",
+      "ok": "OK"
+    },
+    "status": {
+      "active": "Active",
+      "atRisk": "At risk",
+      "inactive": "Inactive"
+    },
+    "verticals": {
+      "dance": { "label": "Dance", "sessionNoun": "class", "tags": ["Beginner", "Intermediate", "Advanced", "Salsa", "Bachata"] },
+      "gym": { "label": "Gym / Studio", "sessionNoun": "session", "tags": ["Beginner", "Regular", "Trainer", "Weights"] },
+      "yoga": { "label": "Yoga / Pilates", "sessionNoun": "class", "tags": ["Beginner", "Prenatal", "Advanced"] },
+      "retreat": { "label": "Retreat", "sessionNoun": "session", "tags": ["VIP", "Returning"] },
+      "school": { "label": "School", "sessionNoun": "class", "tags": ["New", "Scholarship"] },
+      "coaching": { "label": "Coaching", "sessionNoun": "session", "tags": ["1:1", "Group"] },
+      "tours": { "label": "Tours", "sessionNoun": "tour", "tags": ["Private", "Group"] },
+      "nightlife": { "label": "Nightlife", "sessionNoun": "event", "tags": ["VIP", "Regular"] },
+      "community": { "label": "Community", "sessionNoun": "session", "tags": ["Member", "Volunteer"] },
+      "events": { "label": "Events", "sessionNoun": "event", "tags": ["VIP", "Speaker"] },
+      "other": { "label": "Other", "sessionNoun": "session", "tags": [] }
+    },
+    "hub": {
+      "title": "Kinlo for Business",
+      "defaultName": "your business",
+      "proBadge": "PRO",
+      "setupTitle": "Set up your business",
+      "setupText": "Run your whole operation from your phone — members, packages, attendance and finance. Works fully by hand, even for clients who don't use the app.",
+      "setupCta": "Get started",
+      "communitySection": "Community",
+      "membersTitle": "Members",
+      "membersSubtitle_one": "{{count}} member",
+      "membersSubtitle_other": "{{count}} members",
+      "moreSoon": "Dashboard, packages, finance and more arrive as we roll them out."
+    },
+    "setup": {
+      "title": "New business",
+      "intro": "Pick what best describes your business — it only tweaks a few labels and suggestions. You can change it later.",
+      "nameLabel": "Business name",
+      "namePlaceholder": "e.g. Ritmo Studio",
+      "verticalLabel": "Type of business",
+      "presetHint": "A preset only swaps labels and defaults — never your data.",
+      "create": "Create business",
+      "nameRequiredTitle": "Name required",
+      "nameRequiredMsg": "Give your business a name to continue."
+    },
+    "members": {
+      "title": "Members",
+      "searchPlaceholder": "Search {{count}} members",
+      "filterAll": "All {{count}}",
+      "filterActive": "Active {{count}}",
+      "filterAtRisk": "At risk {{count}}",
+      "emptyTitle": "No members yet",
+      "emptyText": "Add your first member by hand — no app account needed. App signups and QR check-ins link to the same records later.",
+      "addFirst": "Add a member",
+      "importCsv": "Import from CSV",
+      "creditsLeft_one": "{{count}} credit",
+      "creditsLeft_other": "{{count}} credits",
+      "manual": "manual",
+      "unnamed": "Unnamed member"
+    },
+    "form": {
+      "newTitle": "New member",
+      "editTitle": "Edit member",
+      "name": "Name",
+      "namePlaceholder": "Full name",
+      "phone": "Phone",
+      "emailOptional": "Email (optional)",
+      "tags": "Tags",
+      "addTag": "Add a tag…",
+      "notes": "Notes",
+      "notesPlaceholder": "Anything worth remembering…",
+      "smsConsentTitle": "SMS reminders",
+      "smsConsentSub": "The member agrees to receive class and account texts. Off by default; they can opt out anytime (STOP). See the Privacy Notice.",
+      "save": "Save member",
+      "autoLinkNote": "Links automatically if they later join Kinlo.",
+      "nameRequiredTitle": "Name required",
+      "nameRequiredMsg": "Enter the member's name."
+    },
+    "record": {
+      "title": "Member",
+      "notFound": "Member not found.",
+      "setStatus": "Status",
+      "appAccess": "App access",
+      "tags": "Tags",
+      "credits": "Credits",
+      "creditsEmpty": "Packages and credits arrive with the next block.",
+      "attendance": "Attendance",
+      "attendanceEmpty": "Attendance shows up once check-in is enabled.",
+      "notes": "Notes",
+      "deleteTitle": "Delete member?",
+      "deleteMsg": "This permanently removes the member and their record.",
+      "delete": "Delete member"
+    },
+    "guestCode": {
+      "title": "Guest code",
+      "hint": "Share this so the member links their Kinlo account and unlocks their QR check-in pass.",
+      "share": "Share code",
+      "regenerate": "New code",
+      "linked": "Linked to an app account",
+      "shareMessage": "{{business}} on Kinlo: enter code {{code}} to link your account and unlock your check-in pass."
+    },
+    "csv": {
+      "title": "Import CSV",
+      "intro": "Paste your member list (with a header row). Map the columns, then import. We never assume SMS consent from a list.",
+      "placeholder": "name,phone,email,tags\nLucía Ramírez,+52...,lucia@...,Beginner",
+      "parse": "Read CSV",
+      "detected": "{{rows}} rows · {{cols}} columns",
+      "field": {
+        "name": "Name",
+        "phone": "Phone",
+        "email": "Email",
+        "tags": "Tags",
+        "sms_consent": "SMS consent"
+      },
+      "colN": "Column {{n}}",
+      "consentNote": "Imported members have SMS off unless you map an SMS-consent column with a truthy value (yes / sí / 1 / x).",
+      "import_one": "Import {{count}} member",
+      "import_other": "Import {{count}} members",
+      "doneTitle": "Import complete",
+      "doneMsg": "Created {{created}}, skipped {{skipped}}.",
+      "emptyTitle": "Nothing to import",
+      "emptyMsg": "Paste a CSV with a header row and at least one member.",
+      "nameRequiredTitle": "Map the Name column",
+      "nameRequiredMsg": "Choose which column holds the member's name."
+    }
   }
 }

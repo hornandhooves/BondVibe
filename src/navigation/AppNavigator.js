@@ -36,6 +36,13 @@ import CreateEventScreen from "../screens/CreateEventScreen";
 import EditEventScreen from "../screens/EditEventScreen";
 import MyEventsScreen from "../screens/MyEventsScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+// Kinlo for Business (host ERP/CRM) — Pro-gated, mounted from Manage.
+import BusinessHubScreen from "../screens/business/BusinessHubScreen";
+import BusinessSetupScreen from "../screens/business/BusinessSetupScreen";
+import MembersListScreen from "../screens/business/MembersListScreen";
+import MemberFormScreen from "../screens/business/MemberFormScreen";
+import MemberRecordScreen from "../screens/business/MemberRecordScreen";
+import CsvImportScreen from "../screens/business/CsvImportScreen";
 import PersonalityQuizScreen from "../screens/PersonalityQuizScreen";
 import PersonalityResultsScreen from "../screens/PersonalityResultsScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
@@ -488,6 +495,13 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="BondVibePro" component={BondVibeProScreen} />
           <Stack.Screen name="CheckInScanner" component={CheckInScannerScreen} />
           <Stack.Screen name="HostCRM" component={HostCRMScreen} />
+          {/* Kinlo for Business (host ERP/CRM) */}
+          <Stack.Screen name="BusinessHub" component={BusinessHubScreen} />
+          <Stack.Screen name="BusinessSetup" component={BusinessSetupScreen} />
+          <Stack.Screen name="BusinessMembers" component={MembersListScreen} />
+          <Stack.Screen name="BusinessMemberForm" component={MemberFormScreen} />
+          <Stack.Screen name="BusinessMemberRecord" component={MemberRecordScreen} />
+          <Stack.Screen name="BusinessCsvImport" component={CsvImportScreen} />
           <Stack.Screen
             name="PersonalityQuiz"
             component={PersonalityQuizScreen}

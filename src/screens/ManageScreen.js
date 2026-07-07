@@ -15,6 +15,9 @@ import GradientBackground from "../components/GradientBackground";
 import Icon from "../components/Icon";
 import ListRow from "../components/ListRow";
 import SectionHeader from "../components/SectionHeader";
+import ProBadge from "../components/ProBadge";
+import useEntitlement from "../hooks/useEntitlement";
+import { paywallRouteForTier } from "../components/ProGate";
 import { useTheme } from "../contexts/ThemeContext";
 import { TYPE, SPACING, RADII, BRAND, ELEVATION } from "../constants/theme-tokens";
 
@@ -22,6 +25,7 @@ export default function ManageScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const [profile, setProfile] = useState(null);
+  const { allowed: bizAllowed, tier: bizTier } = useEntitlement("business_erp");
 
   useFocusEffect(
     useCallback(() => {
@@ -59,6 +63,28 @@ export default function ManageScreen({ navigation }) {
             <Text style={[TYPE.label, styles.createText]}>{t("manage.createEvent")}</Text>
           </LinearGradient>
         </TouchableOpacity>
+
+        {/* Kinlo for Business — the host ERP/CRM module. Gated Pro; the row is
+            always visible so non-Pro hosts discover it and hit the paywall. */}
+        <View style={[card, { marginTop: SPACING.md }]}>
+          <ListRow
+            icon="wallet"
+            title={t("business.manageRow.title")}
+            subtitle={t("business.manageRow.subtitle")}
+            onPress={() =>
+              navigation.navigate(bizAllowed ? "BusinessHub" : paywallRouteForTier(bizTier), {
+                from: "business_erp",
+              })
+            }
+            right={
+              <View style={styles.rowRight}>
+                <ProBadge tier="pro" />
+                <Icon name="forward" size={18} color={colors.textTertiary} />
+              </View>
+            }
+            divider={false}
+          />
+        </View>
 
         <SectionHeader title={t("manage.yourEvents")} />
         <View style={card}>
@@ -137,6 +163,7 @@ export default function ManageScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   content: { paddingBottom: SPACING.xxxl },
+  rowRight: { flexDirection: "row", alignItems: "center", gap: 6 },
   createBtn: {
     flexDirection: "row",
     alignItems: "center",

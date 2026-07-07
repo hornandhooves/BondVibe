@@ -60,6 +60,8 @@ export const FEATURES = {
     on: true,
     freeTaste: 'headline number; full read = Pro',
   },
+  // ── Kinlo for Business (host ERP/CRM) — the whole module is Pro (hard gate) ──
+  business_erp: { tier: 'pro', audience: 'host', on: true },
 };
 
 /**
