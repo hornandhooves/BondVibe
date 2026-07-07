@@ -1921,79 +1921,130 @@ exports.deleteUserAccount = onRequest(
         return res.status(403).json({error: "forbidden"});
       }
 
-      console.log("🗑️ Starting account deletion for user:", userId);
+      console.log("🗑️ Starting FULL account deletion for user:", userId);
+      const counts = {};
+      const FieldValue = admin.firestore.FieldValue;
 
-      // 1. Delete user's events (where they are creator)
-      const eventsSnapshot = await db
-        .collection("events")
-        .where("creatorId", "==", userId)
-        .get();
+      // Helper: delete every doc a query returns (recursively, so any
+      // subcollections go too). Failures on one query never abort the rest —
+      // deletion must be best-effort-complete.
+      const purgeQuery = async (label, ref) => {
+        try {
+          const snap = await ref.get();
+          await Promise.all(snap.docs.map((d) => db.recursiveDelete(d.ref)));
+          counts[label] = snap.size;
+          console.log(`✅ Purged ${snap.size} ${label}`);
+        } catch (e) {
+          counts[label] = `error: ${e.message}`;
+          console.error(`⚠️ Purge ${label} failed:`, e.message);
+        }
+      };
 
-      const eventDeletePromises = eventsSnapshot.docs.map(async (eventDoc) => {
-        // Delete event messages subcollection
-        const messagesSnapshot = await eventDoc.ref.collection("messages").get();
-        const messageDeletes = messagesSnapshot.docs.map((msg) => msg.ref.delete());
-        await Promise.all(messageDeletes);
+      // 1. Events the user created — recursiveDelete also clears their
+      //    messages / checkins / recapPhotos subcollections.
+      await purgeQuery("events",
+        db.collection("events").where("creatorId", "==", userId));
 
-        // Delete event document
-        return eventDoc.ref.delete();
-      });
-      await Promise.all(eventDeletePromises);
-      console.log("✅ Deleted", eventsSnapshot.size, "events created by user");
+      // 2. Social posts the user authored.
+      await purgeQuery("posts",
+        db.collection("posts").where("authorId", "==", userId));
 
-      // 3. Delete user's notifications
-      const notificationsSnapshot = await db
-        .collection("notifications")
-        .where("userId", "==", userId)
-        .get();
+      // 3. Top-level notifications addressed to the user.
+      await purgeQuery("notifications",
+        db.collection("notifications").where("userId", "==", userId));
 
-      const notifDeletePromises = notificationsSnapshot.docs.map((doc) => doc.ref.delete());
-      await Promise.all(notifDeletePromises);
-      console.log("✅ Deleted", notificationsSnapshot.size, "notifications");
+      // 4. Ratings the user wrote.
+      await purgeQuery("ratings",
+        db.collection("ratings").where("raterId", "==", userId));
 
-      // 4. Delete user's ratings
-      const ratingsSnapshot = await db
-        .collection("ratings")
-        .where("raterId", "==", userId)
-        .get();
+      // 5. Match profiles across every event (sensitive data). Stored at
+      //    matchProfiles/{eventId}/attendees/{uid} with a userId field.
+      await purgeQuery("matchProfiles",
+        db.collectionGroup("attendees").where("userId", "==", userId));
 
-      const ratingDeletePromises = ratingsSnapshot.docs.map((doc) => doc.ref.delete());
-      await Promise.all(ratingDeletePromises);
-      console.log("✅ Deleted", ratingsSnapshot.size, "ratings");
+      // 6. Direct-message threads the user is part of (+ their messages).
+      await purgeQuery("dmThreads",
+        db.collection("dms").where("users", "array-contains", userId));
 
-      // 5. Delete user document from Firestore
-      await db.collection("users").doc(userId).delete();
-      console.log("✅ Deleted user document");
+      // 7. Host groups the user OWNS — remove entirely.
+      await purgeQuery("ownedGroups",
+        db.collection("hostGroups").where("hostId", "==", userId));
 
-      // 6. Delete user from Firebase Auth
+      // 8. Detach the user from groups they're only a MEMBER of.
+      try {
+        const memberGroups = await db.collection("hostGroups")
+          .where("memberIds", "array-contains", userId).get();
+        await Promise.all(memberGroups.docs.map((g) =>
+          g.ref.update({
+            memberIds: FieldValue.arrayRemove(userId),
+            blockedIds: FieldValue.arrayRemove(userId),
+          })));
+        counts.groupMemberships = memberGroups.size;
+        console.log(`✅ Removed from ${memberGroups.size} group memberships`);
+      } catch (e) {
+        console.error("⚠️ group membership detach failed:", e.message);
+      }
+
+      // 9. Detach the user from events they only JOINED (not created).
+      try {
+        const joined = await db.collection("events")
+          .where("attendees", "array-contains", userId).get();
+        await Promise.all(joined.docs.map((ev) =>
+          ev.ref.update({
+            attendees: FieldValue.arrayRemove(userId),
+            waitlist: FieldValue.arrayRemove(userId),
+            interested: FieldValue.arrayRemove(userId),
+          })));
+        counts.eventsLeft = joined.size;
+        console.log(`✅ Removed from ${joined.size} joined events`);
+      } catch (e) {
+        console.error("⚠️ event attendee detach failed:", e.message);
+      }
+
+      // 10. The user document AND all its subcollections (private/contact =
+      //     phone, notifications, blocks, stripeConnect). recursiveDelete is
+      //     essential here — deleting the doc alone would ORPHAN these.
+      try {
+        await db.recursiveDelete(db.collection("users").doc(userId));
+        console.log("✅ Deleted user document + subcollections");
+      } catch (e) {
+        console.error("⚠️ user doc delete failed:", e.message);
+      }
+
+      // 11. Firebase Auth account.
       try {
         await admin.auth().deleteUser(userId);
-        console.log("✅ Deleted user from Firebase Auth");
+        console.log("✅ Deleted Firebase Auth user");
       } catch (authError) {
-        console.error("⚠️ Error deleting from Auth (may already be deleted):", authError.message);
+        console.error("⚠️ Auth delete (may already be gone):", authError.message);
       }
 
-      // 7. Delete user's files from Storage (profile photos, etc.)
+      // 12. Storage: everything the user uploaded — avatar, posts, and the
+      //     legacy users/{uid}/ prefix.
       try {
         const bucket = admin.storage().bucket();
-        const [files] = await bucket.getFiles({prefix: `users/${userId}/`});
-        const deleteFilePromises = files.map((file) => file.delete());
-        await Promise.all(deleteFilePromises);
-        console.log("✅ Deleted", files.length, "files from storage");
+        const prefixes = [
+          `users/${userId}/`,
+          `avatars/${userId}/`,
+          `posts/${userId}/`,
+        ];
+        let removed = 0;
+        for (const prefix of prefixes) {
+          const [files] = await bucket.getFiles({prefix});
+          await Promise.all(files.map((f) => f.delete()));
+          removed += files.length;
+        }
+        counts.storageFiles = removed;
+        console.log(`✅ Deleted ${removed} storage files`);
       } catch (storageError) {
-        console.error("⚠️ Error deleting from Storage:", storageError.message);
+        console.error("⚠️ Storage delete failed:", storageError.message);
       }
 
-      console.log("🎉 Account deletion complete for user:", userId);
-
+      console.log("🎉 FULL account deletion complete for user:", userId);
       res.json({
         success: true,
-        message: "Account deleted successfully",
-        deletedData: {
-          events: eventsSnapshot.size,
-          notifications: notificationsSnapshot.size,
-          ratings: ratingsSnapshot.size,
-        },
+        message: "Account and personal data deleted",
+        deletedData: counts,
       });
     } catch (error) {
       console.error("❌ Error deleting account:", error);
