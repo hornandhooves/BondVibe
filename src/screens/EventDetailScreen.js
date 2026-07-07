@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import {
   doc,
   getDoc,
@@ -57,6 +58,7 @@ import { getFollowing } from "../services/followService";
 
 export default function EventDetailScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
+  const { t, i18n } = useTranslation();
   const { eventId } = route.params;
   const [event, setEvent] = useState(null);
   const [matchInsight, setMatchInsight] = useState(null);
@@ -78,7 +80,7 @@ export default function EventDetailScreen({ route, navigation }) {
         ids.slice(0, 12).map(async (id) => {
           const u = await getDoc(doc(db, "users", id));
           const d = u.exists() ? u.data() : {};
-          return { id, name: d.fullName || d.name || "Friend", avatar: d.avatar };
+          return { id, name: d.fullName || d.name || t("eventDetail.defaultFriendName"), avatar: d.avatar };
         })
       );
       if (active) setFriendsGoing(users);
@@ -295,23 +297,23 @@ export default function EventDetailScreen({ route, navigation }) {
     try {
       const r = await joinFreeEvent(eventId);
       if (!r.success) {
-        Alert.alert("Couldn't join", r.error);
+        Alert.alert(t("eventDetail.alerts.couldntJoinTitle"), r.error);
         return;
       }
       if (r.waitlisted) {
         Alert.alert(
-          "You're on the waitlist ⏳",
-          `This event is full. You're #${r.position || ""} in line — we'll confirm you automatically if a spot opens.`
+          t("eventDetail.alerts.waitlistTitle"),
+          t("eventDetail.alerts.waitlistMsg", { position: r.position || "" })
         );
       } else {
         setIsJoined(true);
         // The host's "new attendee" notification (bubble + push) is sent by the
         // onEventAttendeesChanged Cloud Function for all join paths.
-        Alert.alert("Joined!", "You have joined this event");
+        Alert.alert(t("eventDetail.alerts.joinedTitle"), t("eventDetail.alerts.joinedMsg"));
       }
       await loadEvent();
     } catch (error) {
-      Alert.alert("Error", "Could not join event");
+      Alert.alert(t("eventDetail.alerts.errorTitle"), t("eventDetail.alerts.couldNotJoin"));
     } finally {
       setJoining(false);
     }
@@ -329,14 +331,14 @@ export default function EventDetailScreen({ route, navigation }) {
           setIsJoined(false);
           setUserReservation(null);
           Alert.alert(
-            "Left event",
+            t("eventDetail.alerts.leftEventCreditTitle"),
             r.forfeited
-              ? "You cancelled within 2 hours, so the class credit was used."
-              : "You left the event and your class credit was returned."
+              ? t("eventDetail.alerts.forfeitedMsg")
+              : t("eventDetail.alerts.returnedMsg")
           );
           await loadEvent();
         } catch (error) {
-          Alert.alert("Error", "Could not leave event");
+          Alert.alert(t("eventDetail.alerts.errorTitle"), t("eventDetail.alerts.couldNotLeave"));
         } finally {
           setJoining(false);
         }
@@ -353,10 +355,10 @@ export default function EventDetailScreen({ route, navigation }) {
           attendees: arrayRemove(auth.currentUser.uid),
         });
         setIsJoined(false);
-        Alert.alert("Left Event", "You have left this event");
+        Alert.alert(t("eventDetail.alerts.leftEventTitle"), t("eventDetail.alerts.leftEventMsg"));
         await loadEvent();
       } catch (error) {
-        Alert.alert("Error", "Could not leave event");
+        Alert.alert(t("eventDetail.alerts.errorTitle"), t("eventDetail.alerts.couldNotLeave"));
       } finally {
         setJoining(false);
       }
@@ -366,7 +368,7 @@ export default function EventDetailScreen({ route, navigation }) {
     const maxCapacity = event.maxAttendees || event.maxPeople || 0;
     const currentCount = event.attendees?.length || 0;
     if (currentCount >= maxCapacity) {
-      Alert.alert("Event Full", "This event has reached maximum capacity");
+      Alert.alert(t("eventDetail.alerts.eventFullTitle"), t("eventDetail.alerts.eventFullMsg"));
       return;
     }
 
@@ -382,7 +384,7 @@ export default function EventDetailScreen({ route, navigation }) {
         eventTitle: event.title,
         price: event.price || 0,
         hostId: getEventCreatorId(event),
-        hostName: event.hostName || "Host",
+        hostName: event.hostName || t("eventDetail.defaultHostName"),
         acceptsMembership: event.acceptsMembership !== false,
       });
       return;
@@ -394,17 +396,17 @@ export default function EventDetailScreen({ route, navigation }) {
   const handleCancelEvent = () => {
     if (isRecurring && futureEventsCount > 1) {
       Alert.alert(
-        "Delete Recurring Event",
-        "Do you want to delete only this event or this and all following events?",
+        t("eventDetail.alerts.deleteRecurringTitle"),
+        t("eventDetail.alerts.deleteRecurringMsg"),
         [
-          { text: "Cancel", style: "cancel" },
+          { text: t("eventDetail.alerts.cancel"), style: "cancel" },
           {
-            text: "Only This Event",
+            text: t("eventDetail.alerts.onlyThisEvent"),
             style: "destructive",
             onPress: () => setShowCancelModal(true),
           },
           {
-            text: `This & Following (${futureEventsCount})`,
+            text: t("eventDetail.alerts.thisAndFollowing", { count: futureEventsCount }),
             style: "destructive",
             onPress: () => cancelAllFutureEvents(),
           },
@@ -461,15 +463,18 @@ export default function EventDetailScreen({ route, navigation }) {
       }
       setLoading(false);
       Alert.alert(
-        "Events Cancelled",
-        `${cancelledCount} events cancelled.${
-          totalRefunds > 0 ? ` ${totalRefunds} refunds processed.` : ""
-        }`,
-        [{ text: "OK", onPress: () => navigation.navigate("MainTabs", { screen: "HomeTab" }) }]
+        t("eventDetail.alerts.eventsCancelledTitle"),
+        t("eventDetail.alerts.eventsCancelledMsg", {
+          count: cancelledCount,
+          refunds: totalRefunds > 0
+            ? t("eventDetail.alerts.refundsProcessed", { count: totalRefunds })
+            : "",
+        }),
+        [{ text: t("eventDetail.alerts.ok"), onPress: () => navigation.navigate("MainTabs", { screen: "HomeTab" }) }]
       );
     } catch (error) {
       setLoading(false);
-      Alert.alert("Error", "Failed to cancel events.");
+      Alert.alert(t("eventDetail.alerts.errorTitle"), t("eventDetail.alerts.failedCancelEvents"));
     }
   };
 
@@ -480,22 +485,20 @@ export default function EventDetailScreen({ route, navigation }) {
     let refundText = "";
     if (event.price && event.price > 0) {
       if (refundPercentage === 100)
-        refundText = `You will receive a 100% refund ($${event.price} MXN)`;
+        refundText = t("eventDetail.alerts.refund100", { price: event.price });
       else if (refundPercentage === 50)
-        refundText = `You will receive a 50% refund ($${
-          event.price * 0.5
-        } MXN)`;
-      else refundText = "No refund available (less than 3 days until event)";
+        refundText = t("eventDetail.alerts.refund50", { price: event.price * 0.5 });
+      else refundText = t("eventDetail.alerts.noRefund");
     } else {
-      refundText = "You will be removed from this free event";
+      refundText = t("eventDetail.alerts.freeEventRemoved");
     }
     Alert.alert(
-      "Cancel Your Attendance?",
-      `${refundText}\n\nAre you sure you want to cancel?`,
+      t("eventDetail.alerts.cancelAttendanceTitle"),
+      t("eventDetail.alerts.cancelAttendanceMsg", { refundText }),
       [
-        { text: "Keep My Spot", style: "cancel" },
+        { text: t("eventDetail.alerts.keepMySpot"), style: "cancel" },
         {
-          text: "Cancel Attendance",
+          text: t("eventDetail.alerts.cancelAttendance"),
           style: "destructive",
           onPress: async () => {
             setJoining(true);
@@ -509,18 +512,18 @@ export default function EventDetailScreen({ route, navigation }) {
               if (result.data.success) {
                 setIsJoined(false);
                 Alert.alert(
-                  "Attendance Cancelled",
-                  result.data.message || "You have been removed from the event"
+                  t("eventDetail.alerts.attendanceCancelledTitle"),
+                  result.data.message || t("eventDetail.alerts.removedFromEvent")
                 );
                 await loadEvent();
               } else {
                 Alert.alert(
-                  "Error",
-                  result.data.message || "Could not cancel attendance"
+                  t("eventDetail.alerts.errorTitle"),
+                  result.data.message || t("eventDetail.alerts.couldNotCancelAttendance")
                 );
               }
             } catch (error) {
-              Alert.alert("Error", "Failed to cancel attendance.");
+              Alert.alert(t("eventDetail.alerts.errorTitle"), t("eventDetail.alerts.failedCancelAttendance"));
             } finally {
               setJoining(false);
             }
@@ -547,12 +550,12 @@ export default function EventDetailScreen({ route, navigation }) {
         });
         if (result.data.success) {
           Alert.alert(
-            "Event Cancelled",
-            result.data.message || "All attendees have been refunded."
+            t("eventDetail.alerts.eventCancelledTitle"),
+            result.data.message || t("eventDetail.alerts.allRefunded")
           );
           navigation.navigate("MainTabs", { screen: "HomeTab" });
         } else {
-          throw new Error(result.data.message || "Failed to cancel event");
+          throw new Error(result.data.message || t("eventDetail.alerts.failedCancelEvent"));
         }
         setLoading(false);
         return;
@@ -570,15 +573,15 @@ export default function EventDetailScreen({ route, navigation }) {
       const uniqueParticipants = [...new Set(allParticipants)];
       const reason =
         cancellationReason !== "No reason provided"
-          ? `Reason: ${cancellationReason}`
-          : "No reason provided.";
+          ? t("eventDetail.alerts.reasonPrefix", { reason: cancellationReason })
+          : t("eventDetail.alerts.noReasonProvided");
       for (const participantId of uniqueParticipants) {
         if (participantId !== auth.currentUser.uid) {
           try {
             await createNotification(participantId, {
               type: "event_cancelled",
-              title: "Event Cancelled",
-              message: `"${event.title}" has been cancelled. ${reason}`,
+              title: t("eventDetail.alerts.notifCancelledTitle"),
+              message: t("eventDetail.alerts.notifCancelledMsg", { title: event.title, reason }),
               icon: "block",
               metadata: {
                 eventId: event.id,
@@ -593,7 +596,7 @@ export default function EventDetailScreen({ route, navigation }) {
       navigation.navigate("MainTabs", { screen: "HomeTab" });
     } catch (error) {
       setLoading(false);
-      Alert.alert("Error", "Failed to cancel event.");
+      Alert.alert(t("eventDetail.alerts.errorTitle"), t("eventDetail.alerts.failedCancelEvent"));
     }
   };
 
@@ -621,10 +624,10 @@ export default function EventDetailScreen({ route, navigation }) {
           <Icon name="alert" size={36} color={colors.primary} />
         </View>
         <Text style={[styles.errorTitle, { color: colors.text }]}>
-          Event Not Found
+          {t("eventDetail.errorNotFoundTitle")}
         </Text>
         <Text style={[styles.errorText, { color: colors.textSecondary }]}>
-          This event may have been deleted or cancelled
+          {t("eventDetail.errorNotFoundText")}
         </Text>
         <TouchableOpacity
           style={styles.errorButton}
@@ -640,7 +643,7 @@ export default function EventDetailScreen({ route, navigation }) {
             ]}
           >
             <Text style={[styles.errorButtonText, { color: colors.primary }]}>
-              Go Back
+              {t("eventDetail.goBack")}
             </Text>
           </View>
         </TouchableOpacity>
@@ -660,9 +663,9 @@ export default function EventDetailScreen({ route, navigation }) {
   const spotsLeft = maxCapacity - currentAttendees;
   const isFull = spotsLeft <= 0;
 
-  const eventTitle = event.title || "Untitled Event";
+  const eventTitle = event.title || t("myEvents.untitledEvent");
   const eventCategory = event.category || "";
-  const eventLocation = event.location || "Location TBD";
+  const eventLocation = event.location || t("myEvents.locationTBD");
   // Prefer a precise pin (lat,lng) from the Places picker; fall back to a text
   // search by the location string. place_id sharpens the pin when present.
   const mapsQuery =
@@ -678,7 +681,7 @@ export default function EventDetailScreen({ route, navigation }) {
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
         mapsQuery
       )}`;
-  const eventDescription = event.description || "No description available";
+  const eventDescription = event.description || t("eventDetail.noDescription");
   const eventPrice = typeof event.price === "number" ? event.price : 0;
   const eventStatus = event.status || "active";
   const eventImages = Array.isArray(event.images) ? event.images : [];
@@ -686,15 +689,15 @@ export default function EventDetailScreen({ route, navigation }) {
   const isPastEvent = eventDate ? eventDate < new Date() : false;
 
   const getButtonText = () => {
-    if (joining) return "Loading...";
-    if (isJoined) return "Leave Event";
-    if (isFull) return "Event Full";
+    if (joining) return t("eventDetail.buttonLoading");
+    if (isJoined) return t("eventDetail.buttonLeaveEvent");
+    if (isFull) return t("eventDetail.buttonEventFull");
     // A paid event or one that accepts membership opens the "How to attend"
     // screen, so the button reflects attending rather than a fixed price.
     if (eventPrice > 0 || (event.acceptsMembership !== false && hostHasPlans)) {
-      return "Attend this event";
+      return t("eventDetail.buttonAttendThisEvent");
     }
-    return "Join Event (Free)";
+    return t("eventDetail.buttonJoinFree");
   };
 
   return (
@@ -819,7 +822,7 @@ export default function EventDetailScreen({ route, navigation }) {
             )}
             {eventPrice === 0 ? (
               <View style={styles.freeBadge}>
-                <Text style={styles.freeBadgeText}>FREE</Text>
+                <Text style={styles.freeBadgeText}>{t("searchEvents.free_badge")}</Text>
               </View>
             ) : eventPrice > 0 ? (
               <View
@@ -846,7 +849,7 @@ export default function EventDetailScreen({ route, navigation }) {
                 <Text
                   style={[styles.recurringBadgeText, { color: colors.primary }]}
                 >
-                  Recurring
+                  {t("eventDetail.recurring")}
                 </Text>
               </View>
             )}
@@ -858,7 +861,7 @@ export default function EventDetailScreen({ route, navigation }) {
                 ]}
               >
                 <Text style={styles.languageBadgeText}>
-                  {event.language === "es" ? "Spanish" : "English"}
+                  {event.language === "es" ? t("eventDetail.languageSpanish") : t("eventDetail.languageEnglish")}
                 </Text>
               </View>
             )}
@@ -869,7 +872,7 @@ export default function EventDetailScreen({ route, navigation }) {
                   { backgroundColor: "rgba(100, 200, 100, 0.15)" },
                 ]}
               >
-                <Text style={styles.languageBadgeText}>Bilingual</Text>
+                <Text style={styles.languageBadgeText}>{t("eventDetail.bilingual")}</Text>
               </View>
             )}
             {event.averageRating > 0 && (
@@ -904,7 +907,7 @@ export default function EventDetailScreen({ route, navigation }) {
               ]}
             >
               <Text style={[styles.cancelledText, { color: colors.error }]}>
-                Event Cancelled
+                {t("eventDetail.eventCancelledBadge")}
               </Text>
             </View>
           )}
@@ -933,13 +936,13 @@ export default function EventDetailScreen({ route, navigation }) {
                 <Text
                   style={[styles.infoLabel, { color: colors.textSecondary }]}
                 >
-                  Date & Time
+                  {t("eventDetail.dateTimeLabel")}
                 </Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>
                   {event.date
                     ? (() => {
                         const d = new Date(event.date);
-                        const dateStr = d.toLocaleDateString("en-US", {
+                        const dateStr = d.toLocaleDateString(i18n.language, {
                           weekday: "short",
                           year: "numeric",
                           month: "short",
@@ -947,14 +950,14 @@ export default function EventDetailScreen({ route, navigation }) {
                         });
                         const timeStr =
                           event.time ||
-                          d.toLocaleTimeString("en-US", {
+                          d.toLocaleTimeString(i18n.language, {
                             hour: "numeric",
                             minute: "2-digit",
                             hour12: true,
                           });
                         return `${dateStr} at ${timeStr}`;
                       })()
-                    : "Date TBD"}
+                    : t("eventDetail.dateTBD")}
                 </Text>
               </View>
             </View>
@@ -986,14 +989,14 @@ export default function EventDetailScreen({ route, navigation }) {
                 <Text
                   style={[styles.infoLabel, { color: colors.textSecondary }]}
                 >
-                  Location
+                  {t("eventDetail.locationLabel")}
                 </Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>
                   {eventLocation}
                 </Text>
                 {!!event.location && (
                   <Text style={[styles.infoLabel, { color: colors.primary, marginTop: 2 }]}>
-                    Open in Maps ↗
+                    {t("eventDetail.openInMaps")}
                   </Text>
                 )}
               </View>
@@ -1027,10 +1030,10 @@ export default function EventDetailScreen({ route, navigation }) {
                 <Text
                   style={[styles.infoLabel, { color: colors.textSecondary }]}
                 >
-                  Get around
+                  {t("eventDetail.getAroundLabel")}
                 </Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>
-                  Rent a scooter to get there
+                  {t("eventDetail.rentScooterText")}
                 </Text>
               </View>
               <Icon name="forward" size={20} color={colors.textTertiary} />
@@ -1058,12 +1061,12 @@ export default function EventDetailScreen({ route, navigation }) {
                 <Text
                   style={[styles.infoLabel, { color: colors.textSecondary }]}
                 >
-                  Attendees
+                  {t("eventDetail.attendeesLabel")}
                 </Text>
                 <Text
                   style={[styles.infoValue, { color: colors.text }]}
-                >{`${currentAttendees}/${maxCapacity}${
-                  isFull ? " (Full)" : ` (${spotsLeft} spots left)`
+                >{`${currentAttendees}/${maxCapacity} ${
+                  isFull ? t("eventDetail.full") : t("eventDetail.spotsLeft", { count: spotsLeft })
                 }`}</Text>
               </View>
             </View>
@@ -1109,7 +1112,7 @@ export default function EventDetailScreen({ route, navigation }) {
                 </View>
                 <View style={styles.chatContent}>
                   <Text style={[styles.chatTitle, { color: colors.primary }]}>
-                    Group Chat
+                    {t("eventDetail.groupChat")}
                   </Text>
                   <Text
                     style={[
@@ -1117,7 +1120,7 @@ export default function EventDetailScreen({ route, navigation }) {
                       { color: colors.textSecondary },
                     ]}
                   >
-                    Connect with other attendees
+                    {t("eventDetail.connectWithAttendees")}
                   </Text>
                 </View>
                 <Icon name="forward"
@@ -1140,7 +1143,7 @@ export default function EventDetailScreen({ route, navigation }) {
             ]}
           >
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              About
+              {t("eventDetail.about")}
             </Text>
             <Text
               style={[styles.descriptionText, { color: colors.textSecondary }]}
@@ -1174,11 +1177,7 @@ export default function EventDetailScreen({ route, navigation }) {
               ))}
             </View>
             <Text style={[styles.friendsText, { color: colors.text }]}>
-              {friendsGoing.length}{" "}
-              {friendsGoing.length === 1
-                ? "person you follow is"
-                : "people you follow are"}{" "}
-              going
+              {t("eventDetail.friendsGoing", { count: friendsGoing.length })}
             </Text>
           </View>
         )}
@@ -1200,7 +1199,7 @@ export default function EventDetailScreen({ route, navigation }) {
                 { color: matchInsight.strong ? "#34C759" : "#F59E0B" },
               ]}
             >
-              {matchInsight.label} with the host
+              {t("eventDetail.fitWithHost", { label: matchInsight.label })}
             </Text>
             {!!matchInsight.why && (
               <Text style={[styles.matchWhy, { color: colors.textSecondary }]}>
@@ -1233,12 +1232,11 @@ export default function EventDetailScreen({ route, navigation }) {
               </View>
               <View style={styles.infoContent}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                  Host rating
+                  {t("eventDetail.hostRatingLabel")}
                 </Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>
                   {hostRating.averageRating?.toFixed(1)} ·{" "}
-                  {hostRating.totalRatings} review
-                  {hostRating.totalRatings === 1 ? "" : "s"}
+                  {t("eventDetail.reviewCount", { count: hostRating.totalRatings })}
                 </Text>
               </View>
             </View>
@@ -1252,7 +1250,7 @@ export default function EventDetailScreen({ route, navigation }) {
               onPress={() =>
                 navigation.navigate("HostMemberships", {
                   hostId: getEventCreatorId(event),
-                  hostName: event.hostName || "Host",
+                  hostName: event.hostName || t("eventDetail.defaultHostName"),
                 })
               }
               activeOpacity={0.85}
@@ -1274,10 +1272,10 @@ export default function EventDetailScreen({ route, navigation }) {
               </View>
               <View style={styles.infoContent}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                  Memberships
+                  {t("eventDetail.membershipsLabel")}
                 </Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>
-                  Plans available
+                  {t("eventDetail.plansAvailable")}
                 </Text>
               </View>
               <Icon name="forward" size={20} color={colors.primary} />
@@ -1313,10 +1311,10 @@ export default function EventDetailScreen({ route, navigation }) {
               </View>
               <View style={styles.infoContent}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                  Connect
+                  {t("eventDetail.connectLabel")}
                 </Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>
-                  Follow people you met here
+                  {t("eventDetail.followPeopleMet")}
                 </Text>
               </View>
               <Icon name="forward" size={20} color={colors.textTertiary} />
@@ -1352,10 +1350,10 @@ export default function EventDetailScreen({ route, navigation }) {
               </View>
               <View style={styles.infoContent}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                  Attendees
+                  {t("eventDetail.attendeesLabel")}
                 </Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>
-                  Roster · paid, check-in, no-show, waitlist
+                  {t("eventDetail.rosterDesc")}
                 </Text>
               </View>
               <Icon name="forward" size={20} color={colors.textTertiary} />
@@ -1396,10 +1394,10 @@ export default function EventDetailScreen({ route, navigation }) {
               </View>
               <View style={styles.infoContent}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                  Attendance
+                  {t("eventDetail.attendanceLabel")}
                 </Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>
-                  Take attendance / check-in
+                  {t("eventDetail.attendanceDesc")}
                 </Text>
               </View>
               <Icon name="forward" size={20} color={colors.primary} />
@@ -1449,10 +1447,10 @@ export default function EventDetailScreen({ route, navigation }) {
                     </View>
                     <View style={styles.infoContent}>
                       <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                        Featured · {daysLeft} day{daysLeft === 1 ? "" : "s"} left
+                        {t("eventDetail.featuredDaysLeft", { count: daysLeft })}
                       </Text>
                       <Text style={[styles.infoValue, { color: colors.text }]}>
-                        Until {new Date(featuredMs).toLocaleDateString()} · Tap to extend
+                        {t("eventDetail.untilDate", { date: new Date(featuredMs).toLocaleDateString(i18n.language) })}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -1485,10 +1483,10 @@ export default function EventDetailScreen({ route, navigation }) {
                   </View>
                   <View style={styles.infoContent}>
                     <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                      Promote
+                      {t("eventDetail.promoteLabel")}
                     </Text>
                     <Text style={[styles.infoValue, { color: colors.text }]}>
-                      Feature this event
+                      {t("eventDetail.featureThisEvent")}
                     </Text>
                   </View>
                   <Icon name="forward" size={20} color={colors.primary} />
@@ -1515,7 +1513,7 @@ export default function EventDetailScreen({ route, navigation }) {
               ]}
             >
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Cancellation Policy
+                {t("eventDetail.cancellationPolicy")}
               </Text>
               <View style={styles.policyItem}>
                 <Text style={[styles.policyDot, { color: colors.primary }]}>
@@ -1524,7 +1522,7 @@ export default function EventDetailScreen({ route, navigation }) {
                 <Text
                   style={[styles.policyText, { color: colors.textSecondary }]}
                 >
-                  7+ days before: 100% refund (minus fees)
+                  {t("eventDetail.policy7days")}
                 </Text>
               </View>
               <View style={styles.policyItem}>
@@ -1534,7 +1532,7 @@ export default function EventDetailScreen({ route, navigation }) {
                 <Text
                   style={[styles.policyText, { color: colors.textSecondary }]}
                 >
-                  3-7 days before: 50% refund (minus fees)
+                  {t("eventDetail.policy3to7")}
                 </Text>
               </View>
               <View style={styles.policyItem}>
@@ -1544,7 +1542,7 @@ export default function EventDetailScreen({ route, navigation }) {
                 <Text
                   style={[styles.policyText, { color: colors.textSecondary }]}
                 >
-                  Less than 3 days: No refund
+                  {t("eventDetail.policyLess3")}
                 </Text>
               </View>
               <View
@@ -1560,7 +1558,7 @@ export default function EventDetailScreen({ route, navigation }) {
                 <Text
                   style={[styles.policyText, { color: colors.textSecondary }]}
                 >
-                  If host cancels: 100% refund (minus fees)
+                  {t("eventDetail.policyHostCancels")}
                 </Text>
               </View>
             </View>
@@ -1580,7 +1578,7 @@ export default function EventDetailScreen({ route, navigation }) {
             >
               <Text
                 style={[styles.sectionTitle, { color: colors.text }]}
-              >{`Attendees (${attendeesData.length})`}</Text>
+              >{t("eventDetail.attendeesCount", { count: attendeesData.length })}</Text>
               {attendeesData.map((attendee, index) => (
                 <View key={index} style={styles.attendeeRow}>
                   <View
@@ -1595,7 +1593,7 @@ export default function EventDetailScreen({ route, navigation }) {
                     <AvatarDisplay avatar={attendee.avatar || null} size={36} />
                   </View>
                   <Text style={[styles.attendeeName, { color: colors.text }]}>
-                    {attendee.fullName || attendee.name || "Anonymous"}
+                    {attendee.fullName || attendee.name || t("eventDetail.anonymous")}
                   </Text>
                 </View>
               ))}
@@ -1666,7 +1664,7 @@ export default function EventDetailScreen({ route, navigation }) {
               >
                 <Icon name="qr" size={16} color={colors.primary} />
                 <Text style={[styles.qrLinkText, { color: colors.primary }]}>
-                  My check-in QR
+                  {t("eventDetail.myCheckinQR")}
                 </Text>
               </TouchableOpacity>
             )}
@@ -1682,9 +1680,9 @@ export default function EventDetailScreen({ route, navigation }) {
               { backgroundColor: colors.surface, borderColor: colors.borderStrong },
             ]}
           >
-            <Text style={[styles.qrTitle, { color: colors.text }]}>Your check-in</Text>
+            <Text style={[styles.qrTitle, { color: colors.text }]}>{t("eventDetail.checkinTitle")}</Text>
             <Text style={[styles.qrSub, { color: colors.textSecondary }]}>
-              Show this code to the host at the door.
+              {t("eventDetail.checkinSub")}
             </Text>
             <View style={styles.qrBox}>
               <QRCode
@@ -1696,7 +1694,7 @@ export default function EventDetailScreen({ route, navigation }) {
               style={[styles.qrClose, { backgroundColor: colors.primary }]}
               onPress={() => setQrVisible(false)}
             >
-              <Text style={styles.qrCloseText}>Done</Text>
+              <Text style={styles.qrCloseText}>{t("common.done")}</Text>
             </TouchableOpacity>
           </View>
         </View>
