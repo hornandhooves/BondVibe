@@ -23,6 +23,7 @@ const DEFAULTS = {
   match_intel: {maxTokens: 600},
   weekly_digest: {maxTokens: 700, freePerMonth: 1},
   content_translation: {maxTokens: 1500, freePerMonth: 1},
+  business_dashboard: {maxTokens: 700},
 };
 
 // ─── Context loaders ────────────────────────────────────────────────────────
@@ -151,6 +152,57 @@ async function loadAiAnalytics(db, uid) {
       capacity: e.maxAttendees || null,
       attended: (e.attendees || []).length,
     })),
+  };
+}
+
+/**
+ * Business Dashboard (Kinlo for Business): aggregate the host's own CRM +
+ * attendance for the requested window. bizId == uid (one business per owner).
+ * Numbers only — never PII — so the AI read stays grounded and privacy-safe.
+ * @param {FirebaseFirestore.Firestore} db handle
+ * @param {string} uid host / bizId
+ * @param {object} cfg config (unused)
+ * @param {object} input {from, to} ISO window
+ * @return {Promise<object>} context
+ */
+async function loadBusinessDashboard(db, uid, cfg, input) {
+  const fromMs = new Date(input?.from || 0).getTime();
+  const toMs = input?.to ? new Date(input.to).getTime() : Date.now();
+  const base = db.collection("businesses").doc(uid);
+  const [bizSnap, memSnap, attSnap] = await Promise.all([
+    base.get(),
+    base.collection("members").limit(2000).get(),
+    base.collection("attendance")
+      .where("date", ">=", new Date(fromMs).toISOString())
+      .where("date", "<=", new Date(toMs).toISOString())
+      .limit(4000).get(),
+  ]);
+  const members = memSnap.docs.map((d) => ({id: d.id, ...d.data()}));
+  const attendance = attSnap.docs.map((d) => d.data());
+  const attendedIds = new Set(attendance.map((a) => a.memberId));
+  const createdIn = (m) => {
+    const c = m.createdAt && m.createdAt.toMillis ?
+      m.createdAt.toMillis() : 0;
+    return c >= fromMs && c < toMs;
+  };
+  const statusCount = (s) =>
+    members.filter((m) => (m.status || "active") === s).length;
+  return {
+    vertical: bizSnap.exists ? (bizSnap.data().vertical || "other") : "other",
+    window: {
+      from: new Date(fromMs).toISOString().slice(0, 10),
+      to: new Date(toMs).toISOString().slice(0, 10),
+    },
+    metrics: {
+      totalMembers: members.length,
+      activeInRange: attendedIds.size,
+      attendance: attendance.length,
+      newMembers: members.filter(createdIn).length,
+      prospects: members.filter(
+        (m) => createdIn(m) && !attendedIds.has(m.id)).length,
+      atRisk: statusCount("at_risk"),
+      inactive: statusCount("inactive"),
+    },
   };
 }
 
@@ -295,6 +347,19 @@ const PROMPTS = {
       "as estimates. If data is thin, say so plainly.",
     user: JSON.stringify(ctx),
   }),
+  business_dashboard: (ctx) => ({
+    system: SYSTEM_BASE +
+      " You read a small business's CRM metrics for a period. Schema: " +
+      "{\"narrative\":string,\"projection\":{\"attendanceNext\":number|null," +
+      "\"note\":string},\"recommendations\":[{\"text\":string}]}" +
+      " narrative = 2-3 sentences reading the period from the metrics " +
+      "(members, attendance, new, prospects, at-risk). projection = a next-" +
+      "period attendance ESTIMATE grounded in the numbers (null if data is " +
+      "too thin) with a one-line note calling it an estimate. " +
+      "recommendations = up to 3 concrete ranked actions. Never invent " +
+      "numbers not derivable from the metrics.",
+    user: JSON.stringify(ctx),
+  }),
   match_intel: (ctx) => ({
     system: SYSTEM_BASE +
       " Schema: {\"rationale\":string,\"icebreakers\":[string]}" +
@@ -351,6 +416,19 @@ const VALIDATORS = {
   ai_analytics: (d) => {
     if (!d || typeof d.narrative !== "string" || !d.narrative) {
       return "narrative missing";
+    }
+    if (!Array.isArray(d.recommendations)) return "recommendations malformed";
+    for (const r of d.recommendations) {
+      if (typeof r?.text !== "string") return "recommendation malformed";
+    }
+    return null;
+  },
+  business_dashboard: (d) => {
+    if (!d || typeof d.narrative !== "string" || !d.narrative) {
+      return "narrative missing";
+    }
+    if (!d.projection || typeof d.projection.note !== "string") {
+      return "projection malformed";
     }
     if (!Array.isArray(d.recommendations)) return "recommendations malformed";
     for (const r of d.recommendations) {
@@ -420,6 +498,8 @@ const GATES = {
   },
   member_intel: async (db, uid, user) =>
     user.isPremium === true ? null : {error: "needs_pro", needsPro: true},
+  business_dashboard: async (db, uid, user) =>
+    user.isPremium === true ? null : {error: "needs_pro", needsPro: true},
   ai_analytics: async () => null, // taste = headline; full text is the same
   // call in v1 — the client dims recommendations for non-Pro.
   match_intel: async () => null, // rationale free; icebreakers locked below.
@@ -461,6 +541,7 @@ module.exports = {
     match_intel: loadMatchIntel,
     weekly_digest: loadWeeklyDigest,
     content_translation: loadContentTranslation,
+    business_dashboard: loadBusinessDashboard,
   },
   PROMPTS,
   VALIDATORS,

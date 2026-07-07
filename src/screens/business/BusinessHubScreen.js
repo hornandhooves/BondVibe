@@ -97,6 +97,17 @@ export default function BusinessHubScreen({ navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <SectionHeader title={t("business.hub.insightsSection")} />
+        <View style={card}>
+          <ListRow
+            icon="chart"
+            title={t("business.hub.dashboardTitle")}
+            subtitle={t("business.hub.dashboardSubtitle")}
+            onPress={() => navigation.navigate("BusinessDashboard")}
+            divider={false}
+          />
+        </View>
+
         <SectionHeader title={t("business.hub.communitySection")} />
         <View style={card}>
           <ListRow

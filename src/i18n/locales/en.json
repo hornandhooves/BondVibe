@@ -2623,6 +2623,9 @@
       "membersTitle": "Members",
       "membersSubtitle_one": "{{count}} member",
       "membersSubtitle_other": "{{count}} members",
+      "insightsSection": "Insights",
+      "dashboardTitle": "Dashboard",
+      "dashboardSubtitle": "KPIs, trends & AI read",
       "operationsSection": "Operations",
       "packagesTitle": "Packages",
       "packagesSubtitle": "Class & session packs, credits",
@@ -2803,6 +2806,38 @@
       "done": "Done",
       "entryTitle": "Have a business code?",
       "entrySub": "Link a code from your studio, gym or host"
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "range": {
+        "day": "Day",
+        "week": "Week",
+        "month": "Month",
+        "quarter": "Quarter",
+        "semester": "Semester",
+        "year": "Year",
+        "total": "Total",
+        "custom": "Custom"
+      },
+      "from": "From",
+      "to": "To",
+      "est": "est",
+      "revenueSoon": "with Finance",
+      "attendanceTrend": "Attendance trend",
+      "noAttendance": "No attendance in this range yet.",
+      "aiRead": "Kinlo AI · your period",
+      "projection": "Projection: ~{{n}} next period.",
+      "aiOff": "Turn on Kinlo AI in Settings for an AI read of your numbers.",
+      "kpi": {
+        "active": "Active",
+        "attendance": "Attendance",
+        "newMembers": "New members",
+        "prospects": "Prospects",
+        "atRisk": "At risk",
+        "churn": "Churn",
+        "recovered": "Recovered",
+        "revenue": "Revenue"
+      }
     }
   }
 }

@@ -14,6 +14,7 @@ import {
   getDocs,
   query,
   where,
+  orderBy,
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
@@ -71,6 +72,30 @@ export async function checkInFromBusinessScan(raw, bizId = getMyBizId()) {
   if (!member) return { success: false, error: "not_found" };
   const res = await markPresent(member, { source: ATTENDANCE_SOURCE.QR }, bizId);
   return { success: true, name: member.name || "", ...res };
+}
+
+/**
+ * All attendance in a date window (for analytics). ISO date strings sort
+ * lexicographically, so a range query on the single `date` field needs no
+ * composite index.
+ * @param {string} fromIso @param {string} toIso
+ */
+export async function listAttendanceInRange(fromIso, toIso, bizId = getMyBizId()) {
+  if (!bizId) return [];
+  try {
+    const snap = await getDocs(
+      query(
+        attendanceCol(bizId),
+        where("date", ">=", fromIso),
+        where("date", "<=", toIso),
+        orderBy("date", "asc")
+      )
+    );
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.error("listAttendanceInRange failed:", e?.message || e);
+    return [];
+  }
 }
 
 /**

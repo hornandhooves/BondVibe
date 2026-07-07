@@ -2623,6 +2623,9 @@
       "membersTitle": "Miembros",
       "membersSubtitle_one": "{{count}} miembro",
       "membersSubtitle_other": "{{count}} miembros",
+      "insightsSection": "Análisis",
+      "dashboardTitle": "Panel",
+      "dashboardSubtitle": "KPIs, tendencias y lectura IA",
       "operationsSection": "Operación",
       "packagesTitle": "Paquetes",
       "packagesSubtitle": "Paquetes de clases/sesiones, créditos",
@@ -2803,6 +2806,38 @@
       "done": "Listo",
       "entryTitle": "¿Tienes un código de negocio?",
       "entrySub": "Vincula un código de tu estudio, gym o anfitrión"
+    },
+    "dashboard": {
+      "title": "Panel",
+      "range": {
+        "day": "Día",
+        "week": "Semana",
+        "month": "Mes",
+        "quarter": "Trimestre",
+        "semester": "Semestre",
+        "year": "Año",
+        "total": "Total",
+        "custom": "Personalizado"
+      },
+      "from": "Desde",
+      "to": "Hasta",
+      "est": "est",
+      "revenueSoon": "con Finanzas",
+      "attendanceTrend": "Tendencia de asistencia",
+      "noAttendance": "Aún no hay asistencia en este rango.",
+      "aiRead": "Kinlo IA · tu periodo",
+      "projection": "Proyección: ~{{n}} el próximo periodo.",
+      "aiOff": "Activa Kinlo IA en Ajustes para una lectura con IA de tus números.",
+      "kpi": {
+        "active": "Activos",
+        "attendance": "Asistencia",
+        "newMembers": "Nuevos miembros",
+        "prospects": "Prospectos",
+        "atRisk": "En riesgo",
+        "churn": "Abandono",
+        "recovered": "Recuperados",
+        "revenue": "Ingresos"
+      }
     }
   }
 }
