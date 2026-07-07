@@ -40,6 +40,7 @@ import PersonalityResultsScreen from "../screens/PersonalityResultsScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import EventChatScreen from "../screens/EventChatScreen";
 import EventChatsScreen from "../screens/EventChatsScreen";
+import CommunityChatsScreen from "../screens/CommunityChatsScreen";
 import RequestHostScreen from "../screens/RequestHostScreen";
 import AdminDashboardScreen from "../screens/AdminDashboardScreen";
 
@@ -496,6 +497,7 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
           <Stack.Screen name="EventChat" component={EventChatScreen} />
           <Stack.Screen name="EventChats" component={EventChatsScreen} />
+          <Stack.Screen name="CommunityChats" component={CommunityChatsScreen} />
           <Stack.Screen name="RequestHost" component={RequestHostScreen} />
           <Stack.Screen
             name="AdminDashboard"

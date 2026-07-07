@@ -3,7 +3,7 @@
  * 1:1 DM threads inline, plus section rows into Match chats and Event chats.
  * Replaces DMList as the ✉ target (DMList stays as a route).
  */
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -24,7 +24,6 @@ import SectionHeader from "../components/SectionHeader";
 import { AvatarDisplay } from "../components/AvatarPicker";
 import { useTheme } from "../contexts/ThemeContext";
 import { getMyThreads } from "../services/dmService";
-import { subscribeUserGroups } from "../services/hostGroupService";
 import { getBlockedIds } from "../services/blockService";
 import { TYPE, SPACING, RADII, AI, ELEVATION } from "../constants/theme-tokens";
 
@@ -34,21 +33,8 @@ const normAvatar = (a) =>
 export default function InboxScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const [rows, setRows] = useState([]);
-  const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const me = auth.currentUser?.uid;
-
-  useEffect(() => {
-    const unsub = subscribeUserGroups((list) =>
-      setGroups(
-        [...list].sort(
-          (a, b) =>
-            (b.lastMessageAt?.toMillis?.() || 0) - (a.lastMessageAt?.toMillis?.() || 0)
-        )
-      )
-    );
-    return unsub;
-  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -120,46 +106,15 @@ export default function InboxScreen({ navigation }) {
           title="Match chats"
           subtitle="People you met through matching"
           onPress={() => navigation.navigate("PeopleYouMet")}
+        />
+        <ListRow
+          icon="users"
+          title="Community chats"
+          subtitle="Group chats for communities you're in"
+          onPress={() => navigation.navigate("CommunityChats")}
           divider={false}
         />
       </View>
-
-      {/* Group chats (Fix 5) — live rows into GroupChat */}
-      {groups.length > 0 && (
-        <>
-          <SectionHeader title="Group chats" />
-          <View style={[styles.card, ELEVATION.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            {groups.map((g, i) => (
-              <TouchableOpacity
-                key={g.id}
-                style={styles.groupRow}
-                onPress={() => navigation.navigate("GroupChat", { groupId: g.id })}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.groupInitial, { backgroundColor: colors.brandSoft }]}>
-                  <Text style={[TYPE.bodySemibold, { color: colors.primary }]}>
-                    {(g.name || "G").trim().charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[TYPE.bodySemibold, { color: colors.text }]} numberOfLines={1}>
-                    {g.name}
-                  </Text>
-                  {g.lastMessage ? (
-                    <Text style={[TYPE.caption, { color: colors.textSecondary }]} numberOfLines={1}>
-                      {g.lastMessage}
-                    </Text>
-                  ) : null}
-                </View>
-                <Icon name="forward" size={16} color={colors.textTertiary} />
-                {i < groups.length - 1 && (
-                  <View style={[styles.groupDivider, { backgroundColor: colors.border }]} />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </>
-      )}
 
       <SectionHeader title="Direct messages" />
     </View>
