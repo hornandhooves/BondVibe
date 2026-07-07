@@ -2626,6 +2626,8 @@
       "insightsSection": "Insights",
       "dashboardTitle": "Dashboard",
       "dashboardSubtitle": "KPIs, trends & AI read",
+      "momentumTitle": "Momentum",
+      "momentumSubtitle": "Work board for members needing attention",
       "operationsSection": "Operations",
       "packagesTitle": "Packages",
       "packagesSubtitle": "Class & session packs, credits",
@@ -2838,6 +2840,76 @@
         "recovered": "Recovered",
         "revenue": "Revenue"
       }
+    },
+    "momentum": {
+      "title": "Momentum",
+      "cardTitle": "Card",
+      "columns": {
+        "atRisk": "At risk",
+        "inactive": "Inactive",
+        "contacted": "Contacted",
+        "recovered": "Recovered"
+      },
+      "priority": {
+        "label": "Priority",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "urgent": "Urgent"
+      },
+      "allPriorities": "All",
+      "status": {
+        "todo": "To-do",
+        "in_progress": "In progress",
+        "done": "Done"
+      },
+      "actionStatusLabel": "Action status",
+      "channel": "Channel",
+      "channelOpt": {
+        "push": "Push",
+        "sms": "SMS",
+        "email": "Email"
+      },
+      "actionTitle": "Action",
+      "actionPlaceholder": "e.g. Send a 2-for-1 win-back",
+      "message": "Message / notes",
+      "messagePlaceholder": "What to send or do…",
+      "labels": "Labels",
+      "addLabel": "Add a label…",
+      "dueDate": "Due date",
+      "reminder": "Reminder",
+      "reminderHint": "Sends to the assignee once Automations is on.",
+      "reminderAt": "Remind on",
+      "checklist": "Checklist",
+      "addTask": "Add a task…",
+      "activity": "Activity",
+      "save": "Save card",
+      "moveTo": "Move to…",
+      "pickMember": "Pick a member",
+      "addCard": "Add a card",
+      "emptyTitle": "Your board is clear",
+      "emptyText": "Add members who need attention, or auto-fill from your at-risk and inactive members.",
+      "populateCta": "Populate from at-risk",
+      "populatedTitle": "Board updated",
+      "populatedMsg_one": "Added {{count}} member.",
+      "populatedMsg_other": "Added {{count}} members.",
+      "populatedNone": "No new at-risk members to add.",
+      "aiDraft": "Suggest action with AI",
+      "aiProTitle": "Pro feature",
+      "aiProMsg": "AI suggestions are part of Kinlo Pro.",
+      "aiOffTitle": "AI unavailable",
+      "aiOffMsg": "Turn on Kinlo AI in Settings to draft actions.",
+      "editBoard": "Edit board",
+      "boardName": "Board name",
+      "columnsLabel": "Columns",
+      "columnName": "Column name",
+      "addColumn": "Add column",
+      "saveBoard": "Save board",
+      "minColumnTitle": "Keep at least one column",
+      "minColumnMsg": "A board needs at least one named column.",
+      "deleteTitle": "Delete card?",
+      "deleteMsg": "This removes the card from the board.",
+      "deleteConfirm": "Delete"
     }
   }
 }

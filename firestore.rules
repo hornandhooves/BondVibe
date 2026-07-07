@@ -721,6 +721,14 @@ service cloud.firestore {
       match /attendance/{recordId} {
         allow read, write: if isBizStaff(bizId) || isBizOwnerUid(bizId);
       }
+
+      // Momentum board config (columns) + cards.
+      match /momentum/{docId} {
+        allow read, write: if isBizStaff(bizId) || isBizOwnerUid(bizId);
+      }
+      match /momentumCards/{cardId} {
+        allow read, write: if isBizStaff(bizId) || isBizOwnerUid(bizId);
+      }
     }
 
     // ============================================

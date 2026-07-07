@@ -24,6 +24,7 @@ const DEFAULTS = {
   weekly_digest: {maxTokens: 700, freePerMonth: 1},
   content_translation: {maxTokens: 1500, freePerMonth: 1},
   business_dashboard: {maxTokens: 700},
+  momentum_action: {maxTokens: 500},
 };
 
 // ─── Context loaders ────────────────────────────────────────────────────────
@@ -207,6 +208,51 @@ async function loadBusinessDashboard(db, uid, cfg, input) {
 }
 
 /**
+ * Momentum action (Kinlo for Business): one member's real signals so the AI can
+ * suggest the next retention action + draft a message. bizId == uid.
+ * @param {FirebaseFirestore.Firestore} db handle
+ * @param {string} uid host / bizId
+ * @param {object} cfg config (unused)
+ * @param {object} input {memberId}
+ * @return {Promise<object>} context
+ */
+async function loadMomentumAction(db, uid, cfg, input) {
+  const memberId = input?.memberId;
+  if (!memberId) throw new Error("missing memberId");
+  const base = db.collection("businesses").doc(uid);
+  const [memSnap, attSnap] = await Promise.all([
+    base.collection("members").doc(memberId).get(),
+    base.collection("attendance").where("memberId", "==", memberId)
+      .limit(50).get(),
+  ]);
+  if (!memSnap.exists) throw new Error("member not found");
+  const m = memSnap.data();
+  const dates = attSnap.docs
+    .map((d) => new Date(d.data().date).getTime())
+    .filter((n) => isFinite(n))
+    .sort((a, b) => b - a);
+  const lastSeenDaysAgo = dates.length ?
+    Math.round((Date.now() - dates[0]) / 86400000) : null;
+  return {
+    member: {
+      name: m.name || "",
+      status: m.status || "active",
+      tags: Array.isArray(m.tags) ? m.tags.slice(0, 6) : [],
+      creditBalance: typeof m.creditBalance === "number" ?
+        m.creditBalance : null,
+      package: m.activePackage ? {
+        name: m.activePackage.name,
+        remaining: m.activePackage.creditsRemaining,
+        expiresAt: m.activePackage.expiresAt ?
+          String(m.activePackage.expiresAt).slice(0, 10) : null,
+      } : null,
+      totalVisits: dates.length,
+      lastSeenDaysAgo,
+    },
+  };
+}
+
+/**
  * Match Intelligence: both OPT-IN match profiles for one event.
  * @param {FirebaseFirestore.Firestore} db handle
  * @param {string} uid caller
@@ -360,6 +406,17 @@ const PROMPTS = {
       "numbers not derivable from the metrics.",
     user: JSON.stringify(ctx),
   }),
+  momentum_action: (ctx) => ({
+    system: SYSTEM_BASE +
+      " A host is working a retention board. For this ONE member, suggest the " +
+      "next action + priority and draft a short, warm, sendable message. " +
+      "Schema: {\"actionTitle\":string,\"priority\":\"low\"|\"medium\"|" +
+      "\"high\"|\"urgent\",\"message\":string} " +
+      "actionTitle = a few words (e.g. 'Send 2-for-1 win-back'). message = " +
+      "1-3 sentences the host can send as-is, referencing something real " +
+      "(last visit, expiring credits). Never invent facts not in the context.",
+    user: JSON.stringify(ctx),
+  }),
   match_intel: (ctx) => ({
     system: SYSTEM_BASE +
       " Schema: {\"rationale\":string,\"icebreakers\":[string]}" +
@@ -436,6 +493,16 @@ const VALIDATORS = {
     }
     return null;
   },
+  momentum_action: (d) => {
+    if (!d || typeof d.actionTitle !== "string" || !d.actionTitle) {
+      return "actionTitle missing";
+    }
+    if (!["low", "medium", "high", "urgent"].includes(d.priority)) {
+      return "priority invalid";
+    }
+    if (typeof d.message !== "string" || !d.message) return "message missing";
+    return null;
+  },
   match_intel: (d) => {
     if (!d || typeof d.rationale !== "string" || !d.rationale) {
       return "rationale missing";
@@ -500,6 +567,8 @@ const GATES = {
     user.isPremium === true ? null : {error: "needs_pro", needsPro: true},
   business_dashboard: async (db, uid, user) =>
     user.isPremium === true ? null : {error: "needs_pro", needsPro: true},
+  momentum_action: async (db, uid, user) =>
+    user.isPremium === true ? null : {error: "needs_pro", needsPro: true},
   ai_analytics: async () => null, // taste = headline; full text is the same
   // call in v1 — the client dims recommendations for non-Pro.
   match_intel: async () => null, // rationale free; icebreakers locked below.
@@ -542,6 +611,7 @@ module.exports = {
     weekly_digest: loadWeeklyDigest,
     content_translation: loadContentTranslation,
     business_dashboard: loadBusinessDashboard,
+    momentum_action: loadMomentumAction,
   },
   PROMPTS,
   VALIDATORS,

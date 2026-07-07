@@ -104,6 +104,12 @@ export default function BusinessHubScreen({ navigation }) {
             title={t("business.hub.dashboardTitle")}
             subtitle={t("business.hub.dashboardSubtitle")}
             onPress={() => navigation.navigate("BusinessDashboard")}
+          />
+          <ListRow
+            icon="analytics"
+            title={t("business.hub.momentumTitle")}
+            subtitle={t("business.hub.momentumSubtitle")}
+            onPress={() => navigation.navigate("MomentumBoard")}
             divider={false}
           />
         </View>

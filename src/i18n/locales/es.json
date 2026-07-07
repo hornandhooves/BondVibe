@@ -2626,6 +2626,8 @@
       "insightsSection": "Análisis",
       "dashboardTitle": "Panel",
       "dashboardSubtitle": "KPIs, tendencias y lectura IA",
+      "momentumTitle": "Momentum",
+      "momentumSubtitle": "Tablero de miembros que necesitan atención",
       "operationsSection": "Operación",
       "packagesTitle": "Paquetes",
       "packagesSubtitle": "Paquetes de clases/sesiones, créditos",
@@ -2838,6 +2840,76 @@
         "recovered": "Recuperados",
         "revenue": "Ingresos"
       }
+    },
+    "momentum": {
+      "title": "Momentum",
+      "cardTitle": "Tarjeta",
+      "columns": {
+        "atRisk": "En riesgo",
+        "inactive": "Inactivos",
+        "contacted": "Contactados",
+        "recovered": "Recuperados"
+      },
+      "priority": {
+        "label": "Prioridad",
+        "low": "Baja",
+        "medium": "Media",
+        "high": "Alta",
+        "urgent": "Urgente"
+      },
+      "allPriorities": "Todas",
+      "status": {
+        "todo": "Por hacer",
+        "in_progress": "En progreso",
+        "done": "Hecho"
+      },
+      "actionStatusLabel": "Estado de la acción",
+      "channel": "Canal",
+      "channelOpt": {
+        "push": "Push",
+        "sms": "SMS",
+        "email": "Correo"
+      },
+      "actionTitle": "Acción",
+      "actionPlaceholder": "ej. Enviar un 2x1 de reconquista",
+      "message": "Mensaje / notas",
+      "messagePlaceholder": "Qué enviar o hacer…",
+      "labels": "Etiquetas",
+      "addLabel": "Agregar una etiqueta…",
+      "dueDate": "Fecha límite",
+      "reminder": "Recordatorio",
+      "reminderHint": "Se envía al responsable cuando actives Automatizaciones.",
+      "reminderAt": "Recordar el",
+      "checklist": "Lista de tareas",
+      "addTask": "Agregar una tarea…",
+      "activity": "Actividad",
+      "save": "Guardar tarjeta",
+      "moveTo": "Mover a…",
+      "pickMember": "Elige un miembro",
+      "addCard": "Agregar tarjeta",
+      "emptyTitle": "Tu tablero está despejado",
+      "emptyText": "Agrega miembros que necesiten atención, o autocompleta desde tus miembros en riesgo e inactivos.",
+      "populateCta": "Autocompletar desde en riesgo",
+      "populatedTitle": "Tablero actualizado",
+      "populatedMsg_one": "Se agregó {{count}} miembro.",
+      "populatedMsg_other": "Se agregaron {{count}} miembros.",
+      "populatedNone": "No hay nuevos miembros en riesgo para agregar.",
+      "aiDraft": "Sugerir acción con IA",
+      "aiProTitle": "Función Pro",
+      "aiProMsg": "Las sugerencias con IA son parte de Kinlo Pro.",
+      "aiOffTitle": "IA no disponible",
+      "aiOffMsg": "Activa Kinlo IA en Ajustes para redactar acciones.",
+      "editBoard": "Editar tablero",
+      "boardName": "Nombre del tablero",
+      "columnsLabel": "Columnas",
+      "columnName": "Nombre de la columna",
+      "addColumn": "Agregar columna",
+      "saveBoard": "Guardar tablero",
+      "minColumnTitle": "Deja al menos una columna",
+      "minColumnMsg": "Un tablero necesita al menos una columna con nombre.",
+      "deleteTitle": "¿Eliminar tarjeta?",
+      "deleteMsg": "Esto quita la tarjeta del tablero.",
+      "deleteConfirm": "Eliminar"
     }
   }
 }
