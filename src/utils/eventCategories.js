@@ -1,5 +1,6 @@
 // Event categories used throughout the app
 // IMPORTANT: This file maintains backwards compatibility
+import { LANGUAGE_OPTIONS } from "../i18n/languages";
 
 // Main category export - array of objects with full information
 export const EVENT_CATEGORIES = [
@@ -163,14 +164,7 @@ export const EVENT_DURATIONS = [
   { id: "720", label: "All day" },
 ];
 
-// Event language options
-export const EVENT_LANGUAGES = [
-  { id: "es", label: "Español" },
-  { id: "en", label: "English" },
-  { id: "de", label: "Deutsch" },
-  { id: "fr", label: "Français" },
-  { id: "pl", label: "Polski" },
-  { id: "it", label: "Italiano" },
-  { id: "pt", label: "Português" },
-  { id: "ru", label: "Русский" },
-];
+// Event language options — sourced from the single canonical languages list
+// (src/i18n/languages.js) so the event picker offers exactly the 14 supported
+// languages and never drifts from the app language selector.
+export const EVENT_LANGUAGES = LANGUAGE_OPTIONS;

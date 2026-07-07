@@ -47,7 +47,8 @@
           "iosUrlScheme": "com.googleusercontent.apps.629419649601-ldjobevlvjvjmsi92dfe3cpua8u1m8fk"
         }
       ],
-      "./plugins/withGoogleSigninModularHeaders"
+      "./plugins/withGoogleSigninModularHeaders",
+      "expo-localization"
     ],
     "extra": {
       "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyCLaUcFpX5KcemGsCCMHSfCz49CauUKjGc",
