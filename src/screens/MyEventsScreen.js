@@ -10,6 +10,7 @@ import {
   Alert,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import {
   collection,
   query,
@@ -36,6 +37,7 @@ import { hasMyCheckin, shareRecapPhoto } from "../services/recapService";
 
 export default function MyEventsScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const [allEvents, setAllEvents] = useState([]);
   const [displayedEvents, setDisplayedEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -188,9 +190,9 @@ export default function MyEventsScreen({ navigation, route }) {
 
   const handleRatingSuccess = (rating, comment) => {
     Alert.alert(
-      "Thank you!",
-      "Your feedback helps hosts improve their events.",
-      [{ text: "OK" }]
+      t("myEvents.thankYouTitle"),
+      t("myEvents.thankYouMsg"),
+      [{ text: t("myEvents.ok") }]
     );
     // Update local state to show the rating
     setRatedEvents((prev) => ({ ...prev, [selectedEvent.id]: rating }));
@@ -202,8 +204,8 @@ export default function MyEventsScreen({ navigation, route }) {
     const checkedIn = await hasMyCheckin(event.id);
     if (!checkedIn) {
       Alert.alert(
-        "Check-in required",
-        "Recap moments can only be shared by attendees who checked in at the event."
+        t("myEvents.checkInRequiredTitle"),
+        t("myEvents.checkInRequiredMsg")
       );
       return;
     }
@@ -217,11 +219,11 @@ export default function MyEventsScreen({ navigation, route }) {
     try {
       await shareRecapPhoto(event.id, result.assets[0].uri);
       Alert.alert(
-        "Moment shared",
-        "It'll appear in the event recap on the Wall, visible to everyone who attended."
+        t("myEvents.momentSharedTitle"),
+        t("myEvents.momentSharedMsg")
       );
     } catch (e) {
-      Alert.alert("Couldn't share", e.message || "Please try again.");
+      Alert.alert(t("myEvents.couldntShareTitle"), e.message || t("myEvents.couldntShareMsg"));
     }
   };
 
@@ -273,7 +275,7 @@ export default function MyEventsScreen({ navigation, route }) {
                 ]}
               >
                 <Text style={[styles.categoryText, { color: colors.primary }]}>
-                  {event.category || "Event"}
+                  {event.category || t("myEvents.event")}
                 </Text>
               </View>
               {event.isRecurring && (
@@ -297,7 +299,7 @@ export default function MyEventsScreen({ navigation, route }) {
             style={[styles.eventTitle, { color: colors.text }]}
             numberOfLines={2}
           >
-            {event.title || "Untitled Event"}
+            {event.title || t("myEvents.untitledEvent")}
           </Text>
 
           <View style={styles.eventMeta}>
@@ -306,7 +308,7 @@ export default function MyEventsScreen({ navigation, route }) {
               style={[styles.metaText, { color: colors.textSecondary }]}
               numberOfLines={1}
             >
-              {event.location || "Location TBD"}
+              {event.location || t("myEvents.locationTBD")}
             </Text>
           </View>
 
@@ -314,13 +316,15 @@ export default function MyEventsScreen({ navigation, route }) {
             <Text
               style={[styles.attendeesText, { color: colors.textSecondary }]}
             >
-              {Array.isArray(event.attendees) ? event.attendees.length : 0}/
-              {event.maxPeople || event.maxAttendees || 0} people
+              {t("myEvents.peopleCount", {
+                count: Array.isArray(event.attendees) ? event.attendees.length : 0,
+                max: event.maxPeople || event.maxAttendees || 0,
+              })}
             </Text>
             <View style={styles.badgesRow}>
               {event.status === "published" && !isPast && (
                 <View style={styles.statusBadge}>
-                  <Text style={styles.statusText}>Active</Text>
+                  <Text style={styles.statusText}>{t("myEvents.active")}</Text>
                 </View>
               )}
               {event.price > 0 && (
@@ -330,7 +334,7 @@ export default function MyEventsScreen({ navigation, route }) {
               )}
               {isPast && !showRateButton && (
                 <View style={styles.endedBadge}>
-                  <Text style={styles.endedBadgeText}>Ended</Text>
+                  <Text style={styles.endedBadgeText}>{t("myEvents.ended")}</Text>
                 </View>
               )}
             </View>
@@ -360,7 +364,7 @@ export default function MyEventsScreen({ navigation, route }) {
                   <Text
                     style={[styles.ratedText, { color: colors.textSecondary }]}
                   >
-                    You rated this event
+                    {t("myEvents.youRated")}
                   </Text>
                 </View>
               ) : (
@@ -385,7 +389,7 @@ export default function MyEventsScreen({ navigation, route }) {
                       color="#FFD700"
                       fill="#FFD700"
                     />
-                    <Text style={styles.rateButtonText}>Rate this event</Text>
+                    <Text style={styles.rateButtonText}>{t("myEvents.rateThisEvent")}</Text>
                   </View>
                 </TouchableOpacity>
               )}
@@ -403,7 +407,7 @@ export default function MyEventsScreen({ navigation, route }) {
             >
               <Icon name="community" size={16} color={colors.primary} />
               <Text style={[styles.metText, { color: colors.primary }]}>
-                People you met here
+                {t("myEvents.peopleYouMetHere")}
               </Text>
               <Icon name="forward" size={14} color={colors.textTertiary} />
             </TouchableOpacity>
@@ -420,10 +424,10 @@ export default function MyEventsScreen({ navigation, route }) {
             >
               <Icon name="camera" size={16} color={colors.primary} />
               <Text style={[styles.metText, { color: colors.primary }]}>
-                Share a moment
+                {t("myEvents.shareAMoment")}
               </Text>
               <Text style={[styles.metHint, { color: colors.textTertiary }]}>
-                seen by attendees
+                {t("myEvents.seenByAttendees")}
               </Text>
             </TouchableOpacity>
           )}
@@ -444,7 +448,7 @@ export default function MyEventsScreen({ navigation, route }) {
             <Icon name="back" size={26} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
-            My Events
+            {t("myEvents.headerTitle")}
           </Text>
           <View style={{ width: 28 }} />
         </View>
@@ -485,7 +489,7 @@ export default function MyEventsScreen({ navigation, route }) {
                 },
               ]}
             >
-              Joined
+              {t("myEvents.joined")}
             </Text>
           </View>
         </TouchableOpacity>
@@ -524,7 +528,7 @@ export default function MyEventsScreen({ navigation, route }) {
                   },
                 ]}
               >
-                Hosting
+                {t("myEvents.hosting")}
               </Text>
             </View>
           </TouchableOpacity>
@@ -562,7 +566,7 @@ export default function MyEventsScreen({ navigation, route }) {
                 },
               ]}
             >
-              Upcoming
+              {t("myEvents.upcoming")}
             </Text>
           </View>
         </TouchableOpacity>
@@ -594,7 +598,7 @@ export default function MyEventsScreen({ navigation, route }) {
                 },
               ]}
             >
-              Past
+              {t("myEvents.past")}
             </Text>
           </View>
         </TouchableOpacity>
@@ -622,17 +626,17 @@ export default function MyEventsScreen({ navigation, route }) {
           </View>
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
             {timeFilter === "past"
-              ? "No past events"
+              ? t("myEvents.empty.noPast")
               : activeTab === "joined"
-              ? "No upcoming events joined"
-              : "No upcoming events created"}
+              ? t("myEvents.empty.noUpcomingJoined")
+              : t("myEvents.empty.noUpcomingHosted")}
           </Text>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
             {timeFilter === "past"
-              ? "Events you've attended will appear here"
+              ? t("myEvents.empty.pastText")
               : activeTab === "joined"
-              ? "Explore events and join your first experience"
-              : "Create an event to bring people together"}
+              ? t("myEvents.empty.joinedText")
+              : t("myEvents.empty.hostedText")}
           </Text>
           {timeFilter === "upcoming" && (
             <TouchableOpacity
@@ -658,10 +662,10 @@ export default function MyEventsScreen({ navigation, route }) {
                   style={[styles.emptyButtonText, { color: colors.primary }]}
                 >
                   {activeTab === "joined"
-                    ? "Explore Events"
+                    ? t("myEvents.empty.exploreEvents")
                     : canHost
-                    ? "Create Event"
-                    : "Request Host"}
+                    ? t("myEvents.empty.createEvent")
+                    : t("myEvents.empty.requestHost")}
                 </Text>
               </View>
             </TouchableOpacity>

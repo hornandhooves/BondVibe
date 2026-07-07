@@ -134,7 +134,7 @@ describe("SearchEventsScreen", () => {
     await waitFor(() => {
       expect(getByText("Social Event")).toBeTruthy();
       expect(queryByText("Sports Game")).toBeFalsy();
-      expect(getByText("1 Events Found")).toBeTruthy();
+      expect(getByText("1 Event Found")).toBeTruthy();
     });
   });
 
@@ -153,7 +153,7 @@ describe("SearchEventsScreen", () => {
     await waitFor(() => {
       expect(getByText("Social Event")).toBeTruthy();
       expect(queryByText("Sports Game")).toBeFalsy();
-      expect(getByText("1 Events Found")).toBeTruthy();
+      expect(getByText("1 Event Found")).toBeTruthy();
     });
   });
 
@@ -223,7 +223,7 @@ describe("SearchEventsScreen", () => {
     await waitFor(() => {
       expect(queryByText("Social Event")).toBeFalsy();
       expect(getByText("Sports Game")).toBeTruthy();
-      expect(getByText("1 Events Found")).toBeTruthy();
+      expect(getByText("1 Event Found")).toBeTruthy();
     });
   });
 

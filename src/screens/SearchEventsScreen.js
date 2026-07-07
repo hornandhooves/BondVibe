@@ -11,6 +11,7 @@ import {
   Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import {
   collection,
   getDocs,
@@ -60,6 +61,7 @@ const mapEventDocs = (docs) =>
 
 export default function SearchEventsScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const { cities: LOCATIONS } = useCities({ includeAll: true });
   const [searchQuery, setSearchQuery] = useState("");
   const [events, setEvents] = useState([]);
@@ -110,7 +112,7 @@ export default function SearchEventsScreen({ navigation, route }) {
   }, [route.params?.category]);
 
   // Create categories array with "All" option
-  const categoryOptions = [{ id: "all", label: "All" }, ...EVENT_CATEGORIES];
+  const categoryOptions = [{ id: "all", label: t("searchEvents.allLabel") }, ...EVENT_CATEGORIES];
 
   // Sort events by date (soonest first)
   const sortEventsByDate = (eventsArray) => {
@@ -211,7 +213,7 @@ export default function SearchEventsScreen({ navigation, route }) {
 
   // Debounce the text query into a server-side search token (longest prefix).
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       const tokens = searchQuery
         .toLowerCase()
         .split(/[^\p{L}\p{N}]+/u)
@@ -219,7 +221,7 @@ export default function SearchEventsScreen({ navigation, route }) {
         .sort((a, b) => b.length - a.length);
       setSearchToken(tokens[0] || null);
     }, 350);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [searchQuery]);
 
   // Auto-load more when an active filter leaves the visible list sparse.
@@ -414,7 +416,7 @@ export default function SearchEventsScreen({ navigation, route }) {
             <View style={styles.badgesRow}>
               {event.price === 0 && (
                 <View style={styles.freeBadge}>
-                  <Text style={styles.freeBadgeText}>FREE</Text>
+                  <Text style={styles.freeBadgeText}>{t("searchEvents.free_badge")}</Text>
                 </View>
               )}
               {event.price > 0 && (
@@ -424,7 +426,7 @@ export default function SearchEventsScreen({ navigation, route }) {
               )}
               {isPast && (
                 <View style={styles.endedBadge}>
-                  <Text style={styles.endedBadgeText}>Ended</Text>
+                  <Text style={styles.endedBadgeText}>{t("searchEvents.ended")}</Text>
                 </View>
               )}
             </View>
@@ -436,9 +438,9 @@ export default function SearchEventsScreen({ navigation, route }) {
 
   // Get current category label for header
   const getCurrentCategoryLabel = () => {
-    if (selectedCategory === "all") return "All Events";
+    if (selectedCategory === "all") return t("searchEvents.headerAll");
     const cat = EVENT_CATEGORIES.find((c) => c.id === selectedCategory);
-    return cat?.label || "Events";
+    return cat?.label || t("myEvents.event");
   };
 
   return (
@@ -453,7 +455,7 @@ export default function SearchEventsScreen({ navigation, route }) {
         <Text style={[styles.headerTitle, { color: colors.text }]}>
           {selectedCategory !== "all"
             ? getCurrentCategoryLabel()
-            : "Explore Events"}
+            : t("searchEvents.headerAll")}
         </Text>
         <View style={{ width: 28 }} />
       </View>
@@ -486,7 +488,7 @@ export default function SearchEventsScreen({ navigation, route }) {
           <Icon name="search" size={20} color={colors.textTertiary} type="ui" />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search events..."
+            placeholder={t("searchEvents.searchPlaceholder")}
             placeholderTextColor={colors.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -495,7 +497,7 @@ export default function SearchEventsScreen({ navigation, route }) {
 
         {/* Location Filter */}
         <FilterChips
-          label="City"
+          label={t("searchEvents.cityLabel")}
           value={selectedLocation}
           onValueChange={setSelectedLocation}
           options={LOCATIONS}
@@ -504,7 +506,7 @@ export default function SearchEventsScreen({ navigation, route }) {
 
         {/* Category Filter */}
         <FilterChips
-          label="Communities"
+          label={t("searchEvents.communitiesLabel")}
           value={selectedCategory}
           onValueChange={handleCategoryChange}
           options={categoryOptions}
@@ -515,20 +517,20 @@ export default function SearchEventsScreen({ navigation, route }) {
         <View style={styles.filtersRow}>
           <View style={styles.filterDropdown}>
             <SelectDropdown
-              label="Price"
+              label={t("searchEvents.priceLabel")}
               value={priceFilter}
               onValueChange={setPriceFilter}
               options={PRICE_OPTIONS}
-              placeholder="All Prices"
+              placeholder={t("searchEvents.allPrices")}
             />
           </View>
           <View style={styles.filterDropdown}>
             <SelectDropdown
-              label="Language"
+              label={t("searchEvents.languageLabel")}
               value={languageFilter}
               onValueChange={setLanguageFilter}
               options={EVENT_LANGUAGES}
-              placeholder="All Languages"
+              placeholder={t("searchEvents.allLanguages")}
               type="language"
               multiSelect
             />
@@ -539,27 +541,27 @@ export default function SearchEventsScreen({ navigation, route }) {
         <View style={styles.filtersRow}>
           <View style={styles.filterDropdown}>
             <Text style={[styles.dateFilterLabel, { color: colors.textSecondary }]}>
-              From
+              {t("searchEvents.from")}
             </Text>
             <TouchableOpacity
               style={[styles.dateFilterBtn, { backgroundColor: colors.surfaceGlass, borderColor: colors.border }]}
               onPress={() => setDatePicker("from")}
             >
               <Text style={{ color: dateFrom ? colors.text : colors.textTertiary }}>
-                {dateFrom ? formatISODate(dateFrom.toISOString()) : "Any date"}
+                {dateFrom ? formatISODate(dateFrom.toISOString()) : t("searchEvents.anyDate")}
               </Text>
             </TouchableOpacity>
           </View>
           <View style={styles.filterDropdown}>
             <Text style={[styles.dateFilterLabel, { color: colors.textSecondary }]}>
-              To
+              {t("searchEvents.to")}
             </Text>
             <TouchableOpacity
               style={[styles.dateFilterBtn, { backgroundColor: colors.surfaceGlass, borderColor: colors.border }]}
               onPress={() => setDatePicker("to")}
             >
               <Text style={{ color: dateTo ? colors.text : colors.textTertiary }}>
-                {dateTo ? formatISODate(dateTo.toISOString()) : "Any date"}
+                {dateTo ? formatISODate(dateTo.toISOString()) : t("searchEvents.anyDate")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -573,7 +575,7 @@ export default function SearchEventsScreen({ navigation, route }) {
             style={styles.clearDates}
           >
             <Text style={{ color: colors.primary, fontWeight: "600" }}>
-              Clear dates
+              {t("searchEvents.clearDates")}
             </Text>
           </TouchableOpacity>
         )}
@@ -611,14 +613,14 @@ export default function SearchEventsScreen({ navigation, route }) {
                 <View style={styles.pickerHeader}>
                   <TouchableOpacity onPress={() => setDatePicker(null)}>
                     <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>
-                      Cancel
+                      {t("searchEvents.cancel")}
                     </Text>
                   </TouchableOpacity>
                   <Text style={{ color: colors.text, fontWeight: "700" }}>
-                    {datePicker === "from" ? "From" : "To"}
+                    {datePicker === "from" ? t("searchEvents.from") : t("searchEvents.to")}
                   </Text>
                   <TouchableOpacity onPress={() => setDatePicker(null)}>
-                    <Text style={{ color: colors.primary, fontWeight: "700" }}>Done</Text>
+                    <Text style={{ color: colors.primary, fontWeight: "700" }}>{t("searchEvents.done")}</Text>
                   </TouchableOpacity>
                 </View>
                 <DateTimePicker
@@ -642,12 +644,12 @@ export default function SearchEventsScreen({ navigation, route }) {
         {/* Results Header */}
         <View style={styles.resultsHeader}>
           <Text style={[styles.resultsTitle, { color: colors.text }]}>
-            {filteredEvents.length} Events Found
+            {t("searchEvents.eventsFound", { count: filteredEvents.length })}
           </Text>
           <Text
             style={[styles.resultsSubtitle, { color: colors.textTertiary }]}
           >
-            Sorted by date (soonest first)
+            {t("searchEvents.sortedByDate")}
           </Text>
         </View>
 
@@ -665,10 +667,10 @@ export default function SearchEventsScreen({ navigation, route }) {
               type="ui"
             />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              No upcoming events found
+              {t("searchEvents.noEventsFound")}
             </Text>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              Try adjusting your filters or search terms
+              {t("searchEvents.adjustFilters")}
             </Text>
           </View>
         ) : (

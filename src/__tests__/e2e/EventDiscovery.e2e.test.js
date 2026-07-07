@@ -100,7 +100,7 @@ describe("E2E: Event Discovery Flow", () => {
     // Step 4: Filter by Food category (chip is the first "Food" in the tree)
     fireEvent.press(getAllByText("Food")[0]);
     await waitFor(() => {
-      expect(getByText("1 Events Found")).toBeTruthy();
+      expect(getByText("1 Event Found")).toBeTruthy();
       expect(getByText("Taco Tuesday")).toBeTruthy();
       expect(queryByText("Coffee Meetup")).toBeFalsy();
     });
@@ -115,7 +115,7 @@ describe("E2E: Event Discovery Flow", () => {
     fireEvent.changeText(searchInput, "Coffee");
 
     await waitFor(() => {
-      expect(getByText("1 Events Found")).toBeTruthy();
+      expect(getByText("1 Event Found")).toBeTruthy();
       expect(getByText("Coffee Meetup")).toBeTruthy();
       expect(queryByText("Taco Tuesday")).toBeFalsy();
     });
