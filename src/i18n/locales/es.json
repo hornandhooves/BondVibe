@@ -37,5 +37,121 @@
     "seeTranslation": "Ver traducción",
     "translating": "Traduciendo…",
     "failed": "No se pudo traducir ahora. Intenta de nuevo en un momento."
+  },
+  "auth": {
+    "emailPlaceholder": "Correo electrónico",
+    "passwordPlaceholder": "Contraseña",
+    "or": "o",
+    "login": {
+      "logIn": "Iniciar sesión",
+      "noAccount": "¿No tienes cuenta? ",
+      "signUp": "Regístrate",
+      "forgotPassword": "¿Olvidaste tu contraseña? ",
+      "reset": "Restablecer",
+      "createAccount": "Crear cuenta",
+      "resetPassword": "Restablecer contraseña",
+      "errors": {
+        "missingInfoTitle": "Falta información",
+        "missingInfoMsg": "Completa todos los campos para continuar.",
+        "loginFailedTitle": "Error al iniciar sesión",
+        "loginFailedMsg": "El correo o la contraseña son incorrectos. ¿Quieres crear una cuenta o restablecer tu contraseña?",
+        "invalidEmailTitle": "Correo inválido",
+        "invalidEmailMsg": "Ingresa un correo electrónico válido.",
+        "tooManyTitle": "Demasiados intentos",
+        "tooManyMsg": "Demasiados intentos fallidos. Intenta de nuevo más tarde.",
+        "emailRequiredTitle": "Correo requerido",
+        "emailRequiredMsg": "Ingresa tu correo electrónico primero e intenta de nuevo.",
+        "resetSentTitle": "Correo enviado",
+        "resetSentMsg": "Revisa tu bandeja de entrada para el enlace de restablecimiento. No olvides revisar spam.",
+        "emailNotFoundTitle": "Correo no encontrado",
+        "emailNotFoundMsg": "No existe ninguna cuenta con este correo electrónico.",
+        "genericErrorTitle": "Error",
+        "genericErrorMsg": "No se pudo enviar el correo. Intenta de nuevo."
+      }
+    },
+    "signup": {
+      "title": "Crear cuenta",
+      "subtitle": "Únete a Kinlo y empieza a conectar",
+      "namePlaceholder": "Nombre completo",
+      "createPasswordPlaceholder": "Crea una contraseña",
+      "confirmPasswordPlaceholder": "Confirmar contraseña",
+      "createAccount": "Crear cuenta",
+      "creatingAccount": "Creando cuenta...",
+      "signUp": "Regístrate",
+      "haveAccount": "¿Ya tienes cuenta? ",
+      "logIn": "Iniciar sesión",
+      "requirements": {
+        "minLength": "Al menos 8 caracteres",
+        "uppercase": "Una letra mayúscula",
+        "lowercase": "Una letra minúscula",
+        "number": "Un número",
+        "special": "Un carácter especial (!@#$%...)"
+      },
+      "verifyModal": {
+        "title": "Verifica tu correo",
+        "message": "Enviamos un enlace de verificación a tu correo. Revisa tu bandeja de entrada (y spam) y toca el enlace para verificar tu cuenta antes de iniciar sesión."
+      },
+      "errors": {
+        "missingInfoTitle": "Error",
+        "missingInfoMsg": "Completa todos los campos",
+        "passwordMismatchTitle": "Error",
+        "passwordMismatchMsg": "Las contraseñas no coinciden",
+        "weakPasswordTitle": "Contraseña débil",
+        "weakPasswordMsgPrefix": "La contraseña debe tener: ",
+        "weakPasswordShort": "La contraseña debe tener al menos 6 caracteres.",
+        "emailInUseTitle": "Correo ya registrado",
+        "emailInUseMsg": "Este correo ya está registrado. Intenta iniciar sesión.",
+        "invalidEmailTitle": "Correo inválido",
+        "invalidEmailMsg": "Ingresa un correo electrónico válido.",
+        "genericErrorTitle": "Error al registrarse",
+        "genericErrorMsg": "Algo salió mal. Intenta de nuevo."
+      }
+    },
+    "emailVerification": {
+      "title": "Verifica tu correo",
+      "sentTo": "Enviamos un enlace de verificación a",
+      "instructions": "Toca el enlace en el correo y luego regresa para continuar.",
+      "resend": "Reenviar correo",
+      "resendCooldown": "Reenviar en {{seconds}}s",
+      "iVerified": "Ya verifiqué — continuar",
+      "changeEmail": "Usar otro correo",
+      "resentTitle": "Correo enviado",
+      "resentMsg": "Revisa tu bandeja de entrada para el enlace de verificación.",
+      "notVerifiedTitle": "Aún no verificado",
+      "notVerifiedMsg": "Verifica tu correo antes de continuar.",
+      "errorTitle": "Error",
+      "errorMsg": "Algo salió mal. Intenta de nuevo."
+    },
+    "profileSetup": {
+      "headerTitle": "Completa tu perfil",
+      "headerSubtitle": "Cuéntanos un poco sobre ti",
+      "tapToChangeAvatar": "Toca para cambiar tu avatar",
+      "fullNameLabel": "Nombre completo",
+      "fullNamePlaceholder": "Tu nombre",
+      "locationLabel": "Ubicación",
+      "locationPlaceholder": "Elige tu ciudad",
+      "phoneLabel": "Teléfono",
+      "phoneOptional": "(opcional)",
+      "ageCheckboxTitle": "Confirmo que tengo 18 años o más ",
+      "ageCheckboxSubtitle": "Kinlo es solo para adultos",
+      "infoNote": "Tu perfil nos ayuda a conectarte con grupos y eventos compatibles. Siempre puedes editarlo después.",
+      "saving": "Guardando...",
+      "continue": "Continuar",
+      "requiredNote": "Campos requeridos",
+      "errors": {
+        "nameRequiredTitle": "Campo requerido",
+        "nameRequiredMsg": "Ingresa tu nombre para continuar.",
+        "locationRequiredTitle": "Campo requerido",
+        "locationRequiredMsg": "Ingresa tu ubicación para continuar.",
+        "ageRequiredTitle": "Requisito de edad",
+        "ageRequiredMsg": "Debes tener 18 años o más para usar Kinlo.",
+        "saveErrorTitle": "Error",
+        "saveErrorMsg": "No se pudo guardar el perfil. Intenta de nuevo."
+      },
+      "welcomeNotification": {
+        "title": "¡Bienvenido a Kinlo!",
+        "message": "¡Hola! Nos emociona mucho que estés aquí. Esta app se hizo con mucho cariño para personas como tú que buscan conexiones reales, no solo likes. Explora eventos, conoce gente increíble y hagamos recuerdos juntos. ¡Tú puedes!"
+      }
+    }
   }
 }

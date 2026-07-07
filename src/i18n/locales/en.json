@@ -37,5 +37,121 @@
     "seeTranslation": "See translation",
     "translating": "Translating…",
     "failed": "Couldn't translate right now. Try again in a moment."
+  },
+  "auth": {
+    "emailPlaceholder": "Email",
+    "passwordPlaceholder": "Password",
+    "or": "or",
+    "login": {
+      "logIn": "Log In",
+      "noAccount": "Don't have an account? ",
+      "signUp": "Sign Up",
+      "forgotPassword": "Forgot your password? ",
+      "reset": "Reset",
+      "createAccount": "Create Account",
+      "resetPassword": "Reset Password",
+      "errors": {
+        "missingInfoTitle": "Missing Information",
+        "missingInfoMsg": "Please fill in all fields to continue.",
+        "loginFailedTitle": "Login Failed",
+        "loginFailedMsg": "The email or password is incorrect. Would you like to create an account or reset your password?",
+        "invalidEmailTitle": "Invalid Email",
+        "invalidEmailMsg": "Please enter a valid email address.",
+        "tooManyTitle": "Too Many Attempts",
+        "tooManyMsg": "Too many failed login attempts. Please try again later.",
+        "emailRequiredTitle": "Email Required",
+        "emailRequiredMsg": "Please enter your email address first, then try again.",
+        "resetSentTitle": "Reset Email Sent",
+        "resetSentMsg": "Check your inbox for a link to reset your password. Don't forget to check your spam folder.",
+        "emailNotFoundTitle": "Email Not Found",
+        "emailNotFoundMsg": "No account exists with this email address.",
+        "genericErrorTitle": "Error",
+        "genericErrorMsg": "Failed to send reset email. Please try again."
+      }
+    },
+    "signup": {
+      "title": "Create Account",
+      "subtitle": "Join Kinlo and start connecting",
+      "namePlaceholder": "Full Name",
+      "createPasswordPlaceholder": "Create a password",
+      "confirmPasswordPlaceholder": "Confirm Password",
+      "createAccount": "Create Account",
+      "creatingAccount": "Creating account...",
+      "signUp": "Sign Up",
+      "haveAccount": "Already have an account? ",
+      "logIn": "Log In",
+      "requirements": {
+        "minLength": "At least 8 characters",
+        "uppercase": "One uppercase letter",
+        "lowercase": "One lowercase letter",
+        "number": "One number",
+        "special": "One special character (!@#$%...)"
+      },
+      "verifyModal": {
+        "title": "Verify Your Email",
+        "message": "We've sent a verification link to your email. Please check your inbox (and spam folder) and click the link to verify your account before logging in."
+      },
+      "errors": {
+        "missingInfoTitle": "Error",
+        "missingInfoMsg": "Please fill in all fields",
+        "passwordMismatchTitle": "Error",
+        "passwordMismatchMsg": "Passwords do not match",
+        "weakPasswordTitle": "Weak Password",
+        "weakPasswordMsgPrefix": "Password must have: ",
+        "weakPasswordShort": "Password should be at least 6 characters.",
+        "emailInUseTitle": "Email Already Registered",
+        "emailInUseMsg": "This email is already registered. Please log in instead.",
+        "invalidEmailTitle": "Invalid Email",
+        "invalidEmailMsg": "Please enter a valid email address.",
+        "genericErrorTitle": "Signup Failed",
+        "genericErrorMsg": "Something went wrong. Please try again."
+      }
+    },
+    "emailVerification": {
+      "title": "Verify your email",
+      "sentTo": "We sent a verification link to",
+      "instructions": "Tap the link in the email, then come back and continue.",
+      "resend": "Resend email",
+      "resendCooldown": "Resend in {{seconds}}s",
+      "iVerified": "I've verified — continue",
+      "changeEmail": "Use a different email",
+      "resentTitle": "Email Sent",
+      "resentMsg": "Check your inbox for the verification link.",
+      "notVerifiedTitle": "Not Verified Yet",
+      "notVerifiedMsg": "Please verify your email before continuing.",
+      "errorTitle": "Error",
+      "errorMsg": "Something went wrong. Please try again."
+    },
+    "profileSetup": {
+      "headerTitle": "Complete Your Profile",
+      "headerSubtitle": "Tell us a bit about yourself",
+      "tapToChangeAvatar": "Tap to change avatar",
+      "fullNameLabel": "Full Name",
+      "fullNamePlaceholder": "Your name",
+      "locationLabel": "Location",
+      "locationPlaceholder": "Select your city",
+      "phoneLabel": "Phone",
+      "phoneOptional": "(optional)",
+      "ageCheckboxTitle": "I confirm I am 18 years or older ",
+      "ageCheckboxSubtitle": "Kinlo is only available for adults",
+      "infoNote": "Your profile helps us match you with compatible groups and events. You can always edit this later.",
+      "saving": "Saving...",
+      "continue": "Continue",
+      "requiredNote": "Required fields",
+      "errors": {
+        "nameRequiredTitle": "Required Field",
+        "nameRequiredMsg": "Please enter your name to continue.",
+        "locationRequiredTitle": "Required Field",
+        "locationRequiredMsg": "Please enter your location to continue.",
+        "ageRequiredTitle": "Age Requirement",
+        "ageRequiredMsg": "You must be 18 or older to use Kinlo.",
+        "saveErrorTitle": "Error",
+        "saveErrorMsg": "Failed to save profile. Please try again."
+      },
+      "welcomeNotification": {
+        "title": "Welcome to Kinlo!",
+        "message": "Hey! We're so hyped you're here. This app was built with tons of love for people like you who want real connections, not just likes. Go explore some events, meet awesome humans, and let's make some memories! You got this"
+      }
+    }
   }
 }

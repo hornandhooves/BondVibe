@@ -16,6 +16,7 @@ import {
   Keyboard,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
@@ -33,6 +34,7 @@ import BondVibeLogo from "../components/BondVibeLogo";
 
 export default function SignupScreen({ navigation }) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const { setSignupInProgress } = useAuthContext();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -45,12 +47,12 @@ export default function SignupScreen({ navigation }) {
   // Validate password strength
   const validatePassword = (pwd) => {
     const errors = [];
-    if (pwd.length < 8) errors.push("at least 8 characters");
-    if (!/[A-Z]/.test(pwd)) errors.push("one uppercase letter");
-    if (!/[a-z]/.test(pwd)) errors.push("one lowercase letter");
-    if (!/[0-9]/.test(pwd)) errors.push("one number");
+    if (pwd.length < 8) errors.push(t("auth.signup.requirements.minLength").toLowerCase());
+    if (!/[A-Z]/.test(pwd)) errors.push(t("auth.signup.requirements.uppercase").toLowerCase());
+    if (!/[a-z]/.test(pwd)) errors.push(t("auth.signup.requirements.lowercase").toLowerCase());
+    if (!/[0-9]/.test(pwd)) errors.push(t("auth.signup.requirements.number").toLowerCase());
     if (!/[!@#$%^&*(),.?":{}|<>]/.test(pwd))
-      errors.push("one special character");
+      errors.push(t("auth.signup.requirements.special").toLowerCase());
     return errors;
   };
 
@@ -58,20 +60,20 @@ export default function SignupScreen({ navigation }) {
     console.log("📝 Starting signup process...");
 
     if (!email || !password || !confirmPassword) {
-      Alert.alert("Error", "Please fill in all fields");
+      Alert.alert(t("auth.signup.errors.missingInfoTitle"), t("auth.signup.errors.missingInfoMsg"));
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
+      Alert.alert(t("auth.signup.errors.passwordMismatchTitle"), t("auth.signup.errors.passwordMismatchMsg"));
       return;
     }
 
     const passwordErrors = validatePassword(password);
     if (passwordErrors.length > 0) {
       Alert.alert(
-        "Weak Password",
-        "Password must have: " + passwordErrors.join(", "),
+        t("auth.signup.errors.weakPasswordTitle"),
+        t("auth.signup.errors.weakPasswordMsgPrefix") + passwordErrors.join(", "),
       );
       return;
     }
@@ -141,18 +143,18 @@ export default function SignupScreen({ navigation }) {
 
       if (error.code === "auth/email-already-in-use") {
         Alert.alert(
-          "Email Already Registered",
-          "This email is already registered. Please log in instead.",
+          t("auth.signup.errors.emailInUseTitle"),
+          t("auth.signup.errors.emailInUseMsg"),
         );
       } else if (error.code === "auth/invalid-email") {
-        Alert.alert("Invalid Email", "Please enter a valid email address.");
+        Alert.alert(t("auth.signup.errors.invalidEmailTitle"), t("auth.signup.errors.invalidEmailMsg"));
       } else if (error.code === "auth/weak-password") {
         Alert.alert(
-          "Weak Password",
-          "Password should be at least 6 characters.",
+          t("auth.signup.errors.weakPasswordTitle"),
+          t("auth.signup.errors.weakPasswordShort"),
         );
       } else {
-        Alert.alert("Signup Failed", error.message);
+        Alert.alert(t("auth.signup.errors.genericErrorTitle"), error.message);
       }
     }
   };
@@ -194,10 +196,10 @@ export default function SignupScreen({ navigation }) {
                 <BondVibeLogo size={72} variant="adaptive" isDark={isDark} />
               </View>
               <Text style={[styles.title, { color: colors.text }]}>
-                Create Account
+                {t("auth.signup.title")}
               </Text>
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                Join Kinlo and start connecting
+                {t("auth.signup.subtitle")}
               </Text>
             </View>
 
@@ -219,7 +221,7 @@ export default function SignupScreen({ navigation }) {
                 />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
-                  placeholder="Email"
+                  placeholder={t("auth.emailPlaceholder")}
                   placeholderTextColor={colors.textTertiary}
                   value={email}
                   onChangeText={setEmail}
@@ -246,7 +248,7 @@ export default function SignupScreen({ navigation }) {
                 />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
-                  placeholder="Create a password"
+                  placeholder={t("auth.signup.createPasswordPlaceholder")}
                   placeholderTextColor={colors.textTertiary}
                   value={password}
                   onChangeText={setPassword}
@@ -290,7 +292,7 @@ export default function SignupScreen({ navigation }) {
                       },
                     ]}
                   >
-                    At least 8 characters
+                    {t("auth.signup.requirements.minLength")}
                   </Text>
                 </View>
                 <View style={styles.requirementRow}>
@@ -315,7 +317,7 @@ export default function SignupScreen({ navigation }) {
                       },
                     ]}
                   >
-                    One uppercase letter
+                    {t("auth.signup.requirements.uppercase")}
                   </Text>
                 </View>
                 <View style={styles.requirementRow}>
@@ -340,7 +342,7 @@ export default function SignupScreen({ navigation }) {
                       },
                     ]}
                   >
-                    One lowercase letter
+                    {t("auth.signup.requirements.lowercase")}
                   </Text>
                 </View>
                 <View style={styles.requirementRow}>
@@ -365,7 +367,7 @@ export default function SignupScreen({ navigation }) {
                       },
                     ]}
                   >
-                    One number
+                    {t("auth.signup.requirements.number")}
                   </Text>
                 </View>
                 <View style={styles.requirementRow}>
@@ -394,7 +396,7 @@ export default function SignupScreen({ navigation }) {
                       },
                     ]}
                   >
-                    One special character (!@#$%...)
+                    {t("auth.signup.requirements.special")}
                   </Text>
                 </View>
               </View>
@@ -416,7 +418,7 @@ export default function SignupScreen({ navigation }) {
                 />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
-                  placeholder="Confirm Password"
+                  placeholder={t("auth.signup.confirmPasswordPlaceholder")}
                   placeholderTextColor={colors.textTertiary}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
@@ -460,14 +462,14 @@ export default function SignupScreen({ navigation }) {
                           { color: colors.primary, marginLeft: 12 },
                         ]}
                       >
-                        Creating account...
+                        {t("auth.signup.creatingAccount")}
                       </Text>
                     </View>
                   ) : (
                     <Text
                       style={[styles.signupText, { color: colors.primary }]}
                     >
-                      Sign Up
+                      {t("auth.signup.signUp")}
                     </Text>
                   )}
                 </View>
@@ -485,9 +487,9 @@ export default function SignupScreen({ navigation }) {
                     { color: colors.textSecondary },
                   ]}
                 >
-                  Already have an account?{" "}
+                  {t("auth.signup.haveAccount")}
                   <Text style={{ color: colors.primary, fontWeight: "600" }}>
-                    Log In
+                    {t("auth.signup.logIn")}
                   </Text>
                 </Text>
               </TouchableOpacity>
@@ -501,8 +503,8 @@ export default function SignupScreen({ navigation }) {
         <SuccessModal
           visible={showSuccess}
           onClose={handleModalClose}
-          title="Verify Your Email"
-          message="We've sent a verification link to your email. Please check your inbox (and spam folder) and click the link to verify your account before logging in."
+          title={t("auth.signup.verifyModal.title")}
+          message={t("auth.signup.verifyModal.message")}
           icon="mail"
           tone="brand"
         />

@@ -11,6 +11,7 @@ import {
   Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import { doc, updateDoc , setDoc} from "firebase/firestore";
 import { createNotification } from "../utils/notificationService";
 import { auth, db } from "../services/firebase";
@@ -25,6 +26,7 @@ import useCities from "../hooks/useCities";
 
 export default function ProfileSetupScreen() {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const { cities: CITY_OPTIONS } = useCities();
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -43,17 +45,17 @@ export default function ProfileSetupScreen() {
 
   const handleSave = async () => {
     if (!form.fullName.trim()) {
-      Alert.alert("Required Field", "Please enter your name to continue.");
+      Alert.alert(t("auth.profileSetup.errors.nameRequiredTitle"), t("auth.profileSetup.errors.nameRequiredMsg"));
       return;
     }
 
     if (!form.location.trim()) {
-      Alert.alert("Required Field", "Please enter your location to continue.");
+      Alert.alert(t("auth.profileSetup.errors.locationRequiredTitle"), t("auth.profileSetup.errors.locationRequiredMsg"));
       return;
     }
 
     if (!isOver18) {
-      Alert.alert("Age Requirement", "You must be 18 or older to use Kinlo.");
+      Alert.alert(t("auth.profileSetup.errors.ageRequiredTitle"), t("auth.profileSetup.errors.ageRequiredMsg"));
       return;
     }
 
@@ -86,15 +88,15 @@ export default function ProfileSetupScreen() {
       // Create welcome notification
       await createNotification(auth.currentUser.uid, {
         type: "welcome",
-        title: "Welcome to Kinlo!",
-        message: "Hey! We're so hyped you're here. This app was built with tons of love for people like you who want real connections, not just likes. Go explore some events, meet awesome humans, and let's make some memories! You got this",
+        title: t("auth.profileSetup.welcomeNotification.title"),
+        message: t("auth.profileSetup.welcomeNotification.message"),
         icon: "party",
       });
 
       console.log("✅ Profile setup completed!");
     } catch (error) {
       console.error("❌ Error saving profile:", error);
-      Alert.alert("Error", "Failed to save profile. Please try again.");
+      Alert.alert(t("auth.profileSetup.errors.saveErrorTitle"), t("auth.profileSetup.errors.saveErrorMsg"));
     } finally {
       setSaving(false);
     }
@@ -118,10 +120,10 @@ export default function ProfileSetupScreen() {
 
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          Complete Your Profile
+          {t("auth.profileSetup.headerTitle")}
         </Text>
         <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-          Tell us a bit about yourself
+          {t("auth.profileSetup.headerSubtitle")}
         </Text>
       </View>
 
@@ -148,7 +150,7 @@ export default function ProfileSetupScreen() {
             <AvatarDisplay avatar={form.avatar} size={80} name={form.fullName} />
           </View>
           <Text style={[styles.avatarText, { color: colors.primary }]}>
-            Tap to change avatar
+            {t("auth.profileSetup.tapToChangeAvatar")}
           </Text>
         </TouchableOpacity>
 
@@ -157,7 +159,7 @@ export default function ProfileSetupScreen() {
           {/* Full Name */}
           <View style={styles.inputGroup}>
             <Text style={[styles.inputLabel, { color: colors.text }]}>
-              Full Name <Text style={{ color: colors.accent }}>*</Text>
+              {t("auth.profileSetup.fullNameLabel")} <Text style={{ color: colors.accent }}>*</Text>
             </Text>
             <TextInput
               style={[
@@ -170,7 +172,7 @@ export default function ProfileSetupScreen() {
               ]}
               value={form.fullName}
               onChangeText={(text) => setForm({ ...form, fullName: text })}
-              placeholder="Your name"
+              placeholder={t("auth.profileSetup.fullNamePlaceholder")}
               placeholderTextColor={colors.textTertiary}
               maxLength={50}
               autoCapitalize="words"
@@ -180,7 +182,7 @@ export default function ProfileSetupScreen() {
           {/* Location — one of the cities where we operate (single source: LOCATIONS) */}
           <View style={styles.inputGroup}>
             <Text style={[styles.inputLabel, { color: colors.text }]}>
-              Location <Text style={{ color: colors.accent }}>*</Text>
+              {t("auth.profileSetup.locationLabel")} <Text style={{ color: colors.accent }}>*</Text>
             </Text>
             <SelectDropdown
               value={CITY_OPTIONS.find((c) => c.label === form.location)?.id}
@@ -192,14 +194,14 @@ export default function ProfileSetupScreen() {
               }
               options={CITY_OPTIONS}
               type="location"
-              placeholder="Select your city"
+              placeholder={t("auth.profileSetup.locationPlaceholder")}
             />
           </View>
 
           {/* Phone (optional) — country code picker, default +52 */}
           <View style={styles.inputGroup}>
             <Text style={[styles.inputLabel, { color: colors.text }]}>
-              Phone <Text style={{ color: colors.textTertiary }}>(optional)</Text>
+              {t("auth.profileSetup.phoneLabel")} <Text style={{ color: colors.textTertiary }}>{t("auth.profileSetup.phoneOptional")}</Text>
             </Text>
             <PhoneInput
               value={form.phone}
@@ -237,13 +239,13 @@ export default function ProfileSetupScreen() {
             </View>
             <View style={styles.checkboxTextContainer}>
               <Text style={[styles.checkboxTitle, { color: colors.text }]}>
-                I confirm I am 18 years or older{" "}
+                {t("auth.profileSetup.ageCheckboxTitle")}
                 <Text style={{ color: colors.accent }}>*</Text>
               </Text>
               <Text
                 style={[styles.checkboxSubtitle, { color: colors.textSecondary }]}
               >
-                Kinlo is only available for adults
+                {t("auth.profileSetup.ageCheckboxSubtitle")}
               </Text>
             </View>
           </TouchableOpacity>
@@ -266,8 +268,7 @@ export default function ProfileSetupScreen() {
             <Text
               style={[styles.infoNoteText, { color: colors.textSecondary }]}
             >
-              Your profile helps us match you with compatible groups and events.
-              You can always edit this later.
+              {t("auth.profileSetup.infoNote")}
             </Text>
           </View>
         </View>
@@ -288,14 +289,14 @@ export default function ProfileSetupScreen() {
             ]}
           >
             <Text style={styles.continueButtonText}>
-              {saving ? "Saving..." : "Continue"}
+              {saving ? t("auth.profileSetup.saving") : t("auth.profileSetup.continue")}
             </Text>
           </View>
         </TouchableOpacity>
 
         {/* Required Fields Note */}
         <Text style={[styles.requiredNote, { color: colors.textTertiary }]}>
-          <Text style={{ color: colors.accent }}>*</Text> Required fields
+          <Text style={{ color: colors.accent }}>*</Text> {t("auth.profileSetup.requiredNote")}
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>

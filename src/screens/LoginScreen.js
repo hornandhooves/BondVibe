@@ -16,6 +16,7 @@ import {
   Keyboard,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -31,6 +32,7 @@ import BondVibeLogo from "../components/BondVibeLogo";
 
 export default function LoginScreen({ navigation }) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -46,8 +48,8 @@ export default function LoginScreen({ navigation }) {
     if (!email || !password) {
       setErrorModal({
         visible: true,
-        title: "Missing Information",
-        message: "Please fill in all fields to continue.",
+        title: t("auth.login.errors.missingInfoTitle"),
+        message: t("auth.login.errors.missingInfoMsg"),
         showSignup: false,
       });
       return;
@@ -115,29 +117,28 @@ export default function LoginScreen({ navigation }) {
       ) {
         setErrorModal({
           visible: true,
-          title: "Login Failed",
-          message:
-            "The email or password is incorrect. Would you like to create an account or reset your password?",
+          title: t("auth.login.errors.loginFailedTitle"),
+          message: t("auth.login.errors.loginFailedMsg"),
           showSignup: true,
         });
       } else if (error.code === "auth/invalid-email") {
         setErrorModal({
           visible: true,
-          title: "Invalid Email",
-          message: "Please enter a valid email address.",
+          title: t("auth.login.errors.invalidEmailTitle"),
+          message: t("auth.login.errors.invalidEmailMsg"),
           showSignup: false,
         });
       } else if (error.code === "auth/too-many-requests") {
         setErrorModal({
           visible: true,
-          title: "Too Many Attempts",
-          message: "Too many failed login attempts. Please try again later.",
+          title: t("auth.login.errors.tooManyTitle"),
+          message: t("auth.login.errors.tooManyMsg"),
           showSignup: false,
         });
       } else {
         setErrorModal({
           visible: true,
-          title: "Login Failed",
+          title: t("auth.login.errors.loginFailedTitle"),
           message: error.message,
           showSignup: false,
         });
@@ -164,8 +165,8 @@ export default function LoginScreen({ navigation }) {
     if (!email.trim()) {
       setErrorModal({
         visible: true,
-        title: "Email Required",
-        message: "Please enter your email address first, then try again.",
+        title: t("auth.login.errors.emailRequiredTitle"),
+        message: t("auth.login.errors.emailRequiredMsg"),
         showSignup: false,
       });
       return;
@@ -179,9 +180,8 @@ export default function LoginScreen({ navigation }) {
       await sendPasswordResetEmail(auth, email.trim(), actionCodeSettings);
       setErrorModal({
         visible: true,
-        title: "Reset Email Sent",
-        message:
-          "Check your inbox for a link to reset your password. Don't forget to check your spam folder.",
+        title: t("auth.login.errors.resetSentTitle"),
+        message: t("auth.login.errors.resetSentMsg"),
         showSignup: false,
       });
     } catch (error) {
@@ -189,15 +189,15 @@ export default function LoginScreen({ navigation }) {
       if (error.code === "auth/user-not-found") {
         setErrorModal({
           visible: true,
-          title: "Email Not Found",
-          message: "No account exists with this email address.",
+          title: t("auth.login.errors.emailNotFoundTitle"),
+          message: t("auth.login.errors.emailNotFoundMsg"),
           showSignup: false,
         });
       } else {
         setErrorModal({
           visible: true,
-          title: "Error",
-          message: "Failed to send reset email. Please try again.",
+          title: t("auth.login.errors.genericErrorTitle"),
+          message: t("auth.login.errors.genericErrorMsg"),
           showSignup: false,
         });
       }
@@ -236,7 +236,7 @@ export default function LoginScreen({ navigation }) {
                 Kinlo
               </Text>
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                Connect through shared experiences
+                {t("welcome.tagline")}
               </Text>
             </View>
 
@@ -259,7 +259,7 @@ export default function LoginScreen({ navigation }) {
                 <TextInput
                   testID="login-email"
                   style={[styles.input, { color: colors.text }]}
-                  placeholder="Email"
+                  placeholder={t("auth.emailPlaceholder")}
                   placeholderTextColor={colors.textTertiary}
                   value={email}
                   onChangeText={setEmail}
@@ -287,7 +287,7 @@ export default function LoginScreen({ navigation }) {
                 <TextInput
                   testID="login-password"
                   style={[styles.input, { color: colors.text }]}
-                  placeholder="Password"
+                  placeholder={t("auth.passwordPlaceholder")}
                   placeholderTextColor={colors.textTertiary}
                   value={password}
                   onChangeText={setPassword}
@@ -325,7 +325,7 @@ export default function LoginScreen({ navigation }) {
                     <ActivityIndicator size="small" color={colors.primary} />
                   ) : (
                     <Text style={[styles.loginText, { color: colors.primary }]}>
-                      Log In
+                      {t("auth.login.logIn")}
                     </Text>
                   )}
                 </View>
@@ -343,7 +343,7 @@ export default function LoginScreen({ navigation }) {
                 <Text
                   style={[styles.dividerText, { color: colors.textTertiary }]}
                 >
-                  or
+                  {t("auth.or")}
                 </Text>
                 <View
                   style={[
@@ -367,9 +367,9 @@ export default function LoginScreen({ navigation }) {
                   ]}
                 >
                   <Text style={[styles.signupText, { color: colors.text }]}>
-                    Don't have an account?{" "}
+                    {t("auth.login.noAccount")}
                     <Text style={{ color: colors.primary, fontWeight: "700" }}>
-                      Sign Up
+                      {t("auth.login.signUp")}
                     </Text>
                   </Text>
                 </View>
@@ -384,9 +384,9 @@ export default function LoginScreen({ navigation }) {
                     { color: colors.textSecondary },
                   ]}
                 >
-                  Forgot your password?{" "}
+                  {t("auth.login.forgotPassword")}
                   <Text style={{ color: colors.primary, fontWeight: "700" }}>
-                    Reset
+                    {t("auth.login.reset")}
                   </Text>
                 </Text>
               </TouchableOpacity>
@@ -449,7 +449,7 @@ export default function LoginScreen({ navigation }) {
                           { color: colors.primary },
                         ]}
                       >
-                        Create Account
+                        {t("auth.login.createAccount")}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -470,7 +470,7 @@ export default function LoginScreen({ navigation }) {
                       <Text
                         style={[styles.modalButtonText, { color: colors.text }]}
                       >
-                        Reset Password
+                        {t("auth.login.resetPassword")}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -485,7 +485,7 @@ export default function LoginScreen({ navigation }) {
                         { color: colors.textSecondary },
                       ]}
                     >
-                      Cancel
+                      {t("common.cancel")}
                     </Text>
                   </TouchableOpacity>
                 </View>
