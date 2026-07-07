@@ -24,6 +24,19 @@ export const LANGUAGES = [
   { code: "ko", native: "한국어", english: "Korean" },
 ];
 
+/**
+ * UI languages actually translated today. The app's own language selector
+ * (Welcome/auth/Settings) offers only these — showing a code that falls back
+ * to English would be confusing. The event-creation "language" field (what
+ * language the HOST will run the event in) still offers the full 14-row
+ * LANGUAGES list above, since that's independent of the app's UI language.
+ * Add a code here once its locale JSON is translated end to end.
+ */
+export const APP_LANGUAGE_CODES = ["en", "es"];
+export const APP_LANGUAGES = LANGUAGES.filter((l) =>
+  APP_LANGUAGE_CODES.includes(l.code)
+);
+
 /** All supported ISO codes (i18next resources + fallback resolution). */
 export const LANGUAGE_CODES = LANGUAGES.map((l) => l.code);
 

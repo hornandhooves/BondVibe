@@ -16,7 +16,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import Icon from "./Icon";
-import { LANGUAGES } from "../i18n/languages";
+import { APP_LANGUAGES } from "../i18n/languages";
 import { setAppLanguage } from "../i18n";
 
 const badgeFor = (code) =>
@@ -30,8 +30,8 @@ export default function LanguageSelector({ visible, onClose }) {
 
   const s = q.trim().toLowerCase();
   const data = !s
-    ? LANGUAGES
-    : LANGUAGES.filter(
+    ? APP_LANGUAGES
+    : APP_LANGUAGES.filter(
         (l) =>
           l.native.toLowerCase().includes(s) ||
           l.english.toLowerCase().includes(s) ||

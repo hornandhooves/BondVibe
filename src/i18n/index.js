@@ -12,7 +12,7 @@ import * as Localization from "expo-localization";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { doc, setDoc } from "firebase/firestore";
 import { db, auth } from "../services/firebase";
-import { LANGUAGE_CODES } from "./languages";
+import { APP_LANGUAGE_CODES } from "./languages";
 
 import en from "./locales/en.json";
 import es from "./locales/es.json";
@@ -25,15 +25,20 @@ const resources = {
   es: { translation: es },
 };
 
-/** Best supported language for the device (exact tag → base code → `en`). */
+/**
+ * Best supported UI language for the device (exact tag → base code → `en`).
+ * Only resolves to a language the APP UI actually ships (APP_LANGUAGE_CODES)
+ * — a device set to, say, French should still land on English UI, not a
+ * language the app doesn't have strings for.
+ */
 export function resolveDeviceLanguage() {
   const locales = (Localization.getLocales && Localization.getLocales()) || [];
   for (const loc of locales) {
-    if (loc.languageTag && LANGUAGE_CODES.includes(loc.languageTag)) {
-      return loc.languageTag; // e.g. nl-BE
+    if (loc.languageTag && APP_LANGUAGE_CODES.includes(loc.languageTag)) {
+      return loc.languageTag;
     }
-    if (loc.languageCode && LANGUAGE_CODES.includes(loc.languageCode)) {
-      return loc.languageCode; // e.g. es, en, nl
+    if (loc.languageCode && APP_LANGUAGE_CODES.includes(loc.languageCode)) {
+      return loc.languageCode;
     }
   }
   return "en";
@@ -54,18 +59,18 @@ i18n.use(initReactI18next).init({
 // Apply the user's persisted choice (async) once, overriding device default.
 AsyncStorage.getItem(STORAGE_KEY)
   .then((stored) => {
-    if (stored && stored !== i18n.language && LANGUAGE_CODES.includes(stored)) {
+    if (stored && stored !== i18n.language && APP_LANGUAGE_CODES.includes(stored)) {
       i18n.changeLanguage(stored);
     }
   })
   .catch(() => {});
 
 /**
- * Switch the whole app's language and persist it (device + profile).
- * @param {string} code one of LANGUAGE_CODES
+ * Switch the whole app's UI language and persist it (device + profile).
+ * @param {string} code one of APP_LANGUAGE_CODES (en/es today)
  */
 export async function setAppLanguage(code) {
-  if (!LANGUAGE_CODES.includes(code)) return;
+  if (!APP_LANGUAGE_CODES.includes(code)) return;
   await i18n.changeLanguage(code);
   try {
     await AsyncStorage.setItem(STORAGE_KEY, code);
