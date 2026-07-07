@@ -2494,5 +2494,45 @@
     "eyebrow": "Kinlo IA leyó tu mes",
     "unlockNextSteps": "Desbloquea \"qué hacer después\" — acciones clasificadas según tus números",
     "whatToDoNext": "QUÉ HACER DESPUÉS · IA"
+  },
+  "lockedFeature": {
+    "unlockWith": "Desbloquear con {{label}}"
+  },
+  "carpoolCard": {
+    "loadingRide": "Cargando viaje…",
+    "carPool": "CAR POOL",
+    "full": "LLENO",
+    "close": "Cerrar",
+    "isDriving": "{{name}} está conduciendo",
+    "hasHelped_one": "Ha ayudado a {{count}} persona a llegar a eventos",
+    "hasHelped_other": "Ha ayudado a {{count}} personas a llegar a eventos",
+    "from": "Desde",
+    "seatsLeft_one": "{{left}} de {{count}} lugar disponible",
+    "seatsLeft_other": "{{left}} de {{count}} lugares disponibles",
+    "approve": "Aprobar",
+    "decline": "Rechazar",
+    "requestSeat": "Solicitar un lugar",
+    "requestedTapToCancel": "Solicitado · toca para cancelar",
+    "youreIn": "¡Estás dentro! Nos vemos ahí.",
+    "couldntFit": "El conductor no pudo darte lugar esta vez."
+  },
+  "eventCard": {
+    "hostedBy": "Organizado por {{name}}",
+    "spotsLeft_one": "{{count}} lugar disponible",
+    "spotsLeft_other": "{{count}} lugares disponibles",
+    "free": "GRATIS"
+  },
+  "pollCard": {
+    "loadingPoll": "Cargando encuesta…",
+    "poll": "ENCUESTA",
+    "closed": "CERRADA",
+    "close": "Cerrar",
+    "voteCount_one": "{{count}} voto",
+    "voteCount_other": "{{count}} votos",
+    "anonymous": "anónima",
+    "final": "Final",
+    "tapToChange": "toca para cambiar",
+    "tapToVote": "toca para votar",
+    "viewVotes": "Ver votos"
   }
 }

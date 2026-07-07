@@ -4,12 +4,14 @@
  */
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import ProBadge from "./ProBadge";
 import { useTheme } from "../contexts/ThemeContext";
 import { TYPE, SPACING, RADII, ELEVATION } from "../constants/theme-tokens";
 
 export default function LockedFeature({ tier = "pro", title, valueLine, onUnlock, style }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const label = tier === "plus" ? "Kinlo Plus" : "Kinlo Pro";
   return (
     <View
@@ -34,7 +36,7 @@ export default function LockedFeature({ tier = "pro", title, valueLine, onUnlock
         onPress={onUnlock}
         activeOpacity={0.85}
       >
-        <Text style={[TYPE.label, styles.ctaText]}>Unlock with {label}</Text>
+        <Text style={[TYPE.label, styles.ctaText]}>{t("lockedFeature.unlockWith", { label })}</Text>
       </TouchableOpacity>
     </View>
   );

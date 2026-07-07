@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Colors from '../constants/Colors';
 import Sizes from '../constants/Sizes';
 import Icon from './Icon';
@@ -7,6 +8,7 @@ import { useTheme } from '../contexts/ThemeContext';
 
 export default function EventCard({ event, onPress }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     const options = { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
@@ -33,7 +35,7 @@ export default function EventCard({ event, onPress }) {
         <Text style={styles.hostAvatar}>{event.hostAvatar}</Text>
         <View style={styles.headerInfo}>
           <Text style={styles.category}>{event.category}</Text>
-          <Text style={styles.hostName}>Hosted by {event.hostName}</Text>
+          <Text style={styles.hostName}>{t("eventCard.hostedBy", { name: event.hostName })}</Text>
         </View>
       </View>
 
@@ -79,7 +81,7 @@ export default function EventCard({ event, onPress }) {
       <View style={styles.footer}>
         <View style={styles.spots}>
           <Text style={[styles.spotsText, isAlmostFull && styles.spotsWarning]}>
-            {spotsLeft} {spotsLeft === 1 ? 'spot' : 'spots'} left
+            {t("eventCard.spotsLeft", { count: spotsLeft })}
           </Text>
           <View style={styles.progressBar}>
             <View 
@@ -93,7 +95,7 @@ export default function EventCard({ event, onPress }) {
 
         <View style={styles.price}>
           {isFree ? (
-            <Text style={styles.freeText}>FREE</Text>
+            <Text style={styles.freeText}>{t("eventCard.free")}</Text>
           ) : (
             <Text style={styles.priceText}>${event.price}</Text>
           )}

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { doc, getDoc } from "firebase/firestore";
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon";
 import { useTheme } from "../contexts/ThemeContext";
 import { auth, db } from "../services/firebase";
@@ -18,6 +19,7 @@ import {
  */
 export default function CarpoolCard({ eventId, carpoolId, currentUserName }) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const [carpool, setCarpool] = useState(null);
   const [riders, setRiders] = useState([]);
   const [driverSeatsShared, setDriverSeatsShared] = useState(0);
@@ -45,7 +47,7 @@ export default function CarpoolCard({ eventId, carpoolId, currentUserName }) {
   if (!carpool) {
     return (
       <View style={styles.card}>
-        <Text style={{ color: colors.textSecondary }}>Loading ride…</Text>
+        <Text style={{ color: colors.textSecondary }}>{t("carpoolCard.loadingRide")}</Text>
       </View>
     );
   }
@@ -62,25 +64,25 @@ export default function CarpoolCard({ eventId, carpoolId, currentUserName }) {
       <View style={styles.headerRow}>
         <View style={styles.badgeRow}>
           <Icon name="car" size={11} color={colors.primary} />
-          <Text style={styles.badge}>CAR POOL{closed ? " · FULL" : ""}</Text>
+          <Text style={styles.badge}>{t("carpoolCard.carPool")}{closed ? ` · ${t("carpoolCard.full")}` : ""}</Text>
         </View>
         {isDriver && carpool.status !== "closed" && (
           <TouchableOpacity onPress={() => closeCarpool(eventId, carpoolId)}>
-            <Text style={[styles.close, { color: colors.primary }]}>Close</Text>
+            <Text style={[styles.close, { color: colors.primary }]}>{t("carpoolCard.close")}</Text>
           </TouchableOpacity>
         )}
       </View>
 
       <Text style={[styles.driver, { color: colors.text }]}>
-        {carpool.driverName} is driving
+        {t("carpoolCard.isDriving", { name: carpool.driverName })}
       </Text>
       {driverSeatsShared > 0 && (
         <Text style={[styles.loyalty, { color: colors.primary }]}>
-          Has helped {driverSeatsShared} {driverSeatsShared === 1 ? "person" : "people"} get to events
+          {t("carpoolCard.hasHelped", { count: driverSeatsShared })}
         </Text>
       )}
       <Text style={[styles.detail, { color: colors.textSecondary }]}>
-        <Icon name="location" size={12} color={colors.textSecondary} /> From{" "}
+        <Icon name="location" size={12} color={colors.textSecondary} /> {t("carpoolCard.from")}{" "}
         {carpool.from}
         {carpool.departureTime ? (
           <>
@@ -94,7 +96,7 @@ export default function CarpoolCard({ eventId, carpoolId, currentUserName }) {
         <Text style={[styles.notes, { color: colors.textTertiary }]}>{carpool.notes}</Text>
       )}
       <Text style={[styles.seats, { color: colors.text }]}>
-        {seatsLeft} of {carpool.seatsTotal} seat{carpool.seatsTotal === 1 ? "" : "s"} left
+        {t("carpoolCard.seatsLeft", { left: seatsLeft, count: carpool.seatsTotal })}
       </Text>
 
       {/* Driver view: pending requests */}
@@ -111,11 +113,11 @@ export default function CarpoolCard({ eventId, carpoolId, currentUserName }) {
                   disabled={seatsLeft === 0}
                 >
                   <Text style={[styles.approve, { color: seatsLeft === 0 ? colors.textTertiary : "#34C759" }]}>
-                    Approve
+                    {t("carpoolCard.approve")}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => respondToRequest(eventId, carpoolId, r.userId, false)}>
-                  <Text style={[styles.decline, { color: "#EF4444" }]}>Decline</Text>
+                  <Text style={[styles.decline, { color: "#EF4444" }]}>{t("carpoolCard.decline")}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -139,7 +141,7 @@ export default function CarpoolCard({ eventId, carpoolId, currentUserName }) {
               style={[styles.btn, { backgroundColor: `${colors.primary}33`, borderColor: `${colors.primary}66` }]}
               onPress={() => requestSeat(eventId, carpoolId, currentUserName)}
             >
-              <Text style={[styles.btnText, { color: colors.primary }]}>Request a seat</Text>
+              <Text style={[styles.btnText, { color: colors.primary }]}>{t("carpoolCard.requestSeat")}</Text>
             </TouchableOpacity>
           )}
           {mine?.status === "requested" && (
@@ -148,18 +150,18 @@ export default function CarpoolCard({ eventId, carpoolId, currentUserName }) {
               onPress={() => cancelSeat(eventId, carpoolId)}
             >
               <Text style={[styles.btnText, { color: colors.textSecondary }]}>
-                Requested · tap to cancel
+                {t("carpoolCard.requestedTapToCancel")}
               </Text>
             </TouchableOpacity>
           )}
           {mine?.status === "approved" && (
             <Text style={[styles.confirmed, { color: "#34C759" }]}>
-              You're in! See you there.
+              {t("carpoolCard.youreIn")}
             </Text>
           )}
           {mine?.status === "declined" && (
             <Text style={[styles.confirmed, { color: colors.textTertiary }]}>
-              The driver couldn't fit you this time.
+              {t("carpoolCard.couldntFit")}
             </Text>
           )}
         </View>

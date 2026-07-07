@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon";
 import { useTheme } from "../contexts/ThemeContext";
 import { auth } from "../services/firebase";
@@ -16,6 +17,7 @@ import {
  */
 export default function PollCard({ parent, pollId, isHost }) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [poll, setPoll] = useState(null);
   const [votes, setVotes] = useState([]);
@@ -37,7 +39,7 @@ export default function PollCard({ parent, pollId, isHost }) {
   if (!poll) {
     return (
       <View style={styles.card}>
-        <Text style={{ color: colors.textSecondary }}>Loading poll…</Text>
+        <Text style={{ color: colors.textSecondary }}>{t("pollCard.loadingPoll")}</Text>
       </View>
     );
   }
@@ -56,11 +58,11 @@ export default function PollCard({ parent, pollId, isHost }) {
       <View style={styles.headerRow}>
         <View style={styles.badgeRow}>
           <Icon name="chart" size={11} color={colors.primary} />
-          <Text style={styles.badge}>POLL{poll.closed ? " · CLOSED" : ""}</Text>
+          <Text style={styles.badge}>{t("pollCard.poll")}{poll.closed ? ` · ${t("pollCard.closed")}` : ""}</Text>
         </View>
         {isHost && !poll.closed && (
           <TouchableOpacity onPress={() => closePoll(parent, pollId)}>
-            <Text style={[styles.close, { color: colors.primary }]}>Close</Text>
+            <Text style={[styles.close, { color: colors.primary }]}>{t("pollCard.close")}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -116,9 +118,9 @@ export default function PollCard({ parent, pollId, isHost }) {
 
       <View style={styles.footerRow}>
         <Text style={[styles.total, { color: colors.textTertiary }]}>
-          {total} vote{total === 1 ? "" : "s"}
-          {poll.anonymous ? " · anonymous" : ""}
-          {poll.closed ? " · Final" : myVote ? " · tap to change" : " · tap to vote"}
+          {t("pollCard.voteCount", { count: total })}
+          {poll.anonymous ? ` · ${t("pollCard.anonymous")}` : ""}
+          {poll.closed ? ` · ${t("pollCard.final")}` : myVote ? ` · ${t("pollCard.tapToChange")}` : ` · ${t("pollCard.tapToVote")}`}
         </Text>
         {!poll.anonymous && (
           <TouchableOpacity
@@ -127,7 +129,7 @@ export default function PollCard({ parent, pollId, isHost }) {
             }
           >
             <Text style={[styles.viewVotes, { color: colors.primary }]}>
-              View votes
+              {t("pollCard.viewVotes")}
             </Text>
           </TouchableOpacity>
         )}

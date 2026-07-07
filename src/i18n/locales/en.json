@@ -2494,5 +2494,45 @@
     "eyebrow": "Kinlo AI read your month",
     "unlockNextSteps": "Unlock \"what to do next\" — ranked actions from your numbers",
     "whatToDoNext": "WHAT TO DO NEXT · AI"
+  },
+  "lockedFeature": {
+    "unlockWith": "Unlock with {{label}}"
+  },
+  "carpoolCard": {
+    "loadingRide": "Loading ride…",
+    "carPool": "CAR POOL",
+    "full": "FULL",
+    "close": "Close",
+    "isDriving": "{{name}} is driving",
+    "hasHelped_one": "Has helped {{count}} person get to events",
+    "hasHelped_other": "Has helped {{count}} people get to events",
+    "from": "From",
+    "seatsLeft_one": "{{left}} of {{count}} seat left",
+    "seatsLeft_other": "{{left}} of {{count}} seats left",
+    "approve": "Approve",
+    "decline": "Decline",
+    "requestSeat": "Request a seat",
+    "requestedTapToCancel": "Requested · tap to cancel",
+    "youreIn": "You're in! See you there.",
+    "couldntFit": "The driver couldn't fit you this time."
+  },
+  "eventCard": {
+    "hostedBy": "Hosted by {{name}}",
+    "spotsLeft_one": "{{count}} spot left",
+    "spotsLeft_other": "{{count}} spots left",
+    "free": "FREE"
+  },
+  "pollCard": {
+    "loadingPoll": "Loading poll…",
+    "poll": "POLL",
+    "closed": "CLOSED",
+    "close": "Close",
+    "voteCount_one": "{{count}} vote",
+    "voteCount_other": "{{count}} votes",
+    "anonymous": "anonymous",
+    "final": "Final",
+    "tapToChange": "tap to change",
+    "tapToVote": "tap to vote",
+    "viewVotes": "View votes"
   }
 }
