@@ -14,14 +14,27 @@ import { doc, updateDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 import GradientBackground from "../components/GradientBackground";
-import { TERMS_OF_SERVICE, PRIVACY_POLICY } from "../utils/legalContent";
+import {
+  TERMS_OF_SERVICE,
+  PRIVACY_POLICY,
+  PRIVACY_POLICY_ES,
+} from "../utils/legalContent";
+
+// Bump when the legal documents change materially — recorded on acceptance.
+const LEGAL_VERSION = "2026-07-07";
 import LegalDocumentModal from "../components/LegalDocumentModal";
 
 // Legal documents are imported from assets/legal/
 
 export default function LegalScreen({ navigation }) {
   const { colors, isDark } = useTheme();
+  const { i18n } = useTranslation();
+  // Mexican users see the LFPDPPP Spanish Aviso de Privacidad.
+  const privacyContent = String(i18n.language || "").startsWith("es")
+    ? PRIVACY_POLICY_ES
+    : PRIVACY_POLICY;
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -69,6 +82,8 @@ export default function LegalScreen({ navigation }) {
       await updateDoc(doc(db, "users", user.uid), {
         legalAccepted: true,
         legalAcceptedAt: new Date().toISOString(),
+        legalVersion: LEGAL_VERSION,
+        legalLanguage: i18n.language || "en",
       });
 
       console.log("✅ Legal acceptance updated successfully");
@@ -286,8 +301,8 @@ export default function LegalScreen({ navigation }) {
           console.log("📖 Closing Privacy modal");
           setShowPrivacyModal(false);
         }}
-        title="Privacy Policy"
-        content={PRIVACY_POLICY}
+        title={privacyContent === PRIVACY_POLICY_ES ? "Aviso de Privacidad" : "Privacy Policy"}
+        content={privacyContent}
       />
     </GradientBackground>
   );

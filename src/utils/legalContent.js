@@ -437,6 +437,8 @@ However, no method of transmission over the Internet is 100% secure.
 
 Kinlo is strictly for users 18 years and older. We do not knowingly collect information from anyone under 18. If we discover we have collected data from a minor, we will delete it immediately.
 
+**Photos of minors.** Because some events are family- or "Kids"-oriented, you must not upload photos in which a minor is identifiable without the consent of the minor's parent or legal guardian. If you believe an image of a minor was shared without consent, contact us and we will remove it.
+
 ## 9. Location Information
 
 - **What We Collect:** City/region you select for event matching
@@ -462,15 +464,17 @@ We send notifications for:
 | Firebase (Google) | Authentication, Database, Storage | [Google Privacy Policy](https://policies.google.com/privacy) |
 | Stripe            | Payment Processing                | [Stripe Privacy Policy](https://stripe.com/privacy)          |
 | Expo              | Push Notifications                | [Expo Privacy Policy](https://expo.dev/privacy)              |
+| Anthropic         | AI features (Ask Kinlo, drafting, translation) — only the specific content needed for the request | [Anthropic Privacy Policy](https://www.anthropic.com/legal/privacy) |
+| Google Places     | Venue search for events                | [Google Privacy Policy](https://policies.google.com/privacy) |
 
 ## 12. International Data Transfers
 
 Your information may be transferred to and processed in:
 
-- United States (Firebase, Stripe servers)
+- United States (Firebase/Google, Stripe, Expo, and **Anthropic** for AI features)
 - Your local region
 
-We ensure appropriate safeguards for international transfers.
+We ensure appropriate safeguards for international transfers. When you use an AI feature (Ask Kinlo, event drafting, or **Translate**), only the specific text needed for that request is sent to Anthropic to generate the result.
 
 ## 13. Changes to This Policy
 
@@ -492,11 +496,22 @@ If you opt in to Community Matching (an event feature), we process additional da
 - **Moderation:** we may review and retain match messages for safety and anti-harassment purposes.
 - **Your controls:** you can change your visibility, hide or block other users, delete your matching data, and leave matching for an event at any time — which removes your match profile for that event.
 
-## 15. Contact Us
+## 15. Mexico — Federal Data Protection (LFPDPPP)
+
+For users in Mexico, processing is governed by the **Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP)** and its Spanish **Aviso de Privacidad** (below). In summary:
+
+- **Data controller (responsable):** [LEGAL NAME], [ADDRESS], [RFC]. Contact for privacy/ARCO: [ARCO EMAIL].
+- **ARCO rights:** you may request **Access, Rectification, Cancellation, or Opposition** to the processing of your data, and revoke consent, by writing to the ARCO contact above. We respond within the statutory term.
+- **Sensitive data:** if you use Community Matching, some data may be considered sensitive; it is processed only with your express opt-in consent (§14).
+- **Transfers:** your data may be transferred to the service providers listed in §11 (including Anthropic for AI features), located in the United States.
+- The full Spanish **Aviso de Privacidad Integral** is available in the app (this document, Spanish version).
+
+## 16. Contact Us
 
 **For privacy questions, data requests, or concerns:**
 
 - **Email:** privacy@bondvibe.com
+- **ARCO / Mexico:** [ARCO EMAIL]
 - **In-App:** Settings → Help & Support
 - **Response Time:** Within 30 days
 
@@ -505,4 +520,75 @@ If you opt in to Community Matching (an event feature), we process additional da
 **Kinlo is committed to protecting your privacy and being transparent about our data practices.**
 
 © 2026 Kinlo. All rights reserved.
+`;
+
+export const PRIVACY_POLICY_ES = `# Aviso de Privacidad
+
+**Última actualización: 7 de julio de 2026**
+
+En cumplimiento de la **Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP)**, su Reglamento y demás normativa aplicable, ponemos a tu disposición el presente Aviso de Privacidad.
+
+## 1. Responsable
+
+**[RAZÓN SOCIAL]** (el "Responsable"), con domicilio en **[DOMICILIO EN MÉXICO]** y RFC **[RFC]**, operador de la aplicación móvil Kinlo, es responsable del tratamiento de tus datos personales.
+
+Para cualquier tema de privacidad o para ejercer tus derechos ARCO: **[CORREO ARCO]**.
+
+## 2. Datos personales que recabamos
+
+- **De identificación y contacto:** nombre completo, correo electrónico, teléfono (guardado de forma privada), fotografía de perfil, edad.
+- **De perfil y actividad:** biografía, respuestas del test de personalidad, eventos que creas o a los que asistes, mensajes en chats de eventos.
+- **De ubicación:** ciudad/región que eliges para eventos; ubicación puntual **solo** cuando decides compartirla en un chat.
+- **De pago:** los pagos se procesan por Stripe; **no** almacenamos números de tarjeta.
+- **Técnicos:** tipo de dispositivo, identificadores, uso de la app, tokens de notificaciones.
+
+## 3. Datos sensibles
+
+Si participas en **Community Matching** (función opcional), podríamos tratar datos que pudieran considerarse **sensibles** (p. ej., preferencias sobre con quién deseas conectar, rasgos de personalidad). Estos datos se tratan **únicamente con tu consentimiento expreso** al activar la función, y puedes retirarlo en cualquier momento.
+
+## 4. Finalidades del tratamiento
+
+**Primarias (necesarias para el servicio):** crear y administrar tu cuenta; conectarte con eventos y personas; habilitar chats; procesar pagos; seguridad y prevención de fraude; cumplimiento legal.
+
+**Secundarias (puedes oponerte):** mejora de la app y analítica; envío de comunicaciones no esenciales. Para oponerte a las finalidades secundarias, escribe a **[CORREO ARCO]**.
+
+## 5. Transferencias
+
+Tus datos pueden transferirse a los proveedores necesarios para operar el servicio, ubicados en Estados Unidos: **Firebase/Google** (autenticación, base de datos, almacenamiento), **Stripe** (pagos), **Expo** (notificaciones), **Anthropic** (funciones de IA: Ask Kinlo, redacción y **traducción** — solo se envía el texto necesario para la solicitud) y **Google Places** (búsqueda de lugares). No vendemos tus datos personales.
+
+## 6. Derechos ARCO y revocación del consentimiento
+
+Tienes derecho a **Acceder, Rectificar, Cancelar u Oponerte (ARCO)** al tratamiento de tus datos, así como a **revocar tu consentimiento**. Puedes ejercerlos:
+
+- **Rectificación:** edita tu perfil en la app.
+- **Cancelación:** elimina tu cuenta en Ajustes → Eliminar cuenta (borramos tus datos personales, salvo los que debamos conservar por obligación legal).
+- **Acceso y Oposición:** escribe a **[CORREO ARCO]** indicando tu solicitud y acreditando tu identidad.
+
+Responderemos en los plazos que marca la ley.
+
+## 7. Conservación
+
+Conservamos tus datos mientras tu cuenta esté activa. Tras la eliminación, borramos tus datos personales; los registros de pago se conservan el tiempo que exijan las obligaciones fiscales/legales.
+
+## 8. Menores de edad
+
+Kinlo es **exclusivamente para mayores de 18 años**. No recabamos conscientemente datos de menores. **No** debes subir fotografías en las que un menor sea identificable sin el consentimiento de su padre, madre o tutor; si detectas una imagen así, contáctanos y la retiraremos.
+
+## 9. Seguridad
+
+Aplicamos medidas de seguridad administrativas, técnicas y físicas razonables (cifrado en tránsito, autenticación, control de acceso y reglas de seguridad del servidor) para proteger tus datos. Ningún sistema es 100% infalible.
+
+## 10. Cambios al Aviso
+
+Podemos actualizar este Aviso. Te notificaremos los cambios relevantes dentro de la app o por correo. El uso continuo implica la aceptación de los cambios.
+
+## 11. Autoridad
+
+Si consideras que tu derecho a la protección de datos ha sido vulnerado, puedes acudir a la autoridad competente en materia de protección de datos en México.
+
+---
+
+**Contacto / ARCO:** [CORREO ARCO]
+
+© 2026 Kinlo. Todos los derechos reservados.
 `;
