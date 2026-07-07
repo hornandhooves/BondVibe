@@ -729,6 +729,12 @@ service cloud.firestore {
       match /momentumCards/{cardId} {
         allow read, write: if isBizStaff(bizId) || isBizOwnerUid(bizId);
       }
+
+      // Finance ledger. (Reception-scoping — no finance read — arrives with
+      // staff roles; today all staff are the owner.)
+      match /payments/{paymentId} {
+        allow read, write: if isBizStaff(bizId) || isBizOwnerUid(bizId);
+      }
     }
 
     // ============================================

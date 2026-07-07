@@ -7,6 +7,7 @@
  */
 import { listMembers, MEMBER_STATUS } from "./businessMembersService";
 import { listAttendanceInRange } from "./businessAttendanceService";
+import { listPaymentsInRange, revenueSummary } from "./businessPaymentsService";
 import { previousBounds, chartBuckets } from "../constants/businessRanges";
 
 const toMillis = (ts) => {
@@ -30,11 +31,15 @@ export async function computeDashboard(bounds) {
   const toIso = to.toISOString();
   const prev = previousBounds(bounds);
 
-  const [members, attendance, prevAttendance] = await Promise.all([
+  const [members, attendance, prevAttendance, payments, prevPayments] = await Promise.all([
     listMembers(),
     listAttendanceInRange(fromIso, toIso),
     prev
       ? listAttendanceInRange(prev.from.toISOString(), prev.to.toISOString())
+      : Promise.resolve([]),
+    listPaymentsInRange(fromIso, toIso),
+    prev
+      ? listPaymentsInRange(prev.from.toISOString(), prev.to.toISOString())
       : Promise.resolve([]),
   ]);
 
@@ -93,8 +98,9 @@ export async function computeDashboard(bounds) {
     churn: inactive,
     // recovered needs longitudinal status history we don't keep yet → null (—).
     recovered: null,
-    // revenue arrives with the Finance block → null (—).
-    revenueCents: null,
+    // revenue from the Finance ledger (real).
+    revenueCents: revenueSummary(payments).total,
+    revenueTrend: pctDelta(revenueSummary(payments).total, revenueSummary(prevPayments).total),
     series,
   };
 }

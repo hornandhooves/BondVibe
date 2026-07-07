@@ -170,16 +170,22 @@ async function loadBusinessDashboard(db, uid, cfg, input) {
   const fromMs = new Date(input?.from || 0).getTime();
   const toMs = input?.to ? new Date(input.to).getTime() : Date.now();
   const base = db.collection("businesses").doc(uid);
-  const [bizSnap, memSnap, attSnap] = await Promise.all([
+  const [bizSnap, memSnap, attSnap, paySnap] = await Promise.all([
     base.get(),
     base.collection("members").limit(2000).get(),
     base.collection("attendance")
       .where("date", ">=", new Date(fromMs).toISOString())
       .where("date", "<=", new Date(toMs).toISOString())
       .limit(4000).get(),
+    base.collection("payments")
+      .where("date", ">=", new Date(fromMs).toISOString())
+      .where("date", "<=", new Date(toMs).toISOString())
+      .limit(4000).get(),
   ]);
   const members = memSnap.docs.map((d) => ({id: d.id, ...d.data()}));
   const attendance = attSnap.docs.map((d) => d.data());
+  const revenueCents = paySnap.docs.reduce(
+    (s, d) => s + (d.data().amountCents || 0), 0);
   const attendedIds = new Set(attendance.map((a) => a.memberId));
   const createdIn = (m) => {
     const c = m.createdAt && m.createdAt.toMillis ?
@@ -198,6 +204,7 @@ async function loadBusinessDashboard(db, uid, cfg, input) {
       totalMembers: members.length,
       activeInRange: attendedIds.size,
       attendance: attendance.length,
+      revenueMXN: Math.round(revenueCents / 100),
       newMembers: members.filter(createdIn).length,
       prospects: members.filter(
         (m) => createdIn(m) && !attendedIds.has(m.id)).length,

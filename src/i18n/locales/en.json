@@ -2633,7 +2633,9 @@
       "packagesSubtitle": "Class & session packs, credits",
       "checkInTitle": "Check-in",
       "checkInSubtitle": "Scan a member's pass to mark present",
-      "moreSoon": "Dashboard, finance, agenda and more arrive as we roll them out."
+      "financeTitle": "Finance",
+      "financeSubtitle": "Payments, revenue, receipts & payouts",
+      "moreSoon": "Agenda, automations and more arrive as we roll them out."
     },
     "setup": {
       "title": "New business",
@@ -2672,6 +2674,7 @@
       "addTag": "Add a tag…",
       "notes": "Notes",
       "notesPlaceholder": "Anything worth remembering…",
+      "balanceOwed": "Balance owed (MXN)",
       "smsConsentTitle": "SMS reminders",
       "smsConsentSub": "The member agrees to receive class and account texts. Off by default; they can opt out anytime (STOP). See the Privacy Notice.",
       "save": "Save member",
@@ -2689,6 +2692,10 @@
       "creditsEmpty": "Packages and credits arrive with the next block.",
       "attendance": "Attendance",
       "attendanceEmpty": "Attendance shows up once check-in is enabled.",
+      "payments": "Payments",
+      "recordPayment": "Record",
+      "paymentsEmpty": "No payments recorded yet.",
+      "balanceOwed": "Owes {{amount}}",
       "notes": "Notes",
       "deleteTitle": "Delete member?",
       "deleteMsg": "This permanently removes the member and their record.",
@@ -2910,6 +2917,47 @@
       "deleteTitle": "Delete card?",
       "deleteMsg": "This removes the card from the board.",
       "deleteConfirm": "Delete"
+    },
+    "finance": {
+      "title": "Finance",
+      "totalReceived": "Total received",
+      "paymentsCount_one": "{{count}} payment",
+      "paymentsCount_other": "{{count}} payments",
+      "byMethod": "By method",
+      "outstanding": "Outstanding",
+      "owedBy_one": "Owed by {{count}} member",
+      "owedBy_other": "Owed by {{count}} members",
+      "payments": "Payments",
+      "noPayments": "No payments in this range yet.",
+      "payouts": "Payouts",
+      "payoutsSub": "Your Stripe payout account",
+      "record": "Record a payment"
+    },
+    "payment": {
+      "title": "Record payment",
+      "member": "Member",
+      "noMember": "No member (walk-in)",
+      "walkIn": "Walk-in",
+      "amount": "Amount (MXN)",
+      "amountRequiredTitle": "Enter an amount",
+      "amountRequiredMsg": "The payment amount must be greater than zero.",
+      "methodLabel": "Method",
+      "method": {
+        "cash": "Cash",
+        "transfer": "Transfer",
+        "stripe": "Stripe",
+        "mercadopago": "Mercado Pago",
+        "other": "Other"
+      },
+      "date": "Date",
+      "note": "Note",
+      "notePlaceholder": "What was this for…",
+      "save": "Record payment",
+      "savedTitle": "Payment recorded",
+      "savedMsg": "Share a receipt with the member?",
+      "shareReceipt": "Share receipt",
+      "owes": "Owes {{amount}}",
+      "applyToBalance": "Apply to balance"
     }
   }
 }

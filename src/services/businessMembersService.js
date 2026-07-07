@@ -137,6 +137,7 @@ export async function createMember(data = {}, businessName = "", bizId = getMyBi
     notes: data.notes ? [{ text: String(data.notes).trim(), at: new Date().toISOString() }] : [],
     planId: data.planId || null,
     creditBalance: 0,
+    balanceOwedCents: Math.max(0, Math.round(data.balanceOwedCents || 0)),
     branchId: data.branchId || null,
     inviteCode: generateGuestCode(businessName),
     linkedUid: null,

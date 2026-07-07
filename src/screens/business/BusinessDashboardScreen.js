@@ -23,6 +23,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import useClaude from "../../hooks/useClaude";
 import { computeDashboard, dashboardToCsv } from "../../services/businessAnalyticsService";
 import { RANGE_IDS, DEFAULT_RANGE, rangeBounds, rangeLabelKey } from "../../constants/businessRanges";
+import { formatCentavos } from "../../utils/pricing";
 
 export default function BusinessDashboardScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -84,7 +85,7 @@ export default function BusinessDashboardScreen({ navigation }) {
         { key: "atRisk", value: metrics.atRisk },
         { key: "churn", value: metrics.churn, estimate: true },
         { key: "recovered", value: metrics.recovered },
-        { key: "revenue", value: metrics.revenueCents },
+        { key: "revenue", value: metrics.revenueCents, trend: metrics.revenueTrend, money: true },
       ]
     : [];
 
@@ -142,15 +143,12 @@ export default function BusinessDashboardScreen({ navigation }) {
                     {k.estimate ? ` · ${t("business.dashboard.est")}` : ""}
                   </Text>
                   <Text style={[styles.kpiValue, { color: colors.text }]}>
-                    {k.value == null ? "—" : k.value}
+                    {k.value == null ? "—" : k.money ? formatCentavos(k.value) : k.value}
                   </Text>
                   {typeof k.trend === "number" && (
                     <Text style={[styles.kpiTrend, { color: k.trend >= 0 ? colors.success : colors.error }]}>
                       {k.trend >= 0 ? "↑" : "↓"} {Math.abs(k.trend)}%
                     </Text>
-                  )}
-                  {k.key === "revenue" && k.value == null && (
-                    <Text style={[styles.kpiHint, { color: colors.textTertiary }]}>{t("business.dashboard.revenueSoon")}</Text>
                   )}
                 </View>
               ))}

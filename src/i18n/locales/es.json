@@ -2633,7 +2633,9 @@
       "packagesSubtitle": "Paquetes de clases/sesiones, créditos",
       "checkInTitle": "Check-in",
       "checkInSubtitle": "Escanea el pase del miembro para marcar presente",
-      "moreSoon": "Panel, finanzas, agenda y más llegan conforme los habilitemos."
+      "financeTitle": "Finanzas",
+      "financeSubtitle": "Pagos, ingresos, recibos y payouts",
+      "moreSoon": "Agenda, automatizaciones y más llegan conforme los habilitemos."
     },
     "setup": {
       "title": "Nuevo negocio",
@@ -2672,6 +2674,7 @@
       "addTag": "Agregar una etiqueta…",
       "notes": "Notas",
       "notesPlaceholder": "Algo que valga la pena recordar…",
+      "balanceOwed": "Saldo pendiente (MXN)",
       "smsConsentTitle": "Recordatorios por SMS",
       "smsConsentSub": "El miembro acepta recibir mensajes de clases y de su cuenta. Apagado por defecto; puede darse de baja cuando quiera (STOP). Consulta el Aviso de Privacidad.",
       "save": "Guardar miembro",
@@ -2689,6 +2692,10 @@
       "creditsEmpty": "Los paquetes y créditos llegan en el siguiente bloque.",
       "attendance": "Asistencia",
       "attendanceEmpty": "La asistencia aparece cuando se habilite el check-in.",
+      "payments": "Pagos",
+      "recordPayment": "Registrar",
+      "paymentsEmpty": "Aún no hay pagos registrados.",
+      "balanceOwed": "Debe {{amount}}",
       "notes": "Notas",
       "deleteTitle": "¿Eliminar miembro?",
       "deleteMsg": "Esto elimina permanentemente al miembro y su registro.",
@@ -2910,6 +2917,47 @@
       "deleteTitle": "¿Eliminar tarjeta?",
       "deleteMsg": "Esto quita la tarjeta del tablero.",
       "deleteConfirm": "Eliminar"
+    },
+    "finance": {
+      "title": "Finanzas",
+      "totalReceived": "Total recibido",
+      "paymentsCount_one": "{{count}} pago",
+      "paymentsCount_other": "{{count}} pagos",
+      "byMethod": "Por método",
+      "outstanding": "Pendiente",
+      "owedBy_one": "Adeudado por {{count}} miembro",
+      "owedBy_other": "Adeudado por {{count}} miembros",
+      "payments": "Pagos",
+      "noPayments": "Aún no hay pagos en este rango.",
+      "payouts": "Payouts",
+      "payoutsSub": "Tu cuenta de pagos de Stripe",
+      "record": "Registrar un pago"
+    },
+    "payment": {
+      "title": "Registrar pago",
+      "member": "Miembro",
+      "noMember": "Sin miembro (walk-in)",
+      "walkIn": "Walk-in",
+      "amount": "Monto (MXN)",
+      "amountRequiredTitle": "Ingresa un monto",
+      "amountRequiredMsg": "El monto del pago debe ser mayor a cero.",
+      "methodLabel": "Método",
+      "method": {
+        "cash": "Efectivo",
+        "transfer": "Transferencia",
+        "stripe": "Stripe",
+        "mercadopago": "Mercado Pago",
+        "other": "Otro"
+      },
+      "date": "Fecha",
+      "note": "Nota",
+      "notePlaceholder": "Para qué fue…",
+      "save": "Registrar pago",
+      "savedTitle": "Pago registrado",
+      "savedMsg": "¿Compartir un recibo con el miembro?",
+      "shareReceipt": "Compartir recibo",
+      "owes": "Debe {{amount}}",
+      "applyToBalance": "Aplicar al saldo"
     }
   }
 }

@@ -35,6 +35,7 @@ import {
 } from "../../services/businessMembersService";
 import { listPackages, assignPackage, adjustCredits, PACKAGE_KIND } from "../../services/businessPackagesService";
 import { markPresent, listMemberAttendance } from "../../services/businessAttendanceService";
+import { listMemberPayments } from "../../services/businessPaymentsService";
 import { formatCentavos } from "../../utils/pricing";
 
 const initials = (name = "") =>
@@ -47,6 +48,7 @@ export default function MemberRecordScreen({ route, navigation }) {
   const [member, setMember] = useState(null);
   const [business, setBusiness] = useState(null);
   const [attendance, setAttendance] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [assignVisible, setAssignVisible] = useState(false);
@@ -54,14 +56,16 @@ export default function MemberRecordScreen({ route, navigation }) {
   const [adjust, setAdjust] = useState(null); // { delta, reason }
 
   const load = useCallback(async () => {
-    const [m, b, att] = await Promise.all([
+    const [m, b, att, pay] = await Promise.all([
       getMember(memberId),
       getBusiness(),
       listMemberAttendance(memberId),
+      listMemberPayments(memberId),
     ]);
     setMember(m);
     setBusiness(b);
     setAttendance(att);
+    setPayments(pay);
     setLoading(false);
   }, [memberId]);
 
@@ -72,9 +76,14 @@ export default function MemberRecordScreen({ route, navigation }) {
   );
 
   const reloadMember = async () => {
-    const [m, att] = await Promise.all([getMember(memberId), listMemberAttendance(memberId)]);
+    const [m, att, pay] = await Promise.all([
+      getMember(memberId),
+      listMemberAttendance(memberId),
+      listMemberPayments(memberId),
+    ]);
     setMember(m);
     setAttendance(att);
+    setPayments(pay);
   };
 
   const setStatus = async (status) => {
@@ -239,6 +248,37 @@ export default function MemberRecordScreen({ route, navigation }) {
           </View>
         )}
 
+        {/* Payments */}
+        <View style={styles.attHeaderRow}>
+          <Text style={[styles.sectionLabel, { color: colors.textTertiary, marginTop: 0 }]}>{t("business.record.payments")}</Text>
+          <TouchableOpacity style={[styles.markBtn, { backgroundColor: colors.primary }]} onPress={() => navigation.navigate("BusinessPaymentForm", { memberId })}>
+            <Icon name="add" size={14} color="#fff" />
+            <Text style={styles.markText}>{t("business.record.recordPayment")}</Text>
+          </TouchableOpacity>
+        </View>
+        {(member.balanceOwedCents || 0) > 0 && (
+          <View style={[styles.balancePill, { backgroundColor: `${colors.warning}18`, borderColor: `${colors.warning}44` }]}>
+            <Text style={[styles.balanceText, { color: colors.warning }]}>
+              {t("business.record.balanceOwed", { amount: formatCentavos(member.balanceOwedCents) })}
+            </Text>
+          </View>
+        )}
+        {payments.length === 0 ? (
+          <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.emptyCardText, { color: colors.textTertiary }]}>{t("business.record.paymentsEmpty")}</Text>
+          </View>
+        ) : (
+          <View style={[styles.listCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {payments.slice(0, 10).map((p, i) => (
+              <View key={p.id} style={[styles.attRow, i > 0 && { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
+                <Text style={[styles.attTitle, { color: colors.text }]} numberOfLines={1}>{t(`business.payment.method.${p.method}`)}</Text>
+                <Text style={[styles.attDate, { color: colors.textTertiary }]}>{new Date(p.date).toLocaleDateString()}</Text>
+                <Text style={[styles.attSource, { color: colors.success }]}>{formatCentavos(p.amountCents)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Tags */}
         {Array.isArray(member.tags) && member.tags.length > 0 && (
           <>
@@ -380,6 +420,8 @@ function createStyles(colors) {
     tagText: { fontSize: 13, fontWeight: "600" },
     emptyCard: { borderWidth: 1, borderRadius: 14, padding: 16, alignItems: "center" },
     emptyCardText: { fontSize: 12.5, textAlign: "center", lineHeight: 18 },
+    balancePill: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 10 },
+    balanceText: { fontSize: 13, fontWeight: "700" },
     listCard: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 14 },
     attRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 11 },
     attTitle: { fontSize: 13.5, fontWeight: "600", flex: 1 },

@@ -44,6 +44,7 @@ export default function MemberFormScreen({ route, navigation }) {
   const [tagDraft, setTagDraft] = useState("");
   const [notes, setNotes] = useState("");
   const [smsConsent, setSmsConsent] = useState(false);
+  const [balanceOwed, setBalanceOwed] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -57,6 +58,7 @@ export default function MemberFormScreen({ route, navigation }) {
           setEmail(m.email || "");
           setTags(Array.isArray(m.tags) ? m.tags : []);
           setSmsConsent(m.smsConsent?.granted === true);
+          setBalanceOwed(m.balanceOwedCents ? String(m.balanceOwedCents / 100) : "");
         }
         setLoading(false);
       }
@@ -88,12 +90,14 @@ export default function MemberFormScreen({ route, navigation }) {
     }
     setSaving(true);
     try {
+      const owedCents = Math.max(0, Math.round((parseFloat(balanceOwed) || 0) * 100));
       if (editing) {
         await updateMember(memberId, {
           name: name.trim(),
           phone: phone.trim() || null,
           email: email.trim() || null,
           tags,
+          balanceOwedCents: owedCents,
           smsConsent: buildSmsConsent(smsConsent, "edit"),
           ...(notes.trim() ? { appendNote: notes.trim() } : {}),
         });
@@ -105,6 +109,7 @@ export default function MemberFormScreen({ route, navigation }) {
             email: email.trim(),
             tags,
             notes: notes.trim(),
+            balanceOwedCents: owedCents,
             smsConsentGranted: smsConsent,
             source: "manual",
           },
@@ -237,6 +242,18 @@ export default function MemberFormScreen({ route, navigation }) {
               placeholder={t("business.form.notesPlaceholder")}
               placeholderTextColor={colors.textTertiary}
               multiline
+            />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.textTertiary }]}>{t("business.form.balanceOwed")}</Text>
+            <TextInput
+              style={[styles.input, inputStyle(colors)]}
+              value={balanceOwed}
+              onChangeText={setBalanceOwed}
+              placeholder="0"
+              placeholderTextColor={colors.textTertiary}
+              keyboardType="decimal-pad"
             />
           </View>
 
