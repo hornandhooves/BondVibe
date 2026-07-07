@@ -7,20 +7,28 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTranslation } from "react-i18next";
 import GradientBackground from "../components/GradientBackground";
 import BondVibeLogo from "../components/BondVibeLogo";
 import BondMark from "../components/BondMark";
 import Icon from "../components/Icon";
+import LanguagePill from "../components/LanguagePill";
 
 export default function WelcomeScreen({ navigation }) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
 
   const styles = createStyles(colors);
 
   return (
     <GradientBackground>
       <StatusBar style={isDark ? "light" : "dark"} />
-      
+
+      {/* Language pill — top-right, pre-filled from device locale */}
+      <View style={styles.topBar}>
+        <LanguagePill />
+      </View>
+
       {/* Content */}
       <View style={styles.content}>
         {/* Logo/Hero */}
@@ -30,7 +38,7 @@ export default function WelcomeScreen({ navigation }) {
           </View>
           <Text style={[styles.appName, { color: colors.text }]}>Kinlo</Text>
           <Text style={[styles.tagline, { color: colors.textSecondary }]}>
-            Connect through shared experiences
+            {t("welcome.tagline")}
           </Text>
         </View>
 
@@ -74,7 +82,7 @@ export default function WelcomeScreen({ navigation }) {
             borderColor: `${colors.primary}66`
           }]}>
             <Text style={[styles.primaryButtonText, { color: colors.primary }]}>
-              Get Started
+              {t("welcome.getStarted")}
             </Text>
           </View>
         </TouchableOpacity>
@@ -88,7 +96,7 @@ export default function WelcomeScreen({ navigation }) {
             borderColor: colors.border
           }]}>
             <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
-              I have an account
+              {t("welcome.haveAccount")}
             </Text>
           </View>
         </TouchableOpacity>
@@ -101,6 +109,12 @@ function createStyles(colors) {
   return StyleSheet.create({
     container: {
       flex: 1,
+    },
+    topBar: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      paddingHorizontal: 20,
+      paddingTop: 60,
     },
     content: {
       flex: 1,

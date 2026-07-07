@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Platform, Linking, LogBox } from "react-native";
+import "./src/i18n"; // initialize i18next before any screen renders
 import { joinGroupByCode } from "./src/services/hostGroupService";
 import { AuthProvider } from "./src/contexts/AuthContext";
 import { StripeProvider } from "@stripe/stripe-react-native";

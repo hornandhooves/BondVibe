@@ -23,14 +23,19 @@ import { useFocusEffect } from "@react-navigation/native";
 import { auth, db } from "../services/firebase";
 import { clearPushToken } from "../utils/messageService";
 import { useTheme } from "../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 import GradientBackground from "../components/GradientBackground";
 import Icon from "../components/Icon";
 import ListRow from "../components/ListRow";
 import SectionHeader from "../components/SectionHeader";
+import LanguageSelector from "../components/LanguageSelector";
+import { nativeName } from "../i18n/languages";
 import { TYPE, SPACING, RADII, ELEVATION } from "../constants/theme-tokens";
 
 export default function SettingsScreen({ navigation }) {
   const { colors, isDark, toggleTheme } = useTheme();
+  const { t, i18n } = useTranslation();
+  const [langOpen, setLangOpen] = useState(false);
   const [aiOptIn, setAiOptIn] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -176,6 +181,19 @@ export default function SettingsScreen({ navigation }) {
         <SectionHeader title="Preferences" style={{ marginTop: 0 }} />
         <View style={card}>
           <ListRow
+            icon="globe"
+            title={t("settings.language")}
+            onPress={() => setLangOpen(true)}
+            right={
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 15 }}>
+                  {nativeName(i18n.language)}
+                </Text>
+                <Icon name="forward" size={18} color={colors.textTertiary} />
+              </View>
+            }
+          />
+          <ListRow
             icon="ai"
             title="Kinlo AI"
             subtitle="Personalized picks from your real activity"
@@ -230,6 +248,8 @@ export default function SettingsScreen({ navigation }) {
           <Text style={[TYPE.caption, { color: colors.textTertiary }]}>Delete account</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <LanguageSelector visible={langOpen} onClose={() => setLangOpen(false)} />
     </GradientBackground>
   );
 }

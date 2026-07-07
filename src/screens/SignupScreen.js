@@ -25,6 +25,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
+import LanguagePill from "../components/LanguagePill";
 import SocialAuthButtons from "../components/SocialAuthButtons";
 import { useAuthContext } from "../contexts/AuthContext";
 import SuccessModal from "../components/SuccessModal";
@@ -174,10 +175,11 @@ export default function SignupScreen({ navigation }) {
       <GradientBackground>
         <StatusBar style={isDark ? "light" : "dark"} />
 
-        <View style={styles.header}>
+        <View style={[styles.header, { flexDirection: "row", alignItems: "center", justifyContent: "space-between" }]}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Icon name="back" size={26} color={colors.text} />
           </TouchableOpacity>
+          <LanguagePill />
         </View>
 
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>

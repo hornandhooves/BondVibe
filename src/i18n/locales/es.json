@@ -1,0 +1,41 @@
+{
+  "common": {
+    "cancel": "Cancelar",
+    "done": "Listo",
+    "save": "Guardar",
+    "search": "Buscar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "continue": "Continuar",
+    "close": "Cerrar",
+    "seeOriginal": "Ver original",
+    "loading": "Cargando…"
+  },
+  "language": {
+    "title": "Idioma",
+    "choose": "Elige un idioma",
+    "searchPlaceholder": "Buscar",
+    "subtitle": "Elige un idioma una vez — toda la app lo sigue."
+  },
+  "welcome": {
+    "tagline": "Conecta a través de experiencias compartidas",
+    "getStarted": "Empezar",
+    "haveAccount": "Ya tengo cuenta"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "preferences": "Preferencias",
+    "language": "Idioma",
+    "kinloAI": "Kinlo AI",
+    "appearance": "Apariencia"
+  },
+  "translate": {
+    "action": "Traducir al {{lang}}",
+    "freeTasteNote": "1 gratis este mes · luego Plus",
+    "translatedBy": "Traducido por Kinlo AI",
+    "seeOriginal": "Ver original",
+    "seeTranslation": "Ver traducción",
+    "translating": "Traduciendo…",
+    "failed": "No se pudo traducir ahora. Intenta de nuevo en un momento."
+  }
+}
