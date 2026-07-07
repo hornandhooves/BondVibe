@@ -21,6 +21,7 @@ import {
   exchangeCodeAsync,
 } from "expo-auth-session";
 import { useTheme } from "../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 import { auth } from "../services/firebase";
 import {
   SPOTIFY_CLIENT_ID,
@@ -35,6 +36,7 @@ import {
 
 export default function ConnectSpotifyButton({ music, onChange }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
 
   const [request, response, promptAsync] = useAuthRequest(
@@ -71,8 +73,8 @@ export default function ConnectSpotifyButton({ music, onChange }) {
       } catch (e) {
         console.warn("Spotify connect error:", e?.message);
         Alert.alert(
-          "Spotify",
-          "We couldn't import your music right now. Please try again."
+          t("connectSpotifyButton.spotify"),
+          t("connectSpotifyButton.importFailed")
         );
       } finally {
         setBusy(false);
@@ -84,8 +86,8 @@ export default function ConnectSpotifyButton({ music, onChange }) {
   const handleConnect = async () => {
     if (!isSpotifyConfigured()) {
       Alert.alert(
-        "Coming soon",
-        "Spotify import isn't enabled yet. Check back shortly."
+        t("connectSpotifyButton.comingSoon"),
+        t("connectSpotifyButton.notEnabledYet")
       );
       return;
     }
@@ -112,7 +114,7 @@ export default function ConnectSpotifyButton({ music, onChange }) {
     <View style={styles.wrapper}>
       <View style={styles.headerRow}>
         <Icon name="music2" size={18} color="#1DB954" />
-        <Text style={styles.title}>Music taste</Text>
+        <Text style={styles.title}>{t("connectSpotifyButton.musicTaste")}</Text>
       </View>
 
       {connected && genres.length > 0 && (
@@ -132,12 +134,12 @@ export default function ConnectSpotifyButton({ music, onChange }) {
             disabled={busy || !request}
             style={styles.linkBtn}
           >
-            <Text style={styles.linkText}>Refresh</Text>
+            <Text style={styles.linkText}>{t("connectSpotifyButton.refresh")}</Text>
           </TouchableOpacity>
           <Text style={styles.dot}>·</Text>
           <TouchableOpacity onPress={handleDisconnect} disabled={busy}>
             <Text style={[styles.linkText, { color: colors.textSecondary }]}>
-              Disconnect
+              {t("connectSpotifyButton.disconnect")}
             </Text>
           </TouchableOpacity>
           {busy && (
@@ -160,7 +162,7 @@ export default function ConnectSpotifyButton({ music, onChange }) {
           ) : (
             <>
               <Icon name="music2" size={18} color="#fff" />
-              <Text style={styles.connectText}>Connect Spotify</Text>
+              <Text style={styles.connectText}>{t("connectSpotifyButton.connectSpotify")}</Text>
             </>
           )}
         </TouchableOpacity>

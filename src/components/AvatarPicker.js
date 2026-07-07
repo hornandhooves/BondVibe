@@ -21,6 +21,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 import * as ImagePicker from "expo-image-picker";
 import Icon from "./Icon";
 import { BRAND } from "../constants/theme-tokens";
@@ -33,6 +34,7 @@ export default function AvatarPicker({
   name,
 }) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const [selectedAvatar, setSelectedAvatar] = useState(currentAvatar);
   const [uploading, setUploading] = useState(false);
 
@@ -42,8 +44,8 @@ export default function AvatarPicker({
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== "granted") {
           Alert.alert(
-            "Permission needed",
-            "Camera permission is required to take photos."
+            t("avatarPicker.permissionNeeded"),
+            t("avatarPicker.cameraPermissionRequired")
           );
           return;
         }
@@ -52,8 +54,8 @@ export default function AvatarPicker({
           await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== "granted") {
           Alert.alert(
-            "Permission needed",
-            "Gallery permission is required to select photos."
+            t("avatarPicker.permissionNeeded"),
+            t("avatarPicker.galleryPermissionRequired")
           );
           return;
         }
@@ -76,7 +78,7 @@ export default function AvatarPicker({
       }
     } catch (error) {
       console.error("Error picking image:", error);
-      Alert.alert("Error", "Failed to pick image. Please try again.");
+      Alert.alert(t("avatarPicker.errorTitle"), t("avatarPicker.pickImageFailed"));
     } finally {
       setUploading(false);
     }
@@ -113,7 +115,7 @@ export default function AvatarPicker({
                 <Icon name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
               <Text style={[styles.title, { color: colors.text }]}>
-                Profile photo
+                {t("avatarPicker.profilePhoto")}
               </Text>
               <TouchableOpacity
                 onPress={handleConfirm}
@@ -159,7 +161,7 @@ export default function AvatarPicker({
                     <Text
                       style={[styles.photoButtonText, { color: colors.primary }]}
                     >
-                      Choose from Gallery
+                      {t("avatarPicker.chooseFromGallery")}
                     </Text>
                   </>
                 )}
@@ -178,13 +180,12 @@ export default function AvatarPicker({
               >
                 <Icon name="camera" size={32} color={colors.text} />
                 <Text style={[styles.photoButtonText, { color: colors.text }]}>
-                  Take a Photo
+                  {t("avatarPicker.takeAPhoto")}
                 </Text>
               </TouchableOpacity>
 
               <Text style={[styles.photoHint, { color: colors.textTertiary }]}>
-                Your photo will be cropped to a circle. Until you add one,
-                we'll show your initial.
+                {t("avatarPicker.photoHint")}
               </Text>
             </View>
           </View>

@@ -28,6 +28,7 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import Constants from "expo-constants";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 
 const PLACES_KEY =
@@ -46,7 +47,7 @@ function makeSessionToken() {
 export default function PlaceAutocomplete({
   value,
   onSelect,
-  placeholder = "Search a place…",
+  placeholder,
   label,
   // Optional controlled-open mode: when `open` is provided the parent drives
   // visibility (and no trigger field is rendered) — used to launch the search
@@ -55,6 +56,8 @@ export default function PlaceAutocomplete({
   onOpenChange,
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t("placeAutocomplete.placeholder");
   const controlled = openProp !== undefined;
   const [openState, setOpenState] = useState(false);
   const open = controlled ? openProp : openState;
@@ -192,7 +195,7 @@ export default function PlaceAutocomplete({
               ]}
               numberOfLines={1}
             >
-              {value || placeholder}
+              {value || resolvedPlaceholder}
             </Text>
           </TouchableOpacity>
         </>
@@ -212,7 +215,7 @@ export default function PlaceAutocomplete({
             <TouchableOpacity onPress={closeModal} style={styles.closeBtn}>
               <Icon name="close" size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Search venue</Text>
+            <Text style={styles.modalTitle}>{t("placeAutocomplete.searchVenue")}</Text>
             <View style={{ width: 40 }} />
           </View>
 
@@ -220,7 +223,7 @@ export default function PlaceAutocomplete({
             <Icon name="search" size={18} color={colors.textSecondary} />
             <TextInput
               style={styles.searchInput}
-              placeholder={placeholder}
+              placeholder={resolvedPlaceholder}
               placeholderTextColor={colors.textTertiary}
               value={query}
               onChangeText={onChangeQuery}
@@ -232,7 +235,7 @@ export default function PlaceAutocomplete({
 
           {!hasKey && (
             <Text style={styles.hint}>
-              Type the venue name and address, then tap “Use this”.
+              {t("placeAutocomplete.hint")}
             </Text>
           )}
 
@@ -269,7 +272,7 @@ export default function PlaceAutocomplete({
                   onPress={handleUseTyped}
                 >
                   <Text style={styles.useTypedText}>
-                    Use “{query.trim()}”
+                    {t("placeAutocomplete.useTyped", { query: query.trim() })}
                   </Text>
                 </TouchableOpacity>
               ) : null

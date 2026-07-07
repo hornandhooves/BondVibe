@@ -2105,5 +2105,394 @@
     "subtitleDefault": "Conoce a personas de este evento con un propósito compartido — amistad, profesional o romántico. Se abre cuando termina el evento, para que primero lo disfrutes en persona.",
     "joinButton": "Sí, quiero unirme",
     "declineButton": "No, gracias"
+  },
+  "adminConfirmModal": {
+    "checkConfirmation": "Por favor marca la casilla de confirmación",
+    "provideSuspendReason": "Por favor proporciona un motivo para la suspensión",
+    "cancel": "Cancelar",
+    "removeHost": {
+      "title": "Quitar rol de anfitrión",
+      "description": "¿Quitar los privilegios de anfitrión a {{userName}}?",
+      "warning": "¡Esto CANCELARÁ todos sus eventos activos!",
+      "confirmText": "Entiendo que esto cancelará todos sus eventos",
+      "buttonText": "Quitar rol de anfitrión",
+      "reasonPlaceholder": "Motivo para quitar el rol de anfitrión (opcional)..."
+    },
+    "removeAdmin": {
+      "title": "Quitar rol de administrador",
+      "description": "¿Degradar a {{userName}} a usuario regular?",
+      "warning": "Perderá todos los privilegios de administrador.",
+      "confirmText": "Entiendo que perderá el acceso de administrador",
+      "buttonText": "Quitar rol de administrador"
+    },
+    "suspend": {
+      "title": "Suspender usuario",
+      "description": "¿Suspender la cuenta de {{userName}}?",
+      "warning": "¡Esto CANCELARÁ todos sus eventos y bloqueará su acceso!",
+      "confirmText": "Entiendo que esto cancelará todos sus eventos",
+      "buttonText": "Suspender usuario",
+      "reasonPlaceholder": "Motivo de la suspensión (obligatorio)..."
+    },
+    "unsuspend": {
+      "title": "Reactivar usuario",
+      "description": "¿Reactivar la cuenta de {{userName}}?",
+      "warning": "Recuperará el acceso a la plataforma.",
+      "confirmText": "Confirmo reactivar a este usuario",
+      "buttonText": "Reactivar usuario"
+    },
+    "default": {
+      "title": "Confirmar acción",
+      "description": "¿Estás seguro?",
+      "warning": "Esta acción no se puede deshacer.",
+      "confirmText": "Entiendo",
+      "buttonText": "Confirmar"
+    }
+  },
+  "adminMessageModal": {
+    "provideMessage": "Por favor incluye un mensaje para el solicitante.",
+    "forUser": "para {{userName}}",
+    "whyApproving": "¿Por qué apruebas esta solicitud?",
+    "whyRejecting": "¿Por qué rechazas esta solicitud?",
+    "writeMessagePlaceholder": "Escribe tu mensaje...",
+    "cancel": "Cancelar",
+    "processing": "Procesando...",
+    "approve": "Aprobar",
+    "reject": "Rechazar"
+  },
+  "avatarPicker": {
+    "permissionNeeded": "Se necesita permiso",
+    "cameraPermissionRequired": "Se requiere permiso de cámara para tomar fotos.",
+    "galleryPermissionRequired": "Se requiere permiso de galería para seleccionar fotos.",
+    "errorTitle": "Error",
+    "pickImageFailed": "No se pudo seleccionar la imagen. Inténtalo de nuevo.",
+    "profilePhoto": "Foto de perfil",
+    "chooseFromGallery": "Elegir de la galería",
+    "takeAPhoto": "Tomar una foto",
+    "photoHint": "Tu foto se recortará en un círculo. Hasta que agregues una, mostraremos tu inicial."
+  },
+  "cancelEventModal": {
+    "noReasonProvided": "No se proporcionó motivo",
+    "title": "¿Cancelar evento?",
+    "message": "¿Seguro que quieres cancelar \"{{eventTitle}}\"? Esta acción no se puede deshacer.",
+    "reasonLabel": "Motivo (opcional)",
+    "reasonPlaceholder": "Cuéntale a los participantes por qué...",
+    "keepEvent": "Mantener evento",
+    "cancelling": "Cancelando...",
+    "cancelEvent": "Cancelar evento"
+  },
+  "connectSpotifyButton": {
+    "spotify": "Spotify",
+    "importFailed": "No pudimos importar tu música en este momento. Inténtalo de nuevo.",
+    "comingSoon": "Próximamente",
+    "notEnabledYet": "La importación de Spotify aún no está habilitada. Vuelve pronto.",
+    "musicTaste": "Gustos musicales",
+    "refresh": "Actualizar",
+    "disconnect": "Desconectar",
+    "connectSpotify": "Conectar Spotify"
+  },
+  "dateField": {
+    "any": "Cualquiera",
+    "clear": "Borrar",
+    "cancel": "Cancelar",
+    "selectDate": "Seleccionar fecha",
+    "done": "Listo"
+  },
+  "durationWheelModal": {
+    "minShort": "{{m}} min",
+    "hoursMinutesShort": "{{h}}h {{m}}m",
+    "hourSingular": "{{h}} hora",
+    "hoursPlural": "{{h}} horas",
+    "daySingular": "{{d}} día",
+    "daysPlural": "{{d}} días",
+    "eventLength": "Duración del evento",
+    "hoursAndMinutes": "Horas y minutos",
+    "days": "Días",
+    "hoursAbbrev": "{{n}} h",
+    "minutesAbbrev": "{{n}} m",
+    "daySingularAbbrev": "{{n}} día",
+    "daysPluralAbbrev": "{{n}} días",
+    "done": "Listo"
+  },
+  "errorBoundary": {
+    "title": "Algo salió mal",
+    "body": "La aplicación tuvo un error inesperado. Inténtalo de nuevo.",
+    "tryAgain": "Intentar de nuevo"
+  },
+  "eventCreatedModal": {
+    "eventsCreatedTitle": "¡Eventos creados!",
+    "eventCreatedTitle": "¡Evento creado!",
+    "recurringMessage": "¡Tu evento recurrente \"{{eventTitle}}\" se creó correctamente!",
+    "singleMessage": "¡Tu evento \"{{eventTitle}}\" ya está activo!",
+    "eventsScheduled": "eventos programados",
+    "recurringInfo": "Cada evento es independiente: los asistentes se unen individualmente por fecha.",
+    "singleInfo": "Ahora las personas pueden descubrir y unirse a tu evento.",
+    "viewMyEvents": "Ver mis eventos",
+    "gotIt": "¡Entendido!"
+  },
+  "eventImagePicker": {
+    "permissionRequired": "Permiso requerido",
+    "libraryPermissionMessage": "Permite el acceso a tu galería de fotos para agregar imágenes del evento.",
+    "limitReached": "Límite alcanzado",
+    "limitReachedMessage": "Solo puedes agregar hasta {{max}} imágenes.",
+    "errorTitle": "Error",
+    "selectImageFailed": "No se pudo seleccionar la imagen. Inténtalo de nuevo.",
+    "cameraPermissionMessage": "Permite el acceso a tu cámara para tomar fotos.",
+    "takePhotoFailed": "No se pudo tomar la foto. Inténtalo de nuevo.",
+    "addPhoto": "Agregar foto",
+    "chooseAnOption": "Elige una opción",
+    "takePhotoOption": "Tomar foto",
+    "chooseFromLibrary": "Elegir de la galería",
+    "cancel": "Cancelar",
+    "eventPhotos": "Fotos del evento",
+    "optionalCount": "Opcional • {{count}}/{{max}}",
+    "main": "Principal",
+    "addPhotoLabel": "Agregar foto",
+    "emptyStateHint": "Agrega fotos para que tu evento sea más atractivo",
+    "camera": "Cámara",
+    "gallery": "Galería"
+  },
+  "eventRatings": {
+    "title": "Calificaciones y comentarios",
+    "reviewCount_one": "{{count}} reseña",
+    "reviewCount_other": "{{count}} reseñas",
+    "anonymous": "Anónimo",
+    "showLess": "Mostrar menos",
+    "showAll_one": "Mostrar todas las {{count}} reseña",
+    "showAll_other": "Mostrar todas las {{count}} reseñas",
+    "noRatings": "Aún no hay calificaciones"
+  },
+  "keyboardAccessory": {
+    "dismiss": "Ocultar teclado",
+    "done": "Listo"
+  },
+  "matchingEntryCard": {
+    "addTitle": "Agregar Community Matching",
+    "proBadge": "PRO",
+    "addSubtitle": "Deja que los asistentes se conecten después del evento.",
+    "now": "ahora",
+    "lockedTitle": "Community Matching",
+    "lockedSubtitle": "Se abre cuando termina el evento · {{countdown}}",
+    "openTitle": "Community Matching está abierto",
+    "openSubtitle": "Mira quién estuvo aquí y conecta.",
+    "closedTitle": "Personas que conociste",
+    "closedSubtitle": "El emparejamiento ha cerrado.",
+    "manage": "Administrar emparejamiento"
+  },
+  "paywallSheet": {
+    "continueWith": "Continuar con {{productName}}",
+    "maybeLater": "Quizás después"
+  },
+  "pendingRatingsCard": {
+    "title": "Califica tu experiencia",
+    "more_one": "+{{count}} más",
+    "more_other": "+{{count}} más"
+  },
+  "phoneInput": {
+    "placeholder": "55 1234 5678",
+    "country": "País",
+    "done": "Listo",
+    "searchCountry": "Buscar país"
+  },
+  "placeAutocomplete": {
+    "placeholder": "Buscar un lugar…",
+    "searchVenue": "Buscar lugar",
+    "hint": "Escribe el nombre y la dirección del lugar y luego toca “Usar este”.",
+    "useTyped": "Usar “{{query}}”"
+  },
+  "postCard": {
+    "deletePost": "Eliminar publicación",
+    "blockUser": "Bloquear usuario",
+    "report": "Reportar",
+    "cancel": "Cancelar",
+    "postFallback": "Publicación",
+    "eventRecap": "RESUMEN DEL EVENTO",
+    "youWereThere": "Estuviste aquí"
+  },
+  "ratingModal": {
+    "poor": "Malo",
+    "fair": "Regular",
+    "good": "Bueno",
+    "veryGood": "Muy bueno",
+    "excellent": "¡Excelente!",
+    "tapToRate": "Toca para calificar",
+    "rateThisEvent": "Califica este evento",
+    "eventFallback": "Evento",
+    "shareExperience": "Comparte tu experiencia (opcional)",
+    "commentPlaceholder": "¿Qué disfrutaste de este evento?",
+    "later": "Más tarde",
+    "submit": "Enviar calificación"
+  },
+  "recurrenceModal": {
+    "cancel": "Cancelar",
+    "done": "Listo",
+    "eventFrequency": "Frecuencia del evento",
+    "frequency": "Frecuencia",
+    "types": {
+      "none": {
+        "label": "Una vez"
+      },
+      "daily": {
+        "label": "Diario",
+        "description": "Selecciona días específicos"
+      },
+      "weekly": {
+        "label": "Semanal",
+        "description": "Cada semana en los días seleccionados"
+      },
+      "biweekly": {
+        "label": "Quincenal",
+        "description": "Cada 2 semanas"
+      },
+      "monthly": {
+        "label": "Mensual",
+        "description": "El mismo día cada mes"
+      },
+      "lunar": {
+        "label": "Lunar",
+        "description": "Sigue las fases de la luna"
+      }
+    },
+    "startDate": "Fecha de inicio",
+    "endDate": "Fecha de fin",
+    "moonPhase": "Fase lunar",
+    "lunar": {
+      "full": "Luna llena",
+      "new": "Luna nueva"
+    },
+    "lunarHelper": "Los eventos ocurren en cada {{phase}} (~cada 29.5 días)",
+    "lunarHelperFull": "luna llena",
+    "lunarHelperNew": "luna nueva",
+    "repeatBy": "Repetir por",
+    "monthlyModes": {
+      "dayOfWeek": {
+        "label": "Día de la semana",
+        "description": "p. ej., primer sábado"
+      },
+      "dayOfMonth": {
+        "label": "Día del mes",
+        "description": "p. ej., el día 15"
+      }
+    },
+    "dayOfMonth": "Día del mes",
+    "dayOfMonthHelper": "Los días 29-31 usarán el último día de los meses más cortos",
+    "selectDays": "Selecciona días",
+    "dayOfWeekTitle": "Día de la semana",
+    "weekdays": "Días laborables",
+    "weekends": "Fines de semana",
+    "helperBiweekly": "Selecciona un día para la recurrencia quincenal",
+    "helperMonthlyDow": "Selecciona qué día de la semana",
+    "helperDaily": "Los eventos ocurrirán en los días seleccionados",
+    "helperWeekly": "Selecciona uno o más días por semana",
+    "weekOfMonth": "Semana del mes",
+    "weekOptions": {
+      "first": "Primera",
+      "second": "Segunda",
+      "third": "Tercera",
+      "fourth": "Cuarta",
+      "last": "Última"
+    },
+    "repeatUntil": "Repetir hasta",
+    "summary": "Resumen",
+    "eventsMax": "52+ eventos (máx.)",
+    "eventCount_one": "Se creará {{count}} evento",
+    "eventCount_other": "Se crearán {{count}} eventos",
+    "eventDates": "Fechas del evento:",
+    "andMore": "... y {{count}} más",
+    "selectDay": "Selecciona el día",
+    "days": {
+      "sun": {
+        "short": "Dom",
+        "full": "Domingo"
+      },
+      "mon": {
+        "short": "Lun",
+        "full": "Lunes"
+      },
+      "tue": {
+        "short": "Mar",
+        "full": "Martes"
+      },
+      "wed": {
+        "short": "Mié",
+        "full": "Miércoles"
+      },
+      "thu": {
+        "short": "Jue",
+        "full": "Jueves"
+      },
+      "fri": {
+        "short": "Vie",
+        "full": "Viernes"
+      },
+      "sat": {
+        "short": "Sáb",
+        "full": "Sábado"
+      }
+    },
+    "summaryOneTime": "Evento único",
+    "summaryEveryFullMoon": "Cada luna llena",
+    "summaryEveryNewMoon": "Cada luna nueva",
+    "summaryDayOfMonth": "Día {{day}}{{suffix}} de cada mes",
+    "summarySelectDays": "Selecciona días",
+    "summaryEveryDay": "Todos los días",
+    "summaryWeekdays": "Días laborables (lun-vie)",
+    "summaryWeekends": "Fines de semana (sáb-dom)",
+    "summaryEveryDays": "Cada {{days}}",
+    "summaryWeekly": "Semanalmente los {{days}}",
+    "summaryBiweekly": "Cada 2 semanas los {{days}}",
+    "summaryMonthly": "{{week}} {{day}} de cada mes"
+  },
+  "selectDropdown": {
+    "selectAnOption": "Selecciona una opción",
+    "allLanguages": "Todos los idiomas",
+    "selectOption": "Selecciona una opción",
+    "done": "Listo"
+  },
+  "socialAuthButtons": {
+    "or": "o",
+    "continueWithGoogle": "Continuar con Google",
+    "appleUnavailableTitle": "Inicio de sesión con Apple no disponible",
+    "appleUnavailableMessage": "Iniciar sesión con Apple suele fallar en el simulador de iOS. Prueba en un dispositivo real.",
+    "signInFailedTitle": "Error al iniciar sesión",
+    "tryAgain": "Inténtalo de nuevo."
+  },
+  "draftWithAI": {
+    "placeholder": "Solo escribe la idea…",
+    "eyebrow": "Copiloto del anfitrión",
+    "usedFreeDraft": "Ya usaste tu borrador gratuito con IA. Kinlo Pro redacta cada evento por ti.",
+    "seeKinloPro": "Ver Kinlo Pro",
+    "describeIdea": "Describe el evento en una línea — redactaré el resto según tu historial.",
+    "draftWithAI": "Redactar con IA",
+    "draftingFailed": "La redacción con IA está en pausa — inténtalo de nuevo en un momento.",
+    "claudeDraftedThis": "Claude redactó esto",
+    "showLess": "Ver menos",
+    "showMore": "Ver más",
+    "suggestedPrice": "Precio sugerido",
+    "predictedTurnout": "Asistencia prevista",
+    "basisEstimate": "{{basis}} (estimado)",
+    "useDraft": "Usar borrador",
+    "regenerate": "Regenerar"
+  },
+  "matchIntelCard": {
+    "whyYouTwoClick": "Por qué conectan ustedes dos",
+    "unlockIcebreakers": "Desbloquea 3 iniciadores de conversación con IA escritos para ustedes dos",
+    "icebreakersHeader": "INICIADORES DE CONVERSACIÓN IA · ENVÍA DESPUÉS DE HACER MATCH"
+  },
+  "memberPulseCard": {
+    "aiCommunityPulse": "Pulso de la comunidad con IA",
+    "memberIntelligence": "Inteligencia de miembros",
+    "valueLine": "La IA analiza el pulso de tu comunidad y redacta mensajes de reconquista para miembros que se están alejando.",
+    "sentiment": "Sentimiento",
+    "coolingOff": "Alejándose",
+    "regulars": "Habituales",
+    "aiDraftedWinBack": "MENSAJE DE RECONQUISTA REDACTADO POR IA",
+    "forCoolingOffMembers_one": "Para {{count}} miembro que se está alejando · mantén presionado para copiar · envíalo desde Grupos",
+    "forCoolingOffMembers_other": "Para {{count}} miembros que se están alejando · mantén presionado para copiar · envíalo desde Grupos",
+    "privacyNote": "Agregado y privado · la IA nunca ve mensajes directos individuales"
+  },
+  "monthReadCard": {
+    "eyebrow": "Kinlo IA leyó tu mes",
+    "unlockNextSteps": "Desbloquea \"qué hacer después\" — acciones clasificadas según tus números",
+    "whatToDoNext": "QUÉ HACER DESPUÉS · IA"
   }
 }

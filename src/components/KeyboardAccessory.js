@@ -8,6 +8,7 @@ import {
   Text,
   StyleSheet,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 
 /**
@@ -21,6 +22,7 @@ import { useTheme } from "../contexts/ThemeContext";
  */
 export default function KeyboardAccessory() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [kbHeight, setKbHeight] = useState(0);
 
   useEffect(() => {
@@ -53,10 +55,10 @@ export default function KeyboardAccessory() {
         <TouchableOpacity
           onPress={() => Keyboard.dismiss()}
           style={styles.btn}
-          accessibilityLabel="Dismiss keyboard"
+          accessibilityLabel={t("keyboardAccessory.dismiss")}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text style={[styles.txt, { color: colors.primary }]}>Done</Text>
+          <Text style={[styles.txt, { color: colors.primary }]}>{t("keyboardAccessory.done")}</Text>
           <Icon name="down" size={18} color={colors.primary} />
         </TouchableOpacity>
       </View>

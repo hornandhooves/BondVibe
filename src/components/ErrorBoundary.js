@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { logCrash } from "../services/crashLogger";
+import i18n from "../i18n";
 
 /**
  * Catches React render crashes so the app shows a recoverable screen instead of
@@ -22,15 +23,15 @@ export default class ErrorBoundary extends React.Component {
     if (!this.state.hasError) return this.props.children;
     return (
       <View style={styles.wrap}>
-        <Text style={styles.title}>Something went wrong</Text>
+        <Text style={styles.title}>{i18n.t("errorBoundary.title")}</Text>
         <Text style={styles.body}>
-          The app hit an unexpected error. Please try again.
+          {i18n.t("errorBoundary.body")}
         </Text>
         <TouchableOpacity
           style={styles.btn}
           onPress={() => this.setState({ hasError: false })}
         >
-          <Text style={styles.btnText}>Try again</Text>
+          <Text style={styles.btnText}>{i18n.t("errorBoundary.tryAgain")}</Text>
         </TouchableOpacity>
       </View>
     );

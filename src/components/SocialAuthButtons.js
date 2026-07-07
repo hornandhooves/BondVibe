@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { useTheme } from "../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 import {
   signInWithGoogle,
   signInWithApple,
@@ -23,6 +24,7 @@ import {
 
 export default function SocialAuthButtons() {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(null); // "google" | "apple" | null
   const [appleReady, setAppleReady] = useState(false);
 
@@ -53,12 +55,12 @@ export default function SocialAuthButtons() {
         (e?.code === "ERR_REQUEST_UNKNOWN" || /unknown reason/i.test(msg));
       if (appleUnknown) {
         Alert.alert(
-          "Apple Sign-In unavailable",
-          "Sign in with Apple often fails on the iOS Simulator. Please try on a real device."
+          t("socialAuthButtons.appleUnavailableTitle"),
+          t("socialAuthButtons.appleUnavailableMessage")
         );
         return;
       }
-      Alert.alert("Sign-in failed", msg || "Please try again.");
+      Alert.alert(t("socialAuthButtons.signInFailedTitle"), msg || t("socialAuthButtons.tryAgain"));
     } finally {
       setBusy(null);
     }
@@ -70,7 +72,7 @@ export default function SocialAuthButtons() {
     <View style={styles.wrap}>
       <View style={styles.dividerRow}>
         <View style={[styles.line, { backgroundColor: colors.border }]} />
-        <Text style={[styles.or, { color: colors.textTertiary }]}>or</Text>
+        <Text style={[styles.or, { color: colors.textTertiary }]}>{t("socialAuthButtons.or")}</Text>
         <View style={[styles.line, { backgroundColor: colors.border }]} />
       </View>
 
@@ -86,7 +88,7 @@ export default function SocialAuthButtons() {
           <>
             <Text style={styles.googleG}>G</Text>
             <Text style={[styles.googleText, { color: colors.text }]}>
-              Continue with Google
+              {t("socialAuthButtons.continueWithGoogle")}
             </Text>
           </>
         )}

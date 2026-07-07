@@ -11,18 +11,20 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useTheme } from "../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 
 const MAX_IMAGES = 3;
 
 export default function EventImagePicker({ images, onImagesChange }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert(
-        "Permission Required",
-        "Please allow access to your photo library to add event images."
+        t("eventImagePicker.permissionRequired"),
+        t("eventImagePicker.libraryPermissionMessage")
       );
       return false;
     }
@@ -32,8 +34,8 @@ export default function EventImagePicker({ images, onImagesChange }) {
   const pickImage = async () => {
     if (images.length >= MAX_IMAGES) {
       Alert.alert(
-        "Limit Reached",
-        `You can only add up to ${MAX_IMAGES} images.`
+        t("eventImagePicker.limitReached"),
+        t("eventImagePicker.limitReachedMessage", { max: MAX_IMAGES })
       );
       return;
     }
@@ -55,15 +57,15 @@ export default function EventImagePicker({ images, onImagesChange }) {
       }
     } catch (error) {
       console.error("Error picking image:", error);
-      Alert.alert("Error", "Failed to select image. Please try again.");
+      Alert.alert(t("eventImagePicker.errorTitle"), t("eventImagePicker.selectImageFailed"));
     }
   };
 
   const takePhoto = async () => {
     if (images.length >= MAX_IMAGES) {
       Alert.alert(
-        "Limit Reached",
-        `You can only add up to ${MAX_IMAGES} images.`
+        t("eventImagePicker.limitReached"),
+        t("eventImagePicker.limitReachedMessage", { max: MAX_IMAGES })
       );
       return;
     }
@@ -71,8 +73,8 @@ export default function EventImagePicker({ images, onImagesChange }) {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
       Alert.alert(
-        "Permission Required",
-        "Please allow access to your camera to take photos."
+        t("eventImagePicker.permissionRequired"),
+        t("eventImagePicker.cameraPermissionMessage")
       );
       return;
     }
@@ -90,7 +92,7 @@ export default function EventImagePicker({ images, onImagesChange }) {
       }
     } catch (error) {
       console.error("Error taking photo:", error);
-      Alert.alert("Error", "Failed to take photo. Please try again.");
+      Alert.alert(t("eventImagePicker.errorTitle"), t("eventImagePicker.takePhotoFailed"));
     }
   };
 
@@ -100,10 +102,10 @@ export default function EventImagePicker({ images, onImagesChange }) {
   };
 
   const showImageOptions = () => {
-    Alert.alert("Add Photo", "Choose an option", [
-      { text: "Take Photo", onPress: takePhoto },
-      { text: "Choose from Library", onPress: pickImage },
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("eventImagePicker.addPhoto"), t("eventImagePicker.chooseAnOption"), [
+      { text: t("eventImagePicker.takePhotoOption"), onPress: takePhoto },
+      { text: t("eventImagePicker.chooseFromLibrary"), onPress: pickImage },
+      { text: t("eventImagePicker.cancel"), style: "cancel" },
     ]);
   };
 
@@ -112,9 +114,9 @@ export default function EventImagePicker({ images, onImagesChange }) {
   return (
     <View style={styles.container}>
       <View style={styles.labelRow}>
-        <Text style={[styles.label, { color: colors.text }]}>Event Photos</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{t("eventImagePicker.eventPhotos")}</Text>
         <Text style={[styles.optional, { color: colors.textTertiary }]}>
-          Optional • {images.length}/{MAX_IMAGES}
+          {t("eventImagePicker.optionalCount", { count: images.length, max: MAX_IMAGES })}
         </Text>
       </View>
 
@@ -137,7 +139,7 @@ export default function EventImagePicker({ images, onImagesChange }) {
               <View
                 style={[styles.mainBadge, { backgroundColor: colors.primary }]}
               >
-                <Text style={styles.mainBadgeText}>Main</Text>
+                <Text style={styles.mainBadgeText}>{t("eventImagePicker.main")}</Text>
               </View>
             )}
           </View>
@@ -164,7 +166,7 @@ export default function EventImagePicker({ images, onImagesChange }) {
               <Icon name="plus" size={24} color={colors.primary} />
             </View>
             <Text style={[styles.addText, { color: colors.textSecondary }]}>
-              Add Photo
+              {t("eventImagePicker.addPhotoLabel")}
             </Text>
           </TouchableOpacity>
         )}
@@ -182,7 +184,7 @@ export default function EventImagePicker({ images, onImagesChange }) {
         >
           <Icon name="image" size={32} color={colors.textTertiary} />
           <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
-            Add photos to make your event more appealing
+            {t("eventImagePicker.emptyStateHint")}
           </Text>
           <View style={styles.emptyButtons}>
             <TouchableOpacity
@@ -194,7 +196,7 @@ export default function EventImagePicker({ images, onImagesChange }) {
             >
               <Icon name="camera" size={18} color={colors.primary} />
               <Text style={[styles.emptyButtonText, { color: colors.primary }]}>
-                Camera
+                {t("eventImagePicker.camera")}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -206,7 +208,7 @@ export default function EventImagePicker({ images, onImagesChange }) {
             >
               <Icon name="image" size={18} color={colors.primary} />
               <Text style={[styles.emptyButtonText, { color: colors.primary }]}>
-                Gallery
+                {t("eventImagePicker.gallery")}
               </Text>
             </TouchableOpacity>
           </View>

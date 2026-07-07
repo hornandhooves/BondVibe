@@ -10,13 +10,14 @@ import React from "react";
 import Icon from "./Icon";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import { usePremium } from "../hooks/usePremium";
 import { useMatchingWindow } from "../hooks/useMatchingWindow";
 import { MATCH_TYPE_COLORS } from "../services/matchingService";
 
-function formatCountdown(ms) {
-  if (ms <= 0) return "now";
+function formatCountdown(ms, t) {
+  if (ms <= 0) return t("matchingEntryCard.now");
   const s = Math.floor(ms / 1000);
   const d = Math.floor(s / 86400);
   const h = Math.floor((s % 86400) / 3600);
@@ -29,6 +30,7 @@ function formatCountdown(ms) {
 
 export default function MatchingEntryCard({ event, isHost }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { isPremium } = usePremium();
   const { state, msUntilOpen, isOpen, isLocked, isClosed, enabled } =
@@ -55,16 +57,16 @@ export default function MatchingEntryCard({ event, isHost }) {
         </View>
         <View style={styles.body}>
           <View style={styles.titleRow}>
-            <Text style={styles.title}>Add Community Matching</Text>
+            <Text style={styles.title}>{t("matchingEntryCard.addTitle")}</Text>
             {!isPremium && (
               <View style={styles.proBadge}>
                 <Icon name="pro" size={11} color="#fff" />
-                <Text style={styles.proText}>PRO</Text>
+                <Text style={styles.proText}>{t("matchingEntryCard.proBadge")}</Text>
               </View>
             )}
           </View>
           <Text style={styles.subtitle}>
-            Let attendees connect after the event.
+            {t("matchingEntryCard.addSubtitle")}
           </Text>
         </View>
         <Icon name="forward" size={20} color={colors.textSecondary} />
@@ -76,21 +78,23 @@ export default function MatchingEntryCard({ event, isHost }) {
   const meta = isLocked
     ? {
         icon: <Icon name="lock" size={22} color={colors.primary} />,
-        title: "Community Matching",
-        subtitle: `Opens when the event ends · ${formatCountdown(msUntilOpen)}`,
+        title: t("matchingEntryCard.lockedTitle"),
+        subtitle: t("matchingEntryCard.lockedSubtitle", {
+          countdown: formatCountdown(msUntilOpen, t),
+        }),
         route: "MatchingLocked",
       }
     : isOpen
     ? {
         icon: <Icon name="users" size={22} color={colors.primary} />,
-        title: "Community Matching is open",
-        subtitle: "See who was here and connect.",
+        title: t("matchingEntryCard.openTitle"),
+        subtitle: t("matchingEntryCard.openSubtitle"),
         route: "MatchGrid",
       }
     : {
         icon: <Icon name="users" size={22} color={colors.textSecondary} />,
-        title: "People you met",
-        subtitle: "Matching has closed.",
+        title: t("matchingEntryCard.closedTitle"),
+        subtitle: t("matchingEntryCard.closedSubtitle"),
         route: "PeopleYouMet",
       };
 
@@ -109,14 +113,14 @@ export default function MatchingEntryCard({ event, isHost }) {
           <Text style={styles.subtitle}>{meta.subtitle}</Text>
           {types.length > 0 && (
             <View style={styles.chipsRow}>
-              {types.map((t) => {
-                const c = MATCH_TYPE_COLORS[t] || {
+              {types.map((matchType) => {
+                const c = MATCH_TYPE_COLORS[matchType] || {
                   fg: colors.primary,
                   bg: colors.surfaceGlass,
                 };
                 return (
-                  <View key={t} style={[styles.chip, { backgroundColor: c.bg }]}>
-                    <Text style={[styles.chipText, { color: c.fg }]}>{t}</Text>
+                  <View key={matchType} style={[styles.chip, { backgroundColor: c.bg }]}>
+                    <Text style={[styles.chipText, { color: c.fg }]}>{matchType}</Text>
                   </View>
                 );
               })}
@@ -134,7 +138,7 @@ export default function MatchingEntryCard({ event, isHost }) {
           }
         >
           <Text style={[styles.manageText, { color: colors.primary }]}>
-            Manage matching
+            {t("matchingEntryCard.manage")}
           </Text>
         </TouchableOpacity>
       )}

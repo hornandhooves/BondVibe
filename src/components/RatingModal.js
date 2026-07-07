@@ -11,12 +11,14 @@ import {
   Keyboard,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import { submitRating } from "../services/ratingService";
 import { getEventCreatorId } from "../utils/eventHelpers";
 
 export default function RatingModal({ visible, onClose, onSuccess, event }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
@@ -62,17 +64,17 @@ export default function RatingModal({ visible, onClose, onSuccess, event }) {
   const getRatingText = (value) => {
     switch (value) {
       case 1:
-        return "Poor";
+        return t("ratingModal.poor");
       case 2:
-        return "Fair";
+        return t("ratingModal.fair");
       case 3:
-        return "Good";
+        return t("ratingModal.good");
       case 4:
-        return "Very Good";
+        return t("ratingModal.veryGood");
       case 5:
-        return "Excellent!";
+        return t("ratingModal.excellent");
       default:
-        return "Tap to rate";
+        return t("ratingModal.tapToRate");
     }
   };
 
@@ -102,13 +104,13 @@ export default function RatingModal({ visible, onClose, onSuccess, event }) {
                   <Icon name="star" size={36} color={colors.primary} />
                 </View>
                 <Text style={[styles.title, { color: colors.text }]}>
-                  Rate this Event
+                  {t("ratingModal.rateThisEvent")}
                 </Text>
                 <Text
                   style={[styles.eventTitle, { color: colors.textSecondary }]}
                   numberOfLines={2}
                 >
-                  {event?.title || "Event"}
+                  {event?.title || t("ratingModal.eventFallback")}
                 </Text>
               </View>
 
@@ -152,7 +154,7 @@ export default function RatingModal({ visible, onClose, onSuccess, event }) {
               {/* Comment Input */}
               <View style={styles.commentSection}>
                 <Text style={[styles.commentLabel, { color: colors.text }]}>
-                  Share your experience (optional)
+                  {t("ratingModal.shareExperience")}
                 </Text>
                 <View
                   style={[
@@ -165,7 +167,7 @@ export default function RatingModal({ visible, onClose, onSuccess, event }) {
                 >
                   <TextInput
                     style={[styles.textInput, { color: colors.text }]}
-                    placeholder="What did you enjoy about this event?"
+                    placeholder={t("ratingModal.commentPlaceholder")}
                     placeholderTextColor={colors.textTertiary}
                     value={comment}
                     onChangeText={setComment}
@@ -199,7 +201,7 @@ export default function RatingModal({ visible, onClose, onSuccess, event }) {
                     ]}
                   >
                     <Text style={[styles.buttonText, { color: colors.text }]}>
-                      Later
+                      {t("ratingModal.later")}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -235,7 +237,7 @@ export default function RatingModal({ visible, onClose, onSuccess, event }) {
                           },
                         ]}
                       >
-                        Submit Rating
+                        {t("ratingModal.submit")}
                       </Text>
                     )}
                   </View>

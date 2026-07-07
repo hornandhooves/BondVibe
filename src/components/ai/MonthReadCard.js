@@ -11,12 +11,14 @@ import AICard, { AIText } from "../AICard";
 import AILoadingCard from "../AILoadingCard";
 import ProBadge from "../ProBadge";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 import useClaude from "../../hooks/useClaude";
 import useAiOptIn from "../../hooks/useAiOptIn";
 import { TYPE, SPACING, RADII, ELEVATION } from "../../constants/theme-tokens";
 
 export default function MonthReadCard({ navigation }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { aiOptIn } = useAiOptIn();
   const { data, loading, fallback } = useClaude(
     "ai_analytics",
@@ -25,12 +27,12 @@ export default function MonthReadCard({ navigation }) {
   );
 
   if (!aiOptIn) return null;
-  if (loading) return <AILoadingCard eyebrow="Kinlo AI read your month" style={styles.block} />;
+  if (loading) return <AILoadingCard eyebrow={t("monthReadCard.eyebrow")} style={styles.block} />;
   if (fallback || !data) return null;
 
   return (
     <View style={styles.block}>
-      <AICard eyebrow="Kinlo AI read your month">
+      <AICard eyebrow={t("monthReadCard.eyebrow")}>
         <AIText>{data.narrative}</AIText>
       </AICard>
 
@@ -42,14 +44,14 @@ export default function MonthReadCard({ navigation }) {
         >
           <ProBadge tier="pro" size="sm" />
           <Text style={[TYPE.body, styles.lockedText, { color: colors.textSecondary }]}>
-            Unlock "what to do next" — ranked actions from your numbers
+            {t("monthReadCard.unlockNextSteps")}
           </Text>
           <Icon name="forward" size={16} color={colors.textTertiary} />
         </TouchableOpacity>
       ) : (
         (data.recommendations || []).length > 0 && (
           <View style={[styles.recs, ELEVATION.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[TYPE.eyebrow, { color: colors.textTertiary }]}>WHAT TO DO NEXT · AI</Text>
+            <Text style={[TYPE.eyebrow, { color: colors.textTertiary }]}>{t("monthReadCard.whatToDoNext")}</Text>
             {data.recommendations.map((r) => (
               <View key={r.text} style={styles.recRow}>
                 <Icon name="ai" size={14} color={colors.primary} />

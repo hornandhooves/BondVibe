@@ -11,12 +11,14 @@ import AICard, { AIText } from "../AICard";
 import AILoadingCard from "../AILoadingCard";
 import ProBadge from "../ProBadge";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 import useClaude from "../../hooks/useClaude";
 import useAiOptIn from "../../hooks/useAiOptIn";
 import { TYPE, SPACING, RADII, ELEVATION } from "../../constants/theme-tokens";
 
 export default function MatchIntelCard({ eventId, otherUid, navigation }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { aiOptIn } = useAiOptIn();
   const { data, loading, fallback } = useClaude(
     "match_intel",
@@ -29,11 +31,11 @@ export default function MatchIntelCard({ eventId, otherUid, navigation }) {
   );
 
   if (!aiOptIn || fallback || (!loading && !data)) return null;
-  if (loading) return <AILoadingCard eyebrow="Why you two click" style={styles.block} />;
+  if (loading) return <AILoadingCard eyebrow={t("matchIntelCard.whyYouTwoClick")} style={styles.block} />;
 
   return (
     <View style={styles.block}>
-      <AICard eyebrow="Why you two click">
+      <AICard eyebrow={t("matchIntelCard.whyYouTwoClick")}>
         <AIText>{data.rationale}</AIText>
       </AICard>
 
@@ -45,7 +47,7 @@ export default function MatchIntelCard({ eventId, otherUid, navigation }) {
         >
           <ProBadge tier="plus" size="sm" />
           <Text style={[TYPE.body, styles.lockedText, { color: colors.textSecondary }]}>
-            Unlock 3 AI icebreakers written for you two
+            {t("matchIntelCard.unlockIcebreakers")}
           </Text>
           <Icon name="forward" size={16} color={colors.textTertiary} />
         </TouchableOpacity>
@@ -53,7 +55,7 @@ export default function MatchIntelCard({ eventId, otherUid, navigation }) {
         (data.icebreakers || []).length > 0 && (
           <View style={[styles.breakers, ELEVATION.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[TYPE.eyebrow, { color: colors.textTertiary }]}>
-              AI ICEBREAKERS · SEND AFTER YOU MATCH
+              {t("matchIntelCard.icebreakersHeader")}
             </Text>
             {data.icebreakers.map((b) => (
               <View key={b} style={[styles.breakerRow, { backgroundColor: colors.sunken }]}>

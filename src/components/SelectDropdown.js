@@ -9,6 +9,7 @@ import {
   Pressable,
 } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 import Icon, { getCategoryIcon, getLocationIcon } from "./Icon";
 
 /**
@@ -30,12 +31,14 @@ export default function SelectDropdown({
   value,
   onValueChange,
   options = [],
-  placeholder = "Select an option",
+  placeholder,
   type = "default",
   multiSelect = false,
 }) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const [modalVisible, setModalVisible] = useState(false);
+  const placeholderText = placeholder || t("selectDropdown.selectAnOption");
 
   // For multi-select, value is an array; for single-select, it's a string
   const selectedValues = multiSelect 
@@ -47,13 +50,13 @@ export default function SelectDropdown({
 
   // Get display text
   const getDisplayText = () => {
-    if (selectedOptions.length === 0) return placeholder;
+    if (selectedOptions.length === 0) return placeholderText;
     if (multiSelect) {
       if (selectedOptions.length === 1) return selectedOptions[0].label;
-      if (selectedOptions.length === options.length) return "All Languages";
+      if (selectedOptions.length === options.length) return t("selectDropdown.allLanguages");
       return selectedOptions.map(o => o.label).join(", ");
     }
-    return selectedOptions[0]?.label || placeholder;
+    return selectedOptions[0]?.label || placeholderText;
   };
 
   // Handle option selection
@@ -174,7 +177,7 @@ export default function SelectDropdown({
             {/* Modal Header */}
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>
-                {label || "Select Option"}
+                {label || t("selectDropdown.selectOption")}
               </Text>
               <TouchableOpacity
                 onPress={() => setModalVisible(false)}
@@ -251,7 +254,7 @@ export default function SelectDropdown({
                   style={[styles.doneButton, { backgroundColor: colors.primary }]}
                   onPress={() => setModalVisible(false)}
                 >
-                  <Text style={styles.doneButtonText}>Done</Text>
+                  <Text style={styles.doneButtonText}>{t("selectDropdown.done")}</Text>
                 </TouchableOpacity>
               </View>
             )}

@@ -2105,5 +2105,394 @@
     "subtitleDefault": "Meet people from this event with a shared purpose — friends, professional or romantic. It opens when the event ends, so you enjoy it in person first.",
     "joinButton": "Yes, I want to join",
     "declineButton": "No, thanks"
+  },
+  "adminConfirmModal": {
+    "checkConfirmation": "Please check the confirmation box",
+    "provideSuspendReason": "Please provide a reason for suspension",
+    "cancel": "Cancel",
+    "removeHost": {
+      "title": "Remove Host Role",
+      "description": "Remove host privileges from {{userName}}?",
+      "warning": "This will CANCEL all their active events!",
+      "confirmText": "I understand this will cancel all their events",
+      "buttonText": "Remove Host Role",
+      "reasonPlaceholder": "Reason for removing host role (optional)..."
+    },
+    "removeAdmin": {
+      "title": "Remove Admin Role",
+      "description": "Demote {{userName}} to regular user?",
+      "warning": "They will lose all admin privileges.",
+      "confirmText": "I understand they will lose admin access",
+      "buttonText": "Remove Admin Role"
+    },
+    "suspend": {
+      "title": "Suspend User",
+      "description": "Suspend {{userName}}'s account?",
+      "warning": "This will CANCEL all their events and block their access!",
+      "confirmText": "I understand this will cancel all their events",
+      "buttonText": "Suspend User",
+      "reasonPlaceholder": "Reason for suspension (required)..."
+    },
+    "unsuspend": {
+      "title": "Unsuspend User",
+      "description": "Reactivate {{userName}}'s account?",
+      "warning": "They will regain access to the platform.",
+      "confirmText": "I confirm unsuspending this user",
+      "buttonText": "Unsuspend User"
+    },
+    "default": {
+      "title": "Confirm Action",
+      "description": "Are you sure?",
+      "warning": "This action cannot be undone.",
+      "confirmText": "I understand",
+      "buttonText": "Confirm"
+    }
+  },
+  "adminMessageModal": {
+    "provideMessage": "Please provide a message for the applicant.",
+    "forUser": "for {{userName}}",
+    "whyApproving": "Why are you approving this request?",
+    "whyRejecting": "Why are you rejecting this request?",
+    "writeMessagePlaceholder": "Write your message...",
+    "cancel": "Cancel",
+    "processing": "Processing...",
+    "approve": "Approve",
+    "reject": "Reject"
+  },
+  "avatarPicker": {
+    "permissionNeeded": "Permission needed",
+    "cameraPermissionRequired": "Camera permission is required to take photos.",
+    "galleryPermissionRequired": "Gallery permission is required to select photos.",
+    "errorTitle": "Error",
+    "pickImageFailed": "Failed to pick image. Please try again.",
+    "profilePhoto": "Profile photo",
+    "chooseFromGallery": "Choose from Gallery",
+    "takeAPhoto": "Take a Photo",
+    "photoHint": "Your photo will be cropped to a circle. Until you add one, we'll show your initial."
+  },
+  "cancelEventModal": {
+    "noReasonProvided": "No reason provided",
+    "title": "Cancel Event?",
+    "message": "Are you sure you want to cancel \"{{eventTitle}}\"? This action cannot be undone.",
+    "reasonLabel": "Reason (optional)",
+    "reasonPlaceholder": "Let participants know why...",
+    "keepEvent": "Keep Event",
+    "cancelling": "Cancelling...",
+    "cancelEvent": "Cancel Event"
+  },
+  "connectSpotifyButton": {
+    "spotify": "Spotify",
+    "importFailed": "We couldn't import your music right now. Please try again.",
+    "comingSoon": "Coming soon",
+    "notEnabledYet": "Spotify import isn't enabled yet. Check back shortly.",
+    "musicTaste": "Music taste",
+    "refresh": "Refresh",
+    "disconnect": "Disconnect",
+    "connectSpotify": "Connect Spotify"
+  },
+  "dateField": {
+    "any": "Any",
+    "clear": "Clear",
+    "cancel": "Cancel",
+    "selectDate": "Select date",
+    "done": "Done"
+  },
+  "durationWheelModal": {
+    "minShort": "{{m}} min",
+    "hoursMinutesShort": "{{h}}h {{m}}m",
+    "hourSingular": "{{h}} hour",
+    "hoursPlural": "{{h}} hours",
+    "daySingular": "{{d}} day",
+    "daysPlural": "{{d}} days",
+    "eventLength": "Event length",
+    "hoursAndMinutes": "Hours & minutes",
+    "days": "Days",
+    "hoursAbbrev": "{{n}} h",
+    "minutesAbbrev": "{{n}} m",
+    "daySingularAbbrev": "{{n}} day",
+    "daysPluralAbbrev": "{{n}} days",
+    "done": "Done"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "body": "The app hit an unexpected error. Please try again.",
+    "tryAgain": "Try again"
+  },
+  "eventCreatedModal": {
+    "eventsCreatedTitle": "Events Created!",
+    "eventCreatedTitle": "Event Created!",
+    "recurringMessage": "Your recurring event \"{{eventTitle}}\" has been created successfully!",
+    "singleMessage": "Your event \"{{eventTitle}}\" is now live!",
+    "eventsScheduled": "events scheduled",
+    "recurringInfo": "Each event is independent - attendees join individually per date.",
+    "singleInfo": "People can now discover and join your event.",
+    "viewMyEvents": "View My Events",
+    "gotIt": "Got it!"
+  },
+  "eventImagePicker": {
+    "permissionRequired": "Permission Required",
+    "libraryPermissionMessage": "Please allow access to your photo library to add event images.",
+    "limitReached": "Limit Reached",
+    "limitReachedMessage": "You can only add up to {{max}} images.",
+    "errorTitle": "Error",
+    "selectImageFailed": "Failed to select image. Please try again.",
+    "cameraPermissionMessage": "Please allow access to your camera to take photos.",
+    "takePhotoFailed": "Failed to take photo. Please try again.",
+    "addPhoto": "Add Photo",
+    "chooseAnOption": "Choose an option",
+    "takePhotoOption": "Take Photo",
+    "chooseFromLibrary": "Choose from Library",
+    "cancel": "Cancel",
+    "eventPhotos": "Event Photos",
+    "optionalCount": "Optional • {{count}}/{{max}}",
+    "main": "Main",
+    "addPhotoLabel": "Add Photo",
+    "emptyStateHint": "Add photos to make your event more appealing",
+    "camera": "Camera",
+    "gallery": "Gallery"
+  },
+  "eventRatings": {
+    "title": "Ratings & Feedback",
+    "reviewCount_one": "{{count}} review",
+    "reviewCount_other": "{{count}} reviews",
+    "anonymous": "Anonymous",
+    "showLess": "Show less",
+    "showAll_one": "Show all {{count}} review",
+    "showAll_other": "Show all {{count}} reviews",
+    "noRatings": "No ratings yet"
+  },
+  "keyboardAccessory": {
+    "dismiss": "Dismiss keyboard",
+    "done": "Done"
+  },
+  "matchingEntryCard": {
+    "addTitle": "Add Community Matching",
+    "proBadge": "PRO",
+    "addSubtitle": "Let attendees connect after the event.",
+    "now": "now",
+    "lockedTitle": "Community Matching",
+    "lockedSubtitle": "Opens when the event ends · {{countdown}}",
+    "openTitle": "Community Matching is open",
+    "openSubtitle": "See who was here and connect.",
+    "closedTitle": "People you met",
+    "closedSubtitle": "Matching has closed.",
+    "manage": "Manage matching"
+  },
+  "paywallSheet": {
+    "continueWith": "Continue with {{productName}}",
+    "maybeLater": "Maybe later"
+  },
+  "pendingRatingsCard": {
+    "title": "Rate your experience",
+    "more_one": "+{{count}} more",
+    "more_other": "+{{count}} more"
+  },
+  "phoneInput": {
+    "placeholder": "55 1234 5678",
+    "country": "Country",
+    "done": "Done",
+    "searchCountry": "Search country"
+  },
+  "placeAutocomplete": {
+    "placeholder": "Search a place…",
+    "searchVenue": "Search venue",
+    "hint": "Type the venue name and address, then tap “Use this”.",
+    "useTyped": "Use “{{query}}”"
+  },
+  "postCard": {
+    "deletePost": "Delete post",
+    "blockUser": "Block user",
+    "report": "Report",
+    "cancel": "Cancel",
+    "postFallback": "Post",
+    "eventRecap": "EVENT RECAP",
+    "youWereThere": "You were there"
+  },
+  "ratingModal": {
+    "poor": "Poor",
+    "fair": "Fair",
+    "good": "Good",
+    "veryGood": "Very Good",
+    "excellent": "Excellent!",
+    "tapToRate": "Tap to rate",
+    "rateThisEvent": "Rate this Event",
+    "eventFallback": "Event",
+    "shareExperience": "Share your experience (optional)",
+    "commentPlaceholder": "What did you enjoy about this event?",
+    "later": "Later",
+    "submit": "Submit Rating"
+  },
+  "recurrenceModal": {
+    "cancel": "Cancel",
+    "done": "Done",
+    "eventFrequency": "Event Frequency",
+    "frequency": "Frequency",
+    "types": {
+      "none": {
+        "label": "One-time"
+      },
+      "daily": {
+        "label": "Daily",
+        "description": "Select specific days"
+      },
+      "weekly": {
+        "label": "Weekly",
+        "description": "Every week on selected days"
+      },
+      "biweekly": {
+        "label": "Biweekly",
+        "description": "Every 2 weeks"
+      },
+      "monthly": {
+        "label": "Monthly",
+        "description": "Same day each month"
+      },
+      "lunar": {
+        "label": "Lunar",
+        "description": "Follow moon phases"
+      }
+    },
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "moonPhase": "Moon Phase",
+    "lunar": {
+      "full": "Full Moon",
+      "new": "New Moon"
+    },
+    "lunarHelper": "Events occur on each {{phase}} (~every 29.5 days)",
+    "lunarHelperFull": "full moon",
+    "lunarHelperNew": "new moon",
+    "repeatBy": "Repeat By",
+    "monthlyModes": {
+      "dayOfWeek": {
+        "label": "Day of Week",
+        "description": "e.g., First Saturday"
+      },
+      "dayOfMonth": {
+        "label": "Day of Month",
+        "description": "e.g., The 15th"
+      }
+    },
+    "dayOfMonth": "Day of Month",
+    "dayOfMonthHelper": "Days 29-31 will use the last day of shorter months",
+    "selectDays": "Select Days",
+    "dayOfWeekTitle": "Day of Week",
+    "weekdays": "Weekdays",
+    "weekends": "Weekends",
+    "helperBiweekly": "Select one day for biweekly recurrence",
+    "helperMonthlyDow": "Select which day of the week",
+    "helperDaily": "Events will occur on selected days",
+    "helperWeekly": "Select one or more days per week",
+    "weekOfMonth": "Week of Month",
+    "weekOptions": {
+      "first": "First",
+      "second": "Second",
+      "third": "Third",
+      "fourth": "Fourth",
+      "last": "Last"
+    },
+    "repeatUntil": "Repeat Until",
+    "summary": "Summary",
+    "eventsMax": "52+ events (max)",
+    "eventCount_one": "{{count}} event will be created",
+    "eventCount_other": "{{count}} events will be created",
+    "eventDates": "Event Dates:",
+    "andMore": "... and {{count}} more",
+    "selectDay": "Select Day",
+    "days": {
+      "sun": {
+        "short": "Sun",
+        "full": "Sunday"
+      },
+      "mon": {
+        "short": "Mon",
+        "full": "Monday"
+      },
+      "tue": {
+        "short": "Tue",
+        "full": "Tuesday"
+      },
+      "wed": {
+        "short": "Wed",
+        "full": "Wednesday"
+      },
+      "thu": {
+        "short": "Thu",
+        "full": "Thursday"
+      },
+      "fri": {
+        "short": "Fri",
+        "full": "Friday"
+      },
+      "sat": {
+        "short": "Sat",
+        "full": "Saturday"
+      }
+    },
+    "summaryOneTime": "One-time event",
+    "summaryEveryFullMoon": "Every Full Moon",
+    "summaryEveryNewMoon": "Every New Moon",
+    "summaryDayOfMonth": "{{day}}{{suffix}} of each month",
+    "summarySelectDays": "Select days",
+    "summaryEveryDay": "Every day",
+    "summaryWeekdays": "Weekdays (Mon-Fri)",
+    "summaryWeekends": "Weekends (Sat-Sun)",
+    "summaryEveryDays": "Every {{days}}",
+    "summaryWeekly": "Weekly on {{days}}",
+    "summaryBiweekly": "Every 2 weeks on {{days}}",
+    "summaryMonthly": "{{week}} {{day}} of each month"
+  },
+  "selectDropdown": {
+    "selectAnOption": "Select an option",
+    "allLanguages": "All Languages",
+    "selectOption": "Select Option",
+    "done": "Done"
+  },
+  "socialAuthButtons": {
+    "or": "or",
+    "continueWithGoogle": "Continue with Google",
+    "appleUnavailableTitle": "Apple Sign-In unavailable",
+    "appleUnavailableMessage": "Sign in with Apple often fails on the iOS Simulator. Please try on a real device.",
+    "signInFailedTitle": "Sign-in failed",
+    "tryAgain": "Please try again."
+  },
+  "draftWithAI": {
+    "placeholder": "Just type the idea…",
+    "eyebrow": "Host Copilot",
+    "usedFreeDraft": "You've used your free AI draft. Kinlo Pro drafts every event for you.",
+    "seeKinloPro": "See Kinlo Pro",
+    "describeIdea": "Describe the event in one line — I'll draft the rest from your history.",
+    "draftWithAI": "Draft with AI",
+    "draftingFailed": "AI drafting is taking a break — try again in a moment.",
+    "claudeDraftedThis": "Claude drafted this",
+    "showLess": "Show less",
+    "showMore": "Show more",
+    "suggestedPrice": "Suggested price",
+    "predictedTurnout": "Predicted turnout",
+    "basisEstimate": "{{basis}} (estimate)",
+    "useDraft": "Use draft",
+    "regenerate": "Regenerate"
+  },
+  "matchIntelCard": {
+    "whyYouTwoClick": "Why you two click",
+    "unlockIcebreakers": "Unlock 3 AI icebreakers written for you two",
+    "icebreakersHeader": "AI ICEBREAKERS · SEND AFTER YOU MATCH"
+  },
+  "memberPulseCard": {
+    "aiCommunityPulse": "AI community pulse",
+    "memberIntelligence": "Member Intelligence",
+    "valueLine": "AI reads your community's pulse and drafts win-backs for cooling-off members.",
+    "sentiment": "Sentiment",
+    "coolingOff": "Cooling off",
+    "regulars": "Regulars",
+    "aiDraftedWinBack": "AI-DRAFTED WIN-BACK",
+    "forCoolingOffMembers_one": "For {{count}} cooling-off member · long-press to copy · send it from Groups",
+    "forCoolingOffMembers_other": "For {{count}} cooling-off members · long-press to copy · send it from Groups",
+    "privacyNote": "Aggregated & privacy-safe · AI never sees individual DMs"
+  },
+  "monthReadCard": {
+    "eyebrow": "Kinlo AI read your month",
+    "unlockNextSteps": "Unlock \"what to do next\" — ranked actions from your numbers",
+    "whatToDoNext": "WHAT TO DO NEXT · AI"
   }
 }

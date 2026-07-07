@@ -18,6 +18,8 @@ import {
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useTheme } from "../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
+import i18n from "../i18n";
 import Icon from "./Icon";
 
 const ITEM_H = 44;
@@ -31,14 +33,17 @@ const DAYS = Array.from({ length: 14 }, (_, i) => i + 1); // 1..14 days
 /** Human label, e.g. 45→"45 min", 150→"2h 30m", 420→"7 hours", 2880→"2 days". */
 export function formatDuration(min) {
   const m = parseInt(min, 10) || 0;
-  if (m < 60) return `${m} min`;
+  if (m < 60) return i18n.t("durationWheelModal.minShort", { m });
   if (m < 1440) {
     const h = Math.floor(m / 60);
     const r = m % 60;
-    return r ? `${h}h ${r}m` : `${h} ${h === 1 ? "hour" : "hours"}`;
+    return r
+      ? i18n.t("durationWheelModal.hoursMinutesShort", { h, m: r })
+      : i18n.t(h === 1 ? "durationWheelModal.hourSingular" : "durationWheelModal.hoursPlural", { h });
   }
   const d = m / 1440;
-  return `${Number.isInteger(d) ? d : d.toFixed(1)} ${d === 1 ? "day" : "days"}`;
+  const dVal = Number.isInteger(d) ? d : d.toFixed(1);
+  return i18n.t(d === 1 ? "durationWheelModal.daySingular" : "durationWheelModal.daysPlural", { d: dVal });
 }
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -119,6 +124,7 @@ function WheelColumn({ data, index, onIndexChange, formatter, align, colors }) {
 
 export default function DurationWheelModal({ visible, value, onSelect, onClose }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [mode, setMode] = useState("hours"); // 'hours' | 'days'
   const [iosDate, setIosDate] = useState(durationToDate(180));
   const [hIdx, setHIdx] = useState(3); // Android hours index
@@ -180,7 +186,7 @@ export default function DurationWheelModal({ visible, value, onSelect, onClose }
         <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
           <View style={styles.headerRow}>
             <View>
-              <Text style={[styles.title, { color: colors.text }]}>Event length</Text>
+              <Text style={[styles.title, { color: colors.text }]}>{t("durationWheelModal.eventLength")}</Text>
               <Text style={[styles.preview, { color: colors.textSecondary }]}>
                 {formatDuration(Math.max(5, total))}
               </Text>
@@ -194,8 +200,8 @@ export default function DurationWheelModal({ visible, value, onSelect, onClose }
           </View>
 
           <View style={[styles.segmentRow, { backgroundColor: colors.sunken }]}>
-            <Segment id="hours" label="Hours & minutes" />
-            <Segment id="days" label="Days" />
+            <Segment id="hours" label={t("durationWheelModal.hoursAndMinutes")} />
+            <Segment id="days" label={t("durationWheelModal.days")} />
           </View>
 
           {mode === "hours" && Platform.OS === "ios" && (
@@ -219,7 +225,7 @@ export default function DurationWheelModal({ visible, value, onSelect, onClose }
                 data={HOURS}
                 index={hIdx}
                 onIndexChange={setHIdx}
-                formatter={(n) => `${n} h`}
+                formatter={(n) => t("durationWheelModal.hoursAbbrev", { n })}
                 align="right"
                 colors={colors}
               />
@@ -227,7 +233,7 @@ export default function DurationWheelModal({ visible, value, onSelect, onClose }
                 data={MINUTES}
                 index={mIdx}
                 onIndexChange={setMIdx}
-                formatter={(n) => `${String(n).padStart(2, "0")} m`}
+                formatter={(n) => t("durationWheelModal.minutesAbbrev", { n: String(n).padStart(2, "0") })}
                 align="left"
                 colors={colors}
               />
@@ -244,7 +250,7 @@ export default function DurationWheelModal({ visible, value, onSelect, onClose }
                 data={DAYS}
                 index={dIdx}
                 onIndexChange={setDIdx}
-                formatter={(n) => `${n} ${n === 1 ? "day" : "days"}`}
+                formatter={(n) => t(n === 1 ? "durationWheelModal.daySingularAbbrev" : "durationWheelModal.daysPluralAbbrev", { n })}
                 align="center"
                 colors={colors}
               />
@@ -256,7 +262,7 @@ export default function DurationWheelModal({ visible, value, onSelect, onClose }
             onPress={done}
             activeOpacity={0.85}
           >
-            <Text style={styles.doneText}>Done</Text>
+            <Text style={styles.doneText}>{t("durationWheelModal.done")}</Text>
           </TouchableOpacity>
         </View>
       </View>

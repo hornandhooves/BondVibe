@@ -9,54 +9,32 @@ import {
   Platform,
 } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { generateMoonPhaseDates } from "../utils/lunarUtils";
 
-// Days of the week
-const DAYS_OF_WEEK = [
-  { id: 0, short: "Sun", full: "Sunday" },
-  { id: 1, short: "Mon", full: "Monday" },
-  { id: 2, short: "Tue", full: "Tuesday" },
-  { id: 3, short: "Wed", full: "Wednesday" },
-  { id: 4, short: "Thu", full: "Thursday" },
-  { id: 5, short: "Fri", full: "Friday" },
-  { id: 6, short: "Sat", full: "Saturday" },
-];
+// Days of the week (ids only; display strings are translated at render time)
+const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+const DAYS_OF_WEEK = [0, 1, 2, 3, 4, 5, 6];
 
-// Week of month options
-const WEEK_OPTIONS = [
-  { id: "first", label: "First" },
-  { id: "second", label: "Second" },
-  { id: "third", label: "Third" },
-  { id: "fourth", label: "Fourth" },
-  { id: "last", label: "Last" },
-];
+// Week of month option ids
+const WEEK_OPTIONS = ["first", "second", "third", "fourth", "last"];
 
 // Day of month options (1-28)
 const DAY_OF_MONTH_OPTIONS = Array.from({ length: 31 }, (_, i) => i + 1);
 
-// Lunar phase options
+// Lunar phase option ids
 const LUNAR_OPTIONS = [
-  { id: "full", label: "Full Moon", icon: "moon" },
-  { id: "new", label: "New Moon", icon: "moon" },
+  { id: "full", icon: "moon" },
+  { id: "new", icon: "moon" },
 ];
 
-// Recurrence type options
-const RECURRENCE_TYPES = [
-  { id: "none", label: "One-time", icon: "calendar" },
-  { id: "daily", label: "Daily", description: "Select specific days" },
-  { id: "weekly", label: "Weekly", description: "Every week on selected days" },
-  { id: "biweekly", label: "Biweekly", description: "Every 2 weeks" },
-  { id: "monthly", label: "Monthly", description: "Same day each month" },
-  { id: "lunar", label: "Lunar", description: "Follow moon phases" },
-];
+// Recurrence type option ids
+const RECURRENCE_TYPES = ["none", "daily", "weekly", "biweekly", "monthly", "lunar"];
 
-// Monthly mode options
-const MONTHLY_MODES = [
-  { id: "dayOfWeek", label: "Day of Week", description: "e.g., First Saturday" },
-  { id: "dayOfMonth", label: "Day of Month", description: "e.g., The 15th" },
-];
+// Monthly mode option ids
+const MONTHLY_MODES = ["dayOfWeek", "dayOfMonth"];
 
 export default function RecurrenceModal({
   visible,
@@ -66,7 +44,8 @@ export default function RecurrenceModal({
   startDate: initialStartDate,
 }) {
   const { colors, isDark } = useTheme();
-  
+  const { t } = useTranslation();
+
   // State
   const [recurrenceType, setRecurrenceType] = useState(initialConfig?.type || "none");
   const [selectedDays, setSelectedDays] = useState(initialConfig?.selectedDays || []);
@@ -264,32 +243,39 @@ export default function RecurrenceModal({
 
   // Get summary text
   const getSummaryText = () => {
-    if (recurrenceType === "none") return "One-time event";
-    
+    if (recurrenceType === "none") return t("recurrenceModal.summaryOneTime");
+
     if (recurrenceType === "lunar") {
-      return lunarPhase === "full" ? "Every Full Moon" : "Every New Moon";
+      return lunarPhase === "full"
+        ? t("recurrenceModal.summaryEveryFullMoon")
+        : t("recurrenceModal.summaryEveryNewMoon");
     }
 
     if (recurrenceType === "monthly" && monthlyMode === "dayOfMonth") {
-      return `${dayOfMonth}${getOrdinalSuffix(dayOfMonth)} of each month`;
+      return t("recurrenceModal.summaryDayOfMonth", {
+        day: dayOfMonth,
+        suffix: getOrdinalSuffix(dayOfMonth),
+      });
     }
 
-    if (selectedDays.length === 0) return "Select days";
-    const dayNames = selectedDays.map((d) => DAYS_OF_WEEK[d].short).join(", ");
+    if (selectedDays.length === 0) return t("recurrenceModal.summarySelectDays");
+    const dayNames = selectedDays.map((d) => t(`recurrenceModal.days.${DAY_KEYS[d]}.short`)).join(", ");
 
     switch (recurrenceType) {
       case "daily":
-        if (selectedDays.length === 7) return "Every day";
-        if (JSON.stringify([...selectedDays].sort()) === JSON.stringify([1,2,3,4,5])) return "Weekdays (Mon-Fri)";
-        if (JSON.stringify([...selectedDays].sort()) === JSON.stringify([0,6])) return "Weekends (Sat-Sun)";
-        return `Every ${dayNames}`;
+        if (selectedDays.length === 7) return t("recurrenceModal.summaryEveryDay");
+        if (JSON.stringify([...selectedDays].sort()) === JSON.stringify([1,2,3,4,5])) return t("recurrenceModal.summaryWeekdays");
+        if (JSON.stringify([...selectedDays].sort()) === JSON.stringify([0,6])) return t("recurrenceModal.summaryWeekends");
+        return t("recurrenceModal.summaryEveryDays", { days: dayNames });
       case "weekly":
-        return `Weekly on ${dayNames}`;
+        return t("recurrenceModal.summaryWeekly", { days: dayNames });
       case "biweekly":
-        return `Every 2 weeks on ${dayNames}`;
-      case "monthly":
-        const weekLabel = WEEK_OPTIONS.find((w) => w.id === weekOfMonth)?.label;
-        return `${weekLabel} ${DAYS_OF_WEEK[selectedDays[0]]?.full} of each month`;
+        return t("recurrenceModal.summaryBiweekly", { days: dayNames });
+      case "monthly": {
+        const weekLabel = t(`recurrenceModal.weekOptions.${weekOfMonth}`);
+        const dayFull = t(`recurrenceModal.days.${DAY_KEYS[selectedDays[0]]}.full`);
+        return t("recurrenceModal.summaryMonthly", { week: weekLabel, day: dayFull });
+      }
       default:
         return "";
     }
@@ -368,42 +354,42 @@ export default function RecurrenceModal({
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose}>
-              <Text style={[styles.headerButton, { color: colors.textSecondary }]}>Cancel</Text>
+              <Text style={[styles.headerButton, { color: colors.textSecondary }]}>{t("recurrenceModal.cancel")}</Text>
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Event Frequency</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{t("recurrenceModal.eventFrequency")}</Text>
             <TouchableOpacity onPress={handleSave}>
-              <Text style={[styles.headerButton, { color: colors.primary, fontWeight: "700" }]}>Done</Text>
+              <Text style={[styles.headerButton, { color: colors.primary, fontWeight: "700" }]}>{t("recurrenceModal.done")}</Text>
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
             {/* Recurrence Type Selection */}
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Frequency</Text>
-              {RECURRENCE_TYPES.map((type) => (
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t("recurrenceModal.frequency")}</Text>
+              {RECURRENCE_TYPES.map((typeId) => (
                 <TouchableOpacity
-                  key={type.id}
+                  key={typeId}
                   style={[
                     styles.typeOption,
                     {
-                      backgroundColor: recurrenceType === type.id ? `${colors.primary}22` : colors.surfaceGlass,
-                      borderColor: recurrenceType === type.id ? colors.primary : colors.border,
+                      backgroundColor: recurrenceType === typeId ? `${colors.primary}22` : colors.surfaceGlass,
+                      borderColor: recurrenceType === typeId ? colors.primary : colors.border,
                     },
                   ]}
                   onPress={() => {
-                    setRecurrenceType(type.id);
-                    if (type.id === "none") setSelectedDays([]);
+                    setRecurrenceType(typeId);
+                    if (typeId === "none") setSelectedDays([]);
                   }}
                 >
                   <View style={styles.typeOptionContent}>
-                    <Text style={[styles.typeLabel, { color: recurrenceType === type.id ? colors.primary : colors.text }]}>
-                      {type.label}
+                    <Text style={[styles.typeLabel, { color: recurrenceType === typeId ? colors.primary : colors.text }]}>
+                      {t(`recurrenceModal.types.${typeId}.label`)}
                     </Text>
-                    {type.description && (
-                      <Text style={[styles.typeDescription, { color: colors.textSecondary }]}>{type.description}</Text>
+                    {typeId !== "none" && (
+                      <Text style={[styles.typeDescription, { color: colors.textSecondary }]}>{t(`recurrenceModal.types.${typeId}.description`)}</Text>
                     )}
                   </View>
-                  {recurrenceType === type.id && (
+                  {recurrenceType === typeId && (
                     <Icon name="check" size={20} color={colors.primary} type="ui" />
                   )}
                 </TouchableOpacity>
@@ -413,7 +399,7 @@ export default function RecurrenceModal({
             {/* Start Date (always show for recurring) */}
             {recurrenceType !== "none" && (
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Start Date</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t("recurrenceModal.startDate")}</Text>
                 <TouchableOpacity
                   style={[styles.dateButton, { backgroundColor: colors.surfaceGlass, borderColor: colors.border }]}
                   onPress={openStartDatePicker}
@@ -427,7 +413,7 @@ export default function RecurrenceModal({
             {/* Lunar Phase Selection */}
             {recurrenceType === "lunar" && (
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Moon Phase</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t("recurrenceModal.moonPhase")}</Text>
                 <View style={styles.lunarGrid}>
                   {LUNAR_OPTIONS.map((option) => (
                     <TouchableOpacity
@@ -448,13 +434,15 @@ export default function RecurrenceModal({
                         style={styles.lunarIcon}
                       />
                       <Text style={[styles.lunarLabel, { color: lunarPhase === option.id ? "#FFFFFF" : colors.text }]}>
-                        {option.label}
+                        {t(`recurrenceModal.lunar.${option.id}`)}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
                 <Text style={[styles.helperText, { color: colors.textTertiary }]}>
-                  Events occur on each {lunarPhase === "full" ? "full moon" : "new moon"} (~every 29.5 days)
+                  {t("recurrenceModal.lunarHelper", {
+                    phase: lunarPhase === "full" ? t("recurrenceModal.lunarHelperFull") : t("recurrenceModal.lunarHelperNew"),
+                  })}
                 </Text>
               </View>
             )}
@@ -462,24 +450,24 @@ export default function RecurrenceModal({
             {/* Monthly Mode Selection */}
             {recurrenceType === "monthly" && (
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Repeat By</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t("recurrenceModal.repeatBy")}</Text>
                 <View style={styles.monthlyModeGrid}>
-                  {MONTHLY_MODES.map((mode) => (
+                  {MONTHLY_MODES.map((modeId) => (
                     <TouchableOpacity
-                      key={mode.id}
+                      key={modeId}
                       style={[
                         styles.monthlyModeChip,
                         {
-                          backgroundColor: monthlyMode === mode.id ? `${colors.primary}22` : colors.surfaceGlass,
-                          borderColor: monthlyMode === mode.id ? colors.primary : colors.border,
+                          backgroundColor: monthlyMode === modeId ? `${colors.primary}22` : colors.surfaceGlass,
+                          borderColor: monthlyMode === modeId ? colors.primary : colors.border,
                         },
                       ]}
-                      onPress={() => setMonthlyMode(mode.id)}
+                      onPress={() => setMonthlyMode(modeId)}
                     >
-                      <Text style={[styles.monthlyModeLabel, { color: monthlyMode === mode.id ? colors.primary : colors.text }]}>
-                        {mode.label}
+                      <Text style={[styles.monthlyModeLabel, { color: monthlyMode === modeId ? colors.primary : colors.text }]}>
+                        {t(`recurrenceModal.monthlyModes.${modeId}.label`)}
                       </Text>
-                      <Text style={[styles.monthlyModeDesc, { color: colors.textSecondary }]}>{mode.description}</Text>
+                      <Text style={[styles.monthlyModeDesc, { color: colors.textSecondary }]}>{t(`recurrenceModal.monthlyModes.${modeId}.description`)}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -489,7 +477,7 @@ export default function RecurrenceModal({
             {/* Day of Month Selection */}
             {recurrenceType === "monthly" && monthlyMode === "dayOfMonth" && (
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Day of Month</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t("recurrenceModal.dayOfMonth")}</Text>
                 <TouchableOpacity
                   style={[styles.dayOfMonthButton, { backgroundColor: colors.surfaceGlass, borderColor: colors.border }]}
                   onPress={() => setShowDayOfMonthPicker(true)}
@@ -500,7 +488,7 @@ export default function RecurrenceModal({
                   <Icon name="chevronRight" size={20} color={colors.textSecondary} type="ui" />
                 </TouchableOpacity>
                 <Text style={[styles.helperText, { color: colors.textTertiary }]}>
-                  Days 29-31 will use the last day of shorter months
+                  {t("recurrenceModal.dayOfMonthHelper")}
                 </Text>
               </View>
             )}
@@ -510,51 +498,51 @@ export default function RecurrenceModal({
               (recurrenceType === "monthly" && monthlyMode === "dayOfWeek")) && (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  {recurrenceType === "monthly" ? "Day of Week" : "Select Days"}
+                  {recurrenceType === "monthly" ? t("recurrenceModal.dayOfWeekTitle") : t("recurrenceModal.selectDays")}
                 </Text>
-                
+
                 {recurrenceType === "daily" && (
                   <View style={styles.quickSelectRow}>
                     <TouchableOpacity
                       style={[styles.quickSelectButton, { backgroundColor: `${colors.primary}22`, borderColor: colors.primary }]}
                       onPress={selectWeekdays}
                     >
-                      <Text style={[styles.quickSelectText, { color: colors.primary }]}>Weekdays</Text>
+                      <Text style={[styles.quickSelectText, { color: colors.primary }]}>{t("recurrenceModal.weekdays")}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.quickSelectButton, { backgroundColor: `${colors.secondary}22`, borderColor: colors.secondary }]}
                       onPress={selectWeekends}
                     >
-                      <Text style={[styles.quickSelectText, { color: colors.secondary }]}>Weekends</Text>
+                      <Text style={[styles.quickSelectText, { color: colors.secondary }]}>{t("recurrenceModal.weekends")}</Text>
                     </TouchableOpacity>
                   </View>
                 )}
 
                 <View style={styles.daysGrid}>
-                  {DAYS_OF_WEEK.map((day) => (
+                  {DAYS_OF_WEEK.map((dayId) => (
                     <TouchableOpacity
-                      key={day.id}
+                      key={dayId}
                       style={[
                         styles.dayChip,
                         {
-                          backgroundColor: selectedDays.includes(day.id) ? colors.primary : colors.surfaceGlass,
-                          borderColor: selectedDays.includes(day.id) ? colors.primary : colors.border,
+                          backgroundColor: selectedDays.includes(dayId) ? colors.primary : colors.surfaceGlass,
+                          borderColor: selectedDays.includes(dayId) ? colors.primary : colors.border,
                         },
                       ]}
-                      onPress={() => toggleDay(day.id)}
+                      onPress={() => toggleDay(dayId)}
                     >
-                      <Text style={[styles.dayChipText, { color: selectedDays.includes(day.id) ? "#FFFFFF" : colors.text }]}>
-                        {day.short}
+                      <Text style={[styles.dayChipText, { color: selectedDays.includes(dayId) ? "#FFFFFF" : colors.text }]}>
+                        {t(`recurrenceModal.days.${DAY_KEYS[dayId]}.short`)}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
 
                 <Text style={[styles.helperText, { color: colors.textTertiary }]}>
-                  {recurrenceType === "biweekly" && "Select one day for biweekly recurrence"}
-                  {recurrenceType === "monthly" && monthlyMode === "dayOfWeek" && "Select which day of the week"}
-                  {recurrenceType === "daily" && "Events will occur on selected days"}
-                  {recurrenceType === "weekly" && "Select one or more days per week"}
+                  {recurrenceType === "biweekly" && t("recurrenceModal.helperBiweekly")}
+                  {recurrenceType === "monthly" && monthlyMode === "dayOfWeek" && t("recurrenceModal.helperMonthlyDow")}
+                  {recurrenceType === "daily" && t("recurrenceModal.helperDaily")}
+                  {recurrenceType === "weekly" && t("recurrenceModal.helperWeekly")}
                 </Text>
               </View>
             )}
@@ -562,22 +550,22 @@ export default function RecurrenceModal({
             {/* Week of Month (for monthly dayOfWeek) */}
             {recurrenceType === "monthly" && monthlyMode === "dayOfWeek" && (
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Week of Month</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t("recurrenceModal.weekOfMonth")}</Text>
                 <View style={styles.weekOptionsGrid}>
-                  {WEEK_OPTIONS.map((week) => (
+                  {WEEK_OPTIONS.map((weekId) => (
                     <TouchableOpacity
-                      key={week.id}
+                      key={weekId}
                       style={[
                         styles.weekChip,
                         {
-                          backgroundColor: weekOfMonth === week.id ? colors.primary : colors.surfaceGlass,
-                          borderColor: weekOfMonth === week.id ? colors.primary : colors.border,
+                          backgroundColor: weekOfMonth === weekId ? colors.primary : colors.surfaceGlass,
+                          borderColor: weekOfMonth === weekId ? colors.primary : colors.border,
                         },
                       ]}
-                      onPress={() => setWeekOfMonth(week.id)}
+                      onPress={() => setWeekOfMonth(weekId)}
                     >
-                      <Text style={[styles.weekChipText, { color: weekOfMonth === week.id ? "#FFFFFF" : colors.text }]}>
-                        {week.label}
+                      <Text style={[styles.weekChipText, { color: weekOfMonth === weekId ? "#FFFFFF" : colors.text }]}>
+                        {t(`recurrenceModal.weekOptions.${weekId}`)}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -588,7 +576,7 @@ export default function RecurrenceModal({
             {/* End Date */}
             {recurrenceType !== "none" && (
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Repeat Until</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t("recurrenceModal.repeatUntil")}</Text>
                 <TouchableOpacity
                   style={[styles.dateButton, { backgroundColor: colors.surfaceGlass, borderColor: colors.border }]}
                   onPress={openEndDatePicker}
@@ -602,15 +590,17 @@ export default function RecurrenceModal({
             {/* Summary with Date List */}
             {recurrenceType !== "none" && previewDates.length > 0 && (
               <View style={[styles.summaryCard, { backgroundColor: `${colors.primary}11`, borderColor: `${colors.primary}33` }]}>
-                <Text style={[styles.summaryTitle, { color: colors.primary }]}>Summary</Text>
+                <Text style={[styles.summaryTitle, { color: colors.primary }]}>{t("recurrenceModal.summary")}</Text>
                 <Text style={[styles.summaryText, { color: colors.text }]}>{getSummaryText()}</Text>
                 <Text style={[styles.summaryCount, { color: colors.textSecondary, marginBottom: 12 }]}>
-                  {previewDates.length === 52 ? "52+ events (max)" : `${previewDates.length} event${previewDates.length !== 1 ? "s" : ""}`} will be created
+                  {previewDates.length === 52
+                    ? t("recurrenceModal.eventsMax")
+                    : t("recurrenceModal.eventCount", { count: previewDates.length })}
                 </Text>
-                
+
                 {/* Date List */}
                 <View style={[styles.dateListContainer, { backgroundColor: `${colors.background}88` }]}>
-                  <Text style={[styles.dateListTitle, { color: colors.textSecondary }]}>Event Dates:</Text>
+                  <Text style={[styles.dateListTitle, { color: colors.textSecondary }]}>{t("recurrenceModal.eventDates")}</Text>
                   <ScrollView style={styles.dateList} nestedScrollEnabled showsVerticalScrollIndicator>
                     {previewDates.slice(0, 20).map((date, index) => (
                       <View key={index} style={styles.dateListItem}>
@@ -620,7 +610,7 @@ export default function RecurrenceModal({
                     ))}
                     {previewDates.length > 20 && (
                       <Text style={[styles.dateListMore, { color: colors.textTertiary }]}>
-                        ... and {previewDates.length - 20} more
+                        {t("recurrenceModal.andMore", { count: previewDates.length - 20 })}
                       </Text>
                     )}
                   </ScrollView>
@@ -637,11 +627,11 @@ export default function RecurrenceModal({
               <View style={[styles.pickerModal, { backgroundColor: isDark ? "#1a1a2e" : "#ffffff" }]}>
                 <View style={styles.pickerHeader}>
                   <TouchableOpacity onPress={() => setShowDayOfMonthPicker(false)}>
-                    <Text style={[styles.headerButton, { color: colors.textSecondary }]}>Cancel</Text>
+                    <Text style={[styles.headerButton, { color: colors.textSecondary }]}>{t("recurrenceModal.cancel")}</Text>
                   </TouchableOpacity>
-                  <Text style={[styles.headerTitle, { color: colors.text }]}>Select Day</Text>
+                  <Text style={[styles.headerTitle, { color: colors.text }]}>{t("recurrenceModal.selectDay")}</Text>
                   <TouchableOpacity onPress={() => setShowDayOfMonthPicker(false)}>
-                    <Text style={[styles.headerButton, { color: colors.primary, fontWeight: "700" }]}>Done</Text>
+                    <Text style={[styles.headerButton, { color: colors.primary, fontWeight: "700" }]}>{t("recurrenceModal.done")}</Text>
                   </TouchableOpacity>
                 </View>
                 <ScrollView style={styles.dayOfMonthGrid} contentContainerStyle={styles.dayOfMonthGridContent}>
@@ -678,13 +668,13 @@ export default function RecurrenceModal({
                       setShowEndDatePicker(false);
                       setActivePicker(null);
                     }}>
-                      <Text style={[styles.headerButton, { color: colors.textSecondary }]}>Cancel</Text>
+                      <Text style={[styles.headerButton, { color: colors.textSecondary }]}>{t("recurrenceModal.cancel")}</Text>
                     </TouchableOpacity>
                     <Text style={[styles.headerTitle, { color: colors.text }]}>
-                      {activePicker === "start" ? "Start Date" : "End Date"}
+                      {activePicker === "start" ? t("recurrenceModal.startDate") : t("recurrenceModal.endDate")}
                     </Text>
                     <TouchableOpacity onPress={confirmDateSelection}>
-                      <Text style={[styles.headerButton, { color: colors.primary, fontWeight: "700" }]}>Done</Text>
+                      <Text style={[styles.headerButton, { color: colors.primary, fontWeight: "700" }]}>{t("recurrenceModal.done")}</Text>
                     </TouchableOpacity>
                   </View>
                   <DateTimePicker

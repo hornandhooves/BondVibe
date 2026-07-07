@@ -8,6 +8,7 @@ import {
   Animated,
 } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon";
 
 export default function EventCreatedModal({
@@ -17,6 +18,7 @@ export default function EventCreatedModal({
   eventsCount = 1,
 }) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
 
   const isRecurring = eventsCount > 1;
 
@@ -53,14 +55,14 @@ export default function EventCreatedModal({
 
           {/* Title */}
           <Text style={[styles.title, { color: colors.text }]}>
-            {isRecurring ? "Events Created!" : "Event Created!"}
+            {isRecurring ? t("eventCreatedModal.eventsCreatedTitle") : t("eventCreatedModal.eventCreatedTitle")}
           </Text>
 
           {/* Message */}
           <Text style={[styles.message, { color: colors.textSecondary }]}>
             {isRecurring
-              ? `Your recurring event "${eventTitle}" has been created successfully!`
-              : `Your event "${eventTitle}" is now live!`}
+              ? t("eventCreatedModal.recurringMessage", { eventTitle })
+              : t("eventCreatedModal.singleMessage", { eventTitle })}
           </Text>
 
           {/* Events Count Badge (for recurring) */}
@@ -77,7 +79,7 @@ export default function EventCreatedModal({
               <Text
                 style={[styles.countLabel, { color: colors.textSecondary }]}
               >
-                events scheduled
+                {t("eventCreatedModal.eventsScheduled")}
               </Text>
             </View>
           )}
@@ -85,8 +87,8 @@ export default function EventCreatedModal({
           {/* Info Text */}
           <Text style={[styles.infoText, { color: colors.textTertiary }]}>
             {isRecurring
-              ? "Each event is independent - attendees join individually per date."
-              : "People can now discover and join your event."}
+              ? t("eventCreatedModal.recurringInfo")
+              : t("eventCreatedModal.singleInfo")}
           </Text>
 
           {/* Action Button */}
@@ -95,7 +97,7 @@ export default function EventCreatedModal({
             onPress={onClose}
           >
             <Text style={styles.buttonText}>
-              {isRecurring ? "View My Events" : "Got it!"}
+              {isRecurring ? t("eventCreatedModal.viewMyEvents") : t("eventCreatedModal.gotIt")}
             </Text>
           </TouchableOpacity>
         </View>

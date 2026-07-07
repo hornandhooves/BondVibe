@@ -10,6 +10,7 @@ import {
   Keyboard,
 } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon";
 
 export default function CancelEventModal({
@@ -19,13 +20,14 @@ export default function CancelEventModal({
   eventTitle,
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleConfirm = async () => {
     Keyboard.dismiss(); // Dismiss keyboard before confirming
     setLoading(true);
-    await onConfirm(reason.trim() || "No reason provided");
+    await onConfirm(reason.trim() || t("cancelEventModal.noReasonProvided"));
     setLoading(false);
     setReason("");
   };
@@ -61,19 +63,18 @@ export default function CancelEventModal({
 
               {/* Title */}
               <Text style={[styles.title, { color: colors.text }]}>
-                Cancel Event?
+                {t("cancelEventModal.title")}
               </Text>
 
               {/* Message */}
               <Text style={[styles.message, { color: colors.textSecondary }]}>
-                Are you sure you want to cancel "{eventTitle}"? This action
-                cannot be undone.
+                {t("cancelEventModal.message", { eventTitle })}
               </Text>
 
               {/* Reason Input */}
               <View style={styles.inputSection}>
                 <Text style={[styles.inputLabel, { color: colors.text }]}>
-                  Reason (optional)
+                  {t("cancelEventModal.reasonLabel")}
                 </Text>
                 <View
                   style={[
@@ -86,7 +87,7 @@ export default function CancelEventModal({
                 >
                   <TextInput
                     style={[styles.input, { color: colors.text }]}
-                    placeholder="Let participants know why..."
+                    placeholder={t("cancelEventModal.reasonPlaceholder")}
                     placeholderTextColor={colors.textTertiary}
                     value={reason}
                     onChangeText={setReason}
@@ -117,7 +118,7 @@ export default function CancelEventModal({
                     ]}
                   >
                     <Text style={[styles.buttonText, { color: colors.text }]}>
-                      Keep Event
+                      {t("cancelEventModal.keepEvent")}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -137,7 +138,7 @@ export default function CancelEventModal({
                     ]}
                   >
                     <Text style={[styles.buttonText, { color: colors.error }]}>
-                      {loading ? "Cancelling..." : "Cancel Event"}
+                      {loading ? t("cancelEventModal.cancelling") : t("cancelEventModal.cancelEvent")}
                     </Text>
                   </View>
                 </TouchableOpacity>

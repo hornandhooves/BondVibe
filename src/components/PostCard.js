@@ -12,6 +12,7 @@ import {
   Alert,
 } from "react-native";
 import Icon from "./Icon";
+import { useTranslation } from "react-i18next";
 import { AvatarDisplay } from "./AvatarPicker";
 import { useTheme } from "../contexts/ThemeContext";
 import { auth } from "../services/firebase";
@@ -33,6 +34,7 @@ function timeAgo(ts) {
 
 export default function PostCard({ post, navigation, onChanged }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const me = auth.currentUser?.uid;
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likeCount || 0);
@@ -57,7 +59,7 @@ export default function PostCard({ post, navigation, onChanged }) {
     const opts = [];
     if (post.authorId === me) {
       opts.push({
-        text: "Delete post",
+        text: t("postCard.deletePost"),
         style: "destructive",
         onPress: async () => {
           await deletePost(post.id);
@@ -66,7 +68,7 @@ export default function PostCard({ post, navigation, onChanged }) {
       });
     } else {
       opts.push({
-        text: "Block user",
+        text: t("postCard.blockUser"),
         style: "destructive",
         onPress: async () => {
           await blockUser(post.authorId);
@@ -74,13 +76,13 @@ export default function PostCard({ post, navigation, onChanged }) {
         },
       });
       opts.push({
-        text: "Report",
+        text: t("postCard.report"),
         onPress: () =>
           navigation?.navigate("Report", { targetUserId: post.authorId }),
       });
     }
-    opts.push({ text: "Cancel", style: "cancel" });
-    Alert.alert(post.authorName || "Post", null, opts);
+    opts.push({ text: t("postCard.cancel"), style: "cancel" });
+    Alert.alert(post.authorName || t("postCard.postFallback"), null, opts);
   };
 
   const styles = createStyles(colors);
@@ -116,11 +118,12 @@ export default function PostCard({ post, navigation, onChanged }) {
         <View style={styles.recapRow}>
           <Icon name="ai" size={12} color={colors.primary} />
           <Text style={[styles.recapEyebrow, { color: colors.primary }]}>
-            EVENT RECAP{post.eventTitle ? ` · ${post.eventTitle.toUpperCase()}` : ""}
+            {t("postCard.eventRecap")}
+            {post.eventTitle ? ` · ${post.eventTitle.toUpperCase()}` : ""}
           </Text>
           {(post.attendeeIds || []).includes(me) && (
             <View style={[styles.thereBadge, { backgroundColor: "#E1F5EC" }]}>
-              <Text style={styles.thereText}>You were there</Text>
+              <Text style={styles.thereText}>{t("postCard.youWereThere")}</Text>
             </View>
           )}
         </View>

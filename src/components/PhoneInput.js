@@ -13,16 +13,19 @@ import {
   FlatList,
   StyleSheet,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import { COUNTRIES, flagEmoji, parsePhone } from "../utils/countries";
 
 export default function PhoneInput({
   value,
   onChangeText,
-  placeholder = "55 1234 5678",
+  placeholder,
   style,
 }) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t("phoneInput.placeholder");
   const initial = parsePhone(value);
   const [country, setCountry] = useState(initial.country);
   const [number, setNumber] = useState(initial.number);
@@ -33,9 +36,9 @@ export default function PhoneInput({
     const digits = n.replace(/[^0-9]/g, "");
     onChangeText && onChangeText(digits ? `${c.dial}${digits}` : "");
   };
-  const onNumberChange = (t) => {
-    setNumber(t);
-    emit(country, t);
+  const onNumberChange = (txt) => {
+    setNumber(txt);
+    emit(country, txt);
   };
   const selectCountry = (c) => {
     setCountry(c);
@@ -71,7 +74,7 @@ export default function PhoneInput({
         style={styles.input}
         value={number}
         onChangeText={onNumberChange}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         placeholderTextColor={colors.textTertiary}
         keyboardType="phone-pad"
         maxLength={15}
@@ -86,16 +89,16 @@ export default function PhoneInput({
         <View style={styles.backdrop}>
           <View style={styles.sheet}>
             <View style={styles.sheetHeader}>
-              <Text style={[styles.sheetTitle, { color: colors.text }]}>Country</Text>
+              <Text style={[styles.sheetTitle, { color: colors.text }]}>{t("phoneInput.country")}</Text>
               <TouchableOpacity onPress={() => setPickerOpen(false)}>
-                <Text style={[styles.done, { color: colors.primary }]}>Done</Text>
+                <Text style={[styles.done, { color: colors.primary }]}>{t("phoneInput.done")}</Text>
               </TouchableOpacity>
             </View>
             <TextInput
               style={styles.search}
               value={search}
               onChangeText={setSearch}
-              placeholder="Search country"
+              placeholder={t("phoneInput.searchCountry")}
               placeholderTextColor={colors.textTertiary}
               autoCorrect={false}
               autoCapitalize="none"

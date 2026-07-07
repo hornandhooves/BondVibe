@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useTheme } from "../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 
 const fmt = (d) =>
   d
@@ -26,9 +27,11 @@ export default function DateField({
   onChange, // (Date) => void
   onClear, // optional () => void — shows a clear affordance when provided
   minimumDate,
-  placeholder = "Any",
+  placeholder,
 }) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder === undefined ? t("dateField.any") : placeholder;
   const [show, setShow] = useState(false);
   const [temp, setTemp] = useState(value || new Date());
 
@@ -59,12 +62,12 @@ export default function DateField({
           activeOpacity={0.8}
         >
           <Text style={[styles.value, { color: value ? colors.text : colors.textTertiary }]}>
-            {fmt(value) || placeholder}
+            {fmt(value) || resolvedPlaceholder}
           </Text>
         </TouchableOpacity>
         {onClear && value && (
           <TouchableOpacity onPress={onClear} style={styles.clear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={[styles.clearTxt, { color: colors.textTertiary }]}>Clear</Text>
+            <Text style={[styles.clearTxt, { color: colors.textTertiary }]}>{t("dateField.clear")}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -85,16 +88,16 @@ export default function DateField({
             <View style={[styles.sheet, { backgroundColor: isDark ? "#1a1a2e" : "#ffffff" }]}>
               <View style={styles.sheetHeader}>
                 <TouchableOpacity onPress={() => setShow(false)}>
-                  <Text style={[styles.cancel, { color: colors.textSecondary }]}>Cancel</Text>
+                  <Text style={[styles.cancel, { color: colors.textSecondary }]}>{t("dateField.cancel")}</Text>
                 </TouchableOpacity>
-                <Text style={[styles.title, { color: colors.text }]}>{label || "Select date"}</Text>
+                <Text style={[styles.title, { color: colors.text }]}>{label || t("dateField.selectDate")}</Text>
                 <TouchableOpacity
                   onPress={() => {
                     onChange(temp);
                     setShow(false);
                   }}
                 >
-                  <Text style={[styles.done, { color: colors.primary }]}>Done</Text>
+                  <Text style={[styles.done, { color: colors.primary }]}>{t("dateField.done")}</Text>
                 </TouchableOpacity>
               </View>
               <DateTimePicker

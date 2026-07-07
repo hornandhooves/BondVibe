@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import Icon from "./Icon";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import { getPendingRatings } from "../services/ratingService";
 
 export default function PendingRatingsCard({ navigation, onRatePress }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [pendingEvents, setPendingEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -75,14 +77,15 @@ export default function PendingRatingsCard({ navigation, onRatePress }) {
 
           <View style={styles.content}>
             <Text style={[styles.title, { color: "#FFD700" }]}>
-              Rate your experience
+              {t("pendingRatingsCard.title")}
             </Text>
             <Text
               style={[styles.subtitle, { color: colors.textSecondary }]}
               numberOfLines={1}
             >
               {firstEvent.title}
-              {remainingCount > 0 && ` +${remainingCount} more`}
+              {remainingCount > 0 &&
+                ` ${t("pendingRatingsCard.more", { count: remainingCount })}`}
             </Text>
           </View>
 

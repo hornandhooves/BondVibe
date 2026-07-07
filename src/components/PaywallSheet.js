@@ -6,6 +6,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon";
 import ProBadge from "./ProBadge";
 import { useTheme } from "../contexts/ThemeContext";
@@ -23,6 +24,7 @@ export default function PaywallSheet({
   onClose,
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const productName = variant === "plus" ? "Kinlo Plus" : "Kinlo Pro";
 
   return (
@@ -63,13 +65,13 @@ export default function PaywallSheet({
                 style={[styles.cta, ELEVATION.floatingBrand]}
               >
                 <Text style={[TYPE.label, styles.ctaText]}>
-                  {ctaLabel || `Continue with ${productName}`}
+                  {ctaLabel || t("paywallSheet.continueWith", { productName })}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={onClose} style={styles.later}>
-              <Text style={[TYPE.label, { color: colors.textTertiary }]}>Maybe later</Text>
+              <Text style={[TYPE.label, { color: colors.textTertiary }]}>{t("paywallSheet.maybeLater")}</Text>
             </TouchableOpacity>
           </ScrollView>
         </View>

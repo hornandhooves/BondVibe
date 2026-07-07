@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import { getEventRatings } from "../services/ratingService";
 import { AvatarDisplay } from "./AvatarPicker";
@@ -21,6 +22,7 @@ const normalizeAvatar = (a) => {
 
 export default function EventRatings({ eventId, isHost }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [ratings, setRatings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
@@ -95,7 +97,7 @@ export default function EventRatings({ eventId, isHost }) {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Ratings & Feedback
+              {t("eventRatings.title")}
             </Text>
             {!loading && ratings.length > 0 && (
               <View style={styles.summaryRow}>
@@ -112,8 +114,7 @@ export default function EventRatings({ eventId, isHost }) {
                 <Text
                   style={[styles.countText, { color: colors.textSecondary }]}
                 >
-                  ({ratings.length}{" "}
-                  {ratings.length === 1 ? "review" : "reviews"})
+                  ({t("eventRatings.reviewCount", { count: ratings.length })})
                 </Text>
               </View>
             )}
@@ -149,7 +150,7 @@ export default function EventRatings({ eventId, isHost }) {
                     />
                     <View>
                       <Text style={[styles.userName, { color: colors.text }]}>
-                        {ratingItem.userName || "Anonymous"}
+                        {ratingItem.userName || t("eventRatings.anonymous")}
                       </Text>
                       <Text
                         style={[
@@ -184,8 +185,8 @@ export default function EventRatings({ eventId, isHost }) {
               >
                 <Text style={[styles.showMoreText, { color: colors.primary }]}>
                   {expanded
-                    ? "Show less"
-                    : `Show all ${ratings.length} reviews`}
+                    ? t("eventRatings.showLess")
+                    : t("eventRatings.showAll", { count: ratings.length })}
                 </Text>
                 {expanded ? (
                   <Icon name="up" size={18} color={colors.primary} />
@@ -212,7 +213,7 @@ export default function EventRatings({ eventId, isHost }) {
               <Icon name="star" size={32} color={colors.primary} />
             </View>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              No ratings yet
+              {t("eventRatings.noRatings")}
             </Text>
           </View>
         )}

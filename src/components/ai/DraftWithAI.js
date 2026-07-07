@@ -10,11 +10,14 @@ import { LinearGradient } from "expo-linear-gradient";
 import Icon from "../Icon";
 import AICard, { AIText } from "../AICard";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 import { callClaude } from "../../services/claudeService";
 import { TYPE, SPACING, RADII, BRAND, ELEVATION } from "../../constants/theme-tokens";
 
-export default function DraftWithAI({ onApply, navigation, placeholder = "Just type the idea…" }) {
+export default function DraftWithAI({ onApply, navigation, placeholder }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const placeholderText = placeholder || t("draftWithAI.placeholder");
   const [idea, setIdea] = useState("");
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState(null);
@@ -39,13 +42,13 @@ export default function DraftWithAI({ onApply, navigation, placeholder = "Just t
 
   if (needsPro) {
     return (
-      <AICard eyebrow="Host Copilot" style={styles.block}>
-        <AIText>You've used your free AI draft. Kinlo Pro drafts every event for you.</AIText>
+      <AICard eyebrow={t("draftWithAI.eyebrow")} style={styles.block}>
+        <AIText>{t("draftWithAI.usedFreeDraft")}</AIText>
         <TouchableOpacity
           style={[styles.cta, { backgroundColor: colors.primary }]}
           onPress={() => navigation.navigate("ProUpsell", { from: "host_copilot" })}
         >
-          <Text style={[TYPE.label, styles.ctaText]}>See Kinlo Pro</Text>
+          <Text style={[TYPE.label, styles.ctaText]}>{t("draftWithAI.seeKinloPro")}</Text>
         </TouchableOpacity>
       </AICard>
     );
@@ -54,12 +57,12 @@ export default function DraftWithAI({ onApply, navigation, placeholder = "Just t
   return (
     <View style={styles.block}>
       {!draft && (
-        <AICard eyebrow="Host Copilot">
-          <AIText>Describe the event in one line — I'll draft the rest from your history.</AIText>
+        <AICard eyebrow={t("draftWithAI.eyebrow")}>
+          <AIText>{t("draftWithAI.describeIdea")}</AIText>
           <TextInput
             testID="copilot-idea"
             style={[TYPE.body, styles.input]}
-            placeholder={placeholder}
+            placeholder={placeholderText}
             placeholderTextColor="rgba(230,221,242,0.5)"
             value={idea}
             onChangeText={setIdea}
@@ -75,12 +78,12 @@ export default function DraftWithAI({ onApply, navigation, placeholder = "Just t
               {busy ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={[TYPE.label, styles.ctaText]}>Draft with AI</Text>
+                <Text style={[TYPE.label, styles.ctaText]}>{t("draftWithAI.draftWithAI")}</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>
           {failed && (
-            <AIText style={{ opacity: 0.7 }}>AI drafting is taking a break — try again in a moment.</AIText>
+            <AIText style={{ opacity: 0.7 }}>{t("draftWithAI.draftingFailed")}</AIText>
           )}
         </AICard>
       )}
@@ -89,7 +92,7 @@ export default function DraftWithAI({ onApply, navigation, placeholder = "Just t
         <View style={[styles.draftCard, ELEVATION.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.eyebrowRow}>
             <Icon name="ai" size={14} color={colors.primary} />
-            <Text style={[TYPE.eyebrow, { color: colors.primary }]}>Claude drafted this</Text>
+            <Text style={[TYPE.eyebrow, { color: colors.primary }]}>{t("draftWithAI.claudeDraftedThis")}</Text>
           </View>
           <Text style={[TYPE.title, { color: colors.text }]}>{draft.title}</Text>
           <Text
@@ -104,7 +107,7 @@ export default function DraftWithAI({ onApply, navigation, placeholder = "Just t
               activeOpacity={0.7}
             >
               <Text style={[TYPE.label, { color: colors.primary }]}>
-                {expanded ? "Show less" : "Show more"}
+                {expanded ? t("draftWithAI.showLess") : t("draftWithAI.showMore")}
               </Text>
             </TouchableOpacity>
           )}
@@ -113,7 +116,7 @@ export default function DraftWithAI({ onApply, navigation, placeholder = "Just t
             <View style={styles.tiles}>
               {draft.priceSuggestion && (
                 <View style={[styles.tile, { backgroundColor: colors.sunken }]}>
-                  <Text style={[TYPE.caption, { color: colors.textTertiary }]}>Suggested price</Text>
+                  <Text style={[TYPE.caption, { color: colors.textTertiary }]}>{t("draftWithAI.suggestedPrice")}</Text>
                   <Text style={[TYPE.title, { color: colors.text }]}>
                     ${draft.priceSuggestion.amount}
                   </Text>
@@ -124,13 +127,13 @@ export default function DraftWithAI({ onApply, navigation, placeholder = "Just t
               )}
               {draft.turnoutPrediction && (
                 <View style={[styles.tile, { backgroundColor: colors.sunken }]}>
-                  <Text style={[TYPE.caption, { color: colors.textTertiary }]}>Predicted turnout</Text>
+                  <Text style={[TYPE.caption, { color: colors.textTertiary }]}>{t("draftWithAI.predictedTurnout")}</Text>
                   <Text style={[TYPE.title, { color: colors.text }]}>
                     ~{draft.turnoutPrediction.expected}
                     {draft.turnoutPrediction.capacity ? `/${draft.turnoutPrediction.capacity}` : ""}
                   </Text>
                   <Text style={[TYPE.caption, { color: colors.textSecondary }]} numberOfLines={2}>
-                    {draft.turnoutPrediction.basis} (estimate)
+                    {t("draftWithAI.basisEstimate", { basis: draft.turnoutPrediction.basis })}
                   </Text>
                 </View>
               )}
@@ -143,10 +146,10 @@ export default function DraftWithAI({ onApply, navigation, placeholder = "Just t
               onPress={() => onApply(draft)}
               testID="copilot-use-draft"
             >
-              <Text style={[TYPE.label, styles.ctaText]}>Use draft</Text>
+              <Text style={[TYPE.label, styles.ctaText]}>{t("draftWithAI.useDraft")}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.regen} onPress={() => setDraft(null)}>
-              <Text style={[TYPE.label, { color: colors.textTertiary }]}>Regenerate</Text>
+              <Text style={[TYPE.label, { color: colors.textTertiary }]}>{t("draftWithAI.regenerate")}</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -10,15 +10,17 @@ import {
   Platform,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 export default function AdminMessageModal({ visible, onClose, onSubmit, title, userName, type }) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     if (!message.trim()) {
-      alert('Please provide a message for the applicant.');
+      alert(t('adminMessageModal.provideMessage'));
       return;
     }
 
@@ -57,15 +59,15 @@ export default function AdminMessageModal({ visible, onClose, onSubmit, title, u
           <View style={styles.header}>
             <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              for {userName}
+              {t('adminMessageModal.forUser', { userName })}
             </Text>
           </View>
 
           <View style={styles.content}>
             <Text style={[styles.label, { color: colors.text }]}>
-              {type === 'approve' 
-                ? 'Why are you approving this request?' 
-                : 'Why are you rejecting this request?'}
+              {type === 'approve'
+                ? t('adminMessageModal.whyApproving')
+                : t('adminMessageModal.whyRejecting')}
             </Text>
             <View style={[styles.inputWrapper, {
               backgroundColor: colors.surfaceGlass,
@@ -73,7 +75,7 @@ export default function AdminMessageModal({ visible, onClose, onSubmit, title, u
             }]}>
               <TextInput
                 style={[styles.input, { color: colors.text }]}
-                placeholder="Write your message..."
+                placeholder={t('adminMessageModal.writeMessagePlaceholder')}
                 placeholderTextColor={colors.textTertiary}
                 value={message}
                 onChangeText={setMessage}
@@ -98,7 +100,7 @@ export default function AdminMessageModal({ visible, onClose, onSubmit, title, u
                 backgroundColor: colors.surfaceGlass,
                 borderColor: colors.border
               }]}>
-                <Text style={[styles.cancelText, { color: colors.text }]}>Cancel</Text>
+                <Text style={[styles.cancelText, { color: colors.text }]}>{t('adminMessageModal.cancel')}</Text>
               </View>
             </TouchableOpacity>
 
@@ -123,7 +125,7 @@ export default function AdminMessageModal({ visible, onClose, onSubmit, title, u
                   styles.submitText,
                   { color: type === 'approve' ? '#34C759' : '#FF453A' }
                 ]}>
-                  {submitting ? 'Processing...' : type === 'approve' ? 'Approve' : 'Reject'}
+                  {submitting ? t('adminMessageModal.processing') : type === 'approve' ? t('adminMessageModal.approve') : t('adminMessageModal.reject')}
                 </Text>
               </View>
             </TouchableOpacity>

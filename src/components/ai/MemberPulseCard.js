@@ -10,12 +10,14 @@ import AILoadingCard from "../AILoadingCard";
 import LockedFeature from "../LockedFeature";
 import StatCard from "../StatCard";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 import useClaude from "../../hooks/useClaude";
 import useAiOptIn from "../../hooks/useAiOptIn";
 import { TYPE, SPACING, RADII } from "../../constants/theme-tokens";
 
 export default function MemberPulseCard({ navigation }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { aiOptIn } = useAiOptIn();
   const { data, loading, fallback, error } = useClaude(
     "member_intel",
@@ -24,13 +26,13 @@ export default function MemberPulseCard({ navigation }) {
   );
 
   if (!aiOptIn) return null;
-  if (loading) return <AILoadingCard eyebrow="AI community pulse" style={styles.block} />;
+  if (loading) return <AILoadingCard eyebrow={t("memberPulseCard.aiCommunityPulse")} style={styles.block} />;
   if (error === "needs_pro") {
     return (
       <LockedFeature
         tier="pro"
-        title="Member Intelligence"
-        valueLine="AI reads your community's pulse and drafts win-backs for cooling-off members."
+        title={t("memberPulseCard.memberIntelligence")}
+        valueLine={t("memberPulseCard.valueLine")}
         onUnlock={() => navigation.navigate("ProUpsell", { from: "member_intel" })}
         style={styles.block}
       />
@@ -40,29 +42,30 @@ export default function MemberPulseCard({ navigation }) {
 
   return (
     <View style={styles.block}>
-      <AICard eyebrow="AI community pulse">
+      <AICard eyebrow={t("memberPulseCard.aiCommunityPulse")}>
         <AIText>{data.pulse}</AIText>
       </AICard>
       <View style={styles.tiles}>
         <StatCard
-          title="Sentiment"
+          title={t("memberPulseCard.sentiment")}
           value={data.metrics.sentiment != null ? `${data.metrics.sentiment}%` : "–"}
         />
-        <StatCard title="Cooling off" value={String(data.metrics.coolingOff)} />
-        <StatCard title="Regulars" value={String(data.metrics.regulars)} />
+        <StatCard title={t("memberPulseCard.coolingOff")} value={String(data.metrics.coolingOff)} />
+        <StatCard title={t("memberPulseCard.regulars")} value={String(data.metrics.regulars)} />
       </View>
       {data.winBack?.message ? (
         <View style={[styles.winBack, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[TYPE.eyebrow, { color: colors.textTertiary }]}>AI-DRAFTED WIN-BACK</Text>
+          <Text style={[TYPE.eyebrow, { color: colors.textTertiary }]}>{t("memberPulseCard.aiDraftedWinBack")}</Text>
           <Text selectable style={[TYPE.body, { color: colors.text }]}>{data.winBack.message}</Text>
           <Text style={[TYPE.caption, { color: colors.textTertiary }]}>
-            For {data.winBack.audienceCount ?? data.metrics.coolingOff} cooling-off members ·
-            long-press to copy · send it from Groups
+            {t("memberPulseCard.forCoolingOffMembers", {
+              count: data.winBack.audienceCount ?? data.metrics.coolingOff,
+            })}
           </Text>
         </View>
       ) : null}
       <Text style={[TYPE.caption, styles.privacy, { color: colors.textTertiary }]}>
-        Aggregated & privacy-safe · AI never sees individual DMs
+        {t("memberPulseCard.privacyNote")}
       </Text>
     </View>
   );

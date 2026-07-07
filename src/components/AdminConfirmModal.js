@@ -10,6 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon";
 
 /**
@@ -30,17 +31,18 @@ export default function AdminConfirmModal({
   userRole,
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [reason, setReason] = useState("");
   const [confirmed, setConfirmed] = useState(false);
 
   const handleSubmit = () => {
     if (!confirmed) {
-      alert("Please check the confirmation box");
+      alert(t("adminConfirmModal.checkConfirmation"));
       return;
     }
 
     if (actionType === "suspend" && !reason.trim()) {
-      alert("Please provide a reason for suspension");
+      alert(t("adminConfirmModal.provideSuspendReason"));
       return;
     }
 
@@ -59,53 +61,53 @@ export default function AdminConfirmModal({
     switch (actionType) {
       case "remove_host":
         return {
-          title: "Remove Host Role",
-          description: `Remove host privileges from ${userName}?`,
-          warning: "This will CANCEL all their active events!",
-          confirmText: "I understand this will cancel all their events",
-          buttonText: "Remove Host Role",
+          title: t("adminConfirmModal.removeHost.title"),
+          description: t("adminConfirmModal.removeHost.description", { userName }),
+          warning: t("adminConfirmModal.removeHost.warning"),
+          confirmText: t("adminConfirmModal.removeHost.confirmText"),
+          buttonText: t("adminConfirmModal.removeHost.buttonText"),
           buttonColor: "#FF453A",
           requiresReason: true,
-          reasonPlaceholder: "Reason for removing host role (optional)...",
+          reasonPlaceholder: t("adminConfirmModal.removeHost.reasonPlaceholder"),
         };
       case "remove_admin":
         return {
-          title: "Remove Admin Role",
-          description: `Demote ${userName} to regular user?`,
-          warning: "They will lose all admin privileges.",
-          confirmText: "I understand they will lose admin access",
-          buttonText: "Remove Admin Role",
+          title: t("adminConfirmModal.removeAdmin.title"),
+          description: t("adminConfirmModal.removeAdmin.description", { userName }),
+          warning: t("adminConfirmModal.removeAdmin.warning"),
+          confirmText: t("adminConfirmModal.removeAdmin.confirmText"),
+          buttonText: t("adminConfirmModal.removeAdmin.buttonText"),
           buttonColor: "#FF9F0A",
           requiresReason: false,
         };
       case "suspend":
         return {
-          title: "Suspend User",
-          description: `Suspend ${userName}'s account?`,
-          warning: "This will CANCEL all their events and block their access!",
-          confirmText: "I understand this will cancel all their events",
-          buttonText: "Suspend User",
+          title: t("adminConfirmModal.suspend.title"),
+          description: t("adminConfirmModal.suspend.description", { userName }),
+          warning: t("adminConfirmModal.suspend.warning"),
+          confirmText: t("adminConfirmModal.suspend.confirmText"),
+          buttonText: t("adminConfirmModal.suspend.buttonText"),
           buttonColor: "#FF453A",
           requiresReason: true,
-          reasonPlaceholder: "Reason for suspension (required)...",
+          reasonPlaceholder: t("adminConfirmModal.suspend.reasonPlaceholder"),
         };
       case "unsuspend":
         return {
-          title: "Unsuspend User",
-          description: `Reactivate ${userName}'s account?`,
-          warning: "They will regain access to the platform.",
-          confirmText: "I confirm unsuspending this user",
-          buttonText: "Unsuspend User",
+          title: t("adminConfirmModal.unsuspend.title"),
+          description: t("adminConfirmModal.unsuspend.description", { userName }),
+          warning: t("adminConfirmModal.unsuspend.warning"),
+          confirmText: t("adminConfirmModal.unsuspend.confirmText"),
+          buttonText: t("adminConfirmModal.unsuspend.buttonText"),
           buttonColor: "#34C759",
           requiresReason: false,
         };
       default:
         return {
-          title: "Confirm Action",
-          description: "Are you sure?",
-          warning: "This action cannot be undone.",
-          confirmText: "I understand",
-          buttonText: "Confirm",
+          title: t("adminConfirmModal.default.title"),
+          description: t("adminConfirmModal.default.description"),
+          warning: t("adminConfirmModal.default.warning"),
+          confirmText: t("adminConfirmModal.default.confirmText"),
+          buttonText: t("adminConfirmModal.default.buttonText"),
           buttonColor: "#FF453A",
           requiresReason: false,
         };
@@ -248,7 +250,7 @@ export default function AdminConfirmModal({
                   <Text
                     style={[styles.cancelText, { color: colors.textSecondary }]}
                   >
-                    Cancel
+                    {t("adminConfirmModal.cancel")}
                   </Text>
                 </View>
               </TouchableOpacity>
