@@ -234,6 +234,12 @@
     "hosting": "Organizando",
     "upcoming": "Próximos",
     "past": "Pasados",
+    "memberships": {
+      "title": "Mis membresías",
+      "subtitle": "Créditos y pases",
+      "activeCount_one": "{{count}} activa",
+      "activeCount_other": "{{count}} activas"
+    },
     "event": "Evento",
     "untitledEvent": "Evento sin título",
     "locationTBD": "Ubicación por confirmar",
@@ -574,7 +580,6 @@
     "discoverPersonality": "Descubre tu personalidad",
     "bigFiveQuiz": "Test de personalidad Big Five",
     "account": "CUENTA",
-    "myMemberships": "Mis membresías",
     "switchToHosting": "Cambiar a modo host",
     "switchToHostingSub": "Crea tus propias experiencias",
     "settings": "Ajustes",

@@ -32,6 +32,10 @@ import { getEventCreatorId } from "../utils/eventHelpers";
 import { useFocusEffect } from "@react-navigation/native";
 import RatingModal from "../components/RatingModal";
 import { getUserRatingForEvent } from "../services/ratingService";
+import {
+  getUserMemberships,
+  getMembershipState,
+} from "../services/membershipService";
 import * as ImagePicker from "expo-image-picker";
 import { hasMyCheckin, shareRecapPhoto } from "../services/recapService";
 
@@ -55,6 +59,7 @@ export default function MyEventsScreen({ navigation, route }) {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [ratedEvents, setRatedEvents] = useState({}); // { eventId: true }
   const [checkedInEvents, setCheckedInEvents] = useState({}); // { eventId: true }
+  const [activeMembershipCount, setActiveMembershipCount] = useState(0);
 
   // Update tabs when navigation params change
   useEffect(() => {
@@ -79,6 +84,23 @@ export default function MyEventsScreen({ navigation, route }) {
         loadMyEvents();
       }
     }, [activeTab, currentUser])
+  );
+
+  // Keep the attendee's membership summary fresh (credits/passes live here now,
+  // moved out of Profile). Cheap single query, refreshed on focus.
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        try {
+          const mems = await getUserMemberships();
+          setActiveMembershipCount(
+            mems.filter((m) => getMembershipState(m) === "active").length
+          );
+        } catch (e) {
+          // ignore — the entry still links to the full screen
+        }
+      })();
+    }, [])
   );
 
   useEffect(() => {
@@ -613,6 +635,35 @@ export default function MyEventsScreen({ navigation, route }) {
         </TouchableOpacity>
       </View>
 
+      {/* My Memberships — credits & passes the attendee holds (moved here from
+          Profile so they live alongside the events they're used for). */}
+      {activeTab === "joined" && (
+        <TouchableOpacity
+          style={[
+            styles.membershipsEntry,
+            { borderColor: colors.border, backgroundColor: colors.surfaceGlass },
+          ]}
+          onPress={() => navigation.navigate("MyMemberships")}
+          activeOpacity={0.85}
+          testID="my-memberships-entry"
+        >
+          <View style={[styles.membershipsIcon, { backgroundColor: colors.brandSoft }]}>
+            <Icon name="ticket" size={20} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.membershipsTitle, { color: colors.text }]}>
+              {t("myEvents.memberships.title")}
+            </Text>
+            <Text style={[styles.membershipsSub, { color: colors.textSecondary }]}>
+              {activeMembershipCount > 0
+                ? t("myEvents.memberships.activeCount", { count: activeMembershipCount })
+                : t("myEvents.memberships.subtitle")}
+            </Text>
+          </View>
+          <Icon name="forward" size={18} color={colors.textTertiary} />
+        </TouchableOpacity>
+      )}
+
       {/* Content */}
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -740,6 +791,25 @@ function createStyles(colors) {
       alignItems: "center",
     },
     timeFilterText: { fontSize: 14, fontWeight: "600" },
+    membershipsEntry: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginHorizontal: 24,
+      marginBottom: 16,
+      padding: 14,
+      borderRadius: 16,
+      borderWidth: 1,
+    },
+    membershipsIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    membershipsTitle: { fontSize: 15, fontWeight: "700" },
+    membershipsSub: { fontSize: 13, marginTop: 2 },
     loadingContainer: {
       flex: 1,
       justifyContent: "center",

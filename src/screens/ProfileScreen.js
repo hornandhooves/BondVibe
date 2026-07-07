@@ -361,17 +361,10 @@ export default function ProfileScreen({ navigation }) {
             {/* ── Account ── */}
             <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>{t("profile.account")}</Text>
             <View style={[s.ajustesCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <TouchableOpacity style={s.ajustesRow} onPress={() => navigation.navigate("MyMemberships")}>
-                <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
-                  <Icon name="ticket" size={18} color={colors.primary} />
-                </View>
-                <Text style={[s.ajustesLabel, { color: colors.text }]}>{t("profile.myMemberships")}</Text>
-                <Icon name="forward" size={16} color={colors.textTertiary} />
-              </TouchableOpacity>
-
+              {/* Memberships moved to Events → Attending (they live with the
+                  events those credits are used for). */}
               {!canManageStripe && (
                 <>
-                  <View style={[s.separator, { backgroundColor: colors.border }]} />
                   <TouchableOpacity style={s.ajustesRow} onPress={() => navigation.navigate("RequestHost")}>
                     <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
                       <Icon name="calendar" size={18} color={colors.primary} />
@@ -382,10 +375,9 @@ export default function ProfileScreen({ navigation }) {
                     </View>
                     <Icon name="forward" size={16} color={colors.textTertiary} />
                   </TouchableOpacity>
+                  <View style={[s.separator, { backgroundColor: colors.border }]} />
                 </>
               )}
-
-              <View style={[s.separator, { backgroundColor: colors.border }]} />
 
               <TouchableOpacity style={s.ajustesRow} testID="profile-settings" onPress={() => navigation.navigate("Settings")}>
                 <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>

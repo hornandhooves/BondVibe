@@ -234,6 +234,12 @@
     "hosting": "Hosting",
     "upcoming": "Upcoming",
     "past": "Past",
+    "memberships": {
+      "title": "My memberships",
+      "subtitle": "Credits & passes",
+      "activeCount_one": "{{count}} active",
+      "activeCount_other": "{{count}} active"
+    },
     "event": "Event",
     "untitledEvent": "Untitled Event",
     "locationTBD": "Location TBD",
@@ -574,7 +580,6 @@
     "discoverPersonality": "Discover your personality",
     "bigFiveQuiz": "Big Five personality quiz",
     "account": "ACCOUNT",
-    "myMemberships": "My memberships",
     "switchToHosting": "Switch to hosting",
     "switchToHostingSub": "Create your own experiences",
     "settings": "Settings",
