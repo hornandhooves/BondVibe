@@ -658,5 +658,77 @@
       "tryAgain": "Intenta de nuevo.",
       "couldntOfferRideTitle": "No se pudo ofrecer el aventón"
     }
+  },
+  "inbox": {
+    "title": "Mensajes",
+    "askKinlo": "Pregúntale a Kinlo",
+    "askKinloSub": "Planea tu semana en una frase",
+    "eventChats": "Chats de eventos",
+    "eventChatsSub": "Chats grupales de tus eventos",
+    "matchChats": "Chats de matches",
+    "matchChatsSub": "Personas que conociste por matching",
+    "communityChats": "Chats de comunidades",
+    "communityChatsSub": "Chats grupales de tus comunidades",
+    "directMessages": "Mensajes directos",
+    "noDMs": "Aún no tienes mensajes directos — saluda desde el perfil de alguien.",
+    "noMessagesYet": "Aún no hay mensajes. Inicia una conversación desde el perfil de alguien.",
+    "defaultUserName": "Alguien"
+  },
+  "dmChat": {
+    "defaultTitle": "Chat",
+    "sayHi": "Saluda",
+    "messagePlaceholder": "Mensaje…"
+  },
+  "communityChats": {
+    "title": "Chats de comunidades",
+    "defaultName": "Comunidad",
+    "memberCount_one": "{{count}} miembro",
+    "memberCount_other": "{{count}} miembros",
+    "empty": "Aún no tienes comunidades — únete a una con un código de invitación."
+  },
+  "eventChats": {
+    "title": "Chats de eventos",
+    "upcoming": "Próximos",
+    "past": "Pasados",
+    "defaultEventName": "Evento",
+    "emptyPast": "Aún no hay chats de eventos pasados.",
+    "emptyUpcoming": "No hay chats de próximos eventos — únete a un evento para empezar a chatear."
+  },
+  "groupChat": {
+    "defaultGroupName": "Grupo",
+    "defaultEventName": "Evento",
+    "viewEvent": "Ver evento →",
+    "noMessagesSayHi": "Aún no hay mensajes. Saluda",
+    "hostOnlyNote": "Solo el host puede publicar aquí. Aún puedes leer y votar en encuestas.",
+    "messagePlaceholder": "Mensaje…",
+    "messageBlockedTitle": "Mensaje bloqueado",
+    "spotify": {
+      "connectTitle": "Conectar playlist de Spotify",
+      "hint": "Pega el enlace de la playlist — todos en el grupo podrán abrirla.",
+      "placeholder": "https://open.spotify.com/playlist/…",
+      "cancel": "Cancelar",
+      "saving": "Guardando…",
+      "connect": "Conectar",
+      "invalidLinkTitle": "Enlace inválido",
+      "invalidLinkMsg": "Pega un enlace de playlist de Spotify (open.spotify.com/…).",
+      "couldntSaveTitle": "No se pudo guardar",
+      "tryAgain": "Intenta de nuevo."
+    },
+    "invite": {
+      "title": "Invitar a un evento",
+      "noEvents": "No tienes próximos eventos a los que invitar.",
+      "cancel": "Cancelar"
+    },
+    "poll": {
+      "createTitle": "Crear una encuesta",
+      "questionPlaceholder": "Pregunta",
+      "optionPlaceholder": "Opción {{num}}",
+      "addOption": "+ Agregar opción",
+      "anonymous": "Anónima",
+      "anonymousHint": "Oculta quién votó qué",
+      "cancel": "Cancelar",
+      "createPoll": "Crear encuesta",
+      "couldntCreate": "No se pudo crear la encuesta"
+    }
   }
 }

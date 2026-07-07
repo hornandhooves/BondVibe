@@ -14,6 +14,7 @@ import {
   Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import Icon from "../components/Icon";
 import GradientBackground from "../components/GradientBackground";
 import { useTheme } from "../contexts/ThemeContext";
@@ -26,6 +27,7 @@ import {
 
 export default function DMChatScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const { threadId: initialThreadId, otherUid, name } = route.params || {};
   const [threadId, setThreadId] = useState(initialThreadId || null);
   const [messages, setMessages] = useState([]);
@@ -60,7 +62,7 @@ export default function DMChatScreen({ route, navigation }) {
           <Icon name="back" size={26} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
-          {name || "Chat"}
+          {name || t("dmChat.defaultTitle")}
         </Text>
         <View style={{ width: 26 }} />
       </View>
@@ -93,13 +95,13 @@ export default function DMChatScreen({ route, navigation }) {
             );
           }}
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: colors.textTertiary }]}>Say hi</Text>
+            <Text style={[styles.empty, { color: colors.textTertiary }]}>{t("dmChat.sayHi")}</Text>
           }
         />
         <View style={[styles.inputBar, { borderTopColor: colors.border }]}>
           <TextInput
             style={[styles.input, { color: colors.text, backgroundColor: colors.surfaceGlass }]}
-            placeholder="Message…"
+            placeholder={t("dmChat.messagePlaceholder")}
             placeholderTextColor={colors.textTertiary}
             value={text}
             onChangeText={setText}

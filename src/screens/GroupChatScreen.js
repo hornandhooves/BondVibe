@@ -16,6 +16,7 @@ import {
   Linking,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db, auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
@@ -37,6 +38,7 @@ import {
 
 export default function GroupChatScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
+  const { t, i18n } = useTranslation();
   const { groupId } = route.params || {};
   const [group, setGroup] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -114,7 +116,7 @@ export default function GroupChatScreen({ route, navigation }) {
     if (guard.flagged) {
       setText("");
       reportProhibitedContent({ reason: guard.reason, content: body, groupId });
-      Alert.alert("Message blocked", PROHIBITED_MESSAGE);
+      Alert.alert(t("groupChat.messageBlockedTitle"), PROHIBITED_MESSAGE);
       return;
     }
     setText("");
@@ -138,14 +140,14 @@ export default function GroupChatScreen({ route, navigation }) {
       setPollOptions(["", ""]);
       setPollAnon(false);
     } else {
-      alert(r.error || "Couldn't create poll");
+      alert(r.error || t("groupChat.poll.couldntCreate"));
     }
   };
 
   const saveSpotify = async () => {
     const url = spotifyDraft.trim();
     if (!/spotify\.com|^spotify:/i.test(url)) {
-      Alert.alert("Invalid link", "Paste a Spotify playlist link (open.spotify.com/…).");
+      Alert.alert(t("groupChat.spotify.invalidLinkTitle"), t("groupChat.spotify.invalidLinkMsg"));
       return;
     }
     setSpotifySaving(true);
@@ -155,7 +157,7 @@ export default function GroupChatScreen({ route, navigation }) {
       setSpotifyVisible(false);
       setSpotifyDraft("");
     } catch (e) {
-      Alert.alert("Couldn't save", e.message || "Please try again.");
+      Alert.alert(t("groupChat.spotify.couldntSaveTitle"), e.message || t("groupChat.spotify.tryAgain"));
     } finally {
       setSpotifySaving(false);
     }
@@ -183,15 +185,15 @@ export default function GroupChatScreen({ route, navigation }) {
               <View style={styles.spotifyTitleRow}>
                 <Icon name="music2" size={20} color="#1DB954" />
                 <Text style={[styles.spotifyTitle, { color: colors.text }]}>
-                  Connect Spotify playlist
+                  {t("groupChat.spotify.connectTitle")}
                 </Text>
               </View>
               <Text style={[styles.spotifyHint, { color: colors.textSecondary }]}>
-                Paste the playlist link — everyone in the group will be able to open it.
+                {t("groupChat.spotify.hint")}
               </Text>
               <TextInput
                 style={[styles.spotifyInput, { backgroundColor: colors.sunken, borderColor: colors.border, color: colors.text }]}
-                placeholder="https://open.spotify.com/playlist/…"
+                placeholder={t("groupChat.spotify.placeholder")}
                 placeholderTextColor={colors.textTertiary}
                 value={spotifyDraft}
                 onChangeText={setSpotifyDraft}
@@ -200,7 +202,7 @@ export default function GroupChatScreen({ route, navigation }) {
               />
               <View style={styles.spotifyActions}>
                 <TouchableOpacity onPress={() => setSpotifyVisible(false)} style={styles.spotifyCancel}>
-                  <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>Cancel</Text>
+                  <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>{t("groupChat.spotify.cancel")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={saveSpotify}
@@ -208,7 +210,7 @@ export default function GroupChatScreen({ route, navigation }) {
                   style={[styles.spotifyConnect, spotifySaving && { opacity: 0.6 }]}
                 >
                   <Text style={styles.spotifyConnectText}>
-                    {spotifySaving ? "Saving…" : "Connect"}
+                    {spotifySaving ? t("groupChat.spotify.saving") : t("groupChat.spotify.connect")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -221,7 +223,7 @@ export default function GroupChatScreen({ route, navigation }) {
             <Icon name="back" size={26} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
-            {group?.name || "Group"}
+            {group?.name || t("groupChat.defaultGroupName")}
           </Text>
           <View style={styles.headerRight}>
             {group?.spotifyUrl ? (
@@ -278,11 +280,11 @@ export default function GroupChatScreen({ route, navigation }) {
                   <View style={styles.inviteRow}>
                     <Icon name="ticket" size={18} color={colors.primary} />
                     <Text style={[styles.inviteTitle, { color: colors.text }]} numberOfLines={2}>
-                      {m.data.eventTitle || "Event"}
+                      {m.data.eventTitle || t("groupChat.defaultEventName")}
                     </Text>
                   </View>
                   <Text style={[styles.inviteCta, { color: colors.primary }]}>
-                    View event →
+                    {t("groupChat.viewEvent")}
                   </Text>
                 </TouchableOpacity>
               );
@@ -303,7 +305,7 @@ export default function GroupChatScreen({ route, navigation }) {
           })}
           {messages.length === 0 && (
             <Text style={[styles.empty, { color: colors.textTertiary }]}>
-              No messages yet. Say hi
+              {t("groupChat.noMessagesSayHi")}
             </Text>
           )}
         </ScrollView>
@@ -311,7 +313,7 @@ export default function GroupChatScreen({ route, navigation }) {
         {group?.hostOnly && !isHost ? (
           <View style={[styles.inputBar, { borderTopColor: colors.border, justifyContent: "center" }]}>
             <Text style={{ color: colors.textTertiary, textAlign: "center" }}>
-              Only the host can post here. You can still read and vote in polls.
+              {t("groupChat.hostOnlyNote")}
             </Text>
           </View>
         ) : (
@@ -328,7 +330,7 @@ export default function GroupChatScreen({ route, navigation }) {
             )}
             <TextInput
               style={[styles.input, { color: colors.text, backgroundColor: colors.surfaceGlass }]}
-              placeholder="Message…"
+              placeholder={t("groupChat.messagePlaceholder")}
               placeholderTextColor={colors.textTertiary}
               value={text}
               onChangeText={setText}
@@ -350,11 +352,11 @@ export default function GroupChatScreen({ route, navigation }) {
           <View style={styles.modalOverlay}>
             <View style={[styles.modalCard, { backgroundColor: colors.background }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>
-                Invite to an event
+                {t("groupChat.invite.title")}
               </Text>
               {myEvents.length === 0 ? (
                 <Text style={{ color: colors.textSecondary, marginBottom: 16 }}>
-                  You have no upcoming events to invite to.
+                  {t("groupChat.invite.noEvents")}
                 </Text>
               ) : (
                 <ScrollView style={{ maxHeight: 320 }}>
@@ -368,7 +370,7 @@ export default function GroupChatScreen({ route, navigation }) {
                         {e.title}
                       </Text>
                       <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                        {new Date(e.date).toLocaleDateString()}
+                        {new Date(e.date).toLocaleDateString(i18n.language)}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -379,7 +381,7 @@ export default function GroupChatScreen({ route, navigation }) {
                 onPress={() => setInviteVisible(false)}
               >
                 <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>
-                  Cancel
+                  {t("groupChat.invite.cancel")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -391,11 +393,11 @@ export default function GroupChatScreen({ route, navigation }) {
           <View style={styles.modalOverlay}>
             <View style={[styles.modalCard, { backgroundColor: colors.background }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>
-                Create a poll
+                {t("groupChat.poll.createTitle")}
               </Text>
               <TextInput
                 style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
-                placeholder="Question"
+                placeholder={t("groupChat.poll.questionPlaceholder")}
                 placeholderTextColor={colors.textTertiary}
                 value={pollQuestion}
                 onChangeText={setPollQuestion}
@@ -405,7 +407,7 @@ export default function GroupChatScreen({ route, navigation }) {
                 <TextInput
                   key={idx}
                   style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
-                  placeholder={`Option ${idx + 1}`}
+                  placeholder={t("groupChat.poll.optionPlaceholder", { num: idx + 1 })}
                   placeholderTextColor={colors.textTertiary}
                   value={opt}
                   onChangeText={(v) =>
@@ -417,15 +419,15 @@ export default function GroupChatScreen({ route, navigation }) {
               {pollOptions.length < 5 && (
                 <TouchableOpacity onPress={() => setPollOptions((p) => [...p, ""])}>
                   <Text style={{ color: colors.primary, fontWeight: "600", marginBottom: 8 }}>
-                    + Add option
+                    {t("groupChat.poll.addOption")}
                   </Text>
                 </TouchableOpacity>
               )}
               <View style={styles.anonRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: colors.text, fontWeight: "600" }}>Anonymous</Text>
+                  <Text style={{ color: colors.text, fontWeight: "600" }}>{t("groupChat.poll.anonymous")}</Text>
                   <Text style={{ color: colors.textTertiary, fontSize: 12 }}>
-                    Hide who voted for what
+                    {t("groupChat.poll.anonymousHint")}
                   </Text>
                 </View>
                 <Switch
@@ -436,10 +438,10 @@ export default function GroupChatScreen({ route, navigation }) {
               </View>
               <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
                 <TouchableOpacity onPress={() => setPollVisible(false)}>
-                  <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>Cancel</Text>
+                  <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>{t("groupChat.poll.cancel")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleCreatePoll}>
-                  <Text style={{ color: colors.primary, fontWeight: "700" }}>Create poll</Text>
+                  <Text style={{ color: colors.primary, fontWeight: "700" }}>{t("groupChat.poll.createPoll")}</Text>
                 </TouchableOpacity>
               </View>
             </View>

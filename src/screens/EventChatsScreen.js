@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import { useFocusEffect } from "@react-navigation/native";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db, auth } from "../services/firebase";
@@ -26,6 +27,7 @@ const hit = { top: 10, bottom: 10, left: 10, right: 10 };
 
 export default function EventChatsScreen({ navigation }) {
   const { colors, isDark } = useTheme();
+  const { t, i18n } = useTranslation();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("upcoming"); // 'upcoming' | 'past'
@@ -113,7 +115,7 @@ export default function EventChatsScreen({ navigation }) {
   const formatWhen = (iso) => {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "";
-    return d.toLocaleDateString([], {
+    return d.toLocaleDateString(i18n.language, {
       month: "short",
       day: "numeric",
       hour: "numeric",
@@ -128,13 +130,13 @@ export default function EventChatsScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={hit}>
           <Icon name="back" size={26} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[TYPE.titleLg, { color: colors.text }]}>Event chats</Text>
+        <Text style={[TYPE.titleLg, { color: colors.text }]}>{t("eventChats.title")}</Text>
         <View style={{ width: 26 }} />
       </View>
 
       <View style={styles.tabsContainer}>
-        <Tab id="upcoming" label="Upcoming" />
-        <Tab id="past" label="Past" />
+        <Tab id="upcoming" label={t("eventChats.upcoming")} />
+        <Tab id="past" label={t("eventChats.past")} />
       </View>
 
       {loading ? (
@@ -167,7 +169,7 @@ export default function EventChatsScreen({ navigation }) {
                   style={[TYPE.bodySemibold, { color: colors.text }]}
                   numberOfLines={1}
                 >
-                  {item.title || "Event"}
+                  {item.title || t("eventChats.defaultEventName")}
                 </Text>
                 <Text
                   style={[TYPE.caption, { color: colors.textSecondary }]}
@@ -184,8 +186,8 @@ export default function EventChatsScreen({ navigation }) {
               style={[TYPE.caption, styles.emptyText, { color: colors.textTertiary }]}
             >
               {tab === "past"
-                ? "No past event chats yet."
-                : "No upcoming event chats — join an event to start chatting."}
+                ? t("eventChats.emptyPast")
+                : t("eventChats.emptyUpcoming")}
             </Text>
           }
         />

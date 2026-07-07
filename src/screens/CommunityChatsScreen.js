@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import GradientBackground from "../components/GradientBackground";
 import Icon from "../components/Icon";
 import { useTheme } from "../contexts/ThemeContext";
@@ -23,6 +24,7 @@ const hit = { top: 10, bottom: 10, left: 10, right: 10 };
 
 export default function CommunityChatsScreen({ navigation }) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -49,7 +51,7 @@ export default function CommunityChatsScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={hit}>
           <Icon name="back" size={26} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[TYPE.titleLg, { color: colors.text }]}>Community chats</Text>
+        <Text style={[TYPE.titleLg, { color: colors.text }]}>{t("communityChats.title")}</Text>
         <View style={{ width: 26 }} />
       </View>
 
@@ -72,7 +74,7 @@ export default function CommunityChatsScreen({ navigation }) {
             >
               <View style={[styles.initial, { backgroundColor: colors.brandSoft }]}>
                 <Text style={[TYPE.bodySemibold, { color: colors.primary }]}>
-                  {(item.name || "C").trim().charAt(0).toUpperCase()}
+                  {(item.name || t("communityChats.defaultName")).trim().charAt(0).toUpperCase()}
                 </Text>
               </View>
               <View style={{ flex: 1 }}>
@@ -80,7 +82,7 @@ export default function CommunityChatsScreen({ navigation }) {
                   style={[TYPE.bodySemibold, { color: colors.text }]}
                   numberOfLines={1}
                 >
-                  {item.name || "Community"}
+                  {item.name || t("communityChats.defaultName")}
                 </Text>
                 {item.lastMessage ? (
                   <Text
@@ -94,8 +96,7 @@ export default function CommunityChatsScreen({ navigation }) {
                     style={[TYPE.caption, { color: colors.textTertiary }]}
                     numberOfLines={1}
                   >
-                    {(item.memberIds?.length || 0)} member
-                    {(item.memberIds?.length || 0) === 1 ? "" : "s"}
+                    {t("communityChats.memberCount", { count: item.memberIds?.length || 0 })}
                   </Text>
                 )}
               </View>
@@ -106,7 +107,7 @@ export default function CommunityChatsScreen({ navigation }) {
             <Text
               style={[TYPE.caption, styles.emptyText, { color: colors.textTertiary }]}
             >
-              No communities yet — join one with an invite code.
+              {t("communityChats.empty")}
             </Text>
           }
         />

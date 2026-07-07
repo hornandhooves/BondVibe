@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import { doc, getDoc } from "firebase/firestore";
 import { useFocusEffect } from "@react-navigation/native";
 import Icon from "../components/Icon";
@@ -27,6 +28,7 @@ const normAvatar = (a) =>
 
 export default function DMListScreen({ navigation }) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const me = auth.currentUser?.uid;
@@ -36,17 +38,17 @@ export default function DMListScreen({ navigation }) {
       (async () => {
         const [threads, blocked] = await Promise.all([getMyThreads(), getBlockedIds()]);
         const resolved = await Promise.all(
-          threads.map(async (t) => {
-            const otherUid = (t.users || []).find((u) => u !== me);
+          threads.map(async (thread) => {
+            const otherUid = (thread.users || []).find((u) => u !== me);
             if (!otherUid || blocked.includes(otherUid)) return null;
             const s = await getDoc(doc(db, "users", otherUid));
             const u = s.exists() ? s.data() : {};
             return {
-              id: t.id,
+              id: thread.id,
               otherUid,
-              name: u.fullName || u.name || "Someone",
+              name: u.fullName || u.name || t("inbox.defaultUserName"),
               avatar: u.avatar,
-              lastMessage: t.lastMessage || "",
+              lastMessage: thread.lastMessage || "",
             };
           })
         );
@@ -64,7 +66,7 @@ export default function DMListScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={hit}>
           <Icon name="back" size={26} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.text }]}>Messages</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{t("inbox.title")}</Text>
         <View style={{ width: 26 }} />
       </View>
 
@@ -74,7 +76,7 @@ export default function DMListScreen({ navigation }) {
         <View style={styles.empty}>
           <Icon name="chat" size={40} color={colors.textTertiary} />
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            No messages yet. Start a conversation from someone's profile.
+            {t("inbox.noMessagesYet")}
           </Text>
         </View>
       ) : (

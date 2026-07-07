@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { doc, getDoc } from "firebase/firestore";
@@ -32,6 +33,7 @@ const normAvatar = (a) =>
 
 export default function InboxScreen({ navigation }) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const me = auth.currentUser?.uid;
@@ -42,17 +44,17 @@ export default function InboxScreen({ navigation }) {
         try {
           const [threads, blocked] = await Promise.all([getMyThreads(), getBlockedIds()]);
           const resolved = await Promise.all(
-            threads.map(async (t) => {
-              const otherUid = (t.users || []).find((u) => u !== me);
+            threads.map(async (thread) => {
+              const otherUid = (thread.users || []).find((u) => u !== me);
               if (!otherUid || blocked.includes(otherUid)) return null;
               const s = await getDoc(doc(db, "users", otherUid));
               const u = s.exists() ? s.data() : {};
               return {
-                id: t.id,
+                id: thread.id,
                 otherUid,
-                name: u.fullName || u.name || "Someone",
+                name: u.fullName || u.name || t("inbox.defaultUserName"),
                 avatar: u.avatar,
-                lastMessage: t.lastMessage || "",
+                lastMessage: thread.lastMessage || "",
               };
             })
           );
@@ -85,9 +87,9 @@ export default function InboxScreen({ navigation }) {
             <Icon name="ai" size={20} color={AI.accent} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[TYPE.bodySemibold, { color: "#FFFFFF" }]}>Ask Kinlo</Text>
+            <Text style={[TYPE.bodySemibold, { color: "#FFFFFF" }]}>{t("inbox.askKinlo")}</Text>
             <Text style={[TYPE.caption, { color: AI.textOnDark }]}>
-              Plan your week in one sentence
+              {t("inbox.askKinloSub")}
             </Text>
           </View>
           <Icon name="forward" size={18} color={AI.accent} />
@@ -97,26 +99,26 @@ export default function InboxScreen({ navigation }) {
       <View style={[styles.card, ELEVATION.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <ListRow
           icon="calendar"
-          title="Event chats"
-          subtitle="Group chats for your events"
+          title={t("inbox.eventChats")}
+          subtitle={t("inbox.eventChatsSub")}
           onPress={() => navigation.navigate("EventChats")}
         />
         <ListRow
           icon="heart"
-          title="Match chats"
-          subtitle="People you met through matching"
+          title={t("inbox.matchChats")}
+          subtitle={t("inbox.matchChatsSub")}
           onPress={() => navigation.navigate("PeopleYouMet")}
         />
         <ListRow
           icon="users"
-          title="Community chats"
-          subtitle="Group chats for communities you're in"
+          title={t("inbox.communityChats")}
+          subtitle={t("inbox.communityChatsSub")}
           onPress={() => navigation.navigate("CommunityChats")}
           divider={false}
         />
       </View>
 
-      <SectionHeader title="Direct messages" />
+      <SectionHeader title={t("inbox.directMessages")} />
     </View>
   );
 
@@ -127,7 +129,7 @@ export default function InboxScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={hit}>
           <Icon name="back" size={26} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[TYPE.titleLg, { color: colors.text }]}>Messages</Text>
+        <Text style={[TYPE.titleLg, { color: colors.text }]}>{t("inbox.title")}</Text>
         <View style={{ width: 26 }} />
       </View>
 
@@ -161,7 +163,7 @@ export default function InboxScreen({ navigation }) {
           )}
           ListEmptyComponent={
             <Text style={[TYPE.caption, styles.emptyText, { color: colors.textTertiary }]}>
-              No direct messages yet — say hi from someone's profile.
+              {t("inbox.noDMs")}
             </Text>
           }
         />

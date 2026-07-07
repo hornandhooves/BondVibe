@@ -658,5 +658,77 @@
       "tryAgain": "Please try again.",
       "couldntOfferRideTitle": "Couldn't offer ride"
     }
+  },
+  "inbox": {
+    "title": "Messages",
+    "askKinlo": "Ask Kinlo",
+    "askKinloSub": "Plan your week in one sentence",
+    "eventChats": "Event chats",
+    "eventChatsSub": "Group chats for your events",
+    "matchChats": "Match chats",
+    "matchChatsSub": "People you met through matching",
+    "communityChats": "Community chats",
+    "communityChatsSub": "Group chats for communities you're in",
+    "directMessages": "Direct messages",
+    "noDMs": "No direct messages yet — say hi from someone's profile.",
+    "noMessagesYet": "No messages yet. Start a conversation from someone's profile.",
+    "defaultUserName": "Someone"
+  },
+  "dmChat": {
+    "defaultTitle": "Chat",
+    "sayHi": "Say hi",
+    "messagePlaceholder": "Message…"
+  },
+  "communityChats": {
+    "title": "Community chats",
+    "defaultName": "Community",
+    "memberCount_one": "{{count}} member",
+    "memberCount_other": "{{count}} members",
+    "empty": "No communities yet — join one with an invite code."
+  },
+  "eventChats": {
+    "title": "Event chats",
+    "upcoming": "Upcoming",
+    "past": "Past",
+    "defaultEventName": "Event",
+    "emptyPast": "No past event chats yet.",
+    "emptyUpcoming": "No upcoming event chats — join an event to start chatting."
+  },
+  "groupChat": {
+    "defaultGroupName": "Group",
+    "defaultEventName": "Event",
+    "viewEvent": "View event →",
+    "noMessagesSayHi": "No messages yet. Say hi",
+    "hostOnlyNote": "Only the host can post here. You can still read and vote in polls.",
+    "messagePlaceholder": "Message…",
+    "messageBlockedTitle": "Message blocked",
+    "spotify": {
+      "connectTitle": "Connect Spotify playlist",
+      "hint": "Paste the playlist link — everyone in the group will be able to open it.",
+      "placeholder": "https://open.spotify.com/playlist/…",
+      "cancel": "Cancel",
+      "saving": "Saving…",
+      "connect": "Connect",
+      "invalidLinkTitle": "Invalid link",
+      "invalidLinkMsg": "Paste a Spotify playlist link (open.spotify.com/…).",
+      "couldntSaveTitle": "Couldn't save",
+      "tryAgain": "Please try again."
+    },
+    "invite": {
+      "title": "Invite to an event",
+      "noEvents": "You have no upcoming events to invite to.",
+      "cancel": "Cancel"
+    },
+    "poll": {
+      "createTitle": "Create a poll",
+      "questionPlaceholder": "Question",
+      "optionPlaceholder": "Option {{num}}",
+      "addOption": "+ Add option",
+      "anonymous": "Anonymous",
+      "anonymousHint": "Hide who voted for what",
+      "cancel": "Cancel",
+      "createPoll": "Create poll",
+      "couldntCreate": "Couldn't create poll"
+    }
   }
 }
