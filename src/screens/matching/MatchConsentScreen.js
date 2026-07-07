@@ -6,42 +6,27 @@
 import React from "react";
 import Icon from "../../components/Icon";
 import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../../contexts/ThemeContext";
 import { MatchHeader, PrimaryButton, SecondaryButton } from "./matchUi";
 
-const POINTS = [
-  {
-    icon: "hide",
-    title: "Only this event sees you",
-    body: "Your match profile is shared only with people who attended this event — never public or searchable.",
-  },
-  {
-    icon: "lock",
-    title: "Messaging needs a mutual match",
-    body: "Nobody can message you until you both like each other. Your contact details stay private.",
-  },
-  {
-    icon: "privacy",
-    title: "The host never sees your likes",
-    body: "Organizers only see anonymous totals. Who you like is private to you.",
-  },
-  {
-    icon: "report",
-    title: "You're in control",
-    body: "Report, block or hide anyone, and delete your matching data or leave at any time.",
-  },
-];
-
 export default function MatchConsentScreen({ route, navigation }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { eventId, eventTitle } = route.params || {};
+  const POINTS = [
+    { icon: "hide", title: t("matching.consent.point1Title"), body: t("matching.consent.point1Body") },
+    { icon: "lock", title: t("matching.consent.point2Title"), body: t("matching.consent.point2Body") },
+    { icon: "privacy", title: t("matching.consent.point3Title"), body: t("matching.consent.point3Body") },
+    { icon: "report", title: t("matching.consent.point4Title"), body: t("matching.consent.point4Body") },
+  ];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <MatchHeader title="Before you join" onBack={() => navigation.goBack()} />
+      <MatchHeader title={t("matching.consent.beforeYouJoin")} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={[styles.lead, { color: colors.textSecondary }]}>
-          Community Matching is opt-in and privacy-first. Here's how it works:
+          {t("matching.consent.lead")}
         </Text>
         {POINTS.map(({ icon, title, body }) => (
           <View key={title} style={styles.row}>
@@ -57,19 +42,17 @@ export default function MatchConsentScreen({ route, navigation }) {
           </View>
         ))}
         <Text style={[styles.legal, { color: colors.textTertiary }]}>
-          By continuing you agree to the Community Matching terms. You must be 18+.
-          Meeting people carries risks you accept; Kinlo is a neutral platform and
-          doesn't verify identities.
+          {t("matching.consent.legal")}
         </Text>
       </ScrollView>
       <View style={styles.actions}>
         <PrimaryButton
-          label="I agree — continue"
+          label={t("matching.consent.agree")}
           onPress={() =>
             navigation.replace("MatchProfile", { eventId, eventTitle })
           }
         />
-        <SecondaryButton label="Not now" onPress={() => navigation.goBack()} />
+        <SecondaryButton label={t("matching.consent.notNow")} onPress={() => navigation.goBack()} />
       </View>
     </View>
   );

@@ -730,5 +730,79 @@
       "createPoll": "Create poll",
       "couldntCreate": "Couldn't create poll"
     }
+  },
+  "matching": {
+    "plusActivated": {
+      "title": "You're Kinlo Plus!",
+      "subtitle": "Unlimited matches unlocked. Go meet your people.",
+      "backToMatching": "Back to matching"
+    },
+    "checkout": {
+      "errorTitle": "Checkout",
+      "tryAgain": "Please try again.",
+      "billedEvery": "Billed every {{interval}}. Cancel anytime.",
+      "viaStripe": "via Stripe",
+      "securePayment": "Secure payment via Stripe",
+      "subscribe": "Subscribe · ${{amount}}/{{interval}}",
+      "proNote": "Includes Community Matching, AI tools, QR check-in and more.",
+      "plusNote": "Unlimited matches at every event."
+    },
+    "plusPaywall": {
+      "reachedLimit": "You reached your match limit",
+      "reachedLimitCount": "You reached your {{count}} matches",
+      "subtitle": "Keep meeting people with Kinlo Plus — unlimited matches at every event.",
+      "perkUnlimited": "Unlimited matches",
+      "perkPriority": "Priority in the grid",
+      "perkCancelAnytime": "Cancel anytime",
+      "getPlus": "Get Kinlo Plus",
+      "maybeLater": "Maybe later"
+    },
+    "proUpsell": {
+      "title": "Activate Community Matching with Kinlo Pro",
+      "perkMatching": "Community Matching for your events",
+      "perkAI": "AI listing writer & coaching",
+      "perkQR": "QR check-in, CRM & co-hosts",
+      "perkSupport": "Priority support",
+      "becomePro": "Become Pro",
+      "notNow": "Not now"
+    },
+    "analytics": {
+      "title": "Matching insights",
+      "couldntLoad": "Couldn't load insights.",
+      "participants": "Participants",
+      "matches": "Matches",
+      "conversations": "Conversations",
+      "onKinloPlus": "On Kinlo Plus",
+      "note": "Only anonymous totals are shown. You never see who liked or matched whom."
+    },
+    "consent": {
+      "beforeYouJoin": "Before you join",
+      "lead": "Community Matching is opt-in and privacy-first. Here's how it works:",
+      "point1Title": "Only this event sees you",
+      "point1Body": "Your match profile is shared only with people who attended this event — never public or searchable.",
+      "point2Title": "Messaging needs a mutual match",
+      "point2Body": "Nobody can message you until you both like each other. Your contact details stay private.",
+      "point3Title": "The host never sees your likes",
+      "point3Body": "Organizers only see anonymous totals. Who you like is private to you.",
+      "point4Title": "You're in control",
+      "point4Body": "Report, block or hide anyone, and delete your matching data or leave at any time.",
+      "legal": "By continuing you agree to the Community Matching terms. You must be 18+. Meeting people carries risks you accept; Kinlo is a neutral platform and doesn't verify identities.",
+      "agree": "I agree — continue",
+      "notNow": "Not now"
+    },
+    "visibility": {
+      "title": "Visibility & safety",
+      "whoCanSee": "Who can see you",
+      "everyone": "Everyone at the event",
+      "sameGender": "Same gender only",
+      "oppositeGender": "Opposite gender only",
+      "organizerOnly": "Organizer only",
+      "hidden": "Hidden",
+      "deleteAndLeave": "Delete my data & leave matching",
+      "confirmTitle": "Leave matching?",
+      "confirmMsg": "Your match profile for this event will be deleted. This can't be undone.",
+      "cancel": "Cancel",
+      "leaveAndDelete": "Leave & delete"
+    }
   }
 }

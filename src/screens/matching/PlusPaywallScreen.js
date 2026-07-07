@@ -5,11 +5,13 @@
 import React from "react";
 import Icon from "../../components/Icon";
 import { View, Text, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../../contexts/ThemeContext";
 import { PrimaryButton, SecondaryButton } from "./matchUi";
 
 export default function PlusPaywallScreen({ route, navigation }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { eventId, eventTitle, maxMatches } = route.params || {};
 
   const styles = createStyles(colors);
@@ -21,18 +23,18 @@ export default function PlusPaywallScreen({ route, navigation }) {
         </View>
         <Text style={[styles.title, { color: colors.text }]}>
           {maxMatches && maxMatches > 0
-            ? `You reached your ${maxMatches} matches`
-            : "You reached your match limit"}
+            ? t("matching.plusPaywall.reachedLimitCount", { count: maxMatches })
+            : t("matching.plusPaywall.reachedLimit")}
         </Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Keep meeting people with Kinlo Plus — unlimited matches at every event.
+          {t("matching.plusPaywall.subtitle")}
         </Text>
 
         <View style={styles.perks}>
           {[
-            "Unlimited matches",
-            "Priority in the grid",
-            "Cancel anytime",
+            t("matching.plusPaywall.perkUnlimited"),
+            t("matching.plusPaywall.perkPriority"),
+            t("matching.plusPaywall.perkCancelAnytime"),
           ].map((p) => (
             <View key={p} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Icon name="check" size={14} color={colors.success} />
@@ -44,12 +46,12 @@ export default function PlusPaywallScreen({ route, navigation }) {
 
       <View style={styles.footer}>
         <PrimaryButton
-          label="Get Kinlo Plus"
+          label={t("matching.plusPaywall.getPlus")}
           onPress={() =>
             navigation.replace("PlusCheckout", { eventId, eventTitle })
           }
         />
-        <SecondaryButton label="Maybe later" onPress={() => navigation.goBack()} />
+        <SecondaryButton label={t("matching.plusPaywall.maybeLater")} onPress={() => navigation.goBack()} />
       </View>
     </View>
   );

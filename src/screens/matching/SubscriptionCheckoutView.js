@@ -5,6 +5,7 @@
 import React from "react";
 import Icon from "../../components/Icon";
 import { View, Text, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../../contexts/ThemeContext";
 import { MatchHeader, PrimaryButton } from "./matchUi";
 
@@ -20,6 +21,7 @@ export default function SubscriptionCheckoutView({
   onBack,
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = createStyles(colors);
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -33,7 +35,7 @@ export default function SubscriptionCheckoutView({
             </Text>
           </View>
           <Text style={[styles.interval, { color: colors.textSecondary }]}>
-            Billed every {interval}. Cancel anytime.
+            {t("matching.checkout.billedEvery", { interval })}
           </Text>
           {!!note && <Text style={[styles.note, { color: colors.textSecondary }]}>{note}</Text>}
 
@@ -42,21 +44,21 @@ export default function SubscriptionCheckoutView({
             <View style={styles.stripeCard}>
               <Text style={styles.stripeDigits}>•••• 4242</Text>
             </View>
-            <Text style={[styles.viaStripe, { color: colors.textSecondary }]}>via Stripe</Text>
+            <Text style={[styles.viaStripe, { color: colors.textSecondary }]}>{t("matching.checkout.viaStripe")}</Text>
           </View>
         </View>
 
         <View style={styles.secure}>
           <Icon name="lock" size={14} color={colors.textTertiary} />
           <Text style={[styles.secureText, { color: colors.textTertiary }]}>
-            Secure payment via Stripe
+            {t("matching.checkout.securePayment")}
           </Text>
         </View>
       </View>
 
       <View style={styles.footer}>
         <PrimaryButton
-          label={`Subscribe · $${amount}/${interval}`}
+          label={t("matching.checkout.subscribe", { amount, interval })}
           onPress={onSubscribe}
           loading={loading}
         />

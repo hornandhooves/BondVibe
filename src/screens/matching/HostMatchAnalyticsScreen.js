@@ -4,12 +4,14 @@
  */
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../../contexts/ThemeContext";
 import { MatchHeader } from "./matchUi";
 import { getHostMatchAnalytics } from "../../services/matchingService";
 
 export default function HostMatchAnalyticsScreen({ route, navigation }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { eventId } = route.params || {};
   const [data, setData] = useState(null);
   const [error, setError] = useState(false);
@@ -26,18 +28,18 @@ export default function HostMatchAnalyticsScreen({ route, navigation }) {
 
   const styles = createStyles(colors);
   const stats = [
-    { label: "Participants", value: data?.participants },
-    { label: "Matches", value: data?.matches },
-    { label: "Conversations", value: data?.conversations },
-    { label: "On Kinlo Plus", value: data?.plusUpgrades },
+    { label: t("matching.analytics.participants"), value: data?.participants },
+    { label: t("matching.analytics.matches"), value: data?.matches },
+    { label: t("matching.analytics.conversations"), value: data?.conversations },
+    { label: t("matching.analytics.onKinloPlus"), value: data?.plusUpgrades },
   ];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <MatchHeader title="Matching insights" onBack={() => navigation.goBack()} />
+      <MatchHeader title={t("matching.analytics.title")} onBack={() => navigation.goBack()} />
       {error ? (
         <Text style={[styles.msg, { color: colors.textSecondary }]}>
-          Couldn't load insights.
+          {t("matching.analytics.couldntLoad")}
         </Text>
       ) : !data ? (
         <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
@@ -52,7 +54,7 @@ export default function HostMatchAnalyticsScreen({ route, navigation }) {
         </View>
       )}
       <Text style={[styles.note, { color: colors.textTertiary }]}>
-        Only anonymous totals are shown. You never see who liked or matched whom.
+        {t("matching.analytics.note")}
       </Text>
     </View>
   );

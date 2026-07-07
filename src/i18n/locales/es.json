@@ -730,5 +730,79 @@
       "createPoll": "Crear encuesta",
       "couldntCreate": "No se pudo crear la encuesta"
     }
+  },
+  "matching": {
+    "plusActivated": {
+      "title": "¡Ya eres Kinlo Plus!",
+      "subtitle": "Matches ilimitados desbloqueados. Ve a conocer a tu gente.",
+      "backToMatching": "Volver al matching"
+    },
+    "checkout": {
+      "errorTitle": "Pago",
+      "tryAgain": "Intenta de nuevo.",
+      "billedEvery": "Se cobra cada {{interval}}. Cancela cuando quieras.",
+      "viaStripe": "vía Stripe",
+      "securePayment": "Pago seguro vía Stripe",
+      "subscribe": "Suscribirme · ${{amount}}/{{interval}}",
+      "proNote": "Incluye Community Matching, herramientas de IA, check-in QR y más.",
+      "plusNote": "Matches ilimitados en cada evento."
+    },
+    "plusPaywall": {
+      "reachedLimit": "Alcanzaste tu límite de matches",
+      "reachedLimitCount": "Alcanzaste tus {{count}} matches",
+      "subtitle": "Sigue conociendo gente con Kinlo Plus — matches ilimitados en cada evento.",
+      "perkUnlimited": "Matches ilimitados",
+      "perkPriority": "Prioridad en la cuadrícula",
+      "perkCancelAnytime": "Cancela cuando quieras",
+      "getPlus": "Obtener Kinlo Plus",
+      "maybeLater": "Tal vez después"
+    },
+    "proUpsell": {
+      "title": "Activa Community Matching con Kinlo Pro",
+      "perkMatching": "Community Matching para tus eventos",
+      "perkAI": "Redacción y asesoría con IA",
+      "perkQR": "Check-in QR, CRM y co-hosts",
+      "perkSupport": "Soporte prioritario",
+      "becomePro": "Hazte Pro",
+      "notNow": "Ahora no"
+    },
+    "analytics": {
+      "title": "Insights de matching",
+      "couldntLoad": "No se pudieron cargar los insights.",
+      "participants": "Participantes",
+      "matches": "Matches",
+      "conversations": "Conversaciones",
+      "onKinloPlus": "Con Kinlo Plus",
+      "note": "Solo se muestran totales anónimos. Nunca ves quién le dio like o hizo match con quién."
+    },
+    "consent": {
+      "beforeYouJoin": "Antes de unirte",
+      "lead": "Community Matching es opcional y prioriza tu privacidad. Así funciona:",
+      "point1Title": "Solo este evento te ve",
+      "point1Body": "Tu perfil de matching se comparte solo con quienes asistieron a este evento — nunca es público ni se puede buscar.",
+      "point2Title": "Los mensajes requieren match mutuo",
+      "point2Body": "Nadie puede escribirte hasta que ambos se den like. Tus datos de contacto se mantienen privados.",
+      "point3Title": "El host nunca ve tus likes",
+      "point3Body": "Los organizadores solo ven totales anónimos. A quién le das like es privado.",
+      "point4Title": "Tú tienes el control",
+      "point4Body": "Reporta, bloquea u oculta a cualquiera, y elimina tus datos de matching o sal en cualquier momento.",
+      "legal": "Al continuar aceptas los términos de Community Matching. Debes ser mayor de 18 años. Conocer gente implica riesgos que aceptas; Kinlo es una plataforma neutral y no verifica identidades.",
+      "agree": "Acepto — continuar",
+      "notNow": "Ahora no"
+    },
+    "visibility": {
+      "title": "Visibilidad y seguridad",
+      "whoCanSee": "Quién puede verte",
+      "everyone": "Todos en el evento",
+      "sameGender": "Solo el mismo género",
+      "oppositeGender": "Solo género opuesto",
+      "organizerOnly": "Solo el organizador",
+      "hidden": "Oculto",
+      "deleteAndLeave": "Eliminar mis datos y salir de matching",
+      "confirmTitle": "¿Salir de matching?",
+      "confirmMsg": "Tu perfil de matching para este evento será eliminado. Esto no se puede deshacer.",
+      "cancel": "Cancelar",
+      "leaveAndDelete": "Salir y eliminar"
+    }
   }
 }

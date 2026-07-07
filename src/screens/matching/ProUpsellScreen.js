@@ -5,21 +5,22 @@
 import React, { useState, useEffect } from "react";
 import Icon from "../../components/Icon";
 import { View, Text, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../../contexts/ThemeContext";
 import { PrimaryButton, SecondaryButton } from "./matchUi";
 import { getSubscriptionConfig, SUBSCRIPTION_DEFAULTS } from "../../services/configService";
 
-const PERKS = [
-  "Community Matching for your events",
-  "AI listing writer & coaching",
-  "QR check-in, CRM & co-hosts",
-  "Priority support",
-];
-
 export default function ProUpsellScreen({ route, navigation }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { eventId } = route.params || {};
   const [pro, setPro] = useState(SUBSCRIPTION_DEFAULTS.pro);
+  const PERKS = [
+    t("matching.proUpsell.perkMatching"),
+    t("matching.proUpsell.perkAI"),
+    t("matching.proUpsell.perkQR"),
+    t("matching.proUpsell.perkSupport"),
+  ];
 
   useEffect(() => {
     getSubscriptionConfig().then((c) => setPro(c.pro));
@@ -33,7 +34,7 @@ export default function ProUpsellScreen({ route, navigation }) {
           <Icon name="pro" size={44} color={colors.primary} />
         </View>
         <Text style={[styles.title, { color: colors.text }]}>
-          Activate Community Matching with Kinlo Pro
+          {t("matching.proUpsell.title")}
         </Text>
         <Text style={[styles.price, { color: colors.primary }]}>
           ${pro.amount} {pro.currency}
@@ -50,10 +51,10 @@ export default function ProUpsellScreen({ route, navigation }) {
       </View>
       <View style={styles.footer}>
         <PrimaryButton
-          label="Become Pro"
+          label={t("matching.proUpsell.becomePro")}
           onPress={() => navigation.replace("ProCheckout", { eventId })}
         />
-        <SecondaryButton label="Not now" onPress={() => navigation.goBack()} />
+        <SecondaryButton label={t("matching.proUpsell.notNow")} onPress={() => navigation.goBack()} />
       </View>
     </View>
   );

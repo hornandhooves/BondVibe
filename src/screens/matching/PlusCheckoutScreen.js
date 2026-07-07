@@ -4,11 +4,13 @@
  */
 import React, { useState, useEffect } from "react";
 import { Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 import SubscriptionCheckoutView from "./SubscriptionCheckoutView";
 import { startPlusCheckout } from "../../services/plusService";
 import { getSubscriptionConfig, SUBSCRIPTION_DEFAULTS } from "../../services/configService";
 
 export default function PlusCheckoutScreen({ navigation }) {
+  const { t } = useTranslation();
   const [plus, setPlus] = useState(SUBSCRIPTION_DEFAULTS.plus);
   const [loading, setLoading] = useState(false);
 
@@ -22,7 +24,7 @@ export default function PlusCheckoutScreen({ navigation }) {
       await startPlusCheckout();
       navigation.replace("PlusActivated");
     } catch (e) {
-      Alert.alert("Checkout", e.message || "Please try again.");
+      Alert.alert(t("matching.checkout.errorTitle"), e.message || t("matching.checkout.tryAgain"));
     } finally {
       setLoading(false);
     }
@@ -35,7 +37,7 @@ export default function PlusCheckoutScreen({ navigation }) {
       amount={plus.amount}
       currency={plus.currency}
       interval={plus.interval}
-      note="Unlimited matches at every event."
+      note={t("matching.checkout.plusNote")}
       loading={loading}
       onSubscribe={onSubscribe}
       onBack={() => navigation.goBack()}

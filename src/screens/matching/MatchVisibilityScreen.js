@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from "react";
 import Icon from "../../components/Icon";
 import { View, Text, StyleSheet, Alert, TouchableOpacity } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../../contexts/ThemeContext";
 import { MatchHeader } from "./matchUi";
 import {
@@ -14,17 +15,17 @@ import {
   leaveMatching,
 } from "../../services/matchingService";
 
-const VIS_LABELS = {
-  everyone: "Everyone at the event",
-  same_gender: "Same gender only",
-  opposite_gender: "Opposite gender only",
-  organizer: "Organizer only",
-  hidden: "Hidden",
-};
-
 export default function MatchVisibilityScreen({ route, navigation }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { eventId } = route.params || {};
+  const VIS_LABELS = {
+    everyone: t("matching.visibility.everyone"),
+    same_gender: t("matching.visibility.sameGender"),
+    opposite_gender: t("matching.visibility.oppositeGender"),
+    organizer: t("matching.visibility.organizerOnly"),
+    hidden: t("matching.visibility.hidden"),
+  };
   const [visibility, setVisibility] = useState("everyone");
 
   useEffect(() => {
@@ -41,12 +42,12 @@ export default function MatchVisibilityScreen({ route, navigation }) {
 
   const confirmLeave = () =>
     Alert.alert(
-      "Leave matching?",
-      "Your match profile for this event will be deleted. This can't be undone.",
+      t("matching.visibility.confirmTitle"),
+      t("matching.visibility.confirmMsg"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("matching.visibility.cancel"), style: "cancel" },
         {
-          text: "Leave & delete",
+          text: t("matching.visibility.leaveAndDelete"),
           style: "destructive",
           onPress: async () => {
             await leaveMatching(eventId);
@@ -59,8 +60,8 @@ export default function MatchVisibilityScreen({ route, navigation }) {
   const styles = createStyles(colors);
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <MatchHeader title="Visibility & safety" onBack={() => navigation.goBack()} />
-      <Text style={[styles.section, { color: colors.text }]}>Who can see you</Text>
+      <MatchHeader title={t("matching.visibility.title")} onBack={() => navigation.goBack()} />
+      <Text style={[styles.section, { color: colors.text }]}>{t("matching.visibility.whoCanSee")}</Text>
       {VISIBILITY_OPTIONS.map((v) => (
         <TouchableOpacity key={v} style={styles.row} onPress={() => choose(v)}>
           <Text style={[styles.rowText, { color: colors.text }]}>{VIS_LABELS[v]}</Text>
@@ -70,7 +71,7 @@ export default function MatchVisibilityScreen({ route, navigation }) {
 
       <TouchableOpacity style={styles.danger} onPress={confirmLeave}>
         <Text style={[styles.dangerText, { color: colors.error || "#c25b5b" }]}>
-          Delete my data & leave matching
+          {t("matching.visibility.deleteAndLeave")}
         </Text>
       </TouchableOpacity>
     </View>
