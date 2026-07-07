@@ -30,7 +30,7 @@ import LegalDocumentModal from "../components/LegalDocumentModal";
 
 export default function LegalScreen({ navigation }) {
   const { colors, isDark } = useTheme();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   // Mexican users see the LFPDPPP Spanish Aviso de Privacidad.
   const privacyContent = String(i18n.language || "").startsWith("es")
     ? PRIVACY_POLICY_ES
@@ -59,8 +59,8 @@ export default function LegalScreen({ navigation }) {
     if (!termsAccepted || !privacyAccepted) {
       console.log("❌ Not all terms accepted");
       Alert.alert(
-        "Please Accept Terms",
-        "You must accept both Terms of Service and Privacy Policy to continue."
+        t("legal.alerts.acceptTitle"),
+        t("legal.alerts.acceptMsg")
       );
       return;
     }
@@ -72,7 +72,7 @@ export default function LegalScreen({ navigation }) {
       const user = auth.currentUser;
       if (!user) {
         console.log("❌ No user found");
-        Alert.alert("Error", "No user found. Please log in again.");
+        Alert.alert(t("legal.alerts.errorTitle"), t("legal.alerts.noUserMsg"));
         setLoading(false);
         return;
       }
@@ -95,7 +95,7 @@ export default function LegalScreen({ navigation }) {
       // No navigation.replace() - AppNavigator handles it automatically
     } catch (error) {
       console.error("❌ Error updating legal acceptance:", error);
-      Alert.alert("Error", "Failed to save your consent. Please try again.");
+      Alert.alert(t("legal.alerts.errorTitle"), t("legal.alerts.saveFailedMsg"));
       setLoading(false);
     }
   };
@@ -123,10 +123,10 @@ export default function LegalScreen({ navigation }) {
             <Icon name="clipboard" size={36} color={colors.primary} />
           </View>
           <Text style={[styles.title, { color: colors.text }]}>
-            Legal Stuff
+            {t("legal.title")}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            We need your consent to continue
+            {t("legal.subtitle")}
           </Text>
         </View>
 
@@ -166,7 +166,7 @@ export default function LegalScreen({ navigation }) {
             </View>
             <View style={styles.agreementText}>
               <Text style={[styles.agreementTitle, { color: colors.text }]}>
-                Terms of Service
+                {t("legal.termsTitle")}
               </Text>
               <Text
                 style={[
@@ -174,7 +174,7 @@ export default function LegalScreen({ navigation }) {
                   { color: colors.textSecondary },
                 ]}
               >
-                I agree to Kinlo's Terms of Service
+                {t("legal.termsAgree")}
               </Text>
               <TouchableOpacity
                 onPress={(e) => {
@@ -185,7 +185,7 @@ export default function LegalScreen({ navigation }) {
                 style={styles.readLink}
               >
                 <Text style={[styles.readLinkText, { color: colors.primary }]}>
-                  Read Terms →
+                  {t("legal.readTerms")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -228,7 +228,7 @@ export default function LegalScreen({ navigation }) {
             </View>
             <View style={styles.agreementText}>
               <Text style={[styles.agreementTitle, { color: colors.text }]}>
-                Privacy Policy
+                {t("legal.privacyTitle")}
               </Text>
               <Text
                 style={[
@@ -236,7 +236,7 @@ export default function LegalScreen({ navigation }) {
                   { color: colors.textSecondary },
                 ]}
               >
-                I agree to Kinlo's Privacy Policy
+                {t("legal.privacyAgree")}
               </Text>
               <TouchableOpacity
                 onPress={(e) => {
@@ -247,7 +247,7 @@ export default function LegalScreen({ navigation }) {
                 style={styles.readLink}
               >
                 <Text style={[styles.readLinkText, { color: colors.primary }]}>
-                  Read Privacy Policy →
+                  {t("legal.readPrivacy")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -277,7 +277,7 @@ export default function LegalScreen({ navigation }) {
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
               <Text style={[styles.continueText, { color: colors.primary }]}>
-                Continue
+                {t("legal.continue")}
               </Text>
             )}
           </View>
@@ -291,7 +291,7 @@ export default function LegalScreen({ navigation }) {
           console.log("📖 Closing Terms modal");
           setShowTermsModal(false);
         }}
-        title="Terms of Service"
+        title={t("legal.termsTitle")}
         content={TERMS_OF_SERVICE}
       />
 
@@ -301,7 +301,7 @@ export default function LegalScreen({ navigation }) {
           console.log("📖 Closing Privacy modal");
           setShowPrivacyModal(false);
         }}
-        title={privacyContent === PRIVACY_POLICY_ES ? "Aviso de Privacidad" : "Privacy Policy"}
+        title={privacyContent === PRIVACY_POLICY_ES ? t("legal.avisoTitle") : t("legal.privacyTitle")}
         content={privacyContent}
       />
     </GradientBackground>

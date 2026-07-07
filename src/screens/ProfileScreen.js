@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import {
   doc,
   getDoc,
@@ -31,16 +32,17 @@ import { usePremium } from "../hooks/usePremium";
 import { getFollowers } from "../services/followService";
 import { BRAND } from "../constants/theme-tokens";
 
-const TRAIT_LABELS = {
-  CONSCIENTIOUSNESS: "Conscientiousness",
-  AGREEABLENESS: "Agreeableness",
-  EXTRAVERSION: "Extraversion",
-  NEUROTICISM: "Neuroticism",
-  OPENNESS: "Openness",
+const TRAIT_LABEL_KEYS = {
+  CONSCIENTIOUSNESS: "conscientiousness",
+  AGREEABLENESS: "agreeableness",
+  EXTRAVERSION: "extraversion",
+  NEUROTICISM: "neuroticism",
+  OPENNESS: "openness",
 };
 
 export default function ProfileScreen({ navigation }) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const { isPremium } = usePremium();
   const [profile, setProfile] = useState(null);
   const [followersCount, setFollowersCount] = useState(0);
@@ -109,7 +111,7 @@ export default function ProfileScreen({ navigation }) {
       setEditing(false);
     } catch (error) {
       console.error("Error updating profile:", error);
-      Alert.alert("Error", "Could not save profile. Please try again.");
+      Alert.alert(t("profile.errors.saveFailedTitle"), t("profile.errors.saveFailedMsg"));
     } finally {
       setSaving(false);
     }
@@ -121,7 +123,7 @@ export default function ProfileScreen({ navigation }) {
     return (
       <GradientBackground>
         <View style={s.loader}>
-          <Text style={{ color: colors.textSecondary }}>Loading…</Text>
+          <Text style={{ color: colors.textSecondary }}>{t("profile.loading")}</Text>
         </View>
       </GradientBackground>
     );
@@ -157,7 +159,7 @@ export default function ProfileScreen({ navigation }) {
             style={[s.editPill, { backgroundColor: colors.brandSoft }]}
           >
             <Icon name="edit" size={13} color={colors.primary} />
-            <Text style={[s.editPillText, { color: colors.primary }]}>Edit</Text>
+            <Text style={[s.editPillText, { color: colors.primary }]}>{t("profile.edit")}</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -166,7 +168,7 @@ export default function ProfileScreen({ navigation }) {
             style={[s.editPill, { backgroundColor: colors.primary }]}
           >
             <Text style={[s.editPillText, { color: "#fff" }]}>
-              {saving ? "…" : "Save"}
+              {saving ? "…" : t("profile.save")}
             </Text>
           </TouchableOpacity>
         )}
@@ -180,27 +182,27 @@ export default function ProfileScreen({ navigation }) {
               <AvatarFrame size={96}>
                 <AvatarDisplay avatar={editForm.avatar} size={80} name={editForm.fullName} />
               </AvatarFrame>
-              <Text style={[s.avatarEditHint, { color: colors.primary }]}>Tap to change</Text>
+              <Text style={[s.avatarEditHint, { color: colors.primary }]}>{t("profile.tapToChange")}</Text>
             </TouchableOpacity>
 
             <View style={s.formGroup}>
-              <Text style={[s.inputLabel, { color: colors.textSecondary }]}>Full name</Text>
+              <Text style={[s.inputLabel, { color: colors.textSecondary }]}>{t("profile.fullNameLabel")}</Text>
               <TextInput
                 style={[s.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                 value={editForm.fullName}
-                onChangeText={(t) => setEditForm({ ...editForm, fullName: t })}
-                placeholder="Your name"
+                onChangeText={(v) => setEditForm({ ...editForm, fullName: v })}
+                placeholder={t("profile.fullNamePlaceholder")}
                 placeholderTextColor={colors.textTertiary}
                 maxLength={50}
               />
             </View>
             <View style={s.formGroup}>
-              <Text style={[s.inputLabel, { color: colors.textSecondary }]}>City</Text>
+              <Text style={[s.inputLabel, { color: colors.textSecondary }]}>{t("profile.cityLabel")}</Text>
               <TextInput
                 style={[s.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                 value={editForm.location}
-                onChangeText={(t) => setEditForm({ ...editForm, location: t })}
-                placeholder="City, Country"
+                onChangeText={(v) => setEditForm({ ...editForm, location: v })}
+                placeholder={t("profile.cityPlaceholder")}
                 placeholderTextColor={colors.textTertiary}
                 maxLength={50}
               />
@@ -209,7 +211,7 @@ export default function ProfileScreen({ navigation }) {
               style={[s.cancelRow]}
               onPress={() => { setEditing(false); loadProfile(); }}
             >
-              <Text style={[s.cancelText, { color: colors.textSecondary }]}>Cancel</Text>
+              <Text style={[s.cancelText, { color: colors.textSecondary }]}>{t("profile.cancel")}</Text>
             </TouchableOpacity>
           </>
         ) : (
@@ -226,13 +228,13 @@ export default function ProfileScreen({ navigation }) {
               {profile.role === "host" && (
                 <View style={[s.badge, { backgroundColor: "#E1F5EC" }]}>
                   <Icon name="verified" size={13} color="#1F8A6E" />
-                  <Text style={[s.badgeText, { color: "#1F8A6E" }]}>Verified host</Text>
+                  <Text style={[s.badgeText, { color: "#1F8A6E" }]}>{t("profile.verifiedHost")}</Text>
                 </View>
               )}
               {profile.role === "admin" && (
                 <View style={[s.badge, { backgroundColor: colors.brandSoft }]}>
                   <Icon name="pro" size={13} color={colors.primary} />
-                  <Text style={[s.badgeText, { color: colors.primary }]}>Admin</Text>
+                  <Text style={[s.badgeText, { color: colors.primary }]}>{t("profile.admin")}</Text>
                 </View>
               )}
             </View>
@@ -242,7 +244,7 @@ export default function ProfileScreen({ navigation }) {
               <View style={[s.identityCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Icon name="lock" size={18} color={colors.primary} />
                 <Text style={[s.identityText, { color: colors.textSecondary }]}>
-                  <Text style={{ fontWeight: "700", color: colors.text }}>Identity & payments verified.</Text>
+                  <Text style={{ fontWeight: "700", color: colors.text }}>{t("profile.identityVerified")}</Text>
                   {profile.location ? ` · ${profile.location}` : ""}
                 </Text>
               </View>
@@ -255,7 +257,7 @@ export default function ProfileScreen({ navigation }) {
                 onPress={() => navigation.navigate("FollowList", { userId: auth.currentUser.uid, type: "followers" })}
               >
                 <Text style={[s.statNumber, { color: colors.text }]}>{eventsCount}</Text>
-                <Text style={[s.statLabel, { color: colors.textSecondary }]}>Events</Text>
+                <Text style={[s.statLabel, { color: colors.textSecondary }]}>{t("profile.events")}</Text>
               </TouchableOpacity>
 
               <View style={s.statCenter}>
@@ -264,7 +266,7 @@ export default function ProfileScreen({ navigation }) {
                     <Text style={s.statCenterNumber}>{ratingValue}</Text>
                     <Icon name="star" size={12} color={colors.onPrimary} fill={colors.onPrimary} />
                   </View>
-                  <Text style={s.statCenterLabel}>Rating</Text>
+                  <Text style={s.statCenterLabel}>{t("profile.rating")}</Text>
                 </LinearGradient>
               </View>
 
@@ -273,7 +275,7 @@ export default function ProfileScreen({ navigation }) {
                 onPress={() => navigation.navigate("FollowList", { userId: auth.currentUser.uid, type: "followers" })}
               >
                 <Text style={[s.statNumber, { color: colors.text }]}>{followersCount}</Text>
-                <Text style={[s.statLabel, { color: colors.textSecondary }]}>Members</Text>
+                <Text style={[s.statLabel, { color: colors.textSecondary }]}>{t("profile.members")}</Text>
               </TouchableOpacity>
             </View>
 
@@ -289,14 +291,14 @@ export default function ProfileScreen({ navigation }) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                      <Text style={s.proTitle}>Kinlo Pro</Text>
+                      <Text style={s.proTitle}>{t("profile.kinloProTitle")}</Text>
                       {isPremium && (
                         <View style={s.proActiveBadge}>
-                          <Text style={s.proActiveBadgeText}>ACTIVE</Text>
+                          <Text style={s.proActiveBadgeText}>{t("profile.kinloProActive")}</Text>
                         </View>
                       )}
                     </View>
-                    <Text style={s.proSub}>Community Matching included</Text>
+                    <Text style={s.proSub}>{t("profile.kinloProSub")}</Text>
                   </View>
                   <Icon name="forward" size={18} color="rgba(255,255,255,0.4)" />
                 </View>
@@ -307,9 +309,9 @@ export default function ProfileScreen({ navigation }) {
             {hasPersonality && (
               <>
                 <View style={s.sectionRow}>
-                  <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>PERSONALITY</Text>
+                  <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>{t("profile.personality")}</Text>
                   <TouchableOpacity onPress={() => navigation.navigate("PersonalityQuiz")}>
-                    <Text style={[s.sectionAction, { color: colors.primary }]}>Retake</Text>
+                    <Text style={[s.sectionAction, { color: colors.primary }]}>{t("profile.retake")}</Text>
                   </TouchableOpacity>
                 </View>
                 <View style={[s.personalityCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -317,7 +319,9 @@ export default function ProfileScreen({ navigation }) {
                     <View key={trait} style={s.traitRow}>
                       <View style={s.traitHeader}>
                         <Text style={[s.traitName, { color: colors.text }]}>
-                          {TRAIT_LABELS[trait.toUpperCase()] ?? (trait.charAt(0).toUpperCase() + trait.slice(1).toLowerCase())}
+                          {TRAIT_LABEL_KEYS[trait.toUpperCase()]
+                            ? t(`profile.traits.${TRAIT_LABEL_KEYS[trait.toUpperCase()]}`)
+                            : (trait.charAt(0).toUpperCase() + trait.slice(1).toLowerCase())}
                         </Text>
                         <Text style={[s.traitScore, { color: colors.primary }]}>{score}</Text>
                       </View>
@@ -337,7 +341,7 @@ export default function ProfileScreen({ navigation }) {
 
             {!hasPersonality && (
               <>
-                <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>PERSONALITY</Text>
+                <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>{t("profile.personality")}</Text>
                 <TouchableOpacity
                   style={[s.personalityPrompt, { backgroundColor: colors.surface, borderColor: colors.border }]}
                   onPress={() => navigation.navigate("PersonalityQuiz")}
@@ -346,8 +350,8 @@ export default function ProfileScreen({ navigation }) {
                     <Icon name="brain" size={20} color={colors.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[s.toolTitle, { color: colors.text }]}>Discover your personality</Text>
-                    <Text style={[s.toolSub, { color: colors.textTertiary }]}>Big Five personality quiz</Text>
+                    <Text style={[s.toolTitle, { color: colors.text }]}>{t("profile.discoverPersonality")}</Text>
+                    <Text style={[s.toolSub, { color: colors.textTertiary }]}>{t("profile.bigFiveQuiz")}</Text>
                   </View>
                   <Icon name="forward" size={18} color={colors.textTertiary} />
                 </TouchableOpacity>
@@ -355,13 +359,13 @@ export default function ProfileScreen({ navigation }) {
             )}
 
             {/* ── Account ── */}
-            <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>ACCOUNT</Text>
+            <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>{t("profile.account")}</Text>
             <View style={[s.ajustesCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <TouchableOpacity style={s.ajustesRow} onPress={() => navigation.navigate("MyMemberships")}>
                 <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
                   <Icon name="ticket" size={18} color={colors.primary} />
                 </View>
-                <Text style={[s.ajustesLabel, { color: colors.text }]}>My memberships</Text>
+                <Text style={[s.ajustesLabel, { color: colors.text }]}>{t("profile.myMemberships")}</Text>
                 <Icon name="forward" size={16} color={colors.textTertiary} />
               </TouchableOpacity>
 
@@ -373,8 +377,8 @@ export default function ProfileScreen({ navigation }) {
                       <Icon name="calendar" size={18} color={colors.primary} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[s.ajustesLabel, { color: colors.text }]}>Switch to hosting</Text>
-                      <Text style={[s.ajustesSub, { color: colors.textTertiary }]}>Create your own experiences</Text>
+                      <Text style={[s.ajustesLabel, { color: colors.text }]}>{t("profile.switchToHosting")}</Text>
+                      <Text style={[s.ajustesSub, { color: colors.textTertiary }]}>{t("profile.switchToHostingSub")}</Text>
                     </View>
                     <Icon name="forward" size={16} color={colors.textTertiary} />
                   </TouchableOpacity>
@@ -388,8 +392,8 @@ export default function ProfileScreen({ navigation }) {
                   <Icon name="settings" size={18} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[s.ajustesLabel, { color: colors.text }]}>Settings</Text>
-                  <Text style={[s.ajustesSub, { color: colors.textTertiary }]}>Appearance, AI, safety, account</Text>
+                  <Text style={[s.ajustesLabel, { color: colors.text }]}>{t("profile.settings")}</Text>
+                  <Text style={[s.ajustesSub, { color: colors.textTertiary }]}>{t("profile.settingsSub")}</Text>
                 </View>
                 <Icon name="forward" size={16} color={colors.textTertiary} />
               </TouchableOpacity>

@@ -92,7 +92,7 @@ export default function SettingsScreen({ navigation }) {
       await signOut(auth);
     } catch (error) {
       console.error("Delete account error:", error);
-      Alert.alert("Error", "Error deleting account: " + error.message);
+      Alert.alert(t("settings.errors.deleteErrorTitle"), t("settings.errors.deleteErrorPrefix") + error.message);
     } finally {
       setDeleting(false);
       setShowDeleteModal(false);
@@ -114,22 +114,22 @@ export default function SettingsScreen({ navigation }) {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Icon name="logout" size={32} color={colors.error} />
-            <Text style={[TYPE.titleLg, { color: colors.text }]}>Log out</Text>
+            <Text style={[TYPE.titleLg, { color: colors.text }]}>{t("settings.logOut")}</Text>
             <Text style={[TYPE.body, styles.modalBody, { color: colors.textSecondary }]}>
-              Are you sure you want to log out?
+              {t("settings.logoutModal.confirm")}
             </Text>
             <View style={styles.modalBtns}>
               <TouchableOpacity
                 style={[styles.modalBtn, { backgroundColor: colors.sunken, borderColor: colors.border }]}
                 onPress={() => setShowLogoutModal(false)}
               >
-                <Text style={[TYPE.label, { color: colors.text }]}>Cancel</Text>
+                <Text style={[TYPE.label, { color: colors.text }]}>{t("settings.cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalBtn, styles.modalBtnDanger]}
                 onPress={performLogout}
               >
-                <Text style={[TYPE.label, { color: colors.error }]}>Log out</Text>
+                <Text style={[TYPE.label, { color: colors.error }]}>{t("settings.logOut")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -141,10 +141,9 @@ export default function SettingsScreen({ navigation }) {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Icon name="delete" size={32} color={colors.error} />
-            <Text style={[TYPE.titleLg, { color: colors.text }]}>Delete account</Text>
+            <Text style={[TYPE.titleLg, { color: colors.text }]}>{t("settings.deleteAccount")}</Text>
             <Text style={[TYPE.body, styles.modalBody, { color: colors.textSecondary }]}>
-              This action is permanent and irreversible. All your data, events, and
-              messages will be deleted.
+              {t("settings.deleteModal.warning")}
             </Text>
             <View style={styles.modalBtns}>
               <TouchableOpacity
@@ -152,7 +151,7 @@ export default function SettingsScreen({ navigation }) {
                 onPress={() => setShowDeleteModal(false)}
                 disabled={deleting}
               >
-                <Text style={[TYPE.label, { color: colors.text }]}>Cancel</Text>
+                <Text style={[TYPE.label, { color: colors.text }]}>{t("settings.cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalBtn, styles.modalBtnDanger]}
@@ -160,7 +159,7 @@ export default function SettingsScreen({ navigation }) {
                 disabled={deleting}
               >
                 <Text style={[TYPE.label, { color: colors.error }]}>
-                  {deleting ? "Deleting…" : "Delete"}
+                  {deleting ? t("settings.deleteModal.deleting") : t("settings.deleteModal.delete")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -173,12 +172,12 @@ export default function SettingsScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={hit}>
           <Icon name="back" size={26} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[TYPE.titleLg, { color: colors.text }]}>Settings</Text>
+        <Text style={[TYPE.titleLg, { color: colors.text }]}>{t("settings.title")}</Text>
         <View style={{ width: 26 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <SectionHeader title="Preferences" style={{ marginTop: 0 }} />
+        <SectionHeader title={t("settings.preferences")} style={{ marginTop: 0 }} />
         <View style={card}>
           <ListRow
             icon="globe"
@@ -195,8 +194,8 @@ export default function SettingsScreen({ navigation }) {
           />
           <ListRow
             icon="ai"
-            title="Kinlo AI"
-            subtitle="Personalized picks from your real activity"
+            title={t("settings.kinloAI")}
+            subtitle={t("settings.kinloAISub")}
             right={
               <Switch
                 value={aiOptIn}
@@ -208,8 +207,8 @@ export default function SettingsScreen({ navigation }) {
           />
           <ListRow
             icon={isDark ? "moon" : "sun"}
-            title="Appearance"
-            subtitle={isDark ? "Aurora theme" : "Clean theme"}
+            title={t("settings.appearance")}
+            subtitle={isDark ? t("settings.auroraTheme") : t("settings.cleanTheme")}
             right={
               <Switch
                 value={isDark}
@@ -222,18 +221,18 @@ export default function SettingsScreen({ navigation }) {
           />
         </View>
 
-        <SectionHeader title="Account" />
+        <SectionHeader title={t("settings.account")} />
         <View style={card}>
           <ListRow
             icon="pro"
-            title="Subscriptions"
-            subtitle="Kinlo Pro · Kinlo Plus"
+            title={t("settings.subscriptions")}
+            subtitle={t("settings.subscriptionsSub")}
             onPress={() => navigation.navigate("BondVibePro")}
           />
           <ListRow
             icon="privacy"
-            title="Safety center"
-            subtitle="SOS, reports, safety tips"
+            title={t("settings.safetyCenter")}
+            subtitle={t("settings.safetyCenterSub")}
             onPress={() => navigation.navigate("SafetyCenter")}
             divider={false}
           />
@@ -241,11 +240,11 @@ export default function SettingsScreen({ navigation }) {
 
         <TouchableOpacity style={styles.logoutRow} onPress={() => setShowLogoutModal(true)}>
           <Icon name="logout" size={18} color={colors.error} />
-          <Text style={[TYPE.label, { color: colors.error }]}>Log out</Text>
+          <Text style={[TYPE.label, { color: colors.error }]}>{t("settings.logOut")}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.deleteRow} onPress={() => setShowDeleteModal(true)}>
-          <Text style={[TYPE.caption, { color: colors.textTertiary }]}>Delete account</Text>
+          <Text style={[TYPE.caption, { color: colors.textTertiary }]}>{t("settings.deleteAccount")}</Text>
         </TouchableOpacity>
       </ScrollView>
 

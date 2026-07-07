@@ -27,7 +27,30 @@
     "preferences": "Preferences",
     "language": "Language",
     "kinloAI": "Kinlo AI",
-    "appearance": "Appearance"
+    "kinloAISub": "Personalized picks from your real activity",
+    "appearance": "Appearance",
+    "auroraTheme": "Aurora theme",
+    "cleanTheme": "Clean theme",
+    "account": "Account",
+    "subscriptions": "Subscriptions",
+    "subscriptionsSub": "Kinlo Pro · Kinlo Plus",
+    "safetyCenter": "Safety center",
+    "safetyCenterSub": "SOS, reports, safety tips",
+    "logOut": "Log out",
+    "deleteAccount": "Delete account",
+    "logoutModal": {
+      "confirm": "Are you sure you want to log out?"
+    },
+    "deleteModal": {
+      "warning": "This action is permanent and irreversible. All your data, events, and messages will be deleted.",
+      "deleting": "Deleting…",
+      "delete": "Delete"
+    },
+    "cancel": "Cancel",
+    "errors": {
+      "deleteErrorTitle": "Error",
+      "deleteErrorPrefix": "Error deleting account: "
+    }
   },
   "translate": {
     "action": "Translate to {{lang}}",
@@ -511,6 +534,66 @@
       "deletedSeriesMsg_other": "{{count}} events deleted successfully",
       "deletedEventMsg": "Event deleted successfully",
       "deleteFailedMsg": "Failed to delete event"
+    }
+  },
+  "profile": {
+    "loading": "Loading…",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "tapToChange": "Tap to change",
+    "fullNameLabel": "Full name",
+    "fullNamePlaceholder": "Your name",
+    "cityLabel": "City",
+    "cityPlaceholder": "City, Country",
+    "verifiedHost": "Verified host",
+    "admin": "Admin",
+    "identityVerified": "Identity & payments verified.",
+    "events": "Events",
+    "rating": "Rating",
+    "members": "Members",
+    "kinloProTitle": "Kinlo Pro",
+    "kinloProActive": "ACTIVE",
+    "kinloProSub": "Community Matching included",
+    "personality": "PERSONALITY",
+    "retake": "Retake",
+    "discoverPersonality": "Discover your personality",
+    "bigFiveQuiz": "Big Five personality quiz",
+    "account": "ACCOUNT",
+    "myMemberships": "My memberships",
+    "switchToHosting": "Switch to hosting",
+    "switchToHostingSub": "Create your own experiences",
+    "settings": "Settings",
+    "settingsSub": "Appearance, AI, safety, account",
+    "traits": {
+      "conscientiousness": "Conscientiousness",
+      "agreeableness": "Agreeableness",
+      "extraversion": "Extraversion",
+      "neuroticism": "Neuroticism",
+      "openness": "Openness"
+    },
+    "errors": {
+      "saveFailedTitle": "Error",
+      "saveFailedMsg": "Could not save profile. Please try again."
+    }
+  },
+  "legal": {
+    "title": "Legal Stuff",
+    "subtitle": "We need your consent to continue",
+    "termsTitle": "Terms of Service",
+    "termsAgree": "I agree to Kinlo's Terms of Service",
+    "readTerms": "Read Terms →",
+    "privacyTitle": "Privacy Policy",
+    "privacyAgree": "I agree to Kinlo's Privacy Policy",
+    "readPrivacy": "Read Privacy Policy →",
+    "continue": "Continue",
+    "avisoTitle": "Aviso de Privacidad",
+    "alerts": {
+      "acceptTitle": "Please Accept Terms",
+      "acceptMsg": "You must accept both Terms of Service and Privacy Policy to continue.",
+      "errorTitle": "Error",
+      "noUserMsg": "No user found. Please log in again.",
+      "saveFailedMsg": "Failed to save your consent. Please try again."
     }
   }
 }

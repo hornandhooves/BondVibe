@@ -27,7 +27,30 @@
     "preferences": "Preferencias",
     "language": "Idioma",
     "kinloAI": "Kinlo AI",
-    "appearance": "Apariencia"
+    "kinloAISub": "Recomendaciones personalizadas de tu actividad real",
+    "appearance": "Apariencia",
+    "auroraTheme": "Tema Aurora",
+    "cleanTheme": "Tema Clean",
+    "account": "Cuenta",
+    "subscriptions": "Suscripciones",
+    "subscriptionsSub": "Kinlo Pro · Kinlo Plus",
+    "safetyCenter": "Centro de seguridad",
+    "safetyCenterSub": "SOS, reportes, consejos de seguridad",
+    "logOut": "Cerrar sesión",
+    "deleteAccount": "Eliminar cuenta",
+    "logoutModal": {
+      "confirm": "¿Seguro que quieres cerrar sesión?"
+    },
+    "deleteModal": {
+      "warning": "Esta acción es permanente e irreversible. Todos tus datos, eventos y mensajes serán eliminados.",
+      "deleting": "Eliminando…",
+      "delete": "Eliminar"
+    },
+    "cancel": "Cancelar",
+    "errors": {
+      "deleteErrorTitle": "Error",
+      "deleteErrorPrefix": "Error al eliminar la cuenta: "
+    }
   },
   "translate": {
     "action": "Traducir al {{lang}}",
@@ -511,6 +534,66 @@
       "deletedSeriesMsg_other": "{{count}} eventos eliminados con éxito",
       "deletedEventMsg": "Evento eliminado con éxito",
       "deleteFailedMsg": "No se pudo eliminar el evento"
+    }
+  },
+  "profile": {
+    "loading": "Cargando…",
+    "edit": "Editar",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "tapToChange": "Toca para cambiar",
+    "fullNameLabel": "Nombre completo",
+    "fullNamePlaceholder": "Tu nombre",
+    "cityLabel": "Ciudad",
+    "cityPlaceholder": "Ciudad, País",
+    "verifiedHost": "Host verificado",
+    "admin": "Admin",
+    "identityVerified": "Identidad y pagos verificados.",
+    "events": "Eventos",
+    "rating": "Calificación",
+    "members": "Miembros",
+    "kinloProTitle": "Kinlo Pro",
+    "kinloProActive": "ACTIVO",
+    "kinloProSub": "Incluye Community Matching",
+    "personality": "PERSONALIDAD",
+    "retake": "Repetir",
+    "discoverPersonality": "Descubre tu personalidad",
+    "bigFiveQuiz": "Test de personalidad Big Five",
+    "account": "CUENTA",
+    "myMemberships": "Mis membresías",
+    "switchToHosting": "Cambiar a modo host",
+    "switchToHostingSub": "Crea tus propias experiencias",
+    "settings": "Ajustes",
+    "settingsSub": "Apariencia, IA, seguridad, cuenta",
+    "traits": {
+      "conscientiousness": "Responsabilidad",
+      "agreeableness": "Amabilidad",
+      "extraversion": "Extraversión",
+      "neuroticism": "Neuroticismo",
+      "openness": "Apertura"
+    },
+    "errors": {
+      "saveFailedTitle": "Error",
+      "saveFailedMsg": "No se pudo guardar el perfil. Intenta de nuevo."
+    }
+  },
+  "legal": {
+    "title": "Aspectos legales",
+    "subtitle": "Necesitamos tu consentimiento para continuar",
+    "termsTitle": "Términos de servicio",
+    "termsAgree": "Acepto los Términos de servicio de Kinlo",
+    "readTerms": "Leer Términos →",
+    "privacyTitle": "Aviso de Privacidad",
+    "privacyAgree": "Acepto el Aviso de Privacidad de Kinlo",
+    "readPrivacy": "Leer Aviso de Privacidad →",
+    "continue": "Continuar",
+    "avisoTitle": "Aviso de Privacidad",
+    "alerts": {
+      "acceptTitle": "Acepta los términos",
+      "acceptMsg": "Debes aceptar los Términos de servicio y el Aviso de Privacidad para continuar.",
+      "errorTitle": "Error",
+      "noUserMsg": "No se encontró el usuario. Inicia sesión de nuevo.",
+      "saveFailedMsg": "No se pudo guardar tu consentimiento. Intenta de nuevo."
     }
   }
 }
