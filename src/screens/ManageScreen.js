@@ -8,8 +8,7 @@ import { useTranslation } from "react-i18next";
 import { View, ScrollView, StyleSheet, TouchableOpacity, Text } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from "@react-navigation/native";
-import { doc, getDoc } from "firebase/firestore";
-import { db, auth } from "../services/firebase";
+import { auth } from "../services/firebase";
 import { LinearGradient } from "expo-linear-gradient";
 import GradientBackground from "../components/GradientBackground";
 import Icon from "../components/Icon";
@@ -26,7 +25,6 @@ import { listMembers, MEMBER_STATUS } from "../services/businessMembersService";
 export default function ManageScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
-  const [profile, setProfile] = useState(null);
   const [business, setBusiness] = useState(null);
   const [memberStats, setMemberStats] = useState({ total: 0, active: 0, atRisk: 0 });
   const { allowed: bizAllowed, tier: bizTier } = useEntitlement("business_erp");
@@ -35,9 +33,6 @@ export default function ManageScreen({ navigation }) {
     useCallback(() => {
       const uid = auth.currentUser?.uid;
       if (!uid) return;
-      getDoc(doc(db, "users", uid))
-        .then((snap) => snap.exists() && setProfile(snap.data()))
-        .catch(() => {});
       // Real stats for the "Your business" card (only when a business exists).
       getBusiness()
         .then(async (b) => {
@@ -53,10 +48,6 @@ export default function ManageScreen({ navigation }) {
         .catch(() => {});
     }, [])
   );
-
-  // Same gate the Profile used: can sell memberships if payments are enabled.
-  const canSellMemberships =
-    profile?.stripeConnect?.status === "active" || profile?.hostConfig?.type === "paid";
 
   const card = [styles.card, ELEVATION.card, { backgroundColor: colors.surface, borderColor: colors.border }];
 
@@ -147,7 +138,10 @@ export default function ManageScreen({ navigation }) {
           </View>
         )}
 
-        <SectionHeader title={t("manage.yourEvents")} />
+        {/* This event — event-scoped ops only. Everything business-wide (members,
+            money, analytics, memberships) now lives in the single hub above, so
+            no metric appears twice (kinlo_business/06 FIX 1). */}
+        <SectionHeader title={t("manage.thisEvent")} />
         <View style={card}>
           <ListRow
             icon="calendar"
@@ -156,70 +150,16 @@ export default function ManageScreen({ navigation }) {
             onPress={() => navigation.navigate("MyEvents", { initialTab: "hosting" })}
           />
           <ListRow
-            icon="calendarCheck"
-            title={t("manage.createClass")}
-            subtitle={t("manage.createClassSubtitle")}
-            onPress={() => navigation.navigate("CreateEvent", { kind: "class" })}
-          />
-          <ListRow
             icon="qr"
             title={t("manage.checkInScanner")}
             subtitle={t("manage.checkInScannerSubtitle")}
             onPress={() => navigation.navigate("CheckInScanner")}
-            divider={false}
           />
-        </View>
-
-        <SectionHeader title={t("manage.business")} />
-        <View style={card}>
-          <ListRow
-            icon="chart"
-            title={t("manage.analytics")}
-            subtitle={t("manage.analyticsSubtitle")}
-            onPress={() => navigation.navigate("HostAnalytics")}
-          />
-          <ListRow
-            icon="dollar"
-            title={t("manage.finance")}
-            subtitle={t("manage.financeSubtitle")}
-            onPress={() => navigation.navigate("Finance")}
-          />
-          <ListRow
-            icon="payment"
-            title={t("manage.payments")}
-            subtitle={t("manage.paymentsSubtitle")}
-            onPress={() => navigation.navigate("StripeConnect")}
-          />
-          {canSellMemberships && (
-            <ListRow
-              icon="ticket"
-              title={t("manage.membershipPlans")}
-              subtitle={t("manage.membershipPlansSubtitle")}
-              onPress={() => navigation.navigate("MembershipPlans")}
-            />
-          )}
           <ListRow
             icon="star"
             title={t("manage.ratings")}
             subtitle={t("manage.ratingsSubtitle")}
             onPress={() => navigation.navigate("RatingsOverview")}
-            divider={false}
-          />
-        </View>
-
-        <SectionHeader title={t("manage.community")} />
-        <View style={card}>
-          <ListRow
-            icon="users"
-            title={t("manage.members")}
-            subtitle={t("manage.membersSubtitle")}
-            onPress={() => navigation.navigate("HostCRM")}
-          />
-          <ListRow
-            icon="community"
-            title={t("manage.groups")}
-            subtitle={t("manage.groupsSubtitle")}
-            onPress={() => navigation.navigate("HostGroups")}
             divider={false}
           />
         </View>

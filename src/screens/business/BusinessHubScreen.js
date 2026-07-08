@@ -4,10 +4,11 @@
  * otherwise lists the module areas. Areas light up block by block.
  */
 import React, { useState, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Modal } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import Icon from "../../components/Icon";
 import GradientBackground from "../../components/GradientBackground";
 import ListRow from "../../components/ListRow";
@@ -15,13 +16,32 @@ import SectionHeader from "../../components/SectionHeader";
 import ProBadge from "../../components/ProBadge";
 import { useTheme } from "../../contexts/ThemeContext";
 import { ELEVATION, RADII, SPACING } from "../../constants/theme-tokens";
+import { db, auth } from "../../services/firebase";
 import { getBusiness } from "../../services/businessService";
+import { useBusinessScope } from "../../contexts/BusinessScopeContext";
 import { verticalLabelKey } from "../../constants/businessVerticals";
 
 export default function BusinessHubScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
+  const { isEventScoped, event: scopeEvent, setEventScope, setWholeBusiness } = useBusinessScope();
   const [business, setBusiness] = useState(undefined); // undefined=loading, null=none
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [events, setEvents] = useState([]);
+
+  const openEventPicker = useCallback(async () => {
+    setPickerOpen(true);
+    try {
+      const uid = auth.currentUser?.uid;
+      const snap = await getDocs(query(collection(db, "events"), where("creatorId", "==", uid)));
+      const rows = snap.docs
+        .map((d) => ({ id: d.id, title: d.data().title || "Event", date: d.data().date }))
+        .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+      setEvents(rows);
+    } catch (e) {
+      setEvents([]);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -101,6 +121,34 @@ export default function BusinessHubScreen({ navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Scope filter (kinlo_business/06 FIX 1): whole business or one event. */}
+        <View style={[styles.scopeTrack, { backgroundColor: colors.surfaceGlass, borderColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.scopeSeg, !isEventScoped && { backgroundColor: colors.primary }]}
+            onPress={setWholeBusiness}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.scopeText, { color: !isEventScoped ? "#fff" : colors.textSecondary }]}>
+              {t("business.hub.scopeWhole")}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.scopeSeg, isEventScoped && { backgroundColor: colors.primary }]}
+            onPress={openEventPicker}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.scopeText, { color: isEventScoped ? "#fff" : colors.textSecondary }]} numberOfLines={1}>
+              {isEventScoped ? scopeEvent.title : t("business.hub.scopeEvent")}
+            </Text>
+            <Icon name="down" size={14} color={isEventScoped ? "#fff" : colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+        {isEventScoped && (
+          <TouchableOpacity style={styles.scopeClear} onPress={setWholeBusiness}>
+            <Text style={[styles.scopeClearText, { color: colors.primary }]}>{t("business.hub.scopeClear")}</Text>
+          </TouchableOpacity>
+        )}
+
         <SectionHeader title={t("business.hub.overviewSection")} />
         <View style={card}>
           <ListRow
@@ -220,6 +268,43 @@ export default function BusinessHubScreen({ navigation }) {
           />
         </View>
       </ScrollView>
+
+      {/* Event picker for "This event" scope */}
+      <Modal visible={pickerOpen} transparent animationType="slide" onRequestClose={() => setPickerOpen(false)}>
+        <View style={styles.backdrop}>
+          <View style={[styles.sheet, { backgroundColor: colors.background }]}>
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { color: colors.text }]}>{t("business.hub.pickEvent")}</Text>
+              <TouchableOpacity onPress={() => setPickerOpen(false)}>
+                <Icon name="close" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 420 }}>
+              {events.length === 0 ? (
+                <Text style={{ color: colors.textTertiary, textAlign: "center", paddingVertical: 24 }}>
+                  {t("business.hub.noEvents")}
+                </Text>
+              ) : (
+                events.map((ev) => (
+                  <TouchableOpacity
+                    key={ev.id}
+                    style={[styles.eventRow, { borderColor: colors.border }]}
+                    onPress={() => {
+                      setEventScope({ id: ev.id, title: ev.title });
+                      setPickerOpen(false);
+                    }}
+                  >
+                    <Text style={[styles.eventName, { color: colors.text }]} numberOfLines={1}>{ev.title}</Text>
+                    <Text style={[styles.eventDate, { color: colors.textTertiary }]}>
+                      {ev.date ? new Date(ev.date).toLocaleDateString() : ""}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </GradientBackground>
   );
 }
@@ -238,6 +323,18 @@ function createStyles(colors) {
     headerTitle: { fontSize: 20, fontWeight: "800", flexShrink: 1 },
     headerSub: { fontSize: 12, marginTop: 1 },
     content: { paddingBottom: SPACING.xxxl },
+    scopeTrack: { flexDirection: "row", borderWidth: 1, borderRadius: 14, padding: 4, gap: 4, marginHorizontal: SPACING.screen, marginTop: SPACING.sm },
+    scopeSeg: { flex: 1, height: 40, borderRadius: 11, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 8 },
+    scopeText: { fontSize: 13.5, fontWeight: "800" },
+    scopeClear: { alignSelf: "flex-end", marginHorizontal: SPACING.screen, marginTop: 6 },
+    scopeClearText: { fontSize: 12.5, fontWeight: "700" },
+    backdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
+    sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 34 },
+    sheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+    sheetTitle: { fontSize: 17, fontWeight: "800" },
+    eventRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 14, gap: 12 },
+    eventName: { fontSize: 15, fontWeight: "600", flex: 1 },
+    eventDate: { fontSize: 12.5 },
     card: { borderRadius: RADII.card, borderWidth: 1, marginHorizontal: SPACING.screen, overflow: "hidden" },
     soon: { fontSize: 12.5, textAlign: "center", marginTop: 20, paddingHorizontal: 40, lineHeight: 18 },
     empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 36 },

@@ -16,10 +16,13 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
+import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import Icon from "../../components/Icon";
 import GradientBackground from "../../components/GradientBackground";
 import DateField from "../../components/DateField";
 import { useTheme } from "../../contexts/ThemeContext";
+import { db } from "../../services/firebase";
+import { useBusinessScope } from "../../contexts/BusinessScopeContext";
 import useClaude from "../../hooks/useClaude";
 import { computeDashboard, dashboardToCsv } from "../../services/businessAnalyticsService";
 import { RANGE_IDS, DEFAULT_RANGE, rangeBounds, rangeLabelKey } from "../../constants/businessRanges";
@@ -33,6 +36,33 @@ export default function BusinessDashboardScreen({ navigation }) {
   const [customTo, setCustomTo] = useState(null);
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { isEventScoped, event: scopeEvent } = useBusinessScope();
+  const [eventStats, setEventStats] = useState(null);
+
+  // When the hub is scoped to one event, load that event's own stats.
+  useEffect(() => {
+    if (!isEventScoped || !scopeEvent?.id) { setEventStats(null); return; }
+    let alive = true;
+    (async () => {
+      try {
+        const [evSnap, ciSnap] = await Promise.all([
+          getDoc(doc(db, "events", scopeEvent.id)),
+          getDocs(collection(db, "events", scopeEvent.id, "checkins")),
+        ]);
+        const ev = evSnap.exists() ? evSnap.data() : {};
+        if (alive) {
+          setEventStats({
+            going: Array.isArray(ev.attendees) ? ev.attendees.length : (ev.participantCount || 0),
+            checkedIn: ciSnap.size,
+            capacity: ev.maxPeople || 0,
+          });
+        }
+      } catch (e) {
+        if (alive) setEventStats(null);
+      }
+    })();
+    return () => { alive = false; };
+  }, [isEventScoped, scopeEvent?.id]);
 
   const bounds = useMemo(
     () => rangeBounds(rangeId, { from: customFrom, to: customTo }),
@@ -103,6 +133,26 @@ export default function BusinessDashboardScreen({ navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Event-scoped stats (kinlo_business/06 FIX 1) */}
+        {isEventScoped && (
+          <View style={[styles.scopeCard, { backgroundColor: `${colors.primary}0F`, borderColor: `${colors.primary}33` }]}>
+            <Text style={[styles.scopeName, { color: colors.primary }]} numberOfLines={1}>{scopeEvent.title}</Text>
+            <View style={styles.scopeStats}>
+              {[
+                { n: eventStats?.going ?? "—", k: t("business.dashboard.scopeGoing") },
+                { n: eventStats?.checkedIn ?? "—", k: t("business.dashboard.scopeCheckedIn") },
+                { n: eventStats?.capacity ?? "—", k: t("business.dashboard.scopeCapacity") },
+              ].map((s, i) => (
+                <View key={i} style={styles.scopeStat}>
+                  <Text style={[styles.scopeStatNum, { color: colors.text }]}>{s.n}</Text>
+                  <Text style={[styles.scopeStatLabel, { color: colors.textTertiary }]}>{s.k}</Text>
+                </View>
+              ))}
+            </View>
+            <Text style={[styles.scopeNote, { color: colors.textTertiary }]}>{t("business.dashboard.scopeNote")}</Text>
+          </View>
+        )}
+
         {/* Range selector */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rangeRow}>
           {RANGE_IDS.map((id) => {
@@ -216,6 +266,13 @@ function createStyles(colors) {
     header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 60, paddingBottom: 10 },
     headerTitle: { fontSize: 20, fontWeight: "800" },
     content: { paddingBottom: 40 },
+    scopeCard: { marginHorizontal: 20, marginTop: 10, borderWidth: 1, borderRadius: 16, padding: 16 },
+    scopeName: { fontSize: 15, fontWeight: "800" },
+    scopeStats: { flexDirection: "row", gap: 10, marginTop: 12 },
+    scopeStat: { flex: 1, alignItems: "center" },
+    scopeStatNum: { fontSize: 22, fontWeight: "800" },
+    scopeStatLabel: { fontSize: 11, fontWeight: "600", marginTop: 2 },
+    scopeNote: { fontSize: 11, marginTop: 12, lineHeight: 15 },
     rangeRow: { paddingHorizontal: 20, gap: 8, paddingVertical: 8 },
     rangeChip: { paddingHorizontal: 13, paddingVertical: 7, borderRadius: 16 },
     rangeText: { fontSize: 12.5, fontWeight: "700" },
