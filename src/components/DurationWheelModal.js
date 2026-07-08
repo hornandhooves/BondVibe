@@ -126,7 +126,9 @@ export default function DurationWheelModal({ visible, value, onSelect, onClose }
   const { colors } = useTheme();
   const { t } = useTranslation();
   const [mode, setMode] = useState("hours"); // 'hours' | 'days'
-  const [iosDate, setIosDate] = useState(durationToDate(180));
+  // Seed from the incoming value (single source of truth) — not a hard-coded
+  // default — so the wheel always opens on the current duration (FIX 8).
+  const [iosDate, setIosDate] = useState(() => durationToDate(parseInt(value, 10) || 180));
   const [hIdx, setHIdx] = useState(3); // Android hours index
   const [mIdx, setMIdx] = useState(0); // Android minutes index
   const [dIdx, setDIdx] = useState(0); // days index
@@ -206,6 +208,10 @@ export default function DurationWheelModal({ visible, value, onSelect, onClose }
 
           {mode === "hours" && Platform.OS === "ios" && (
             <DateTimePicker
+              // Remount when the incoming value changes so the native spinner
+              // always initializes to `value` (iOS ignores a changed controlled
+              // value on an already-mounted countdown picker) — FIX 8.
+              key={`countdown-${value}`}
               mode="countdown"
               display="spinner"
               value={iosDate}
