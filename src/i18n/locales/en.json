@@ -1466,6 +1466,14 @@
     "status": "Status",
     "viewAnalytics": "View analytics"
   },
+  "membershipHistory": {
+    "title": "Usage history",
+    "empty": "No check-ins yet. Credits you spend at events and classes will show here.",
+    "session": "Session",
+    "undone": "undone",
+    "restored": "restored",
+    "balanceAfter": "{{n}} left"
+  },
   "myMemberships": {
     "stateActive": "Active",
     "stateDepleted": "No credits left",
@@ -1475,8 +1483,9 @@
     "expiredOn": "Expired {{date}}",
     "validUntil": "Valid until {{date}}",
     "classesLeft_one": "{{count}} of {{total}} class left",
-    "classesLeft_other": "{{remaining}} of {{total}} classes left",
+    "classesLeft_other": "{{count}} of {{total}} classes left",
     "unlimitedClasses": "Unlimited classes",
+    "viewHistory": "View history",
     "renew": "Renew",
     "title": "My Memberships",
     "noneYet": "No memberships yet",

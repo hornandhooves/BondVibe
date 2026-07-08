@@ -73,7 +73,12 @@ export default function MyMembershipsScreen({ navigation }) {
     const pct = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
 
     return (
-      <View key={m.id} style={styles.card}>
+      <TouchableOpacity
+        key={m.id}
+        style={styles.card}
+        activeOpacity={0.85}
+        onPress={() => navigation.navigate("MembershipHistory", { membership: m })}
+      >
         <View style={styles.cardTop}>
           <View style={styles.iconCircle}>
             <Icon name="ticket" size={20} color={colors.primary} />
@@ -96,7 +101,7 @@ export default function MyMembershipsScreen({ navigation }) {
         <View style={styles.creditsSection}>
           <View style={styles.creditsHeader}>
             <Text style={[styles.creditsText, { color: colors.text }]}>
-              {t("myMemberships.classesLeft", { remaining, total })}
+              {t("myMemberships.classesLeft", { count: remaining, remaining, total })}
             </Text>
           </View>
           <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
@@ -107,6 +112,11 @@ export default function MyMembershipsScreen({ navigation }) {
               ]}
             />
           </View>
+        </View>
+
+        <View style={styles.cardFooter}>
+          <Text style={[styles.historyHint, { color: colors.textTertiary }]}>{t("myMemberships.viewHistory")}</Text>
+          <Icon name="forward" size={15} color={colors.textTertiary} />
         </View>
 
         {state !== "active" && (
@@ -121,7 +131,7 @@ export default function MyMembershipsScreen({ navigation }) {
             <Text style={[styles.renewText, { color: colors.primary }]}>{t("myMemberships.renew")}</Text>
           </TouchableOpacity>
         )}
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -265,6 +275,8 @@ function createStyles(colors, isDark) {
     creditsText: { fontSize: 14, fontWeight: "600" },
     progressTrack: { height: 8, borderRadius: 4, overflow: "hidden" },
     progressFill: { height: 8, borderRadius: 4 },
+    cardFooter: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 4, marginTop: 12 },
+    historyHint: { fontSize: 12.5, fontWeight: "600" },
     unlimitedText: { fontSize: 14, marginTop: 14, fontWeight: "500" },
     renewButton: {
       marginTop: 16,

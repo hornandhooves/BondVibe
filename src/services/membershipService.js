@@ -253,6 +253,28 @@ export const getUserMemberships = async (userId = null) => {
 };
 
 /**
+ * A membership's utilization history: every redemption (check-in that spent a
+ * credit) newest-first. Each record carries the event/class title + credits
+ * spent + timestamp. Undone check-ins are marked status:'undone'.
+ * @param {string} membershipId
+ * @returns {Promise<Array>}
+ */
+export const getMembershipRedemptions = async (membershipId) => {
+  try {
+    if (!membershipId) return [];
+    const snap = await getDocs(
+      query(collection(db, "membershipRedemptions"), where("membershipId", "==", membershipId))
+    );
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => toMillis(b.redeemedAt) - toMillis(a.redeemedAt));
+  } catch (e) {
+    console.error("❌ getMembershipRedemptions:", e);
+    return [];
+  }
+};
+
+/**
  * Get a user's active, usable membership with a given host, if any.
  * "Usable" = active, not expired, and (for credit packs) has credits left.
  * @param {string} hostId

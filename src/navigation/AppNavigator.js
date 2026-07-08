@@ -89,6 +89,7 @@ import MembershipPlansScreen from "../screens/MembershipPlansScreen";
 import HostMembershipsScreen from "../screens/HostMembershipsScreen";
 import MembershipCheckoutScreen from "../screens/MembershipCheckoutScreen";
 import MyMembershipsScreen from "../screens/MyMembershipsScreen";
+import MembershipHistoryScreen from "../screens/MembershipHistoryScreen";
 import EventCheckInScreen from "../screens/EventCheckInScreen";
 import HostAnalyticsScreen from "../screens/HostAnalyticsScreen";
 import BondVibeProScreen from "../screens/BondVibeProScreen";
@@ -586,6 +587,10 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen
             name="MyMemberships"
             component={MyMembershipsScreen}
+          />
+          <Stack.Screen
+            name="MembershipHistory"
+            component={MembershipHistoryScreen}
           />
           <Stack.Screen
             name="EventCheckIn"

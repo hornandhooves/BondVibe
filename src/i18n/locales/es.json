@@ -1466,6 +1466,14 @@
     "status": "Estado",
     "viewAnalytics": "Ver estadísticas"
   },
+  "membershipHistory": {
+    "title": "Historial de uso",
+    "empty": "Aún no hay check-ins. Los créditos que uses en eventos y clases aparecerán aquí.",
+    "session": "Sesión",
+    "undone": "deshecho",
+    "restored": "restaurado",
+    "balanceAfter": "quedan {{n}}"
+  },
   "myMemberships": {
     "stateActive": "Activa",
     "stateDepleted": "Sin créditos",
@@ -1475,8 +1483,9 @@
     "expiredOn": "Venció el {{date}}",
     "validUntil": "Válida hasta {{date}}",
     "classesLeft_one": "{{count}} de {{total}} clase restante",
-    "classesLeft_other": "{{remaining}} de {{total}} clases restantes",
+    "classesLeft_other": "{{count}} de {{total}} clases restantes",
     "unlimitedClasses": "Clases ilimitadas",
+    "viewHistory": "Ver historial",
     "renew": "Renovar",
     "title": "Mis membresías",
     "noneYet": "Aún no tienes membresías",
