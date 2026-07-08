@@ -21,6 +21,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { TYPE, SPACING, RADII, BRAND, ELEVATION } from "../constants/theme-tokens";
 import { getBusiness } from "../services/businessService";
 import { listMembers, MEMBER_STATUS } from "../services/businessMembersService";
+import { claimStaffInvites } from "../services/businessStaffService";
 
 export default function ManageScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -33,6 +34,8 @@ export default function ManageScreen({ navigation }) {
     useCallback(() => {
       const uid = auth.currentUser?.uid;
       if (!uid) return;
+      // Auto-link any pending staff invites for this account (FIX 4).
+      claimStaffInvites().catch(() => {});
       // Real stats for the "Your business" card (only when a business exists).
       getBusiness()
         .then(async (b) => {

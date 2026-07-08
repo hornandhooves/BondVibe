@@ -3297,6 +3297,10 @@
       "emailRequired": "Ingresa un correo.",
       "invitedTitle": "Staff agregado",
       "invitedMsg": "{{name}} ya tiene acceso.",
+      "pendingTitle": "Invitación pendiente",
+      "pendingMsg": "{{email}} aún no tiene cuenta de Kinlo. Se agregará automáticamente cuando se una.",
+      "pendingSection": "Invitaciones pendientes",
+      "pickRole": "Rol",
       "failTitle": "No se pudo invitar",
       "notFound": "No hay cuenta de Kinlo con ese correo.",
       "selfMsg": "Ya eres el dueño.",
@@ -3312,6 +3316,32 @@
       "roleHint": {
         "instructor": "Administra miembros, clases y asistencia. Sin finanzas.",
         "reception": "Solo check-in y asistencia. Sin finanzas."
+      }
+    },
+    "roles": {
+      "title": "Roles y permisos",
+      "entrySub": "Renombra roles y define qué puede ver cada uno",
+      "hint": "Cada rol controla qué áreas del negocio puede abrir su staff. El Dueño tiene todo y no se puede editar.",
+      "locked": "bloqueado",
+      "newRole": "Nuevo rol",
+      "editTitle": "Editar rol",
+      "namePlaceholder": "Nombre del rol",
+      "areasCount": "{{n}} de {{total}} áreas",
+      "save": "Guardar rol",
+      "remove": "Eliminar rol",
+      "removeTitle": "¿Eliminar este rol?",
+      "area": {
+        "dashboard": "Panel",
+        "members": "Miembros",
+        "packages": "Membresías y paquetes",
+        "finance": "Finanzas",
+        "classes": "Clases",
+        "agenda": "Agenda",
+        "checkin": "Check-in",
+        "automations": "Notificaciones automáticas",
+        "momentum": "Momentum",
+        "branches": "Sucursales",
+        "staff": "Staff"
       }
     }
   }

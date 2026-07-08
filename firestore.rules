@@ -339,6 +339,16 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // Pending staff invites (kinlo_business/07 FIX 4). Created/claimed only via
+    // Cloud Functions (Admin SDK). The owner reads the invites they sent.
+    match /staffInvites/{inviteId} {
+      allow read: if isSignedIn() &&
+                     (resource.data.bizId == request.auth.uid ||
+                      resource.data.invitedBy == request.auth.uid ||
+                      isAdmin());
+      allow create, update, delete: if false;
+    }
+
     // ============================================
     // MEMBERSHIP RESERVATIONS (credit holds)
     // Created/redeemed/released only via Cloud Functions (Admin SDK).
@@ -704,6 +714,13 @@ service cloud.firestore {
 
       // Staff roster — only the owner manages staff (v1).
       match /staff/{staffUid} {
+        allow read: if isBizStaff(bizId) || isBizOwnerUid(bizId);
+        allow write: if isBizOwnerUid(bizId);
+      }
+
+      // Roles & permission matrix — staff read (route guards), owner writes
+      // (kinlo_business/07 FIX 4).
+      match /roles/{roleId} {
         allow read: if isBizStaff(bizId) || isBizOwnerUid(bizId);
         allow write: if isBizOwnerUid(bizId);
       }

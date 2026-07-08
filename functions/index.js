@@ -2806,29 +2806,91 @@ exports.inviteBusinessStaff = onCall(async (request) => {
   const uid = request.auth && request.auth.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
   const bizId = uid; // one business per owner
-  const email = String((request.data && request.data.email) || "").trim();
-  const role = ["owner", "instructor", "reception"].includes(
-    request.data && request.data.role) ? request.data.role : "reception";
+  // Normalize: trim + lowercase so any real account email matches (incl. Gmail).
+  const email = String((request.data && request.data.email) || "").trim().toLowerCase();
+  const role = String((request.data && request.data.role) || "reception");
   if (!email) throw new HttpsError("invalid-argument", "Email required.");
-  let staff;
+
+  let staff = null;
   try {
     staff = await admin.auth().getUserByEmail(email);
   } catch (e) {
-    throw new HttpsError("not-found", "No Kinlo account with that email.");
+    staff = null; // no account yet → pending invite (below)
   }
-  if (staff.uid === uid) {
-    throw new HttpsError("already-exists", "You're already the owner.");
+
+  if (staff) {
+    if (staff.uid === uid) {
+      throw new HttpsError("already-exists", "You're already the owner.");
+    }
+    await db.collection("businesses").doc(bizId)
+      .collection("staff").doc(staff.uid).set({
+        uid: staff.uid,
+        role,
+        email,
+        name: staff.displayName || "",
+        branchIds: [],
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    return {uid: staff.uid, role, name: staff.displayName || "", email, pending: false};
   }
-  await db.collection("businesses").doc(bizId)
-    .collection("staff").doc(staff.uid).set({
-      uid: staff.uid,
-      role,
+
+  // No account yet: store a pending invite keyed by email; it auto-links when
+  // the person signs up/logs in (claimStaffInvites).
+  await db.collection("staffInvites").doc(`${bizId}_${email}`).set({
+    bizId,
+    email,
+    role,
+    status: "pending",
+    invitedBy: uid,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return {pending: true, email, role};
+});
+
+/**
+ * Claim any pending staff invites for the caller's email (called on login).
+ * Converts each into a real staff doc under the inviting business.
+ */
+exports.claimStaffInvites = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const email = String((request.auth.token && request.auth.token.email) || "").trim().toLowerCase();
+  if (!email) return {claimed: 0};
+
+  const snap = await db.collection("staffInvites")
+    .where("email", "==", email)
+    .where("status", "==", "pending")
+    .get();
+  if (snap.empty) return {claimed: 0};
+
+  let name = "";
+  try {
+    const u = await admin.auth().getUser(uid);
+    name = u.displayName || "";
+  } catch (e) {
+    // best-effort
+  }
+
+  const batch = db.batch();
+  snap.forEach((d) => {
+    const inv = d.data();
+    const staffRef = db.collection("businesses").doc(inv.bizId).collection("staff").doc(uid);
+    batch.set(staffRef, {
+      uid,
+      role: inv.role,
       email,
-      name: staff.displayName || "",
+      name,
       branchIds: [],
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
-  return {uid: staff.uid, role, name: staff.displayName || "", email};
+    batch.update(d.ref, {
+      status: "claimed",
+      claimedBy: uid,
+      claimedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+  await batch.commit();
+  return {claimed: snap.size};
 });
 
 // Session reminders (both sides) + the no-request Momentum detector.

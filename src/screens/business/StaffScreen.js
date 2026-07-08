@@ -15,7 +15,7 @@ import { auth } from "../../services/firebase";
 import Icon from "../../components/Icon";
 import GradientBackground from "../../components/GradientBackground";
 import { useTheme } from "../../contexts/ThemeContext";
-import { listStaff, inviteStaff, updateStaffRole, removeStaff, getWorkingHours, setWorkingHours } from "../../services/businessStaffService";
+import { listStaff, inviteStaff, updateStaffRole, removeStaff, getWorkingHours, setWorkingHours, listRoles, listStaffInvites } from "../../services/businessStaffService";
 
 const weekdayShort = (i, lang) => new Date(2024, 0, 7 + i).toLocaleDateString(lang || "en", { weekday: "narrow" });
 
@@ -27,8 +27,12 @@ export default function StaffScreen({ navigation }) {
   const [inviting, setInviting] = useState(false);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("reception");
+  const [roles, setRoles] = useState([]);
+  const [invites, setInvites] = useState([]);
   const [whEdit, setWhEdit] = useState(null); // { id, days, start, end }
   const me = auth.currentUser?.uid;
+
+  const assignable = roles.filter((r) => r.id !== "owner");
 
   const openWorkingHours = (s) => {
     const wh = getWorkingHours(s);
@@ -42,18 +46,34 @@ export default function StaffScreen({ navigation }) {
     load();
   };
 
-  const load = useCallback(async () => { setStaff(await listStaff()); setLoading(false); }, []);
+  const load = useCallback(async () => {
+    const [st, rl, iv] = await Promise.all([listStaff(), listRoles(), listStaffInvites()]);
+    setStaff(st);
+    setRoles(rl);
+    setInvites(iv);
+    setRole((cur) => (rl.some((r) => r.id === cur && r.id !== "owner") ? cur : (rl.find((r) => r.id !== "owner")?.id || "reception")));
+    setLoading(false);
+  }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const roleName = (id) => roles.find((r) => r.id === id)?.name || t(`business.staff.role.${id}`, { defaultValue: id });
 
   const doInvite = async () => {
     if (!email.trim()) { Alert.alert(t("business.staff.emailRequired")); return; }
     const res = await inviteStaff(email, role);
-    if (res.ok) { setInviting(false); setEmail(""); load(); Alert.alert(t("business.staff.invitedTitle"), t("business.staff.invitedMsg", { name: res.name || email })); }
-    else Alert.alert(t("business.staff.failTitle"), res.error === "not_found" ? t("business.staff.notFound") : res.error === "self" ? t("business.staff.selfMsg") : t("business.common.tryAgain"));
+    if (res.ok && res.pending) {
+      setInviting(false); setEmail(""); load();
+      Alert.alert(t("business.staff.pendingTitle"), t("business.staff.pendingMsg", { email: email.trim() }));
+    } else if (res.ok) {
+      setInviting(false); setEmail(""); load();
+      Alert.alert(t("business.staff.invitedTitle"), t("business.staff.invitedMsg", { name: res.name || email }));
+    } else {
+      Alert.alert(t("business.staff.failTitle"), res.error === "self" ? t("business.staff.selfMsg") : t("business.common.tryAgain"));
+    }
   };
 
   const changeRole = (s) => {
-    const opts = ["instructor", "reception"].map((r) => ({ text: t(`business.staff.role.${r}`), onPress: () => updateStaffRole(s.id, r).then(load) }));
+    const opts = assignable.map((r) => ({ text: r.name, onPress: () => updateStaffRole(s.id, r.id).then(load) }));
     Alert.alert(t("business.staff.changeRole"), s.name || s.email, [...opts, { text: t("business.common.cancel"), style: "cancel" }]);
   };
 
@@ -80,6 +100,32 @@ export default function StaffScreen({ navigation }) {
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={[styles.hint, { color: colors.textTertiary }]}>{t("business.staff.hint")}</Text>
+
+          <TouchableOpacity
+            style={[styles.rolesEntry, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => navigation.navigate("BusinessRoles")}
+          >
+            <View style={[styles.rolesIcon, { backgroundColor: colors.brandSoft }]}><Icon name="settings" size={17} color={colors.primary} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.rolesTitle, { color: colors.text }]}>{t("business.roles.title")}</Text>
+              <Text style={[styles.rolesSub, { color: colors.textTertiary }]}>{t("business.roles.entrySub")}</Text>
+            </View>
+            <Icon name="forward" size={18} color={colors.textTertiary} />
+          </TouchableOpacity>
+
+          {invites.length > 0 && (
+            <>
+              <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>{t("business.staff.pendingSection")}</Text>
+              {invites.map((iv) => (
+                <View key={iv.id} style={[styles.inviteRow, { backgroundColor: colors.surfaceGlass, borderColor: colors.border }]}>
+                  <Icon name="clock" size={15} color={colors.warning} />
+                  <Text style={[styles.inviteEmail, { color: colors.text }]} numberOfLines={1}>{iv.email}</Text>
+                  <Text style={[styles.inviteRole, { color: colors.textTertiary }]}>{roleName(iv.role)}</Text>
+                </View>
+              ))}
+            </>
+          )}
+
           {staff.map((s) => {
             const wh = getWorkingHours(s);
             const canHaveHours = s.role === "owner" || s.role === "instructor";
@@ -91,7 +137,7 @@ export default function StaffScreen({ navigation }) {
                     <Text style={[styles.email, { color: colors.textTertiary }]} numberOfLines={1}>{s.email}</Text>
                   </View>
                   <View style={[styles.roleBadge, { backgroundColor: s.role === "owner" ? `${colors.primary}18` : colors.surfaceGlass }]}>
-                    <Text style={[styles.roleText, { color: s.role === "owner" ? colors.primary : colors.textSecondary }]}>{t(`business.staff.role.${s.role}`)}</Text>
+                    <Text style={[styles.roleText, { color: s.role === "owner" ? colors.primary : colors.textSecondary }]}>{roleName(s.role)}</Text>
                   </View>
                   {s.role !== "owner" && s.id !== me && (
                     <View style={styles.actions}>
@@ -120,13 +166,13 @@ export default function StaffScreen({ navigation }) {
           <View style={[styles.sheet, { backgroundColor: colors.background }]}>
             <View style={styles.sheetHeader}><Text style={[styles.sheetTitle, { color: colors.text }]}>{t("business.staff.invite")}</Text><TouchableOpacity onPress={() => setInviting(false)}><Icon name="close" size={22} color={colors.textSecondary} /></TouchableOpacity></View>
             <TextInput style={[styles.input, inputStyle]} value={email} onChangeText={setEmail} placeholder={t("business.staff.emailPlaceholder")} placeholderTextColor={colors.textTertiary} keyboardType="email-address" autoCapitalize="none" />
-            <View style={styles.segRow}>
-              {["instructor", "reception"].map((r) => {
-                const on = role === r;
-                return <TouchableOpacity key={r} onPress={() => setRole(r)} style={[styles.seg, { borderColor: on ? colors.primary : colors.border, backgroundColor: on ? `${colors.primary}14` : "transparent" }]}><Text style={[styles.segText, { color: on ? colors.primary : colors.textSecondary }]}>{t(`business.staff.role.${r}`)}</Text></TouchableOpacity>;
+            <Text style={[styles.roleHint, { color: colors.textTertiary, marginTop: 0, marginBottom: 8 }]}>{t("business.staff.pickRole")}</Text>
+            <View style={styles.roleWrap}>
+              {assignable.map((r) => {
+                const on = role === r.id;
+                return <TouchableOpacity key={r.id} onPress={() => setRole(r.id)} style={[styles.roleChip, { borderColor: on ? colors.primary : colors.border, backgroundColor: on ? `${colors.primary}14` : "transparent" }]}><Text style={[styles.segText, { color: on ? colors.primary : colors.textSecondary }]}>{r.name}</Text></TouchableOpacity>;
               })}
             </View>
-            <Text style={[styles.roleHint, { color: colors.textTertiary }]}>{t(`business.staff.roleHint.${role}`)}</Text>
             <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primary }]} onPress={doInvite}><Text style={styles.saveText}>{t("business.staff.sendInvite")}</Text></TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -196,6 +242,16 @@ function createStyles(colors) {
     segRow: { flexDirection: "row", gap: 8 },
     seg: { flex: 1, borderWidth: 1.5, borderRadius: 12, paddingVertical: 10, alignItems: "center" },
     segText: { fontSize: 13.5, fontWeight: "700" },
+    rolesEntry: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 16 },
+    rolesIcon: { width: 36, height: 36, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+    rolesTitle: { fontSize: 14.5, fontWeight: "800" },
+    rolesSub: { fontSize: 12, marginTop: 2 },
+    sectionLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 8 },
+    inviteRow: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, marginBottom: 8 },
+    inviteEmail: { flex: 1, fontSize: 13.5, fontWeight: "600" },
+    inviteRole: { fontSize: 12, fontWeight: "700" },
+    roleWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    roleChip: { borderWidth: 1.5, borderRadius: 12, paddingVertical: 9, paddingHorizontal: 14 },
     roleHint: { fontSize: 12, lineHeight: 17, marginTop: 10 },
     saveBtn: { height: 50, borderRadius: 25, alignItems: "center", justifyContent: "center", marginTop: 14 },
     saveText: { color: "#fff", fontSize: 15, fontWeight: "800" },

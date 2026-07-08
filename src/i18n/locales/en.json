@@ -3297,6 +3297,10 @@
       "emailRequired": "Enter an email.",
       "invitedTitle": "Staff added",
       "invitedMsg": "{{name}} now has access.",
+      "pendingTitle": "Invitation pending",
+      "pendingMsg": "{{email}} doesn't have a Kinlo account yet. They'll be added automatically when they join.",
+      "pendingSection": "Pending invites",
+      "pickRole": "Role",
       "failTitle": "Couldn't invite",
       "notFound": "No Kinlo account with that email.",
       "selfMsg": "You're already the owner.",
@@ -3312,6 +3316,32 @@
       "roleHint": {
         "instructor": "Manage members, classes and attendance. No finance.",
         "reception": "Check-in and attendance only. No finance."
+      }
+    },
+    "roles": {
+      "title": "Roles & permissions",
+      "entrySub": "Rename roles, set what each can access",
+      "hint": "Each role controls which Business areas its staff can open. Owner has everything and can't be edited.",
+      "locked": "locked",
+      "newRole": "New role",
+      "editTitle": "Edit role",
+      "namePlaceholder": "Role name",
+      "areasCount": "{{n}} of {{total}} areas",
+      "save": "Save role",
+      "remove": "Delete role",
+      "removeTitle": "Delete this role?",
+      "area": {
+        "dashboard": "Dashboard",
+        "members": "Members",
+        "packages": "Memberships & packages",
+        "finance": "Finance",
+        "classes": "Classes",
+        "agenda": "Agenda",
+        "checkin": "Check-in",
+        "automations": "Automatic notifications",
+        "momentum": "Momentum",
+        "branches": "Branches",
+        "staff": "Staff"
       }
     }
   }

@@ -19,12 +19,14 @@ import { ELEVATION, RADII, SPACING } from "../../constants/theme-tokens";
 import { db, auth } from "../../services/firebase";
 import { getBusiness } from "../../services/businessService";
 import { useBusinessScope } from "../../contexts/BusinessScopeContext";
+import useBusinessPerms from "../../hooks/useBusinessPerms";
 import { verticalLabelKey } from "../../constants/businessVerticals";
 
 export default function BusinessHubScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const { isEventScoped, event: scopeEvent, setEventScope, setWholeBusiness } = useBusinessScope();
+  const { allows } = useBusinessPerms(); // owner → all; staff → their role's perms
   const [business, setBusiness] = useState(undefined); // undefined=loading, null=none
   const [pickerOpen, setPickerOpen] = useState(false);
   const [events, setEvents] = useState([]);
@@ -181,14 +183,16 @@ export default function BusinessHubScreen({ navigation }) {
             subtitle={t("business.hub.packagesSubtitle")}
             onPress={() => navigation.navigate("BusinessPackages")}
           />
-          <ListRow
-            icon="dollar"
-            iconColor={colors.success}
-            iconBg={`${colors.success}1A`}
-            title={t("business.hub.financeTitle")}
-            subtitle={t("business.hub.financeSubtitle")}
-            onPress={() => navigation.navigate("BusinessFinance")}
-          />
+          {allows("finance") && (
+            <ListRow
+              icon="dollar"
+              iconColor={colors.success}
+              iconBg={`${colors.success}1A`}
+              title={t("business.hub.financeTitle")}
+              subtitle={t("business.hub.financeSubtitle")}
+              onPress={() => navigation.navigate("BusinessFinance")}
+            />
+          )}
           <ListRow
             icon="qr"
             iconColor={colors.success}
@@ -233,39 +237,47 @@ export default function BusinessHubScreen({ navigation }) {
 
         <SectionHeader title={t("business.hub.retentionOrgSection")} />
         <View style={card}>
-          <ListRow
-            icon="analytics"
-            iconColor={colors.warning}
-            iconBg={`${colors.warning}1A`}
-            title={t("business.hub.momentumTitle")}
-            subtitle={t("business.hub.momentumSubtitle")}
-            onPress={() => navigation.navigate("MomentumBoard")}
-          />
-          <ListRow
-            icon="broadcast"
-            iconColor={colors.warning}
-            iconBg={`${colors.warning}1A`}
-            title={t("business.hub.automationsTitle")}
-            subtitle={t("business.hub.automationsSubtitle")}
-            onPress={() => navigation.navigate("BusinessAutomations")}
-          />
-          <ListRow
-            icon="location"
-            iconColor={colors.textSecondary}
-            iconBg={`${colors.textTertiary}22`}
-            title={t("business.hub.branchesTitle")}
-            subtitle={t("business.hub.branchesSubtitle")}
-            onPress={() => navigation.navigate("BusinessBranches")}
-          />
-          <ListRow
-            icon="users"
-            iconColor={colors.textSecondary}
-            iconBg={`${colors.textTertiary}22`}
-            title={t("business.hub.staffTitle")}
-            subtitle={t("business.hub.staffSubtitle")}
-            onPress={() => navigation.navigate("BusinessStaff")}
-            divider={false}
-          />
+          {allows("momentum") && (
+            <ListRow
+              icon="analytics"
+              iconColor={colors.warning}
+              iconBg={`${colors.warning}1A`}
+              title={t("business.hub.momentumTitle")}
+              subtitle={t("business.hub.momentumSubtitle")}
+              onPress={() => navigation.navigate("MomentumBoard")}
+            />
+          )}
+          {allows("automations") && (
+            <ListRow
+              icon="broadcast"
+              iconColor={colors.warning}
+              iconBg={`${colors.warning}1A`}
+              title={t("business.hub.automationsTitle")}
+              subtitle={t("business.hub.automationsSubtitle")}
+              onPress={() => navigation.navigate("BusinessAutomations")}
+            />
+          )}
+          {allows("branches") && (
+            <ListRow
+              icon="location"
+              iconColor={colors.textSecondary}
+              iconBg={`${colors.textTertiary}22`}
+              title={t("business.hub.branchesTitle")}
+              subtitle={t("business.hub.branchesSubtitle")}
+              onPress={() => navigation.navigate("BusinessBranches")}
+            />
+          )}
+          {allows("staff") && (
+            <ListRow
+              icon="users"
+              iconColor={colors.textSecondary}
+              iconBg={`${colors.textTertiary}22`}
+              title={t("business.hub.staffTitle")}
+              subtitle={t("business.hub.staffSubtitle")}
+              onPress={() => navigation.navigate("BusinessStaff")}
+              divider={false}
+            />
+          )}
         </View>
       </ScrollView>
 

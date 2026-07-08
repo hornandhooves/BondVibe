@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { db, auth } from "./firebase";
 import { DEFAULT_VERTICAL, VERTICAL_IDS } from "../constants/businessVerticals";
+import { DEFAULT_ROLES } from "../constants/businessRoles";
 
 export { VERTICAL_IDS, DEFAULT_VERTICAL };
 
@@ -74,6 +75,13 @@ export async function createBusiness({ name, vertical }) {
     branchIds: [],
     createdAt: serverTimestamp(),
   });
+  // Seed the default roles + permission matrix (kinlo_business/07 FIX 4).
+  await Promise.all(
+    DEFAULT_ROLES.map((r) => {
+      const { id, ...data } = r;
+      return setDoc(doc(db, "businesses", uid, "roles", id), data);
+    })
+  );
   return await getBusiness(uid);
 }
 
