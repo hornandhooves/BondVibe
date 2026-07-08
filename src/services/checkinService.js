@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { db, auth } from "./firebase";
 import { isUserAttending } from "../utils/eventHelpers";
+import { getEventReservations, redeemMembershipCredit } from "./membershipService";
 
 export const CHECKIN_PREFIX = "bvchk";
 
@@ -59,6 +60,21 @@ export const checkInFromScan = async (eventId, raw) => {
       checkedInAt: new Date().toISOString(),
       by: auth.currentUser?.uid || null,
     });
+
+    // Membership credit is consumed AT CHECK-IN (kinlo_business/05 §D). If this
+    // attendee reserved with a membership, redeem that reservation now. The
+    // server transaction is idempotent (guarded by reservation.status), so a
+    // re-scan never double-deducts. Best-effort — never block the check-in.
+    try {
+      const reservations = await getEventReservations(eventId);
+      const reserved = reservations.find(
+        (x) => x.userId === parsed.userId && x.status === "reserved"
+      );
+      if (reserved) await redeemMembershipCredit(reserved.id);
+    } catch (e) {
+      // credit redemption is best-effort; the attendance stands regardless
+    }
+
     return { success: true, name };
   } catch (e) {
     return { success: false, error: e.message };

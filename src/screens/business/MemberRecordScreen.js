@@ -127,12 +127,14 @@ export default function MemberRecordScreen({ route, navigation }) {
   const onMarkPresent = async () => {
     const res = await markPresent({ ...member, id: memberId });
     await reloadMember();
-    Alert.alert(
-      t("business.attendance.markedTitle"),
-      res.creditDeducted
-        ? t("business.attendance.markedCredit", { remaining: res.remaining })
-        : t("business.attendance.marked")
-    );
+    if (res.creditDeducted) {
+      Alert.alert(t("business.attendance.markedTitle"), t("business.attendance.markedCredit", { remaining: res.remaining }));
+    } else if (res.noCredit) {
+      // Recorded, but the member is out of credits (or expired) — prompt to renew/charge.
+      Alert.alert(t("business.attendance.noCreditTitle"), t("business.attendance.noCreditMsg"));
+    } else {
+      Alert.alert(t("business.attendance.markedTitle"), t("business.attendance.marked"));
+    }
   };
 
   const onRegenerate = async () => {

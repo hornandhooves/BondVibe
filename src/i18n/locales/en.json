@@ -2821,6 +2821,8 @@
       "markedTitle": "Checked in",
       "marked": "Attendance recorded.",
       "markedCredit": "Attendance recorded · {{remaining}} credits left.",
+      "noCreditTitle": "No credits left",
+      "noCreditMsg": "Attendance recorded, but this member's package is out of credits or expired. Renew it or record a payment.",
       "checkedIn": "Checked in",
       "qr": "QR",
       "manual": "manual"

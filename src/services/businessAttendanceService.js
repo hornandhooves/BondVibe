@@ -57,7 +57,10 @@ export async function markPresent(member, opts = {}, bizId = getMyBizId()) {
   if (hasCredits) {
     remaining = await adjustCredits(member, -1, "attendance", bizId);
   }
-  return { creditDeducted: !!hasCredits, remaining };
+  // The member has a package but nothing could be deducted (expired, out of
+  // credits, or audience mismatch): flag it so the host can renew / charge.
+  const noCredit = !!pkg && !hasCredits;
+  return { creditDeducted: !!hasCredits, remaining, noCredit };
 }
 
 /**

@@ -2821,6 +2821,8 @@
       "markedTitle": "Registrado",
       "marked": "Asistencia registrada.",
       "markedCredit": "Asistencia registrada · {{remaining}} créditos restantes.",
+      "noCreditTitle": "Sin créditos",
+      "noCreditMsg": "Asistencia registrada, pero el paquete del miembro no tiene créditos o venció. Renuévalo o registra un pago.",
       "checkedIn": "Registrado",
       "qr": "QR",
       "manual": "manual"

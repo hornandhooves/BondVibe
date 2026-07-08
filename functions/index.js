@@ -461,8 +461,35 @@ exports.createEventPaymentIntent = onRequest(
       const eventData = eventDoc.data();
       const hostId = getEventCreatorId(eventData);
 
+      // Two-tier pricing (kinlo_business/05 §C): a Local member is charged the
+      // event's local price. Resolve the caller's tier from their linked CRM
+      // member record under the host's business (default general). Which of the
+      // two event prices applies is decided server-side; the amounts themselves
+      // stay authoritative from the event doc (never a client price).
+      let effectivePesos = eventData.price || 0;
+      let pricingTierApplied = "general";
+      if (eventData.twoTier && typeof eventData.priceLocal === "number") {
+        try {
+          const memSnap = await db
+            .collection("businesses").doc(hostId)
+            .collection("members")
+            .where("linkedUid", "==", userId)
+            .limit(1)
+            .get();
+          const tier = memSnap.empty ?
+            "general" :
+            (memSnap.docs[0].data().pricingTier || "general");
+          if (tier === "local") {
+            effectivePesos = eventData.priceLocal;
+            pricingTierApplied = "local";
+          }
+        } catch (e) {
+          // default to general on any lookup error
+        }
+      }
+
       // PRICE is authoritative from the event doc — NEVER trust a client price.
-      const eventPrice = Math.round((eventData.price || 0) * 100);
+      const eventPrice = Math.round((effectivePesos || 0) * 100);
 
       // Get host's Stripe Connect account
       const hostDoc = await db.collection("users").doc(hostId).get();
@@ -521,6 +548,7 @@ exports.createEventPaymentIntent = onRequest(
           eventTitle: eventData.title,
           userId: userId,
           hostId: hostId,
+          pricingTierApplied,
           // NEW: Store all pricing details for refunds
           eventPrice: pricing.eventPrice.toString(),
           platformFee: pricing.platformFee.toString(),

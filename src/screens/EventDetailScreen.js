@@ -43,6 +43,7 @@ import {
   getUserReservationForEvent,
   releaseMembershipReservation,
 } from "../services/membershipService";
+import { getMyPricingTierForHost } from "../services/businessMembersService";
 import { pesosTocentavos } from "../services/stripeService";
 import CancelEventModal from "../components/CancelEventModal";
 import MatchingEntryCard from "../components/MatchingEntryCard";
@@ -282,10 +283,24 @@ export default function EventDetailScreen({ route, navigation }) {
     }
   };
 
+  // Two-tier pricing (kinlo_business/05 §C): a Local member sees/pays the local
+  // price. The server re-resolves this authoritatively at checkout — this keeps
+  // the displayed amount consistent with what's charged.
+  const resolveTierPrice = async () => {
+    if (!event?.twoTier || typeof event.priceLocal !== "number") return event?.price || 0;
+    try {
+      const tier = await getMyPricingTierForHost(getEventCreatorId(event));
+      return tier === "local" ? event.priceLocal : event.price;
+    } catch (e) {
+      return event.price;
+    }
+  };
+
   // Join the event by paying (paid events) or for free.
   const proceedJoinPayOrFree = async () => {
     if (event.price && event.price > 0) {
-      const amountInCentavos = pesosTocentavos(event.price);
+      const pesos = await resolveTierPrice();
+      const amountInCentavos = pesosTocentavos(pesos);
       navigation.navigate("Checkout", {
         eventId: event.id,
         eventTitle: event.title,
@@ -379,10 +394,11 @@ export default function EventDetailScreen({ route, navigation }) {
     const isPaid = event.price && event.price > 0;
 
     if (isPaid || membershipOption) {
+      const tierPrice = await resolveTierPrice();
       navigation.navigate("HowToAttend", {
         eventId,
         eventTitle: event.title,
-        price: event.price || 0,
+        price: tierPrice,
         hostId: getEventCreatorId(event),
         hostName: event.hostName || t("eventDetail.defaultHostName"),
         acceptsMembership: event.acceptsMembership !== false,
