@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -40,6 +40,7 @@ import {
 import useCities from "../hooks/useCities";
 import { uploadEventImages } from "../services/storageService";
 import { getHostMembershipPlans } from "../services/membershipService";
+import { listStaff } from "../services/businessStaffService";
 import { checkAccountStatus } from "../services/stripeConnectService";
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -55,9 +56,15 @@ import DurationWheelModal, { formatDuration } from "../components/DurationWheelM
 // "create a membership plan" detour so the host never loses their data).
 const EVENT_DRAFT_KEY = "eventDraft";
 
-export default function CreateEventScreen({ navigation }) {
+export default function CreateEventScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
+
+  // A "class" reuses this exact screen (kinlo_business/05 §E): kind:'class' +
+  // an instructor + weekly-by-default recurrence. Everything else (two-tier
+  // pricing, images, membership credits) is identical to an event.
+  const kind = route?.params?.kind === "class" ? "class" : "event";
+  const isClass = kind === "class";
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -115,6 +122,9 @@ export default function CreateEventScreen({ navigation }) {
   const [twoTier, setTwoTier] = useState(false);
   const [priceLocal, setPriceLocal] = useState(""); // MXN integer
   const [priceGeneral, setPriceGeneral] = useState(""); // MXN integer
+  // Class-only: the instructor teaching it (a staff uid; defaults to the owner).
+  const [instructorUid, setInstructorUid] = useState("");
+  const [instructors, setInstructors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [eventImages, setEventImages] = useState([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -151,6 +161,28 @@ export default function CreateEventScreen({ navigation }) {
       loadUserProfile();
     }, [loadUserProfile])
   );
+
+  // Class setup (kinlo_business/05 §E): load staff to pick an instructor
+  // (default the owner) and default the recurrence to weekly on the start day.
+  useEffect(() => {
+    if (!isClass) return;
+    (async () => {
+      try {
+        const staff = await listStaff();
+        setInstructors(staff);
+        const ownerUid = auth.currentUser?.uid;
+        setInstructorUid((cur) => cur || ownerUid || (staff[0] && staff[0].id) || "");
+      } catch (_e) {
+        setInstructorUid((cur) => cur || auth.currentUser?.uid || "");
+      }
+    })();
+    setRecurrenceConfig((cfg) =>
+      cfg.type === "none"
+        ? { ...cfg, type: "weekly", selectedDays: [eventDate.getDay()] }
+        : cfg
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isClass]);
 
   // Whether the host may create paid events, self-healing a stale flag: if the
   // flag is false but a Stripe account exists, refresh the real status once and
@@ -377,6 +409,10 @@ export default function CreateEventScreen({ navigation }) {
       Alert.alert(t("createEvent.validation.missingInfoTitle"), t("createEvent.validation.missingDescriptionMsg"));
       return;
     }
+    if (isClass && !instructorUid) {
+      Alert.alert(t("createEvent.validation.missingInfoTitle"), t("createEvent.validation.missingInstructorMsg"));
+      return;
+    }
     if (!locationDetail.trim()) {
       Alert.alert(
         t("createEvent.validation.missingInfoTitle"),
@@ -509,6 +545,13 @@ export default function CreateEventScreen({ navigation }) {
         priceLocal: !isFree && twoTier ? parseInt(priceLocal, 10) : null,
         twoTier: !isFree && twoTier,
         currency: "MXN",
+        // Class fields (kinlo_business/05 §E): a class is an event with kind
+        // 'class' + an instructor. Credit-at-check-in + two-tier apply identically.
+        kind,
+        instructorUid: isClass ? instructorUid : null,
+        instructorName: isClass
+          ? (instructors.find((s) => s.id === instructorUid)?.name || null)
+          : null,
         hostName:
           userData?.fullName ||
           userData?.name ||
@@ -751,7 +794,7 @@ export default function CreateEventScreen({ navigation }) {
           <Icon name="back" size={28} color={colors.text} type="ui" />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {t("createEvent.headerTitle")}
+          {isClass ? t("createEvent.classHeaderTitle") : t("createEvent.headerTitle")}
         </Text>
         <View style={{ width: 40 }} />
       </View>
@@ -831,6 +874,18 @@ export default function CreateEventScreen({ navigation }) {
             {description.length}/500
           </Text>
         </View>
+
+        {/* Instructor (class only, kinlo_business/05 §E) */}
+        {isClass && (
+          <SelectDropdown
+            label={t("createEvent.instructorLabel")}
+            value={instructorUid}
+            onValueChange={setInstructorUid}
+            options={instructors.map((s) => ({ id: s.id, label: s.name || s.email || t("createEvent.instructorFallback") }))}
+            placeholder={t("createEvent.instructorPlaceholder")}
+            type="default"
+          />
+        )}
 
         {/* Category Dropdown */}
         <SelectDropdown
@@ -1402,7 +1457,9 @@ export default function CreateEventScreen({ navigation }) {
               <>
                 <Icon name="plus" size={20} color={colors.primary} type="ui" />
                 <Text style={[styles.createText, { color: colors.primary }]}>
-                  {recurrenceConfig.type !== "none"
+                  {isClass
+                    ? t("createEvent.createClassButton")
+                    : recurrenceConfig.type !== "none"
                     ? t("createEvent.createRecurringEvents")
                     : t("createEvent.createEventButton")}
                 </Text>

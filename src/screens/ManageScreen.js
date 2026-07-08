@@ -95,6 +95,12 @@ export default function ManageScreen({ navigation }) {
             onPress={() => navigation.navigate("MyEvents", { initialTab: "hosting" })}
           />
           <ListRow
+            icon="calendarCheck"
+            title={t("manage.createClass")}
+            subtitle={t("manage.createClassSubtitle")}
+            onPress={() => navigation.navigate("CreateEvent", { kind: "class" })}
+          />
+          <ListRow
             icon="qr"
             title={t("manage.checkInScanner")}
             subtitle={t("manage.checkInScannerSubtitle")}
