@@ -761,6 +761,11 @@ service cloud.firestore {
         allow read, write: if isBizStaff(bizId) || isBizOwnerUid(bizId);
       }
 
+      // Agenda block-off ("Unavailable") time — staff-managed (kinlo_business/05).
+      match /agendaBlocks/{id} {
+        allow read, write: if isBizStaff(bizId) || isBizOwnerUid(bizId);
+      }
+
       // Automations: rules (staff-managed) + the delivery log (written by the
       // engine server-side; readable by staff).
       match /automations/{id} {

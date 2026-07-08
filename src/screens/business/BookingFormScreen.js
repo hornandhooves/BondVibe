@@ -17,9 +17,11 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { listSessionTypes, createBooking, PAID_WITH } from "../../services/businessSessionsService";
 import { listMembers } from "../../services/businessMembersService";
 
-export default function BookingFormScreen({ navigation }) {
+export default function BookingFormScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
+  // Prefill from the Agenda (tap a slot): start time + which staff runs it.
+  const params = route?.params || {};
   const [types, setTypes] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,8 +29,8 @@ export default function BookingFormScreen({ navigation }) {
   const [typeId, setTypeId] = useState(null);
   const [selected, setSelected] = useState([]); // [{memberId,name}]
   const [pick, setPick] = useState(false);
-  const [date, setDate] = useState(new Date());
-  const [time, setTime] = useState("10:00");
+  const [date, setDate] = useState(params.start ? new Date(params.start) : new Date());
+  const [time, setTime] = useState(params.time || "10:00");
   const [location, setLocation] = useState("");
   const [paidWith, setPaidWith] = useState("credit");
 
@@ -67,6 +69,7 @@ export default function BookingFormScreen({ navigation }) {
         start: start.toISOString(),
         durationMin: type.durationMin,
         location: location.trim() || null,
+        staffUid: params.staffUid || null,
         paidWith,
         priceCents: type.priceCents || 0,
         status: "confirmed",
