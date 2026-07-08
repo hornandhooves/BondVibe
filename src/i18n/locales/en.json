@@ -3033,6 +3033,7 @@
       "amountRequiredMsg": "The payment amount must be greater than zero.",
       "methodLabel": "Method",
       "method": {
+        "credit": "Membership credit",
         "cash": "Cash",
         "transfer": "Transfer",
         "stripe": "Stripe",

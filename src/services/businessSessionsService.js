@@ -172,7 +172,11 @@ export async function updateBooking(id, patch, bizId = getMyBizId()) {
   await updateDoc(ref(bizId, "bookings", id), { ...patch, updatedAt: serverTimestamp() });
 }
 
-/** Confirm a requested booking: settle payment/credit + schedule reminders. */
+/**
+ * Confirm a requested booking: record a non-credit payment now + schedule
+ * reminders. A membership credit is only HELD here (creditHold) and consumed at
+ * session-done (kinlo_business/05 §D) — never at reservation.
+ */
 export async function confirmBooking(booking, bizId = getMyBizId()) {
   const start = new Date(booking.start).getTime();
   await updateBooking(
@@ -181,6 +185,7 @@ export async function confirmBooking(booking, bizId = getMyBizId()) {
       status: BOOKING_STATUS.CONFIRMED,
       reminderAttendeeAt: new Date(start - 24 * 3600000).toISOString(),
       reminderHostAt: new Date(start - 3600000).toISOString(),
+      creditHold: booking.paidWith === "credit",
     },
     bizId
   );
@@ -207,33 +212,47 @@ export const markNoShow = (id, bizId = getMyBizId()) =>
   updateBooking(id, { status: BOOKING_STATUS.NO_SHOW }, bizId);
 
 /**
- * Mark a session done. Fires the rating nudge to the attendee (post-session
- * hook); no-show never triggers a rating. Accepts the booking so we can notify.
+ * Mark a session done. Consumes the membership credit HERE (kinlo_business/05
+ * §D) — exactly once, guarded by creditConsumed so a re-mark never double-
+ * deducts. Fires the rating nudge (no-show never triggers a rating).
  */
 export async function markDone(booking, bizId = getMyBizId()) {
   const id = typeof booking === "string" ? booking : booking.id;
-  await updateBooking(id, { status: BOOKING_STATUS.DONE }, bizId);
-  if (typeof booking === "object") {
+  const full = typeof booking === "object" ? booking : await getBooking(id, bizId);
+  const patch = { status: BOOKING_STATUS.DONE };
+
+  if (full && full.paidWith === "credit" && full.creditConsumed !== true) {
+    for (const m of full.members || []) {
+      if (!m.memberId) continue;
+      const mem = await getMember(m.memberId, bizId);
+      if (mem && (mem.creditBalance || 0) > 0) {
+        await adjustCredits({ ...mem, id: m.memberId }, -(full.creditCost || 1), "session", bizId);
+      }
+    }
+    patch.creditConsumed = true;
+    patch.consumedAt = new Date().toISOString();
+  }
+  await updateBooking(id, patch, bizId);
+
+  if (full) {
     const biz = await getDoc(doc(db, "businesses", bizId));
     const hostName = biz.exists() ? biz.data().name || "Kinlo" : "Kinlo";
     await notifyAttendees(
-      booking,
+      full,
       { title: hostName, body: `How was your session with ${hostName}? Tap to rate.`, kind: "rate" },
       bizId
     );
   }
 }
 
-/** Settle a confirmed booking: deduct a session credit or record a payment. */
+/**
+ * Record a confirmed booking's NON-credit payment (cash/stripe/mercadopago).
+ * Membership credit is NOT touched here — it's consumed at session-done.
+ */
 async function settleBooking(booking, bizId = getMyBizId()) {
   for (const m of booking.members || []) {
     if (!m.memberId) continue;
-    if (booking.paidWith === "credit") {
-      const full = await getMember(m.memberId, bizId);
-      if (full && (full.creditBalance || 0) > 0) {
-        await adjustCredits({ ...full, id: m.memberId }, -1, "session", bizId);
-      }
-    } else if (booking.priceCents > 0) {
+    if (booking.paidWith !== "credit" && booking.priceCents > 0) {
       await createPayment(
         {
           memberId: m.memberId,

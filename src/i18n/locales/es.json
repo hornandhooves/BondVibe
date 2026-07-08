@@ -3033,6 +3033,7 @@
       "amountRequiredMsg": "El monto del pago debe ser mayor a cero.",
       "methodLabel": "Método",
       "method": {
+        "credit": "Crédito de membresía",
         "cash": "Efectivo",
         "transfer": "Transferencia",
         "stripe": "Stripe",
