@@ -313,6 +313,22 @@ export const redeemMembershipCredit = async (reservationId) => {
 };
 
 /**
+ * Undo a membership check-in (host "Undo"): restores the credit and puts the
+ * reservation back to reserved. Idempotent server-side.
+ * @param {string} reservationId
+ */
+export const undoMembershipRedemption = async (reservationId) => {
+  try {
+    const fn = httpsCallable(getFunctions(), "undoMembershipRedemption");
+    const res = await fn({ reservationId });
+    return { success: true, ...res.data };
+  } catch (e) {
+    console.error("❌ undoMembershipRedemption:", e);
+    return { success: false, error: e.message };
+  }
+};
+
+/**
  * Release a reservation when an attendee cancels (≥2h returns the credit).
  * @param {string} reservationId
  */

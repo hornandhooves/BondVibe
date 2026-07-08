@@ -11,9 +11,16 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from "@react-navigation/native";
-import { doc, getDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  getDocs,
+  collection,
+  setDoc,
+  deleteDoc,
+} from "firebase/firestore";
 import { useTranslation } from "react-i18next";
-import { db } from "../services/firebase";
+import { db, auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import { AvatarDisplay } from "../components/AvatarPicker";
@@ -21,6 +28,7 @@ import { getAttendeeIds } from "../utils/eventHelpers";
 import {
   getEventReservations,
   redeemMembershipCredit,
+  undoMembershipRedemption,
 } from "../services/membershipService";
 
 export default function EventCheckInScreen({ route, navigation }) {
@@ -29,7 +37,7 @@ export default function EventCheckInScreen({ route, navigation }) {
   const { eventId, eventTitle } = route.params || {};
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [checkingIn, setCheckingIn] = useState(null);
+  const [busy, setBusy] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -43,11 +51,13 @@ export default function EventCheckInScreen({ route, navigation }) {
       const eventData = eventSnap.exists() ? eventSnap.data() : {};
       const attendeeIds = getAttendeeIds(eventData.attendees);
 
-      const reservations = await getEventReservations(eventId);
+      const [reservations, checkinsSnap] = await Promise.all([
+        getEventReservations(eventId),
+        getDocs(collection(db, "events", eventId, "checkins")),
+      ]);
       const resByUser = {};
-      reservations.forEach((r) => {
-        resByUser[r.userId] = r;
-      });
+      reservations.forEach((r) => { resByUser[r.userId] = r; });
+      const checkedInIds = new Set(checkinsSnap.docs.map((d) => d.id));
 
       const built = await Promise.all(
         attendeeIds.map(async (uid) => {
@@ -63,12 +73,14 @@ export default function EventCheckInScreen({ route, navigation }) {
           } catch (e) {
             // ignore individual load failure
           }
-          return { uid, name, avatar, reservation: resByUser[uid] || null };
+          const reservation = resByUser[uid] || null;
+          // A membership reservation redeemed before this screen wrote a checkins
+          // doc still counts as checked in (legacy).
+          const checkedIn = checkedInIds.has(uid) || reservation?.status === "redeemed";
+          return { uid, name, avatar, reservation, checkedIn };
         })
       );
-
-      // Membership attendees first (they need check-in), then others.
-      built.sort((a, b) => (b.reservation ? 1 : 0) - (a.reservation ? 1 : 0));
+      built.sort((a, b) => a.name.localeCompare(b.name));
       setRows(built);
     } catch (e) {
       console.error("❌ Error loading check-in list:", e);
@@ -77,67 +89,75 @@ export default function EventCheckInScreen({ route, navigation }) {
     }
   };
 
-  const handleCheckIn = async (row) => {
-    if (!row.reservation) return;
-    setCheckingIn(row.uid);
-    const r = await redeemMembershipCredit(row.reservation.id);
-    setCheckingIn(null);
-    if (r.success) {
-      load();
-    } else {
-      Alert.alert(t("eventCheckIn.couldntCheckIn"), r.error || t("eventCheckIn.pleaseTryAgain"));
+  // Toggle a single attendee. Membership attendees also settle the credit
+  // (redeem on check-in, restore on undo); everyone flips a checkins doc so the
+  // "checked in" signal is uniform (and recap-photo eligibility works).
+  const toggle = async (row) => {
+    setBusy(row.uid);
+    try {
+      if (row.checkedIn) {
+        if (row.reservation) {
+          const r = await undoMembershipRedemption(row.reservation.id);
+          if (!r.success) throw new Error(r.error);
+        }
+        await deleteDoc(doc(db, "events", eventId, "checkins", row.uid)).catch(() => {});
+      } else {
+        if (row.reservation) {
+          const r = await redeemMembershipCredit(row.reservation.id);
+          if (!r.success) throw new Error(r.error);
+        }
+        await setDoc(doc(db, "events", eventId, "checkins", row.uid), {
+          userId: row.uid,
+          name: row.name,
+          checkedInAt: new Date().toISOString(),
+          by: auth.currentUser?.uid || null,
+        });
+      }
+      await load();
+    } catch (e) {
+      Alert.alert(t("eventCheckIn.couldntCheckIn"), e?.message || t("eventCheckIn.pleaseTryAgain"));
+    } finally {
+      setBusy(null);
     }
   };
 
   const styles = createStyles(colors, isDark);
+  const checkedIn = rows.filter((r) => r.checkedIn);
+  const notCheckedIn = rows.filter((r) => !r.checkedIn);
 
-  const renderRow = (row) => {
-    const res = row.reservation;
-    const redeemed = res?.status === "redeemed";
-    return (
-      <View key={row.uid} style={styles.row}>
-        <AvatarDisplay avatar={row.avatar} size={36} name={row.name} />
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
-            {row.name}
+  const renderRow = (row) => (
+    <View key={row.uid} style={styles.row}>
+      <AvatarDisplay avatar={row.avatar} size={36} name={row.name} />
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{row.name}</Text>
+        <View style={styles.metaRow}>
+          <Icon name={row.reservation ? "ticket" : "payment"} size={13} color={row.reservation ? colors.primary : colors.textTertiary} />
+          <Text style={[styles.meta, { color: colors.textSecondary }]}>
+            {row.reservation ? t("eventCheckIn.membership") : t("eventCheckIn.paidOrFree")}
           </Text>
-          <View style={styles.metaRow}>
-            {res ? (
-              <Icon name="ticket" size={13} color={colors.primary} />
-            ) : (
-              <Icon name="payment" size={13} color={colors.textTertiary} />
-            )}
-            <Text style={[styles.meta, { color: colors.textSecondary }]}>
-              {res ? t("eventCheckIn.membership") : t("eventCheckIn.paidOrFree")}
-            </Text>
-          </View>
         </View>
-
-        {res && !redeemed && (
-          <TouchableOpacity
-            style={[styles.checkBtn, { borderColor: colors.primary }]}
-            onPress={() => handleCheckIn(row)}
-            disabled={checkingIn === row.uid}
-            activeOpacity={0.8}
-          >
-            {checkingIn === row.uid ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Text style={[styles.checkBtnText, { color: colors.primary }]}>
-                {t("eventCheckIn.checkIn")}
-              </Text>
-            )}
-          </TouchableOpacity>
-        )}
-        {res && redeemed && (
-          <View style={styles.doneBadge}>
-            <Icon name="check" size={16} color="#34C759" />
-            <Text style={styles.doneText}>{t("eventCheckIn.in")}</Text>
-          </View>
-        )}
       </View>
-    );
-  };
+      <TouchableOpacity
+        style={[
+          styles.toggle,
+          row.checkedIn
+            ? { borderColor: colors.border }
+            : { borderColor: colors.primary, backgroundColor: `${colors.primary}12` },
+        ]}
+        onPress={() => toggle(row)}
+        disabled={busy === row.uid}
+        activeOpacity={0.8}
+      >
+        {busy === row.uid ? (
+          <ActivityIndicator size="small" color={colors.primary} />
+        ) : (
+          <Text style={[styles.toggleText, { color: row.checkedIn ? colors.textSecondary : colors.primary }]}>
+            {row.checkedIn ? t("eventCheckIn.undo") : t("eventCheckIn.checkIn")}
+          </Text>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <GradientBackground>
@@ -149,7 +169,12 @@ export default function EventCheckInScreen({ route, navigation }) {
         <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
           {t("eventCheckIn.title")}
         </Text>
-        <View style={{ width: 28 }} />
+        <TouchableOpacity
+          style={[styles.qrBtn, { backgroundColor: colors.primary }]}
+          onPress={() => navigation.navigate("CheckInScanner", { eventId, eventTitle })}
+        >
+          <Icon name="qr" size={18} color="#fff" />
+        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -159,19 +184,30 @@ export default function EventCheckInScreen({ route, navigation }) {
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {!!eventTitle && (
-            <Text style={[styles.eventTitle, { color: colors.textSecondary }]} numberOfLines={1}>
-              {eventTitle}
-            </Text>
+            <Text style={[styles.eventTitle, { color: colors.textSecondary }]} numberOfLines={1}>{eventTitle}</Text>
           )}
-          <Text style={[styles.hint, { color: colors.textTertiary }]}>
-            {t("eventCheckIn.hint")}
-          </Text>
           {rows.length === 0 ? (
-            <Text style={[styles.empty, { color: colors.textSecondary }]}>
-              {t("eventCheckIn.noAttendees")}
-            </Text>
+            <Text style={[styles.empty, { color: colors.textSecondary }]}>{t("eventCheckIn.noAttendees")}</Text>
           ) : (
-            rows.map(renderRow)
+            <>
+              <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>
+                {t("eventCheckIn.notCheckedIn")} · {notCheckedIn.length}
+              </Text>
+              {notCheckedIn.length === 0 ? (
+                <Text style={[styles.sectionEmpty, { color: colors.textTertiary }]}>{t("eventCheckIn.allIn")}</Text>
+              ) : (
+                notCheckedIn.map(renderRow)
+              )}
+
+              <Text style={[styles.sectionLabel, { color: colors.textTertiary, marginTop: 22 }]}>
+                {t("eventCheckIn.checkedIn")} · {checkedIn.length}
+              </Text>
+              {checkedIn.length === 0 ? (
+                <Text style={[styles.sectionEmpty, { color: colors.textTertiary }]}>{t("eventCheckIn.noneYet")}</Text>
+              ) : (
+                checkedIn.map(renderRow)
+              )}
+            </>
           )}
         </ScrollView>
       )}
@@ -189,12 +225,14 @@ function createStyles(colors, isDark) {
       paddingTop: 60,
       paddingBottom: 20,
     },
-    headerTitle: { fontSize: 20, fontWeight: "700" },
+    headerTitle: { fontSize: 20, fontWeight: "700", flex: 1, textAlign: "center", marginHorizontal: 8 },
+    qrBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
     loading: { flex: 1, justifyContent: "center", alignItems: "center" },
     content: { paddingHorizontal: 24, paddingBottom: 40 },
-    eventTitle: { fontSize: 15, fontWeight: "600", marginBottom: 8 },
-    hint: { fontSize: 13, lineHeight: 19, marginBottom: 20 },
+    eventTitle: { fontSize: 15, fontWeight: "600", marginBottom: 16 },
     empty: { fontSize: 14, textAlign: "center", marginTop: 30 },
+    sectionLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 10 },
+    sectionEmpty: { fontSize: 13, marginBottom: 6 },
     row: {
       flexDirection: "row",
       alignItems: "center",
@@ -209,7 +247,7 @@ function createStyles(colors, isDark) {
     name: { fontSize: 15, fontWeight: "700" },
     metaRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 },
     meta: { fontSize: 12, fontWeight: "500" },
-    checkBtn: {
+    toggle: {
       borderWidth: 1.5,
       borderRadius: 10,
       paddingHorizontal: 14,
@@ -217,8 +255,6 @@ function createStyles(colors, isDark) {
       minWidth: 84,
       alignItems: "center",
     },
-    checkBtnText: { fontSize: 13, fontWeight: "700" },
-    doneBadge: { flexDirection: "row", alignItems: "center", gap: 4 },
-    doneText: { color: "#34C759", fontWeight: "700", fontSize: 13 },
+    toggleText: { fontSize: 13, fontWeight: "700" },
   });
 }

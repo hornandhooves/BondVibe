@@ -1056,6 +1056,72 @@ exports.redeemMembershipCredit = onCall(async (request) => {
 });
 
 /**
+ * Undo a membership check-in (host taps "Undo" on the check-in list).
+ * Reverses redeemMembershipCredit: restores the credit and puts the reservation
+ * back to "reserved". Idempotent (guarded by reservation.status === "redeemed").
+ * data: { reservationId }
+ */
+exports.undoMembershipRedemption = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const {reservationId} = request.data || {};
+  if (!reservationId) throw new HttpsError("invalid-argument", "Missing reservationId.");
+
+  const result = await db.runTransaction(async (tx) => {
+    const resRef = db.collection("membershipReservations").doc(reservationId);
+    const resSnap = await tx.get(resRef);
+    if (!resSnap.exists) throw new HttpsError("not-found", "Reservation not found.");
+    const reservation = resSnap.data();
+
+    if (reservation.hostId !== uid) {
+      throw new HttpsError("permission-denied", "Only the host can undo a check-in.");
+    }
+    if (reservation.status !== "redeemed") {
+      return {alreadyProcessed: true, status: reservation.status};
+    }
+
+    const memRef = db.collection("memberships").doc(reservation.membershipId);
+    const memSnap = await tx.get(memRef);
+    const cost = reservation.creditCost || 1;
+    const updates = {updatedAt: admin.firestore.FieldValue.serverTimestamp()};
+    if (memSnap.exists && typeof memSnap.data().creditsRemaining === "number") {
+      updates.creditsRemaining = memSnap.data().creditsRemaining + cost;
+      if (memSnap.data().status === "depleted") updates.status = "active";
+      tx.update(memRef, updates);
+    }
+
+    tx.update(resRef, {
+      status: "reserved",
+      redeemedAt: admin.firestore.FieldValue.delete(),
+      redeemedBy: admin.firestore.FieldValue.delete(),
+    });
+
+    return {creditsRemaining: updates.creditsRemaining ?? null};
+  });
+
+  // Best-effort audit: mark this reservation's redemption record(s) undone.
+  try {
+    const snap = await db
+      .collection("membershipRedemptions")
+      .where("reservationId", "==", reservationId)
+      .where("status", "==", "redeemed")
+      .get();
+    const batch = db.batch();
+    snap.forEach((d) =>
+      batch.update(d.ref, {
+        status: "undone",
+        undoneAt: admin.firestore.FieldValue.serverTimestamp(),
+      }),
+    );
+    await batch.commit();
+  } catch (e) {
+    // audit cleanup is best-effort
+  }
+
+  return {success: true, ...result};
+});
+
+/**
  * Release a reservation when an attendee cancels.
  * ≥ 2 h before start → credit is returned (hold released).
  * < 2 h before start → credit is forfeited (deducted as a penalty).

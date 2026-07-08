@@ -1575,8 +1575,13 @@
     "membership": "Membership",
     "paidOrFree": "Paid / Free",
     "checkIn": "Check in",
+    "undo": "Undo",
     "in": "In",
     "title": "Check-in",
+    "checkedIn": "Checked in",
+    "notCheckedIn": "Not checked in",
+    "allIn": "Everyone's in 🎉",
+    "noneYet": "No one checked in yet.",
     "hint": "Tap “Check in” for members attending with a class pass to deduct their credit. Paid/free attendees don't need check-in.",
     "noAttendees": "No attendees yet."
   },
