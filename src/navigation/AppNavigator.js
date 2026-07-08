@@ -56,6 +56,11 @@ import PaymentFormScreen from "../screens/business/PaymentFormScreen";
 import ClassesScreen from "../screens/business/ClassesScreen";
 import ClassFormScreen from "../screens/business/ClassFormScreen";
 import ClassRosterScreen from "../screens/business/ClassRosterScreen";
+import SessionsAgendaScreen from "../screens/business/SessionsAgendaScreen";
+import SessionTypesScreen from "../screens/business/SessionTypesScreen";
+import AvailabilityScreen from "../screens/business/AvailabilityScreen";
+import BookingFormScreen from "../screens/business/BookingFormScreen";
+import SessionDetailScreen from "../screens/business/SessionDetailScreen";
 import PersonalityQuizScreen from "../screens/PersonalityQuizScreen";
 import PersonalityResultsScreen from "../screens/PersonalityResultsScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
@@ -528,6 +533,11 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="BusinessClasses" component={ClassesScreen} />
           <Stack.Screen name="BusinessClassForm" component={ClassFormScreen} />
           <Stack.Screen name="BusinessClassRoster" component={ClassRosterScreen} />
+          <Stack.Screen name="BusinessAgenda" component={SessionsAgendaScreen} />
+          <Stack.Screen name="BusinessSessionTypes" component={SessionTypesScreen} />
+          <Stack.Screen name="BusinessAvailability" component={AvailabilityScreen} />
+          <Stack.Screen name="BusinessBookingForm" component={BookingFormScreen} />
+          <Stack.Screen name="BusinessSessionDetail" component={SessionDetailScreen} />
           <Stack.Screen
             name="PersonalityQuiz"
             component={PersonalityQuizScreen}

@@ -2633,6 +2633,8 @@
       "packagesSubtitle": "Class & session packs, credits",
       "classesTitle": "Classes",
       "classesSubtitle": "Schedule, instructors, capacity",
+      "agendaTitle": "Agenda",
+      "agendaSubtitle": "Private 1:1 · couples · group sessions",
       "checkInTitle": "Check-in",
       "checkInSubtitle": "Scan a member's pass to mark present",
       "financeTitle": "Finance",
@@ -3010,6 +3012,77 @@
       "alreadyMsg": "This member is already in the class.",
       "promotedTitle": "Promoted from waitlist",
       "promotedMsg": "{{name}} moved into the class."
+    },
+    "agenda": {
+      "title": "Agenda",
+      "requests": "Requests",
+      "confirm": "Confirm",
+      "decline": "Decline",
+      "upcoming": "Upcoming",
+      "noUpcoming": "No upcoming sessions."
+    },
+    "sessionType": {
+      "title": "Session types",
+      "empty": "No session types yet. Create 1:1, couples or group sessions.",
+      "addFirst": "Add a type",
+      "new": "New type",
+      "edit": "Edit type",
+      "save": "Save type",
+      "delete": "Delete type",
+      "nameRequired": "Give the type a name.",
+      "namePlaceholder": "e.g. Private lesson",
+      "capacity": "Max",
+      "minutes": "Min",
+      "priceOpt": "Price",
+      "capacityHint": "Max = people per session (1 = 1:1, 2 = couple, 3+ = group).",
+      "descPlaceholder": "Description (optional)",
+      "creditOnly": "Credit",
+      "kind": { "one": "1:1", "couple": "Couple", "group": "Group" }
+    },
+    "availability": {
+      "title": "Availability",
+      "empty": "No open slots yet.",
+      "needTypes": "Create a session type first.",
+      "new": "New slot",
+      "save": "Add slot",
+      "whenRequired": "Choose weekdays or a date.",
+      "slot": "Slot"
+    },
+    "booking": {
+      "title": "New booking",
+      "needTypes": "Create a session type first.",
+      "type": "Session type",
+      "typeRequired": "Pick a session type.",
+      "members": "Members (up to {{n}})",
+      "memberRequired": "Add at least one member.",
+      "add": "Add",
+      "date": "Date",
+      "time": "Time",
+      "paidWith": "Paid with",
+      "save": "Book session",
+      "pickMembers": "Pick members"
+    },
+    "session": {
+      "title": "Session",
+      "notFound": "Booking not found.",
+      "when": "When",
+      "paidWith": "Paid with",
+      "markDone": "Mark done",
+      "reschedule": "Reschedule",
+      "message": "Message",
+      "noShow": "No-show",
+      "cancel": "Cancel",
+      "save": "Save",
+      "noAppTitle": "No app account",
+      "noAppMsg": "This member hasn't linked a Kinlo account yet.",
+      "status": {
+        "requested": "Requested",
+        "confirmed": "Confirmed",
+        "done": "Done",
+        "no_show": "No-show",
+        "cancelled": "Cancelled",
+        "declined": "Declined"
+      }
     }
   }
 }

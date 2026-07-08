@@ -740,6 +740,17 @@ service cloud.firestore {
       match /classes/{classId} {
         allow read, write: if isBizStaff(bizId) || isBizOwnerUid(bizId);
       }
+
+      // Private sessions: types, availability, bookings.
+      match /sessionTypes/{id} {
+        allow read, write: if isBizStaff(bizId) || isBizOwnerUid(bizId);
+      }
+      match /availability/{id} {
+        allow read, write: if isBizStaff(bizId) || isBizOwnerUid(bizId);
+      }
+      match /bookings/{id} {
+        allow read, write: if isBizStaff(bizId) || isBizOwnerUid(bizId);
+      }
     }
 
     // ============================================

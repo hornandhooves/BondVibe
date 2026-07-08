@@ -2633,6 +2633,8 @@
       "packagesSubtitle": "Paquetes de clases/sesiones, créditos",
       "classesTitle": "Clases",
       "classesSubtitle": "Horario, instructores, cupo",
+      "agendaTitle": "Agenda",
+      "agendaSubtitle": "Sesiones privadas 1:1 · parejas · grupo",
       "checkInTitle": "Check-in",
       "checkInSubtitle": "Escanea el pase del miembro para marcar presente",
       "financeTitle": "Finanzas",
@@ -3010,6 +3012,77 @@
       "alreadyMsg": "Este miembro ya está en la clase.",
       "promotedTitle": "Promovido de la lista",
       "promotedMsg": "{{name}} entró a la clase."
+    },
+    "agenda": {
+      "title": "Agenda",
+      "requests": "Solicitudes",
+      "confirm": "Confirmar",
+      "decline": "Rechazar",
+      "upcoming": "Próximas",
+      "noUpcoming": "No hay sesiones próximas."
+    },
+    "sessionType": {
+      "title": "Tipos de sesión",
+      "empty": "Aún no hay tipos. Crea sesiones 1:1, en pareja o grupales.",
+      "addFirst": "Agregar un tipo",
+      "new": "Nuevo tipo",
+      "edit": "Editar tipo",
+      "save": "Guardar tipo",
+      "delete": "Eliminar tipo",
+      "nameRequired": "Dale un nombre al tipo.",
+      "namePlaceholder": "ej. Clase privada",
+      "capacity": "Máx",
+      "minutes": "Min",
+      "priceOpt": "Precio",
+      "capacityHint": "Máx = personas por sesión (1 = 1:1, 2 = pareja, 3+ = grupo).",
+      "descPlaceholder": "Descripción (opcional)",
+      "creditOnly": "Crédito",
+      "kind": { "one": "1:1", "couple": "Pareja", "group": "Grupo" }
+    },
+    "availability": {
+      "title": "Disponibilidad",
+      "empty": "Aún no hay horarios abiertos.",
+      "needTypes": "Crea primero un tipo de sesión.",
+      "new": "Nuevo horario",
+      "save": "Agregar horario",
+      "whenRequired": "Elige días o una fecha.",
+      "slot": "Horario"
+    },
+    "booking": {
+      "title": "Nueva reserva",
+      "needTypes": "Crea primero un tipo de sesión.",
+      "type": "Tipo de sesión",
+      "typeRequired": "Elige un tipo de sesión.",
+      "members": "Miembros (hasta {{n}})",
+      "memberRequired": "Agrega al menos un miembro.",
+      "add": "Agregar",
+      "date": "Fecha",
+      "time": "Hora",
+      "paidWith": "Pagado con",
+      "save": "Reservar sesión",
+      "pickMembers": "Elige miembros"
+    },
+    "session": {
+      "title": "Sesión",
+      "notFound": "Reserva no encontrada.",
+      "when": "Cuándo",
+      "paidWith": "Pagado con",
+      "markDone": "Marcar hecha",
+      "reschedule": "Reagendar",
+      "message": "Mensaje",
+      "noShow": "No se presentó",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "noAppTitle": "Sin cuenta en la app",
+      "noAppMsg": "Este miembro aún no vinculó una cuenta de Kinlo.",
+      "status": {
+        "requested": "Solicitada",
+        "confirmed": "Confirmada",
+        "done": "Hecha",
+        "no_show": "No se presentó",
+        "cancelled": "Cancelada",
+        "declined": "Rechazada"
+      }
     }
   }
 }
