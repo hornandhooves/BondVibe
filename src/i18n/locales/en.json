@@ -448,6 +448,7 @@
     "classHeaderTitle": "Create Class",
     "createClassButton": "Create Class",
     "instructorLabel": "Instructor",
+    "instructorOptionalLabel": "Instructor (optional)",
     "instructorPlaceholder": "Who teaches it",
     "instructorFallback": "Staff",
     "done": "Done",
@@ -2695,6 +2696,10 @@
       "saveChanges": "Save changes",
       "nameRequiredTitle": "Name required",
       "nameRequiredMsg": "Give your business a name to continue."
+    },
+    "instructor": {
+      "me": "Me",
+      "staff": "Staff"
     },
     "pricingTier": {
       "title": "Pricing tier",

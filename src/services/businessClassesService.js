@@ -62,7 +62,11 @@ export async function createClass(data = {}, bizId = getMyBizId()) {
   if (!bizId) throw new Error("no_business");
   const payload = {
     title: (data.title || "").trim(),
-    instructor: (data.instructor || "").trim() || null,
+    // Legacy free-text instructor kept for old readers; instructorUid is the
+    // real staff reference used by the Agenda (kinlo_business/06 FIX 2/3).
+    instructor: (data.instructorName || data.instructor || "").trim() || null,
+    instructorUid: data.instructorUid || null,
+    instructorName: data.instructorName || null,
     weekdays: Array.isArray(data.weekdays) ? data.weekdays : [],
     time: data.time || "18:00",
     date: data.date || null,
@@ -74,6 +78,18 @@ export async function createClass(data = {}, bizId = getMyBizId()) {
     public: data.public === true,
     city: data.city || null,
     branchId: data.branchId || null,
+    // Full event-shaped fields so a class carries everything an event does.
+    kind: "class",
+    description: (data.description || "").trim() || null,
+    category: data.category || null,
+    languages: Array.isArray(data.languages) ? data.languages : [],
+    images: Array.isArray(data.images) ? data.images : [],
+    price: typeof data.price === "number" ? data.price : parseFloat(data.price) || 0,
+    priceLocal: data.priceLocal != null ? data.priceLocal : null,
+    twoTier: data.twoTier === true,
+    currency: data.currency || "MXN",
+    acceptsMembership: data.acceptsMembership === true,
+    creditCost: data.creditCost || 1,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };

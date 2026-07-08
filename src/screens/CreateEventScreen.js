@@ -40,7 +40,8 @@ import {
 import useCities from "../hooks/useCities";
 import { uploadEventImages } from "../services/storageService";
 import { getHostMembershipPlans } from "../services/membershipService";
-import { listStaff } from "../services/businessStaffService";
+import { createClass, updateClass } from "../services/businessClassesService";
+import InstructorPicker from "../components/business/InstructorPicker";
 import { checkAccountStatus } from "../services/stripeConnectService";
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -60,11 +61,12 @@ export default function CreateEventScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
 
-  // A "class" reuses this exact screen (kinlo_business/05 §E): kind:'class' +
+  // A "class" reuses this exact screen (kinlo_business/06 FIX 2): mode:'class' +
   // an instructor + weekly-by-default recurrence. Everything else (two-tier
-  // pricing, images, membership credits) is identical to an event.
-  const kind = route?.params?.kind === "class" ? "class" : "event";
-  const isClass = kind === "class";
+  // pricing, images, membership credits) is identical to an event. Classes save
+  // through businessClassesService; events through the events collection.
+  const mode = route?.params?.mode === "class" || route?.params?.kind === "class" ? "class" : "event";
+  const isClass = mode === "class";
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -122,9 +124,10 @@ export default function CreateEventScreen({ navigation, route }) {
   const [twoTier, setTwoTier] = useState(false);
   const [priceLocal, setPriceLocal] = useState(""); // MXN integer
   const [priceGeneral, setPriceGeneral] = useState(""); // MXN integer
-  // Class-only: the instructor teaching it (a staff uid; defaults to the owner).
+  // The instructor/staff running it (a staff uid). Required for a class,
+  // optional for an event — persisted so the item lands on their Agenda.
   const [instructorUid, setInstructorUid] = useState("");
-  const [instructors, setInstructors] = useState([]);
+  const [instructorName, setInstructorName] = useState("");
   const [loading, setLoading] = useState(false);
   const [eventImages, setEventImages] = useState([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -162,20 +165,12 @@ export default function CreateEventScreen({ navigation, route }) {
     }, [loadUserProfile])
   );
 
-  // Class setup (kinlo_business/05 §E): load staff to pick an instructor
-  // (default the owner) and default the recurrence to weekly on the start day.
+  // Class setup (kinlo_business/06 FIX 2/3): default the instructor to the owner
+  // and default the recurrence to weekly on the start day. The InstructorPicker
+  // loads the staff list itself.
   useEffect(() => {
     if (!isClass) return;
-    (async () => {
-      try {
-        const staff = await listStaff();
-        setInstructors(staff);
-        const ownerUid = auth.currentUser?.uid;
-        setInstructorUid((cur) => cur || ownerUid || (staff[0] && staff[0].id) || "");
-      } catch (_e) {
-        setInstructorUid((cur) => cur || auth.currentUser?.uid || "");
-      }
-    })();
+    setInstructorUid((cur) => cur || auth.currentUser?.uid || "");
     setRecurrenceConfig((cfg) =>
       cfg.type === "none"
         ? { ...cfg, type: "weekly", selectedDays: [eventDate.getDay()] }
@@ -545,13 +540,11 @@ export default function CreateEventScreen({ navigation, route }) {
         priceLocal: !isFree && twoTier ? parseInt(priceLocal, 10) : null,
         twoTier: !isFree && twoTier,
         currency: "MXN",
-        // Class fields (kinlo_business/05 §E): a class is an event with kind
-        // 'class' + an instructor. Credit-at-check-in + two-tier apply identically.
-        kind,
-        instructorUid: isClass ? instructorUid : null,
-        instructorName: isClass
-          ? (instructors.find((s) => s.id === instructorUid)?.name || null)
-          : null,
+        // Instructor binding (kinlo_business/06 FIX 3): persist on the event too
+        // (optional) so it can land on that staff member's Agenda.
+        kind: mode,
+        instructorUid: instructorUid || null,
+        instructorName: instructorName || null,
         hostName:
           userData?.fullName ||
           userData?.name ||
@@ -575,6 +568,50 @@ export default function CreateEventScreen({ navigation, route }) {
           lunarPhase: recurrenceConfig.lunarPhase,
         } : null,
       };
+
+      // A class saves through the classes service (kinlo_business/06 FIX 2), with
+      // the full event-shaped payload. Recurrence weekdays → the class schedule.
+      if (isClass) {
+        const pad2 = (n) => String(n).padStart(2, "0");
+        const weekdays = recurrenceConfig.type !== "none" && Array.isArray(recurrenceConfig.selectedDays)
+          ? recurrenceConfig.selectedDays
+          : [];
+        const created = await createClass({
+          title: title.trim(),
+          description: description.trim(),
+          category: selectedCategory,
+          languages: selectedLanguages,
+          city: selectedCity,
+          location: fullLocation,
+          instructorUid: instructorUid || null,
+          instructorName: instructorName || null,
+          weekdays,
+          date: weekdays.length === 0 ? eventDate.toISOString() : null,
+          time: `${pad2(eventDate.getHours())}:${pad2(eventDate.getMinutes())}`,
+          durationMin: parseInt(durationMinutes, 10) || 60,
+          capacity: parseInt(maxPeople, 10) || 12,
+          price: baseEventData.price,
+          priceLocal: baseEventData.priceLocal,
+          twoTier: baseEventData.twoTier,
+          currency: "MXN",
+          acceptsMembership,
+          creditCost: 1,
+        });
+        if (eventImages.length > 0) {
+          try {
+            const urls = await uploadEventImages(created.id, eventImages);
+            await updateClass(created.id, { images: urls });
+          } catch (imageError) {
+            console.error("⚠️ Class image upload failed:", imageError);
+          }
+        }
+        await AsyncStorage.removeItem(EVENT_DRAFT_KEY).catch(() => {});
+        setCreatedEventTitle(title.trim());
+        setCreatedEventsCount(1);
+        setShowSuccessModal(true);
+        setLoading(false);
+        return;
+      }
 
       // Create events
       if (eventDates.length === 1) {
@@ -875,17 +912,15 @@ export default function CreateEventScreen({ navigation, route }) {
           </Text>
         </View>
 
-        {/* Instructor (class only, kinlo_business/05 §E) */}
-        {isClass && (
-          <SelectDropdown
-            label={t("createEvent.instructorLabel")}
-            value={instructorUid}
-            onValueChange={setInstructorUid}
-            options={instructors.map((s) => ({ id: s.id, label: s.name || s.email || t("createEvent.instructorFallback") }))}
-            placeholder={t("createEvent.instructorPlaceholder")}
-            type="default"
-          />
-        )}
+        {/* Instructor (kinlo_business/06 FIX 3) — required for a class, optional
+            for an event. Binds the item to a staff member for the Agenda. */}
+        <InstructorPicker
+          value={instructorUid}
+          onChange={(uid, name) => { setInstructorUid(uid); setInstructorName(name); }}
+          label={isClass ? t("createEvent.instructorLabel") : t("createEvent.instructorOptionalLabel")}
+          placeholder={t("createEvent.instructorPlaceholder")}
+          t={t}
+        />
 
         {/* Category Dropdown */}
         <SelectDropdown

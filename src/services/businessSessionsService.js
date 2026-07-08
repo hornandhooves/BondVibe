@@ -149,8 +149,9 @@ export async function createBooking(data, bizId = getMyBizId()) {
     sessionTypeName: data.sessionTypeName || "",
     start: data.start ? new Date(data.start).toISOString() : new Date().toISOString(),
     durationMin: parseInt(data.durationMin, 10) || 60,
-    // Which staff member runs it (for the per-staff Agenda). Null = the owner.
-    staffUid: data.staffUid || null,
+    // Which staff member runs it (kinlo_business/06 FIX 3). Defaults to the
+    // current user so a private session always lands on someone's Agenda.
+    instructorUid: data.instructorUid || data.staffUid || auth.currentUser?.uid || null,
     location: (data.location || "").trim() || null,
     status,
     paidWith: data.paidWith || "credit",

@@ -102,9 +102,9 @@ export default function ClassRosterScreen({ route, navigation }) {
           <Icon name="back" size={26} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{cls.title}</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("BusinessClassForm", { classId })}>
-          <Icon name="edit" size={22} color={colors.primary} />
-        </TouchableOpacity>
+        {/* Class details are set on the Create-Event form (kinlo_business/06 FIX 2);
+            this screen manages the roster. */}
+        <View style={{ width: 28 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
