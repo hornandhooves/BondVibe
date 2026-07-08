@@ -42,6 +42,7 @@ import { uploadEventImages } from "../services/storageService";
 import { getHostMembershipPlans } from "../services/membershipService";
 import { createClass, updateClass, getClass } from "../services/businessClassesService";
 import InstructorPicker from "../components/business/InstructorPicker";
+import { buildEventSearchKeywords } from "../utils/eventSearch";
 import { checkAccountStatus } from "../services/stripeConnectService";
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -571,6 +572,14 @@ export default function CreateEventScreen({ navigation, route }) {
         languages: selectedLanguages,
         city: selectedCity,
         location: fullLocation,
+        // Make the event searchable in discovery immediately (kinlo_business/07
+        // FIX 9) — the onEventWritten trigger also maintains this on edits.
+        searchKeywords: buildEventSearchKeywords({
+          title: title.trim(),
+          location: fullLocation,
+          city: selectedCity,
+          category: selectedCategory,
+        }),
         // Optional precise pin from the Places picker (null when typed free-text).
         locationCoords: locationCoords || null,
         placeId: placeId || null,
