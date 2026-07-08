@@ -64,6 +64,8 @@ import SessionDetailScreen from "../screens/business/SessionDetailScreen";
 import AutomationsScreen from "../screens/business/AutomationsScreen";
 import AutomationFormScreen from "../screens/business/AutomationFormScreen";
 import MessageLogScreen from "../screens/business/MessageLogScreen";
+import StaffScreen from "../screens/business/StaffScreen";
+import BranchesScreen from "../screens/business/BranchesScreen";
 import PersonalityQuizScreen from "../screens/PersonalityQuizScreen";
 import PersonalityResultsScreen from "../screens/PersonalityResultsScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
@@ -544,6 +546,8 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="BusinessAutomations" component={AutomationsScreen} />
           <Stack.Screen name="BusinessAutomationForm" component={AutomationFormScreen} />
           <Stack.Screen name="BusinessMessageLog" component={MessageLogScreen} />
+          <Stack.Screen name="BusinessStaff" component={StaffScreen} />
+          <Stack.Screen name="BusinessBranches" component={BranchesScreen} />
           <Stack.Screen
             name="PersonalityQuiz"
             component={PersonalityQuizScreen}

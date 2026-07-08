@@ -691,6 +691,10 @@ service cloud.firestore {
       return isSignedIn() &&
              exists(/databases/$(database)/documents/businesses/$(bizId)/staff/$(request.auth.uid));
     }
+    // The caller's staff role for a business (only call when isBizStaff is true).
+    function bizStaffRole(bizId) {
+      return get(/databases/$(database)/documents/businesses/$(bizId)/staff/$(request.auth.uid)).data.role;
+    }
 
     match /businesses/{bizId} {
       allow read: if isBizStaff(bizId) || isBizOwnerUid(bizId);
@@ -730,10 +734,10 @@ service cloud.firestore {
         allow read, write: if isBizStaff(bizId) || isBizOwnerUid(bizId);
       }
 
-      // Finance ledger. (Reception-scoping — no finance read — arrives with
-      // staff roles; today all staff are the owner.)
+      // Finance ledger — owner + instructor only; reception can't read finance.
       match /payments/{paymentId} {
-        allow read, write: if isBizStaff(bizId) || isBizOwnerUid(bizId);
+        allow read, write: if isBizOwnerUid(bizId) ||
+                              (isBizStaff(bizId) && bizStaffRole(bizId) != "reception");
       }
 
       // Classes / schedule (roster + waitlist).

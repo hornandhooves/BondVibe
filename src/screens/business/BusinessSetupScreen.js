@@ -3,7 +3,7 @@
  * preset (labels/defaults only, all-vertical) + name the business. Creates the
  * businesses/{bizId} doc + owner staff record.
  */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import { useTranslation } from "react-i18next";
 import Icon from "../../components/Icon";
 import GradientBackground from "../../components/GradientBackground";
 import { useTheme } from "../../contexts/ThemeContext";
-import { createBusiness } from "../../services/businessService";
+import { createBusiness, getBusiness, updateBusiness } from "../../services/businessService";
 import { VERTICAL_IDS, DEFAULT_VERTICAL, verticalLabelKey } from "../../constants/businessVerticals";
 
 export default function BusinessSetupScreen({ navigation }) {
@@ -27,7 +27,18 @@ export default function BusinessSetupScreen({ navigation }) {
   const { t } = useTranslation();
   const [name, setName] = useState("");
   const [vertical, setVertical] = useState(DEFAULT_VERTICAL);
+  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getBusiness().then((biz) => {
+      if (biz) {
+        setName(biz.name || "");
+        setVertical(biz.vertical || DEFAULT_VERTICAL);
+        setEditing(true);
+      }
+    });
+  }, []);
 
   const onSave = async () => {
     if (!name.trim()) {
@@ -36,8 +47,13 @@ export default function BusinessSetupScreen({ navigation }) {
     }
     setSaving(true);
     try {
-      await createBusiness({ name: name.trim(), vertical });
-      navigation.replace("BusinessHub");
+      if (editing) {
+        await updateBusiness({ name: name.trim(), vertical });
+        navigation.goBack();
+      } else {
+        await createBusiness({ name: name.trim(), vertical });
+        navigation.replace("BusinessHub");
+      }
     } catch (e) {
       setSaving(false);
       Alert.alert(t("business.common.errorTitle"), t("business.common.tryAgain"));
@@ -106,7 +122,7 @@ export default function BusinessSetupScreen({ navigation }) {
           {saving ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text style={styles.saveText}>{t("business.setup.create")}</Text>
+            <Text style={styles.saveText}>{editing ? t("business.setup.saveChanges") : t("business.setup.create")}</Text>
           )}
         </TouchableOpacity>
       </View>

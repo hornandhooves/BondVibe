@@ -2703,3 +2703,36 @@ exports.businessRemindersCron = onSchedule(
   bizAutomations.remindersCron,
 );
 exports.twilioSmsWebhook = onRequest({cors: false}, bizAutomations.twilioWebhook);
+
+/**
+ * Invite a staff member to a business (owner-only). Looks up the user by email
+ * and grants a scoped role. kinlo_business/01 §7. v1: bizId === owner uid.
+ */
+exports.inviteBusinessStaff = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const bizId = uid; // one business per owner
+  const email = String((request.data && request.data.email) || "").trim();
+  const role = ["owner", "instructor", "reception"].includes(
+    request.data && request.data.role) ? request.data.role : "reception";
+  if (!email) throw new HttpsError("invalid-argument", "Email required.");
+  let staff;
+  try {
+    staff = await admin.auth().getUserByEmail(email);
+  } catch (e) {
+    throw new HttpsError("not-found", "No Kinlo account with that email.");
+  }
+  if (staff.uid === uid) {
+    throw new HttpsError("already-exists", "You're already the owner.");
+  }
+  await db.collection("businesses").doc(bizId)
+    .collection("staff").doc(staff.uid).set({
+      uid: staff.uid,
+      role,
+      email,
+      name: staff.displayName || "",
+      branchIds: [],
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  return {uid: staff.uid, role, name: staff.displayName || "", email};
+});

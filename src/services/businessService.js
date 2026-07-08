@@ -90,3 +90,28 @@ export async function updateBusiness(patch = {}) {
   }
   await updateDoc(bizRef(uid), { ...clean, updatedAt: serverTimestamp() });
 }
+
+// ── Branches (multi-branch, kinlo_business/01 §7) ─────────────────────────────
+const branchId = () => `br_${Math.random().toString(36).slice(2, 8)}`;
+
+export async function listBranches() {
+  const biz = await getBusiness();
+  return Array.isArray(biz?.branches) ? biz.branches : [];
+}
+
+export async function addBranch({ name, address }) {
+  const branches = await listBranches();
+  const branch = { id: branchId(), name: (name || "").trim(), address: (address || "").trim() || null };
+  await updateBusiness({ branches: [...branches, branch] });
+  return branch;
+}
+
+export async function updateBranch(id, patch) {
+  const branches = await listBranches();
+  await updateBusiness({ branches: branches.map((b) => (b.id === id ? { ...b, ...patch } : b)) });
+}
+
+export async function removeBranch(id) {
+  const branches = await listBranches();
+  await updateBusiness({ branches: branches.filter((b) => b.id !== id) });
+}

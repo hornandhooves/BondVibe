@@ -2641,7 +2641,12 @@
       "financeSubtitle": "Payments, revenue, receipts & payouts",
       "automationsTitle": "Automations",
       "automationsSubtitle": "Reminders & win-backs, auto-routed",
-      "moreSoon": "Multi-branch, staff roles and more arrive as we roll them out."
+      "settingsSection": "Settings",
+      "branchesTitle": "Branches",
+      "branchesSubtitle": "Locations, with roll-up",
+      "staffTitle": "Staff",
+      "staffSubtitle": "Roles & permissions",
+      "moreSoon": "More arrives as we roll it out."
     },
     "setup": {
       "title": "New business",
@@ -2651,6 +2656,7 @@
       "verticalLabel": "Type of business",
       "presetHint": "A preset only swaps labels and defaults — never your data.",
       "create": "Create business",
+      "saveChanges": "Save changes",
       "nameRequiredTitle": "Name required",
       "nameRequiredMsg": "Give your business a name to continue."
     },
@@ -2681,6 +2687,7 @@
       "notes": "Notes",
       "notesPlaceholder": "Anything worth remembering…",
       "balanceOwed": "Balance owed (MXN)",
+      "branch": "Branch",
       "smsConsentTitle": "SMS reminders",
       "smsConsentSub": "The member agrees to receive class and account texts. Off by default; they can opt out anytime (STOP). See the Privacy Notice.",
       "save": "Save member",
@@ -3148,6 +3155,45 @@
         "failed": "Failed",
         "skipped": "Skipped",
         "queued": "Queued"
+      }
+    },
+    "branches": {
+      "title": "Branches",
+      "empty": "One location so far. Add branches to run several under one business — the dashboard rolls up across them.",
+      "addFirst": "Add a branch",
+      "new": "New branch",
+      "edit": "Edit branch",
+      "save": "Save branch",
+      "delete": "Delete branch",
+      "namePlaceholder": "Branch name",
+      "addressPlaceholder": "Address (optional)",
+      "nameRequired": "Give the branch a name."
+    },
+    "staff": {
+      "title": "Staff",
+      "hint": "Invite staff by their Kinlo email and give them a role. Reception can't see finance.",
+      "member": "Staff member",
+      "invite": "Invite staff",
+      "sendInvite": "Send invite",
+      "emailPlaceholder": "Their Kinlo email",
+      "emailRequired": "Enter an email.",
+      "invitedTitle": "Staff added",
+      "invitedMsg": "{{name}} now has access.",
+      "failTitle": "Couldn't invite",
+      "notFound": "No Kinlo account with that email.",
+      "selfMsg": "You're already the owner.",
+      "changeRole": "Change role",
+      "removeTitle": "Remove staff?",
+      "removeMsg": "{{name}} loses access to this business.",
+      "remove": "Remove",
+      "role": {
+        "owner": "Owner",
+        "instructor": "Instructor",
+        "reception": "Reception"
+      },
+      "roleHint": {
+        "instructor": "Manage members, classes and attendance. No finance.",
+        "reception": "Check-in and attendance only. No finance."
       }
     }
   }

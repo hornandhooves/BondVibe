@@ -23,7 +23,7 @@ import { useTranslation } from "react-i18next";
 import Icon from "../../components/Icon";
 import GradientBackground from "../../components/GradientBackground";
 import { useTheme } from "../../contexts/ThemeContext";
-import { getBusiness } from "../../services/businessService";
+import { getBusiness, listBranches } from "../../services/businessService";
 import { createMember, updateMember, getMember, buildSmsConsent } from "../../services/businessMembersService";
 import { verticalTagsKey } from "../../constants/businessVerticals";
 
@@ -45,11 +45,14 @@ export default function MemberFormScreen({ route, navigation }) {
   const [notes, setNotes] = useState("");
   const [smsConsent, setSmsConsent] = useState(false);
   const [balanceOwed, setBalanceOwed] = useState("");
+  const [branches, setBranches] = useState([]);
+  const [branchId, setBranchId] = useState(null);
 
   useEffect(() => {
     (async () => {
-      const biz = await getBusiness();
+      const [biz, brs] = await Promise.all([getBusiness(), listBranches()]);
       setBusiness(biz);
+      setBranches(brs);
       if (editing) {
         const m = await getMember(memberId);
         if (m) {
@@ -59,6 +62,7 @@ export default function MemberFormScreen({ route, navigation }) {
           setTags(Array.isArray(m.tags) ? m.tags : []);
           setSmsConsent(m.smsConsent?.granted === true);
           setBalanceOwed(m.balanceOwedCents ? String(m.balanceOwedCents / 100) : "");
+          setBranchId(m.branchId || null);
         }
         setLoading(false);
       }
@@ -97,6 +101,7 @@ export default function MemberFormScreen({ route, navigation }) {
           phone: phone.trim() || null,
           email: email.trim() || null,
           tags,
+          branchId: branchId || null,
           balanceOwedCents: owedCents,
           smsConsent: buildSmsConsent(smsConsent, "edit"),
           ...(notes.trim() ? { appendNote: notes.trim() } : {}),
@@ -109,6 +114,7 @@ export default function MemberFormScreen({ route, navigation }) {
             email: email.trim(),
             tags,
             notes: notes.trim(),
+            branchId: branchId || null,
             balanceOwedCents: owedCents,
             smsConsentGranted: smsConsent,
             source: "manual",
@@ -244,6 +250,26 @@ export default function MemberFormScreen({ route, navigation }) {
               multiline
             />
           </View>
+
+          {branches.length > 0 && (
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: colors.textTertiary }]}>{t("business.form.branch")}</Text>
+              <View style={styles.tagsWrap}>
+                {branches.map((br) => {
+                  const active = branchId === br.id;
+                  return (
+                    <TouchableOpacity
+                      key={br.id}
+                      onPress={() => setBranchId(active ? null : br.id)}
+                      style={[styles.tagSuggest, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? `${colors.primary}18` : "transparent" }]}
+                    >
+                      <Text style={[styles.tagSuggestText, { color: active ? colors.primary : colors.textSecondary }]}>{br.name}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
 
           <View style={styles.field}>
             <Text style={[styles.label, { color: colors.textTertiary }]}>{t("business.form.balanceOwed")}</Text>

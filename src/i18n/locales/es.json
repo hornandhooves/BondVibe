@@ -2641,7 +2641,12 @@
       "financeSubtitle": "Pagos, ingresos, recibos y payouts",
       "automationsTitle": "Automatizaciones",
       "automationsSubtitle": "Recordatorios y reconquistas, auto-ruteados",
-      "moreSoon": "Multi-sucursal, roles de staff y más llegan conforme los habilitemos."
+      "settingsSection": "Ajustes",
+      "branchesTitle": "Sucursales",
+      "branchesSubtitle": "Ubicaciones, con consolidado",
+      "staffTitle": "Staff",
+      "staffSubtitle": "Roles y permisos",
+      "moreSoon": "Más llega conforme lo habilitemos."
     },
     "setup": {
       "title": "Nuevo negocio",
@@ -2651,6 +2656,7 @@
       "verticalLabel": "Tipo de negocio",
       "presetHint": "Un preset solo cambia etiquetas y valores por defecto — nunca tus datos.",
       "create": "Crear negocio",
+      "saveChanges": "Guardar cambios",
       "nameRequiredTitle": "Falta el nombre",
       "nameRequiredMsg": "Dale un nombre a tu negocio para continuar."
     },
@@ -2681,6 +2687,7 @@
       "notes": "Notas",
       "notesPlaceholder": "Algo que valga la pena recordar…",
       "balanceOwed": "Saldo pendiente (MXN)",
+      "branch": "Sucursal",
       "smsConsentTitle": "Recordatorios por SMS",
       "smsConsentSub": "El miembro acepta recibir mensajes de clases y de su cuenta. Apagado por defecto; puede darse de baja cuando quiera (STOP). Consulta el Aviso de Privacidad.",
       "save": "Guardar miembro",
@@ -3148,6 +3155,45 @@
         "failed": "Falló",
         "skipped": "Omitido",
         "queued": "En cola"
+      }
+    },
+    "branches": {
+      "title": "Sucursales",
+      "empty": "Una ubicación por ahora. Agrega sucursales para operar varias bajo un mismo negocio — el panel las consolida.",
+      "addFirst": "Agregar una sucursal",
+      "new": "Nueva sucursal",
+      "edit": "Editar sucursal",
+      "save": "Guardar sucursal",
+      "delete": "Eliminar sucursal",
+      "namePlaceholder": "Nombre de la sucursal",
+      "addressPlaceholder": "Dirección (opcional)",
+      "nameRequired": "Dale un nombre a la sucursal."
+    },
+    "staff": {
+      "title": "Staff",
+      "hint": "Invita staff con su correo de Kinlo y asígnale un rol. Recepción no ve finanzas.",
+      "member": "Miembro del staff",
+      "invite": "Invitar staff",
+      "sendInvite": "Enviar invitación",
+      "emailPlaceholder": "Su correo de Kinlo",
+      "emailRequired": "Ingresa un correo.",
+      "invitedTitle": "Staff agregado",
+      "invitedMsg": "{{name}} ya tiene acceso.",
+      "failTitle": "No se pudo invitar",
+      "notFound": "No hay cuenta de Kinlo con ese correo.",
+      "selfMsg": "Ya eres el dueño.",
+      "changeRole": "Cambiar rol",
+      "removeTitle": "¿Quitar staff?",
+      "removeMsg": "{{name}} pierde acceso a este negocio.",
+      "remove": "Quitar",
+      "role": {
+        "owner": "Dueño",
+        "instructor": "Instructor",
+        "reception": "Recepción"
+      },
+      "roleHint": {
+        "instructor": "Administra miembros, clases y asistencia. Sin finanzas.",
+        "reception": "Solo check-in y asistencia. Sin finanzas."
       }
     }
   }
