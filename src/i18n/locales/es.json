@@ -1419,6 +1419,7 @@
     "typeLabel": "Tipo",
     "classPack": "Paquete de clases",
     "unlimited": "Ilimitado",
+    "audienceLabel": "Quién puede comprarlo",
     "classesIncludedLabel": "Clases incluidas",
     "classesIncludedPlaceholder": "ej. 10",
     "validityLabel": "Vigencia (días)",
@@ -2783,6 +2784,8 @@
       "kind": "Tipo",
       "unlimited": "Ilimitado",
       "credits": "Créditos incluidos",
+      "audience": "Quién puede comprarlo",
+      "audienceHint": "Los paquetes solo-Local se asignan solo a miembros Locales; los solo-General a miembros General.",
       "price": "Precio (MXN)",
       "validity": "Vigencia (días)",
       "validityPlaceholder": "ej. 60",
@@ -2791,7 +2794,11 @@
       "deleteTitle": "¿Eliminar paquete?",
       "deleteMsg": "Los miembros actuales conservan sus créditos.",
       "nameRequiredTitle": "Falta el nombre",
-      "nameRequiredMsg": "Dale un nombre al paquete."
+      "nameRequiredMsg": "Dale un nombre al paquete.",
+      "creditsRequiredTitle": "Faltan los créditos",
+      "creditsRequiredMsg": "Define cuántos eventos/clases incluye este paquete (al menos 1).",
+      "validityRequiredTitle": "Falta la vigencia",
+      "validityRequiredMsg": "Define cuántos días es válido el paquete."
     },
     "credits": {
       "assign": "Asignar un paquete",
@@ -2805,7 +2812,9 @@
       "addCredit": "Agregar un crédito",
       "removeCredit": "Quitar un crédito",
       "reasonPlaceholder": "Motivo (opcional)",
-      "apply": "Aplicar"
+      "apply": "Aplicar",
+      "audienceMismatchTitle": "Nivel no coincide",
+      "audienceMismatchMsg": "La audiencia de este paquete no coincide con el nivel de precio del miembro."
     },
     "attendance": {
       "markPresent": "Marcar presente",

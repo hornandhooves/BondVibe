@@ -4,13 +4,18 @@
  * and can adjust credits by hand (+/-) with a reason. QR / booking check-ins
  * auto-deduct through businessAttendanceService, hitting the SAME balance.
  *
+ * Every package is credit-based (kinlo_business/05 §G): a fixed credit count +
+ * a required expiry, with an audienceTier (local/general/both) enforced at
+ * assignment. No "unlimited".
+ *
  * Data:
- *   businesses/{bizId}/packages/{packageId}  name, kind:'class'|'session',
- *                                            unlimited, credits, priceCents,
- *                                            validityDays, active, createdAt
+ *   businesses/{bizId}/packages/{packageId}  name, kind:'event'|'class'|'session',
+ *                                            credits(int>0), priceCents,
+ *                                            validityDays(required), audienceTier,
+ *                                            active, createdAt
  * A member's current grant lives ON the member record (one active package in
- * v1): member.activePackage {packageId,name,kind,unlimited,creditsTotal,
- * creditsRemaining,expiresAt,assignedAt} · member.creditBalance mirrors
+ * v1): member.activePackage {packageId,name,kind,creditsTotal,creditsRemaining,
+ * expiresAt,audienceTier,assignedAt} · member.creditBalance mirrors
  * creditsRemaining for quick display · member.creditLog [{delta,reason,at}].
  */
 import {
@@ -28,8 +33,9 @@ import {
 import { db } from "./firebase";
 import { getMyBizId } from "./businessService";
 import { memberRefFor } from "./businessMembersService";
+import { MEMBERSHIP_AUDIENCE, audienceAllows } from "../utils/membershipUtils";
 
-export const PACKAGE_KIND = { CLASS: "class", SESSION: "session" };
+export const PACKAGE_KIND = { EVENT: "event", CLASS: "class", SESSION: "session" };
 
 const packagesCol = (bizId) => collection(db, "businesses", bizId, "packages");
 const packageRef = (bizId, id) => doc(db, "businesses", bizId, "packages", id);
@@ -55,13 +61,25 @@ export async function getPackage(packageId, bizId = getMyBizId()) {
 
 export async function createPackage(data = {}, bizId = getMyBizId()) {
   if (!bizId) throw new Error("no_business");
+  const credits = Math.max(1, parseInt(data.credits, 10) || 0);
+  const validityDays = Math.max(1, parseInt(data.validityDays, 10) || 0);
+  const audienceTier = [
+    MEMBERSHIP_AUDIENCE.LOCAL,
+    MEMBERSHIP_AUDIENCE.GENERAL,
+    MEMBERSHIP_AUDIENCE.BOTH,
+  ].includes(data.audienceTier)
+    ? data.audienceTier
+    : MEMBERSHIP_AUDIENCE.BOTH;
+  const kind = [PACKAGE_KIND.EVENT, PACKAGE_KIND.CLASS, PACKAGE_KIND.SESSION].includes(data.kind)
+    ? data.kind
+    : PACKAGE_KIND.CLASS;
   const payload = {
     name: (data.name || "").trim(),
-    kind: data.kind === PACKAGE_KIND.SESSION ? PACKAGE_KIND.SESSION : PACKAGE_KIND.CLASS,
-    unlimited: data.unlimited === true,
-    credits: data.unlimited === true ? null : Math.max(0, parseInt(data.credits, 10) || 0),
+    kind,
+    credits, // always a finite count (>0); no unlimited
     priceCents: Math.max(0, Math.round((parseFloat(data.price) || 0) * 100)),
-    validityDays: data.validityDays ? Math.max(0, parseInt(data.validityDays, 10) || 0) : null,
+    validityDays, // required (>0)
+    audienceTier,
     active: true,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -104,18 +122,23 @@ export async function assignPackage(memberId, packageId, bizId = getMyBizId()) {
   if (!bizId || !memberId || !packageId) return;
   const pkg = await getPackage(packageId, bizId);
   if (!pkg) throw new Error("package_not_found");
-  const credits = pkg.unlimited ? 0 : pkg.credits || 0;
+  const existing = await getMemberDoc(memberId, bizId);
+  // Audience scope (kinlo_business/05 §G): a local-only package can't go to a
+  // general member, and vice-versa.
+  if (!audienceAllows(pkg.audienceTier, existing?.pricingTier)) {
+    throw new Error("audience_mismatch");
+  }
+  const credits = pkg.credits || 0;
   const activePackage = {
     packageId: pkg.id,
     name: pkg.name,
     kind: pkg.kind,
-    unlimited: !!pkg.unlimited,
     creditsTotal: credits,
     creditsRemaining: credits,
     expiresAt: addDays(pkg.validityDays),
+    audienceTier: pkg.audienceTier || MEMBERSHIP_AUDIENCE.BOTH,
     assignedAt: new Date().toISOString(),
   };
-  const existing = await getMemberDoc(memberId, bizId);
   const log = Array.isArray(existing?.creditLog) ? existing.creditLog : [];
   await updateDoc(memberRefFor(bizId, memberId), {
     activePackage,
@@ -139,7 +162,7 @@ export async function adjustCredits(member, delta, reason, bizId = getMyBizId())
     creditLog: [{ delta, reason: reason || "manual", at: new Date().toISOString() }, ...log].slice(0, 30),
     updatedAt: serverTimestamp(),
   };
-  if (member.activePackage && !member.activePackage.unlimited) {
+  if (member.activePackage) {
     patch.activePackage = { ...member.activePackage, creditsRemaining: next };
   }
   await updateDoc(memberRefFor(bizId, member.id), patch);

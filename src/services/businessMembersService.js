@@ -20,12 +20,33 @@ import {
   updateDoc,
   deleteDoc,
   query,
+  where,
   orderBy,
   serverTimestamp,
   increment,
 } from "firebase/firestore";
-import { db } from "./firebase";
+import { db, auth } from "./firebase";
 import { getMyBizId } from "./businessService";
+
+/**
+ * The signed-in user's pricing tier at a given host (kinlo_business/05 §A/C/G).
+ * Reads their own linked member record under that business (allowed by rules on
+ * linkedUid). Defaults 'general' when they're not a linked member.
+ * @returns {Promise<'local'|'general'>}
+ */
+export async function getMyPricingTierForHost(hostId) {
+  const uid = auth.currentUser?.uid;
+  if (!uid || !hostId) return "general";
+  try {
+    const snap = await getDocs(
+      query(collection(db, "businesses", hostId, "members"), where("linkedUid", "==", uid))
+    );
+    const m = snap.docs[0]?.data();
+    return m?.pricingTier === "local" ? "local" : "general";
+  } catch (e) {
+    return "general";
+  }
+}
 
 export const MEMBER_STATUS = {
   ACTIVE: "active",

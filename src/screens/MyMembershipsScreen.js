@@ -22,7 +22,6 @@ import {
   getMembershipState,
   getMembershipExpiryDate,
   getMembershipPlan,
-  MEMBERSHIP_PLAN_TYPES,
 } from "../services/membershipService";
 
 export default function MyMembershipsScreen({ navigation }) {
@@ -69,7 +68,6 @@ export default function MyMembershipsScreen({ navigation }) {
     const state = getMembershipState(m);
     const meta = STATE_META[state] || STATE_META.expired;
     const expiry = getMembershipExpiryDate(m);
-    const isCredits = m.type === MEMBERSHIP_PLAN_TYPES.CREDITS;
     const remaining = m.creditsRemaining || 0;
     const total = m.creditsTotal || 0;
     const pct = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
@@ -95,27 +93,21 @@ export default function MyMembershipsScreen({ navigation }) {
           </View>
         </View>
 
-        {isCredits ? (
-          <View style={styles.creditsSection}>
-            <View style={styles.creditsHeader}>
-              <Text style={[styles.creditsText, { color: colors.text }]}>
-                {t("myMemberships.classesLeft", { remaining, total })}
-              </Text>
-            </View>
-            <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${pct * 100}%`, backgroundColor: meta.color },
-                ]}
-              />
-            </View>
+        <View style={styles.creditsSection}>
+          <View style={styles.creditsHeader}>
+            <Text style={[styles.creditsText, { color: colors.text }]}>
+              {t("myMemberships.classesLeft", { remaining, total })}
+            </Text>
           </View>
-        ) : (
-          <Text style={[styles.unlimitedText, { color: colors.textSecondary }]}>
-            {t("myMemberships.unlimitedClasses")}
-          </Text>
-        )}
+          <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${pct * 100}%`, backgroundColor: meta.color },
+              ]}
+            />
+          </View>
+        </View>
 
         {state !== "active" && (
           <TouchableOpacity

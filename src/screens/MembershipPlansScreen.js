@@ -20,8 +20,10 @@ import { auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import KeyboardAccessory from "../components/KeyboardAccessory";
+import PricingTierToggle from "../components/business/PricingTierToggle";
 import {
   MEMBERSHIP_PLAN_TYPES,
+  MEMBERSHIP_AUDIENCE,
   createMembershipPlan,
   updateMembershipPlan,
   setMembershipPlanActive,
@@ -30,6 +32,12 @@ import {
   describePlan,
 } from "../services/membershipService";
 
+const AUDIENCE_OPTIONS = [
+  { value: MEMBERSHIP_AUDIENCE.LOCAL, labelKey: "business.pricingTier.local", icon: "location" },
+  { value: MEMBERSHIP_AUDIENCE.GENERAL, labelKey: "business.pricingTier.general", icon: "globe" },
+  { value: MEMBERSHIP_AUDIENCE.BOTH, labelKey: "business.pricingTier.both", icon: "community" },
+];
+
 const emptyForm = {
   name: "",
   description: "",
@@ -37,6 +45,7 @@ const emptyForm = {
   type: MEMBERSHIP_PLAN_TYPES.CREDITS,
   creditsIncluded: "",
   validityDays: "",
+  audienceTier: MEMBERSHIP_AUDIENCE.BOTH,
   price: "",
   allowAutoRenew: true,
 };
@@ -79,9 +88,11 @@ export default function MembershipPlansScreen({ navigation, route }) {
       name: plan.name || "",
       description: plan.description || "",
       terms: plan.terms || "",
-      type: plan.type,
+      type: MEMBERSHIP_PLAN_TYPES.CREDITS,
+      // Legacy unlimited plans migrate on edit: host must set a credit count.
       creditsIncluded: plan.creditsIncluded ? String(plan.creditsIncluded) : "",
       validityDays: plan.validityDays ? String(plan.validityDays) : "",
+      audienceTier: plan.audienceTier || MEMBERSHIP_AUDIENCE.BOTH,
       price: plan.priceCentavos ? String(plan.priceCentavos / 100) : "",
       allowAutoRenew: plan.allowAutoRenew !== false,
     });
@@ -93,12 +104,10 @@ export default function MembershipPlansScreen({ navigation, route }) {
       name: form.name,
       description: form.description,
       terms: form.terms,
-      type: form.type,
-      creditsIncluded:
-        form.type === MEMBERSHIP_PLAN_TYPES.CREDITS
-          ? parseInt(form.creditsIncluded, 10)
-          : null,
+      type: MEMBERSHIP_PLAN_TYPES.CREDITS,
+      creditsIncluded: parseInt(form.creditsIncluded, 10),
       validityDays: parseInt(form.validityDays, 10),
+      audienceTier: form.audienceTier,
       priceCentavos: Math.round(parseFloat(form.price) * 100),
       allowAutoRenew: form.allowAutoRenew,
     };
@@ -139,7 +148,6 @@ export default function MembershipPlansScreen({ navigation, route }) {
   };
 
   const styles = createStyles(colors, isDark);
-  const isCredits = form.type === MEMBERSHIP_PLAN_TYPES.CREDITS;
 
   const activePlans = plans.filter((p) => p.active);
   const archivedPlans = plans.filter((p) => !p.active);
@@ -291,54 +299,28 @@ export default function MembershipPlansScreen({ navigation, route }) {
                 />
               </Field>
 
-              <Field label={t("membershipPlans.typeLabel")} colors={colors}>
-                <View style={styles.typeRow}>
-                  {[
-                    { key: MEMBERSHIP_PLAN_TYPES.CREDITS, label: t("membershipPlans.classPack") },
-                    { key: MEMBERSHIP_PLAN_TYPES.UNLIMITED, label: t("membershipPlans.unlimited") },
-                  ].map((opt) => {
-                    const selected = form.type === opt.key;
-                    return (
-                      <TouchableOpacity
-                        key={opt.key}
-                        style={[
-                          styles.typeChip,
-                          {
-                            backgroundColor: selected ? `${colors.primary}26` : "transparent",
-                            borderColor: selected ? colors.primary : colors.border,
-                          },
-                        ]}
-                        onPress={() => setForm({ ...form, type: opt.key })}
-                      >
-                        <Text
-                          style={{
-                            color: selected ? colors.primary : colors.textSecondary,
-                            fontWeight: "600",
-                          }}
-                        >
-                          {opt.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+              <Field label={t("membershipPlans.audienceLabel")} colors={colors}>
+                <PricingTierToggle
+                  value={form.audienceTier}
+                  onChange={(v) => setForm({ ...form, audienceTier: v })}
+                  options={AUDIENCE_OPTIONS}
+                  t={t}
+                />
               </Field>
 
-              {isCredits && (
-                <Field label={t("membershipPlans.classesIncludedLabel")} colors={colors}>
-                  <TextInput
-                    style={[styles.input, { color: colors.text, borderColor: colors.border }]}
-                    placeholder={t("membershipPlans.classesIncludedPlaceholder")}
-                    placeholderTextColor={colors.textTertiary}
-                    value={form.creditsIncluded}
-                    onChangeText={(txt) =>
-                      setForm({ ...form, creditsIncluded: txt.replace(/[^0-9]/g, "") })
-                    }
-                    keyboardType="number-pad"
-                    returnKeyType="done"
-                  />
-                </Field>
-              )}
+              <Field label={t("membershipPlans.classesIncludedLabel")} colors={colors}>
+                <TextInput
+                  style={[styles.input, { color: colors.text, borderColor: colors.border }]}
+                  placeholder={t("membershipPlans.classesIncludedPlaceholder")}
+                  placeholderTextColor={colors.textTertiary}
+                  value={form.creditsIncluded}
+                  onChangeText={(txt) =>
+                    setForm({ ...form, creditsIncluded: txt.replace(/[^0-9]/g, "") })
+                  }
+                  keyboardType="number-pad"
+                  returnKeyType="done"
+                />
+              </Field>
 
               <Field label={t("membershipPlans.validityLabel")} colors={colors}>
                 <TextInput

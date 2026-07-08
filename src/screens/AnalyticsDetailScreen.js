@@ -75,10 +75,7 @@ export default function AnalyticsDetailScreen({ route, navigation }) {
           list = ms.map((m) => ({
             userId: m.userId,
             title: m.planName || t("analyticsDetail.membershipFallback"),
-            sub:
-              m.type === "credits"
-                ? t("analyticsDetail.creditsSub", { count: m.creditsRemaining ?? 0, date: fmtDate(m.expiresAt) })
-                : t("analyticsDetail.unlimitedSub", { date: fmtDate(m.expiresAt) }),
+            sub: t("analyticsDetail.creditsSub", { count: m.creditsRemaining ?? 0, date: fmtDate(m.expiresAt) }),
           }));
         }
         // resolve names/avatars

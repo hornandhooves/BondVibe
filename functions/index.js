@@ -731,9 +731,10 @@ exports.createMembershipPaymentIntent = onRequest(
           type: "membership",
           planId: planId,
           planName: plan.name,
-          planType: plan.type,
+          planType: "credits",
           creditsIncluded: (plan.creditsIncluded || 0).toString(),
           validityDays: (plan.validityDays || 0).toString(),
+          audienceTier: plan.audienceTier || "both",
           userId: userId,
           hostId: hostId,
           eventPrice: pricing.eventPrice.toString(),
@@ -912,16 +913,12 @@ exports.reserveMembershipCredit = onCall(async (request) => {
     throw new HttpsError("failed-precondition", "No active membership with this host.");
   }
 
-  // Prefer credit packs with available credits (minus active holds); fall back
-  // to unlimited passes.
+  // Every membership is credit-based (no unlimited): pick the soonest-expiring
+  // one that has enough credits left after active holds.
   let chosen = null;
   for (const m of candidates.sort(
     (a, b) => (a.expiresAt?.toMillis() || 0) - (b.expiresAt?.toMillis() || 0),
   )) {
-    if (m.type === "unlimited") {
-      chosen = m;
-      break;
-    }
     const holdsSnap = await db
       .collection("membershipReservations")
       .where("membershipId", "==", m.id)
@@ -991,8 +988,11 @@ exports.redeemMembershipCredit = onCall(async (request) => {
 
     const cost = reservation.creditCost || 1;
     const updates = {updatedAt: admin.firestore.FieldValue.serverTimestamp()};
-    if (membership.type === "credits") {
-      const remaining = Math.max(0, (membership.creditsRemaining || 0) - cost);
+    // Credit-based deduction (idempotent via the reservation.status guard above).
+    // A legacy unlimited membership has creditsRemaining == null and rides out
+    // its expiry without being decremented.
+    if (typeof membership.creditsRemaining === "number") {
+      const remaining = Math.max(0, membership.creditsRemaining - cost);
       updates.creditsRemaining = remaining;
       if (remaining === 0) updates.status = "depleted";
     }

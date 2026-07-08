@@ -1,6 +1,7 @@
 /**
- * PackageFormScreen — create / edit a package (kinlo_business/01 §3).
- * Class or session pack (credits) · unlimited · price · validity/expiration.
+ * PackageFormScreen — create / edit a package (kinlo_business/01 §3, 05 §G).
+ * Every package is credit-based: a finite credit count + a required expiry, plus
+ * an audience tier (Local / General / Both). No "unlimited".
  */
 import React, { useState, useEffect } from "react";
 import {
@@ -10,7 +11,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Switch,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
@@ -20,7 +20,9 @@ import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import Icon from "../../components/Icon";
 import GradientBackground from "../../components/GradientBackground";
+import PricingTierToggle from "../../components/business/PricingTierToggle";
 import { useTheme } from "../../contexts/ThemeContext";
+import { MEMBERSHIP_AUDIENCE } from "../../utils/membershipUtils";
 import {
   getPackage,
   createPackage,
@@ -28,6 +30,12 @@ import {
   deletePackage,
   PACKAGE_KIND,
 } from "../../services/businessPackagesService";
+
+const AUDIENCE_OPTIONS = [
+  { value: MEMBERSHIP_AUDIENCE.LOCAL, labelKey: "business.pricingTier.local", icon: "location" },
+  { value: MEMBERSHIP_AUDIENCE.GENERAL, labelKey: "business.pricingTier.general", icon: "globe" },
+  { value: MEMBERSHIP_AUDIENCE.BOTH, labelKey: "business.pricingTier.both", icon: "community" },
+];
 
 export default function PackageFormScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
@@ -39,10 +47,10 @@ export default function PackageFormScreen({ route, navigation }) {
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [kind, setKind] = useState(PACKAGE_KIND.CLASS);
-  const [unlimited, setUnlimited] = useState(false);
   const [credits, setCredits] = useState("");
   const [price, setPrice] = useState("");
   const [validityDays, setValidityDays] = useState("");
+  const [audienceTier, setAudienceTier] = useState(MEMBERSHIP_AUDIENCE.BOTH);
 
   useEffect(() => {
     if (!editing) return;
@@ -50,11 +58,12 @@ export default function PackageFormScreen({ route, navigation }) {
       const p = await getPackage(packageId);
       if (p) {
         setName(p.name || "");
-        setKind(p.kind || PACKAGE_KIND.CLASS);
-        setUnlimited(!!p.unlimited);
+        setKind([PACKAGE_KIND.EVENT, PACKAGE_KIND.CLASS, PACKAGE_KIND.SESSION].includes(p.kind) ? p.kind : PACKAGE_KIND.CLASS);
+        // Legacy unlimited packages migrate on first edit: host must set credits.
         setCredits(p.credits != null ? String(p.credits) : "");
         setPrice(p.priceCents ? String(p.priceCents / 100) : "");
         setValidityDays(p.validityDays != null ? String(p.validityDays) : "");
+        setAudienceTier(p.audienceTier || MEMBERSHIP_AUDIENCE.BOTH);
       }
       setLoading(false);
     })();
@@ -65,8 +74,16 @@ export default function PackageFormScreen({ route, navigation }) {
       Alert.alert(t("business.packageForm.nameRequiredTitle"), t("business.packageForm.nameRequiredMsg"));
       return;
     }
+    if (!credits || parseInt(credits, 10) <= 0) {
+      Alert.alert(t("business.packageForm.creditsRequiredTitle"), t("business.packageForm.creditsRequiredMsg"));
+      return;
+    }
+    if (!validityDays || parseInt(validityDays, 10) <= 0) {
+      Alert.alert(t("business.packageForm.validityRequiredTitle"), t("business.packageForm.validityRequiredMsg"));
+      return;
+    }
     setSaving(true);
-    const payload = { name: name.trim(), kind, unlimited, credits, price, validityDays };
+    const payload = { name: name.trim(), kind, credits, price, validityDays, audienceTier };
     try {
       if (editing) await updatePackage(packageId, payload);
       else await createPackage(payload);
@@ -152,24 +169,23 @@ export default function PackageFormScreen({ route, navigation }) {
             </View>
           </View>
 
-          <View style={[styles.rowBetween, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.switchLabel, { color: colors.text }]}>{t("business.packageForm.unlimited")}</Text>
-            <Switch value={unlimited} onValueChange={setUnlimited} trackColor={{ true: colors.primary }} />
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.textTertiary }]}>{t("business.packageForm.credits")}</Text>
+            <TextInput
+              style={[styles.input, inputStyle]}
+              value={credits}
+              onChangeText={setCredits}
+              placeholder="10"
+              placeholderTextColor={colors.textTertiary}
+              keyboardType="number-pad"
+            />
           </View>
 
-          {!unlimited && (
-            <View style={styles.field}>
-              <Text style={[styles.label, { color: colors.textTertiary }]}>{t("business.packageForm.credits")}</Text>
-              <TextInput
-                style={[styles.input, inputStyle]}
-                value={credits}
-                onChangeText={setCredits}
-                placeholder="10"
-                placeholderTextColor={colors.textTertiary}
-                keyboardType="number-pad"
-              />
-            </View>
-          )}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.textTertiary }]}>{t("business.packageForm.audience")}</Text>
+            <PricingTierToggle value={audienceTier} onChange={setAudienceTier} options={AUDIENCE_OPTIONS} t={t} />
+            <Text style={[styles.audienceHint, { color: colors.textTertiary }]}>{t("business.packageForm.audienceHint")}</Text>
+          </View>
 
           <View style={styles.row}>
             <View style={[styles.field, { flex: 1 }]}>
@@ -243,6 +259,7 @@ function createStyles(colors) {
     segRow: { flexDirection: "row", gap: 8 },
     seg: { flex: 1, borderWidth: 1.5, borderRadius: 12, paddingVertical: 11, alignItems: "center" },
     segText: { fontSize: 14, fontWeight: "700" },
+    audienceHint: { fontSize: 11.5, lineHeight: 16, marginTop: 8 },
     rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 16 },
     switchLabel: { fontSize: 14, fontWeight: "700" },
     deleteBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 18, marginTop: 6 },

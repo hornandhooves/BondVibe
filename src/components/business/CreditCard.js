@@ -43,9 +43,7 @@ export default function CreditCard({ member, onPlus, onMinus, onAssign }) {
         <View style={{ flex: 1 }}>
           <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{pkg.name}</Text>
           <Text style={[styles.sub, { color: expired ? colors.error : colors.textTertiary }]}>
-            {pkg.unlimited
-              ? t("business.credits.unlimited")
-              : t("business.credits.remaining", { remaining, total: pkg.creditsTotal || 0 })}
+            {t("business.credits.remaining", { remaining, total: pkg.creditsTotal || 0 })}
             {pkg.expiresAt
               ? ` · ${
                   expired
@@ -55,16 +53,14 @@ export default function CreditCard({ member, onPlus, onMinus, onAssign }) {
               : ""}
           </Text>
         </View>
-        {!pkg.unlimited && (
-          <View style={styles.steppers}>
-            <TouchableOpacity style={[styles.stepBtn, { backgroundColor: colors.surfaceGlass }]} onPress={onMinus}>
-              <Text style={[styles.stepText, { color: colors.text }]}>−</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.stepBtn, { backgroundColor: colors.primary }]} onPress={onPlus}>
-              <Text style={[styles.stepText, { color: "#fff" }]}>+</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        <View style={styles.steppers}>
+          <TouchableOpacity style={[styles.stepBtn, { backgroundColor: colors.surfaceGlass }]} onPress={onMinus}>
+            <Text style={[styles.stepText, { color: colors.text }]}>−</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.stepBtn, { backgroundColor: colors.primary }]} onPress={onPlus}>
+            <Text style={[styles.stepText, { color: "#fff" }]}>+</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       <TouchableOpacity onPress={onAssign} style={styles.changeRow}>
         <Text style={[styles.changeText, { color: colors.textSecondary }]}>{t("business.credits.change")}</Text>

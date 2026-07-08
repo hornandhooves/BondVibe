@@ -30,6 +30,8 @@ import { db, auth } from "./firebase";
 import { logger } from "../utils/logger";
 import {
   MEMBERSHIP_PLAN_TYPES,
+  MEMBERSHIP_AUDIENCE,
+  audienceAllows,
   validatePlanInput,
   getMembershipState,
   getMembershipExpiryDate,
@@ -44,6 +46,8 @@ const FUNCTIONS_BASE_URL =
 // Re-export pure helpers so existing imports from this service keep working.
 export {
   MEMBERSHIP_PLAN_TYPES,
+  MEMBERSHIP_AUDIENCE,
+  audienceAllows,
   getMembershipState,
   getMembershipExpiryDate,
   formatPlanPrice,
@@ -64,16 +68,25 @@ export const createMembershipPlan = async (planData) => {
     const error = validatePlanInput(planData);
     if (error) return { success: false, error };
 
-    const isCredits = planData.type === MEMBERSHIP_PLAN_TYPES.CREDITS;
+    // Every plan is credit-based now (no unlimited). audienceTier gates who may
+    // buy/redeem it (kinlo_business/05 §G); default 'both'.
+    const audienceTier = [
+      MEMBERSHIP_AUDIENCE.LOCAL,
+      MEMBERSHIP_AUDIENCE.GENERAL,
+      MEMBERSHIP_AUDIENCE.BOTH,
+    ].includes(planData.audienceTier)
+      ? planData.audienceTier
+      : MEMBERSHIP_AUDIENCE.BOTH;
 
     const planDoc = {
       hostId,
       name: planData.name.trim(),
       description: planData.description?.trim() || "",
       terms: planData.terms?.trim() || "",
-      type: planData.type,
-      creditsIncluded: isCredits ? Number(planData.creditsIncluded) : null,
+      type: MEMBERSHIP_PLAN_TYPES.CREDITS,
+      creditsIncluded: Number(planData.creditsIncluded),
       validityDays: Number(planData.validityDays),
+      audienceTier,
       priceCentavos: Number(planData.priceCentavos),
       currency: "MXN",
       allowAutoRenew: planData.allowAutoRenew !== false, // default true

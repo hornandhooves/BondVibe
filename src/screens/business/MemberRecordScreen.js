@@ -38,6 +38,7 @@ import {
 import { listPackages, assignPackage, adjustCredits, PACKAGE_KIND } from "../../services/businessPackagesService";
 import { markPresent, listMemberAttendance } from "../../services/businessAttendanceService";
 import { listMemberPayments } from "../../services/businessPaymentsService";
+import { audienceAllows } from "../../utils/membershipUtils";
 import { formatCentavos } from "../../utils/pricing";
 
 const initials = (name = "") =>
@@ -99,14 +100,20 @@ export default function MemberRecordScreen({ route, navigation }) {
   };
 
   const openAssign = async () => {
-    setPackages(await listPackages({ activeOnly: true }));
+    const all = await listPackages({ activeOnly: true });
+    // Only offer packages whose audience matches this member's pricing tier.
+    setPackages(all.filter((p) => audienceAllows(p.audienceTier, member?.pricingTier)));
     setAssignVisible(true);
   };
 
   const onAssignPackage = async (pkg) => {
     setAssignVisible(false);
-    await assignPackage(memberId, pkg.id);
-    await reloadMember();
+    try {
+      await assignPackage(memberId, pkg.id);
+      await reloadMember();
+    } catch (e) {
+      Alert.alert(t("business.credits.audienceMismatchTitle"), t("business.credits.audienceMismatchMsg"));
+    }
   };
 
   const confirmAdjust = async () => {
@@ -379,7 +386,7 @@ export default function MemberRecordScreen({ route, navigation }) {
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.pkgName, { color: colors.text }]}>{p.name}</Text>
                       <Text style={[styles.pkgMeta, { color: colors.textTertiary }]}>
-                        {p.unlimited ? t("business.packages.unlimited") : t("business.packages.creditsCount", { count: p.credits || 0 })}
+                        {t("business.packages.creditsCount", { count: p.credits || 0 })}
                         {` · ${p.priceCents ? formatCentavos(p.priceCents) : t("business.packages.free")}`}
                       </Text>
                     </View>

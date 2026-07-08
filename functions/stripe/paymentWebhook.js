@@ -411,9 +411,10 @@ async function handleEventTicketPurchase(paymentIntent) {
  */
 async function handleMembershipPurchase(paymentIntent) {
   const {id: paymentIntentId, amount, currency, metadata} = paymentIntent;
-  const {planId, planName, planType, userId, hostId} = metadata;
+  const {planId, planName, userId, hostId} = metadata;
   const creditsIncluded = parseInt(metadata.creditsIncluded, 10) || 0;
   const validityDays = parseInt(metadata.validityDays, 10) || 0;
+  const audienceTier = metadata.audienceTier || "both";
 
   console.log("🎟️ Processing membership purchase:", paymentIntentId);
 
@@ -447,20 +448,21 @@ async function handleMembershipPurchase(paymentIntent) {
   });
   console.log("✅ Membership payment record saved");
 
-  // 2. Create the membership instance
+  // 2. Create the membership instance. Every membership is credit-based now
+  // (no unlimited); it carries an audience tier (local/general/both).
   const now = new Date();
   const expiresAt = new Date(now);
   expiresAt.setDate(expiresAt.getDate() + validityDays);
-  const isCredits = planType === "credits";
 
   const membershipRef = await db.collection("memberships").add({
     userId,
     hostId,
     planId,
     planName,
-    type: planType,
-    creditsTotal: isCredits ? creditsIncluded : null,
-    creditsRemaining: isCredits ? creditsIncluded : null,
+    type: "credits",
+    creditsTotal: creditsIncluded,
+    creditsRemaining: creditsIncluded,
+    audienceTier,
     purchasedAt: admin.firestore.Timestamp.fromDate(now),
     expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
     status: "active",
@@ -503,9 +505,7 @@ async function handleMembershipPurchase(paymentIntent) {
     userId: userId,
     type: "membership_purchased",
     title: "Membership active! 🎉",
-    message: isCredits ?
-      `Your "${planName}" is ready — ${creditsIncluded} classes available.` :
-      `Your "${planName}" is active. Enjoy unlimited classes!`,
+    message: `Your "${planName}" is ready — ${creditsIncluded} classes available.`,
     icon: "🎉",
     read: false,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),

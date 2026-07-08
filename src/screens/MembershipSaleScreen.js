@@ -54,7 +54,6 @@ export default function MembershipSaleScreen({ route, navigation }) {
   const styles = createStyles(colors, isDark);
   const name = buyer?.fullName || buyer?.name || buyerName || t("membershipSale.defaultMemberName");
   const m = membership || {};
-  const isCredits = m.type === "credits";
   const amount = typeof amountCentavos === "number" ? amountCentavos / 100 : null;
 
   const Row = ({ icon, label, value }) => (
@@ -95,15 +94,13 @@ export default function MembershipSaleScreen({ route, navigation }) {
           <Row
             icon="ticket"
             label={t("membershipSale.type")}
-            value={isCredits ? t("membershipSale.classCredits") : t("membershipSale.unlimited")}
+            value={t("membershipSale.classCredits")}
           />
-          {isCredits && (
-            <Row
-              icon="ticket"
-              label={t("membershipSale.credits")}
-              value={t("membershipSale.creditsLeft", { remaining: m.creditsRemaining ?? m.creditsTotal ?? 0, total: m.creditsTotal ?? 0 })}
-            />
-          )}
+          <Row
+            icon="ticket"
+            label={t("membershipSale.credits")}
+            value={t("membershipSale.creditsLeft", { remaining: m.creditsRemaining ?? m.creditsTotal ?? 0, total: m.creditsTotal ?? 0 })}
+          />
           {amount != null && (
             <Row icon="dollar" label={t("membershipSale.paid")} value={`$${amount.toFixed(2)} MXN`} />
           )}

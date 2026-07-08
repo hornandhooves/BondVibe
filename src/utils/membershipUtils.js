@@ -3,9 +3,31 @@
  * testable and reusable on both client and (logic-mirrored) server side.
  */
 
+// Every membership is credit-based now (kinlo_business/05 §G): a fixed number of
+// events/classes + a required expiry. "Unlimited" was removed entirely — new
+// plans can't be unlimited and legacy unlimited instances ride out their expiry.
 export const MEMBERSHIP_PLAN_TYPES = {
   CREDITS: "credits",
-  UNLIMITED: "unlimited",
+};
+
+// A plan/package audience tier (kinlo_business/05 §G): who may buy/redeem it.
+// Enforced at purchase and at redemption/check-in.
+export const MEMBERSHIP_AUDIENCE = {
+  LOCAL: "local",
+  GENERAL: "general",
+  BOTH: "both",
+};
+
+/**
+ * Whether a plan/package audience allows a member of the given pricing tier.
+ * @param {"local"|"general"|"both"|undefined} audienceTier
+ * @param {"local"|"general"|undefined} memberTier
+ * @returns {boolean}
+ */
+export const audienceAllows = (audienceTier, memberTier) => {
+  const a = audienceTier || MEMBERSHIP_AUDIENCE.BOTH;
+  if (a === MEMBERSHIP_AUDIENCE.BOTH) return true;
+  return a === (memberTier || MEMBERSHIP_AUDIENCE.GENERAL);
 };
 
 /**
@@ -34,12 +56,15 @@ export const validatePlanInput = (data) => {
   if (!data.validityDays || data.validityDays <= 0) {
     return "Validity (in days) must be greater than zero.";
   }
-  if (data.type === MEMBERSHIP_PLAN_TYPES.CREDITS) {
-    if (!data.creditsIncluded || data.creditsIncluded <= 0) {
-      return "A credit pack must include at least one credit.";
-    }
-  } else if (data.type !== MEMBERSHIP_PLAN_TYPES.UNLIMITED) {
-    return "Invalid plan type.";
+  // Every plan is credit-based: a credit count is always required.
+  if (!data.creditsIncluded || data.creditsIncluded <= 0) {
+    return "A membership must include at least one credit.";
+  }
+  if (
+    data.audienceTier &&
+    ![MEMBERSHIP_AUDIENCE.LOCAL, MEMBERSHIP_AUDIENCE.GENERAL, MEMBERSHIP_AUDIENCE.BOTH].includes(data.audienceTier)
+  ) {
+    return "Invalid audience tier.";
   }
   return null;
 };
@@ -53,10 +78,9 @@ export const validatePlanInput = (data) => {
 export const getMembershipState = (m, nowMs = Date.now()) => {
   if (!m) return "expired";
   if (toMillis(m.expiresAt) < nowMs) return "expired";
-  if (
-    m.type === MEMBERSHIP_PLAN_TYPES.CREDITS &&
-    (m.creditsRemaining || 0) <= 0
-  ) {
+  // Credit-based: 0 credits → depleted. A legacy unlimited instance has
+  // creditsRemaining == null and simply rides out its expiry (not depleted).
+  if (typeof m.creditsRemaining === "number" && m.creditsRemaining <= 0) {
     return "depleted";
   }
   return "active";
@@ -93,9 +117,7 @@ export const formatPlanPrice = (centavos) => {
 export const describePlan = (plan) => {
   if (!plan) return "";
   const validity = `${plan.validityDays} days`;
-  if (plan.type === MEMBERSHIP_PLAN_TYPES.UNLIMITED) {
-    return `Unlimited classes · valid ${validity}`;
-  }
   const credits = plan.creditsIncluded;
+  if (!credits) return `Membership · valid ${validity}`;
   return `${credits} class${credits === 1 ? "" : "es"} · valid ${validity}`;
 };

@@ -78,9 +78,7 @@ export default function PackagesScreen({ navigation }) {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.name, { color: colors.text }]}>{p.name}</Text>
                 <Text style={[styles.meta, { color: colors.textSecondary }]}>
-                  {p.unlimited
-                    ? t("business.packages.unlimited")
-                    : t("business.packages.creditsCount", { count: p.credits || 0 })}
+                  {t("business.packages.creditsCount", { count: p.credits || 0 })}
                   {p.validityDays ? ` · ${t("business.packages.validDays", { days: p.validityDays })}` : ""}
                   {` · ${p.kind === PACKAGE_KIND.SESSION ? t("business.packages.kindSession") : t("business.packages.kindClass")}`}
                 </Text>

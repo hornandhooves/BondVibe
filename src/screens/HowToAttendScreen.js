@@ -23,7 +23,6 @@ import {
   reserveMembershipCredit,
   getMembershipState,
   getMembershipExpiryDate,
-  MEMBERSHIP_PLAN_TYPES,
 } from "../services/membershipService";
 
 export default function HowToAttendScreen({ route, navigation }) {
@@ -105,8 +104,6 @@ export default function HowToAttendScreen({ route, navigation }) {
 
   const state = membership ? getMembershipState(membership) : null;
   const hasActiveMembership = state === "active";
-  const isUnlimited =
-    membership?.type === MEMBERSHIP_PLAN_TYPES.UNLIMITED;
   const expiry = membership ? getMembershipExpiryDate(membership) : null;
 
   const Option = ({ icon, iconColor, title, subtitle, onPress, primary }) => (
@@ -169,20 +166,14 @@ export default function HowToAttendScreen({ route, navigation }) {
           {/* Use membership (active) */}
           {hasActiveMembership && (
             <Option
-              icon={isUnlimited ? "infinity" : "ticket"}
+              icon="ticket"
               iconColor={colors.primary}
               primary
-              title={isUnlimited ? t("howToAttend.useMembership") : t("howToAttend.useOneCredit")}
-              subtitle={
-                isUnlimited
-                  ? t("howToAttend.unlimitedValidUntil", {
-                      date: expiry ? expiry.toLocaleDateString() : "—",
-                    })
-                  : t("howToAttend.creditsLeftValidUntil", {
-                      count: membership.creditsRemaining,
-                      date: expiry ? expiry.toLocaleDateString() : "—",
-                    })
-              }
+              title={t("howToAttend.useOneCredit")}
+              subtitle={t("howToAttend.creditsLeftValidUntil", {
+                count: membership.creditsRemaining,
+                date: expiry ? expiry.toLocaleDateString() : "—",
+              })}
               onPress={handleUseCredit}
             />
           )}

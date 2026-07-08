@@ -2,7 +2,7 @@
  * businessAttendanceService — attendance ledger (kinlo_business/01 §4).
  * Mark a member present by hand ("mark present" for non-app clients) or via a
  * QR scan of their business pass. A credit auto-deducts on check-in when the
- * member holds a non-unlimited package with credits left. Source flag qr|manual.
+ * member holds a package with credits left (audience-matched). Source flag qr|manual.
  *
  * Data: businesses/{bizId}/attendance/{recordId}
  *   memberId, memberName, classTitle?, date(ISO), source:'qr'|'manual',
@@ -21,6 +21,7 @@ import { db } from "./firebase";
 import { getMyBizId } from "./businessService";
 import { getMember } from "./businessMembersService";
 import { adjustCredits, isPackageExpired } from "./businessPackagesService";
+import { audienceAllows } from "../utils/membershipUtils";
 
 export const ATTENDANCE_SOURCE = { QR: "qr", MANUAL: "manual" };
 
@@ -37,8 +38,10 @@ export async function markPresent(member, opts = {}, bizId = getMyBizId()) {
   const source = opts.source === ATTENDANCE_SOURCE.QR ? ATTENDANCE_SOURCE.QR : ATTENDANCE_SOURCE.MANUAL;
 
   const pkg = member.activePackage;
+  // Credit-based only; a local-only credit can't be used by a general member.
+  const audienceOk = !pkg || audienceAllows(pkg.audienceTier, member.pricingTier);
   const hasCredits =
-    pkg && !pkg.unlimited && !isPackageExpired(pkg) && (member.creditBalance || 0) > 0;
+    pkg && audienceOk && !isPackageExpired(pkg) && (member.creditBalance || 0) > 0;
 
   await addDoc(attendanceCol(bizId), {
     memberId: member.id,
@@ -50,7 +53,7 @@ export async function markPresent(member, opts = {}, bizId = getMyBizId()) {
     createdAt: serverTimestamp(),
   });
 
-  let remaining = pkg && !pkg.unlimited ? member.creditBalance || 0 : null;
+  let remaining = pkg ? member.creditBalance || 0 : null;
   if (hasCredits) {
     remaining = await adjustCredits(member, -1, "attendance", bizId);
   }

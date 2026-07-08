@@ -1,5 +1,7 @@
 import {
   MEMBERSHIP_PLAN_TYPES,
+  MEMBERSHIP_AUDIENCE,
+  audienceAllows,
   toMillis,
   validatePlanInput,
   getMembershipState,
@@ -35,25 +37,36 @@ describe("validatePlanInput", () => {
   it("accepts a valid credit pack", () => {
     expect(validatePlanInput(base)).toBeNull();
   });
-  it("accepts a valid unlimited plan without credits", () => {
-    expect(
-      validatePlanInput({
-        ...base,
-        type: MEMBERSHIP_PLAN_TYPES.UNLIMITED,
-        creditsIncluded: null,
-      })
-    ).toBeNull();
+  it("rejects a plan without credits (no unlimited)", () => {
+    expect(validatePlanInput({ ...base, creditsIncluded: null })).toMatch(/credit/i);
   });
   it("rejects missing name, price, validity", () => {
     expect(validatePlanInput({ ...base, name: "  " })).toMatch(/name/i);
     expect(validatePlanInput({ ...base, priceCentavos: 0 })).toMatch(/price/i);
     expect(validatePlanInput({ ...base, validityDays: 0 })).toMatch(/validity/i);
   });
-  it("requires at least one credit for credit packs", () => {
+  it("requires at least one credit", () => {
     expect(validatePlanInput({ ...base, creditsIncluded: 0 })).toMatch(/credit/i);
   });
-  it("rejects an unknown type", () => {
-    expect(validatePlanInput({ ...base, type: "weird" })).toMatch(/type/i);
+  it("accepts a valid audience tier and rejects an invalid one", () => {
+    expect(validatePlanInput({ ...base, audienceTier: MEMBERSHIP_AUDIENCE.LOCAL })).toBeNull();
+    expect(validatePlanInput({ ...base, audienceTier: "weird" })).toMatch(/audience/i);
+  });
+});
+
+describe("audienceAllows", () => {
+  it("both allows everyone; local/general match the member tier", () => {
+    expect(audienceAllows(MEMBERSHIP_AUDIENCE.BOTH, "local")).toBe(true);
+    expect(audienceAllows(MEMBERSHIP_AUDIENCE.BOTH, "general")).toBe(true);
+    expect(audienceAllows(MEMBERSHIP_AUDIENCE.LOCAL, "local")).toBe(true);
+    expect(audienceAllows(MEMBERSHIP_AUDIENCE.LOCAL, "general")).toBe(false);
+    expect(audienceAllows(MEMBERSHIP_AUDIENCE.GENERAL, "general")).toBe(true);
+    expect(audienceAllows(MEMBERSHIP_AUDIENCE.GENERAL, "local")).toBe(false);
+  });
+  it("defaults: undefined audience → both; undefined member → general", () => {
+    expect(audienceAllows(undefined, "local")).toBe(true);
+    expect(audienceAllows(MEMBERSHIP_AUDIENCE.GENERAL, undefined)).toBe(true);
+    expect(audienceAllows(MEMBERSHIP_AUDIENCE.LOCAL, undefined)).toBe(false);
   });
 });
 
@@ -70,8 +83,8 @@ describe("getMembershipState", () => {
     const m = { type: "credits", creditsRemaining: 3, expiresAt: tsFromMs(future) };
     expect(getMembershipState(m)).toBe("active");
   });
-  it("treats unlimited as active until expiry (ignores credits)", () => {
-    const m = { type: "unlimited", creditsRemaining: 0, expiresAt: tsFromMs(future) };
+  it("treats a legacy membership with null credits as active until expiry", () => {
+    const m = { creditsRemaining: null, expiresAt: tsFromMs(future) };
     expect(getMembershipState(m)).toBe("active");
   });
   it("accepts an injected now for deterministic tests", () => {
@@ -103,10 +116,8 @@ describe("describePlan", () => {
       "1 class · valid 30 days"
     );
   });
-  it("describes unlimited plans", () => {
-    expect(describePlan({ type: "unlimited", validityDays: 30 })).toBe(
-      "Unlimited classes · valid 30 days"
-    );
+  it("describes a legacy plan without credits neutrally", () => {
+    expect(describePlan({ validityDays: 30 })).toBe("Membership · valid 30 days");
   });
 });
 

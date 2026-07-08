@@ -19,8 +19,9 @@ import {
   getHostMembershipPlans,
   formatPlanPrice,
   describePlan,
-  MEMBERSHIP_PLAN_TYPES,
+  audienceAllows,
 } from "../services/membershipService";
+import { getMyPricingTierForHost } from "../services/businessMembersService";
 
 export default function HostMembershipsScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
@@ -37,11 +38,14 @@ export default function HostMembershipsScreen({ route, navigation }) {
   );
 
   const load = async () => {
-    const [data, hostSnap] = await Promise.all([
+    const [data, hostSnap, myTier] = await Promise.all([
       getHostMembershipPlans(hostId, { activeOnly: true }),
       getDoc(doc(db, "users", hostId)),
+      getMyPricingTierForHost(hostId),
     ]);
-    setPlans(data);
+    // Purchase scope (kinlo_business/05 §G): only show plans this buyer's tier
+    // is allowed to buy (local-only plans hidden from general members).
+    setPlans(data.filter((p) => audienceAllows(p.audienceTier, myTier)));
     if (hostSnap.exists()) {
       const d = hostSnap.data();
       setHostName(d.fullName || d.name || hostNameParam || t("hostMemberships.host"));
@@ -84,16 +88,11 @@ export default function HostMembershipsScreen({ route, navigation }) {
             {t("hostMemberships.introText")}
           </Text>
           {plans.map((plan) => {
-            const isUnlimited = plan.type === MEMBERSHIP_PLAN_TYPES.UNLIMITED;
             return (
               <View key={plan.id} style={styles.card}>
                 <View style={styles.cardHeader}>
                   <View style={styles.iconCircle}>
-                    {isUnlimited ? (
-                      <Icon name="infinity" size={20} color={colors.primary} />
-                    ) : (
-                      <Icon name="ticket" size={20} color={colors.primary} />
-                    )}
+                    <Icon name="ticket" size={20} color={colors.primary} />
                   </View>
                   <Text style={[styles.planName, { color: colors.text }]} numberOfLines={1}>
                     {plan.name}

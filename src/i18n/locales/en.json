@@ -1419,6 +1419,7 @@
     "typeLabel": "Type",
     "classPack": "Class pack",
     "unlimited": "Unlimited",
+    "audienceLabel": "Who can buy it",
     "classesIncludedLabel": "Classes included",
     "classesIncludedPlaceholder": "e.g. 10",
     "validityLabel": "Validity (days)",
@@ -2783,6 +2784,8 @@
       "kind": "Type",
       "unlimited": "Unlimited",
       "credits": "Credits included",
+      "audience": "Who can buy it",
+      "audienceHint": "Local-only packages can only be assigned to Local members; General-only to General members.",
       "price": "Price (MXN)",
       "validity": "Validity (days)",
       "validityPlaceholder": "e.g. 60",
@@ -2791,7 +2794,11 @@
       "deleteTitle": "Delete package?",
       "deleteMsg": "Existing members keep their current credits.",
       "nameRequiredTitle": "Name required",
-      "nameRequiredMsg": "Give the package a name."
+      "nameRequiredMsg": "Give the package a name.",
+      "creditsRequiredTitle": "Credits required",
+      "creditsRequiredMsg": "Set how many events/classes this package includes (at least 1).",
+      "validityRequiredTitle": "Expiry required",
+      "validityRequiredMsg": "Set how many days the package is valid for."
     },
     "credits": {
       "assign": "Assign a package",
@@ -2805,7 +2812,9 @@
       "addCredit": "Add a credit",
       "removeCredit": "Remove a credit",
       "reasonPlaceholder": "Reason (optional)",
-      "apply": "Apply"
+      "apply": "Apply",
+      "audienceMismatchTitle": "Tier mismatch",
+      "audienceMismatchMsg": "This package's audience doesn't match the member's pricing tier."
     },
     "attendance": {
       "markPresent": "Mark present",

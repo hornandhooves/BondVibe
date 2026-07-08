@@ -18,9 +18,7 @@ export default function BusinessPassCard({ pass }) {
   const pkg = pass.activePackage;
   let creditLine = null;
   if (pkg) {
-    creditLine = pkg.unlimited
-      ? t("business.credits.unlimited")
-      : t("business.credits.remaining", { remaining: pass.creditBalance || 0, total: pkg.creditsTotal || 0 });
+    creditLine = t("business.credits.remaining", { remaining: pass.creditBalance || 0, total: pkg.creditsTotal || 0 });
   }
 
   return (
