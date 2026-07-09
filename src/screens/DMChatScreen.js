@@ -17,6 +17,10 @@ import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import Icon from "../components/Icon";
 import GradientBackground from "../components/GradientBackground";
+import MentionText from "../components/MentionText";
+import MentionSuggestions from "../components/MentionSuggestions";
+import { replaceActiveMention } from "../utils/mentions";
+import { notifyMentions } from "../services/userService";
 import { useTheme } from "../contexts/ThemeContext";
 import { auth } from "../services/firebase";
 import {
@@ -51,6 +55,7 @@ export default function DMChatScreen({ route, navigation }) {
     if (!body || !threadId) return;
     setText("");
     await sendDM(threadId, body);
+    notifyMentions(body, { title: t("mentions.notifTitle"), message: body.slice(0, 120), metadata: { threadId } });
   };
 
   const styles = createStyles(colors);
@@ -89,9 +94,11 @@ export default function DMChatScreen({ route, navigation }) {
                     : { backgroundColor: colors.surfaceGlass, alignSelf: "flex-start" },
                 ]}
               >
-                <Text style={{ color: mine ? "#fff" : colors.text, fontSize: 15 }}>
-                  {item.text}
-                </Text>
+                <MentionText
+                  text={item.text}
+                  style={{ color: mine ? "#fff" : colors.text, fontSize: 15 }}
+                  navigation={navigation}
+                />
               </View>
             );
           }}
@@ -99,6 +106,7 @@ export default function DMChatScreen({ route, navigation }) {
             <Text style={[styles.empty, { color: colors.textTertiary, transform: [{ scaleY: -1 }] }]}>{t("dmChat.sayHi")}</Text>
           }
         />
+        <MentionSuggestions text={text} onPick={(h) => setText(replaceActiveMention(text, h))} />
         <View style={[styles.inputBar, { borderTopColor: colors.border }]}>
           <TextInput
             style={[styles.input, { color: colors.text, backgroundColor: colors.surfaceGlass }]}

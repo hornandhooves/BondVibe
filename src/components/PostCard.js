@@ -12,6 +12,7 @@ import {
   Alert,
 } from "react-native";
 import Icon from "./Icon";
+import MentionText from "./MentionText";
 import { useTranslation } from "react-i18next";
 import { AvatarDisplay } from "./AvatarPicker";
 import { useTheme } from "../contexts/ThemeContext";
@@ -129,7 +130,7 @@ export default function PostCard({ post, navigation, onChanged }) {
         </View>
       )}
       {!!post.text && (
-        <Text style={[styles.text, { color: colors.text }]}>{post.text}</Text>
+        <MentionText text={post.text} style={[styles.text, { color: colors.text }]} navigation={navigation} />
       )}
       {Array.isArray(post.images) && post.images.length > 0 && (
         <Image source={{ uri: post.images[0] }} style={styles.image} />

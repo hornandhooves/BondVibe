@@ -27,7 +27,9 @@ import { reportProhibitedContent } from "../services/reportService";
 import CarpoolCard from "../components/CarpoolCard";
 import KeyboardAccessory from "../components/KeyboardAccessory";
 import PlaceAutocomplete from "../components/PlaceAutocomplete";
+import MentionText from "../components/MentionText";
 import { createCarpool } from "../services/carpoolService";
+import { notifyMentions } from "../services/userService";
 import { useTheme } from "../contexts/ThemeContext";
 import { auth , db } from "../services/firebase";
 import {
@@ -302,6 +304,7 @@ export default function EventChatScreen({ route, navigation }) {
     try {
       await sendMessage(conversationId, auth.currentUser.uid, text);
       console.log("✅ Message sent successfully!");
+      notifyMentions(text, { title: t("mentions.notifTitle"), message: text.slice(0, 120), metadata: { eventId } });
     } catch (error) {
       console.error("❌ Error sending message:", error);
       console.error("❌ Error code:", error.code);
@@ -724,9 +727,11 @@ export default function EventChatScreen({ route, navigation }) {
             },
           ]}
         >
-          <Text style={[styles.messageText, { color: colors.text }]}>
-            {message.text}
-          </Text>
+          <MentionText
+            text={message.text}
+            style={[styles.messageText, { color: colors.text }]}
+            navigation={navigation}
+          />
           <View style={styles.messageFooter}>
             <Text style={[styles.timeStamp, { color: colors.textTertiary }]}>
               {time}

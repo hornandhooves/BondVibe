@@ -4,6 +4,10 @@
  */
 import React, { useState, useEffect, useRef } from "react";
 import Icon from "../../components/Icon";
+import MentionText from "../../components/MentionText";
+import MentionSuggestions from "../../components/MentionSuggestions";
+import { replaceActiveMention } from "../../utils/mentions";
+import { notifyMentions } from "../../services/userService";
 import {
   View,
   Text,
@@ -39,6 +43,7 @@ export default function MatchChatScreen({ route, navigation }) {
     if (!body) return;
     setText("");
     await sendMatchMessage(matchId, body);
+    notifyMentions(body, { title: t("mentions.notifTitle"), message: body.slice(0, 120), metadata: { matchId } });
   };
 
   const styles = createStyles(colors);
@@ -67,9 +72,11 @@ export default function MatchChatScreen({ route, navigation }) {
                   : { backgroundColor: colors.surfaceGlass, alignSelf: "flex-start" },
               ]}
             >
-              <Text style={{ color: mine ? "#fff" : colors.text, fontSize: 15 }}>
-                {item.text}
-              </Text>
+              <MentionText
+                text={item.text}
+                style={{ color: mine ? "#fff" : colors.text, fontSize: 15 }}
+                navigation={navigation}
+              />
             </View>
           );
         }}
@@ -79,6 +86,7 @@ export default function MatchChatScreen({ route, navigation }) {
           </Text>
         }
       />
+      <MentionSuggestions text={text} onPick={(h) => setText(replaceActiveMention(text, h))} />
       <View style={[styles.inputBar, { borderTopColor: colors.border }]}>
         <TextInput
           style={[styles.input, { color: colors.text, backgroundColor: colors.surfaceGlass }]}

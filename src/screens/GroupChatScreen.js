@@ -24,6 +24,10 @@ import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import KeyboardAccessory from "../components/KeyboardAccessory";
 import PollCard from "../components/PollCard";
+import MentionText from "../components/MentionText";
+import MentionSuggestions from "../components/MentionSuggestions";
+import { replaceActiveMention } from "../utils/mentions";
+import { notifyMentions } from "../services/userService";
 import { createPoll } from "../services/pollService";
 import { detectProhibitedContent, PROHIBITED_MESSAGE } from "../utils/contentGuard";
 import { reportProhibitedContent } from "../services/reportService";
@@ -48,24 +52,27 @@ const ChatComposer = React.memo(function ChatComposer({ colors, styles, placehol
     onSend(body);
   };
   return (
-    <View style={[styles.inputBar, { borderTopColor: colors.border }]}>
-      {leftActions}
-      <TextInput
-        style={[styles.input, { color: colors.text, backgroundColor: colors.surfaceGlass }]}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textTertiary}
-        value={text}
-        onChangeText={setText}
-        multiline
-      />
-      <TouchableOpacity
-        testID="send-button"
-        style={[styles.sendBtn, { backgroundColor: colors.primary, opacity: text.trim() ? 1 : 0.4 }]}
-        onPress={send}
-        disabled={!text.trim()}
-      >
-        <Icon name="send" size={20} color="#FFFFFF" />
-      </TouchableOpacity>
+    <View>
+      <MentionSuggestions text={text} onPick={(h) => setText(replaceActiveMention(text, h))} />
+      <View style={[styles.inputBar, { borderTopColor: colors.border }]}>
+        {leftActions}
+        <TextInput
+          style={[styles.input, { color: colors.text, backgroundColor: colors.surfaceGlass }]}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textTertiary}
+          value={text}
+          onChangeText={setText}
+          multiline
+        />
+        <TouchableOpacity
+          testID="send-button"
+          style={[styles.sendBtn, { backgroundColor: colors.primary, opacity: text.trim() ? 1 : 0.4 }]}
+          onPress={send}
+          disabled={!text.trim()}
+        >
+          <Icon name="send" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 });
@@ -151,6 +158,8 @@ export default function GroupChatScreen({ route, navigation }) {
         return;
       }
       sendGroupMessage(groupId, body);
+      // Notify anyone @mentioned (best-effort, server-routed).
+      notifyMentions(body, { title: t("mentions.notifTitle"), message: body.slice(0, 120), metadata: { groupId } });
     },
     [groupId, t]
   );
@@ -228,7 +237,7 @@ export default function GroupChatScreen({ route, navigation }) {
     }
     return (
       <View style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
-        <Text style={{ color: colors.text }}>{m.text}</Text>
+        <MentionText text={m.text} style={{ color: colors.text }} navigation={navigation} />
         {mine && (
           <View style={styles.tickRow} testID={`tick-${tickStatus(m)}`}>
             <TickIcon status={tickStatus(m)} />

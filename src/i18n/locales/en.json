@@ -100,6 +100,9 @@
     "title": "Find people",
     "hint": "Search by @handle or name, then open their profile to message or follow."
   },
+  "mentions": {
+    "notifTitle": "You were mentioned"
+  },
   "auth": {
     "emailPlaceholder": "Email",
     "passwordPlaceholder": "Password",

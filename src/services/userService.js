@@ -6,6 +6,8 @@
 import { collection, query, where, limit, getDocs, doc, getDoc } from "firebase/firestore";
 import { db, auth } from "./firebase";
 import { getBlockedIds } from "./blockService";
+import { extractMentionHandles } from "../utils/mentions";
+import { createNotification } from "../utils/notificationService";
 
 // Firestore prefix-range high sentinel (a very high private-use code point).
 const HIGH = String.fromCharCode(0xf8ff);
@@ -65,4 +67,35 @@ export const findUserByHandle = async (handle) => {
   } catch (e) {
     return null;
   }
+};
+
+/**
+ * Notify every user @mentioned in `text` (best-effort, server-routed via the
+ * createNotification callable — never client-forged). Skips the sender and
+ * anyone who can't be resolved. Pass a localized title/message from the caller.
+ * @param {string} text
+ * @param {{title?:string, message?:string, metadata?:object}} [opts]
+ */
+export const notifyMentions = async (text, opts = {}) => {
+  const handles = extractMentionHandles(text);
+  if (!handles.length) return;
+  const me = auth.currentUser?.uid;
+  await Promise.all(
+    handles.map(async (h) => {
+      try {
+        const u = await findUserByHandle(h);
+        if (u && u.uid && u.uid !== me) {
+          await createNotification(u.uid, {
+            type: "mention",
+            title: opts.title || "You were mentioned",
+            message: opts.message || "",
+            icon: "message",
+            metadata: opts.metadata || {},
+          });
+        }
+      } catch (_e) {
+        // best-effort
+      }
+    })
+  );
 };
