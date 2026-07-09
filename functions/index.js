@@ -2909,8 +2909,33 @@ exports.inviteBusinessStaff = onCall(async (request) => {
   const handle = String((request.data && request.data.handle) || "")
     .trim().toLowerCase().replace(/^@+/, "");
 
-  // Add by @handle (spec 10): resolve the handle → an existing app user and add
-  // them to staff directly (no email needed — search never exposes email).
+  // BUG 32.1: an invite now needs the invitee's consent. We write the staff
+  // record as status:"invited" (no access — Firestore rules + membership only
+  // count "active") and notify them; they Accept/Decline via respondToStaffInvite.
+  const bizSnap = await db.collection("businesses").doc(bizId).get();
+  const bizName = bizSnap.exists ? (bizSnap.data().name || "") : "";
+  let ownerName = "";
+  try {
+    const ou = await admin.auth().getUser(uid);
+    ownerName = ou.displayName || "";
+  } catch (e) {
+    ownerName = "";
+  }
+  const notifyInvite = (targetUid, roleVal) =>
+    db.collection("notifications").add({
+      userId: targetUid,
+      type: "staff_invite",
+      title: "Staff invitation 👥",
+      message: `${bizName || "A business"} invited you to join as ${roleVal}.`,
+      icon: "👥",
+      read: false,
+      resolved: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      metadata: {bizId, role: roleVal, businessName: bizName || "", fromUid: uid, fromName: ownerName || ""},
+    });
+
+  // Add by @handle (spec 10): resolve the handle → an existing app user and
+  // send them an invite (status:"invited" + notification).
   if (handle) {
     const hSnap = await db.collection("handles").doc(handle).get();
     const targetUid = hSnap.exists ? hSnap.data().uid : null;
@@ -2929,9 +2954,12 @@ exports.inviteBusinessStaff = onCall(async (request) => {
         email: (u && u.email) || "",
         name: (u && u.displayName) || "",
         branchIds: [],
+        status: "invited",
+        invitedBy: uid,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    return {uid: targetUid, role, name: (u && u.displayName) || "", pending: false};
+      }, {merge: true});
+    await notifyInvite(targetUid, role);
+    return {uid: targetUid, role, name: (u && u.displayName) || "", pending: false, invited: true};
   }
 
   if (!email) throw new HttpsError("invalid-argument", "Email or handle required.");
@@ -2954,9 +2982,12 @@ exports.inviteBusinessStaff = onCall(async (request) => {
         email,
         name: staff.displayName || "",
         branchIds: [],
+        status: "invited",
+        invitedBy: uid,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    return {uid: staff.uid, role, name: staff.displayName || "", email, pending: false};
+      }, {merge: true});
+    await notifyInvite(staff.uid, role);
+    return {uid: staff.uid, role, name: staff.displayName || "", email, pending: false, invited: true};
   }
 
   // No account yet: store a pending invite keyed by email; it auto-links when
@@ -2996,27 +3027,115 @@ exports.claimStaffInvites = onCall(async (request) => {
     // best-effort
   }
 
-  const batch = db.batch();
-  snap.forEach((d) => {
+  // BUG 32.1: a claimed email invite becomes an "invited" staff record (NOT
+  // active) + a notification, so the new user still Accepts before gaining
+  // access — same consent step as a handle invite.
+  for (const d of snap.docs) {
     const inv = d.data();
-    const staffRef = db.collection("businesses").doc(inv.bizId).collection("staff").doc(uid);
-    batch.set(staffRef, {
+    let bizName = "";
+    try {
+      const b = await db.collection("businesses").doc(inv.bizId).get();
+      bizName = b.exists ? (b.data().name || "") : "";
+    } catch (e) {
+      bizName = "";
+    }
+    await db.collection("businesses").doc(inv.bizId).collection("staff").doc(uid).set({
       uid,
       role: inv.role,
       email,
       name,
       branchIds: [],
+      status: "invited",
+      invitedBy: inv.invitedBy || inv.bizId,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, {merge: true});
+    await db.collection("notifications").add({
+      userId: uid,
+      type: "staff_invite",
+      title: "Staff invitation 👥",
+      message: `${bizName || "A business"} invited you to join as ${inv.role}.`,
+      icon: "👥",
+      read: false,
+      resolved: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      metadata: {
+        bizId: inv.bizId,
+        role: inv.role,
+        businessName: bizName || "",
+        fromUid: inv.invitedBy || inv.bizId,
+        fromName: "",
+      },
     });
-    batch.update(d.ref, {
+    await d.ref.update({
       status: "claimed",
       claimedBy: uid,
       claimedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
-  });
-  await batch.commit();
+  }
   return {claimed: snap.size};
 });
+
+/**
+ * Respond to a staff invite (BUG 32.1). Only the invitee can respond; the staff
+ * record must be status:"invited". Accept → status:"active" (the onStaffWritten
+ * trigger adds the membership to users/{uid}.staffOf). Decline → delete it.
+ */
+exports.respondToStaffInvite = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const bizId = String((request.data && request.data.bizId) || "").trim();
+  const accept = !!(request.data && request.data.accept);
+  if (!bizId) throw new HttpsError("invalid-argument", "bizId required.");
+
+  const ref = db.collection("businesses").doc(bizId).collection("staff").doc(uid);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError("not-found", "No invite found.");
+  const data = snap.data();
+  if (data.status !== "invited") {
+    // Already handled (or already active) — idempotent success.
+    return {ok: true, status: data.status || "active"};
+  }
+
+  if (accept) {
+    await ref.update({
+      status: "active",
+      acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return {ok: true, status: "active", role: data.role || null};
+  }
+  await ref.delete();
+  return {ok: true, status: "declined"};
+});
+
+/**
+ * Maintain users/{uid}.staffOf (the membership index, BUG 32.2) whenever a staff
+ * record is written/removed. Active → ensure { bizId, role } is present; invited
+ * or deleted → remove it. Keeps BusinessContext's resolution index in sync
+ * regardless of who mutated the staff doc (owner add/remove, invitee accept/decline).
+ */
+exports.onStaffWritten = onDocumentWritten(
+  "businesses/{bizId}/staff/{staffUid}",
+  async (event) => {
+    const {bizId, staffUid} = event.params;
+    const after = event.data && event.data.after;
+    const active = after && after.exists && after.data().status === "active";
+    const role = active ? (after.data().role || "instructor") : null;
+
+    const userRef = db.collection("users").doc(staffUid);
+    await db.runTransaction(async (tx) => {
+      const uSnap = await tx.get(userRef);
+      if (!uSnap.exists) {
+        // No user doc (e.g. email invite before signup) — nothing to index yet.
+        if (active) tx.set(userRef, {staffOf: [{bizId, role}]}, {merge: true});
+        return;
+      }
+      const cur = Array.isArray(uSnap.data().staffOf) ? uSnap.data().staffOf : [];
+      const without = cur.filter((m) => m && m.bizId !== bizId);
+      const next = active ? [...without, {bizId, role}] : without;
+      tx.set(userRef, {staffOf: next}, {merge: true});
+    });
+  },
+);
 
 // Session reminders (both sides) + the no-request Momentum detector.
 exports.businessSessionRemindersCron = onSchedule(

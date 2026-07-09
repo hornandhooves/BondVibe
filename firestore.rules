@@ -708,9 +708,13 @@ service cloud.firestore {
     function isBizOwnerUid(bizId) {
       return isSignedIn() && request.auth.uid == bizId;
     }
+    // BUG 32.1: an "invited" (not-yet-accepted) staff record must NOT grant
+    // access — only status "active" (or a legacy/owner doc with no status field)
+    // counts as staff.
     function isBizStaff(bizId) {
       return isSignedIn() &&
-             exists(/databases/$(database)/documents/businesses/$(bizId)/staff/$(request.auth.uid));
+             exists(/databases/$(database)/documents/businesses/$(bizId)/staff/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/businesses/$(bizId)/staff/$(request.auth.uid)).data.get('status', 'active') == 'active';
     }
     // The caller's staff role for a business (only call when isBizStaff is true).
     function bizStaffRole(bizId) {
@@ -723,9 +727,13 @@ service cloud.firestore {
       allow update: if isBizStaff(bizId) || isBizOwnerUid(bizId);
       allow delete: if isBizOwnerUid(bizId);
 
-      // Staff roster — only the owner manages staff (v1).
+      // Staff roster — only the owner manages staff (v1). An invitee may read
+      // their OWN staff record (any status) so the app can reflect a pending
+      // invite (BUG 32.1); writes stay owner-only (accept/decline goes through
+      // the respondToStaffInvite Cloud Function).
       match /staff/{staffUid} {
-        allow read: if isBizStaff(bizId) || isBizOwnerUid(bizId);
+        allow read: if isBizStaff(bizId) || isBizOwnerUid(bizId) ||
+                       (isSignedIn() && staffUid == request.auth.uid);
         allow write: if isBizOwnerUid(bizId);
       }
 

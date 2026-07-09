@@ -16,8 +16,9 @@ import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { db, auth } from "../services/firebase";
+import { respondToStaffInvite } from "../services/businessStaffService";
 import GradientBackground from "../components/GradientBackground";
 import Icon from "../components/Icon";
 import ListRow from "../components/ListRow";
@@ -38,8 +39,36 @@ export default function InboxScreen({ navigation }) {
   const { t } = useTranslation();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [staffInvites, setStaffInvites] = useState([]); // pending staff invites (32.1)
   const me = auth.currentUser?.uid;
   const badges = useInboxBadges(); // per-category unread (spec 12)
+
+  // BUG 32.1: load unresolved staff-invite notifications for the Accept/Decline card.
+  const loadStaffInvites = useCallback(async () => {
+    if (!me) return;
+    try {
+      const snap = await getDocs(
+        query(collection(db, "notifications"), where("userId", "==", me))
+      );
+      const invites = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((n) => n.type === "staff_invite" && !n.resolved && n.metadata?.bizId);
+      setStaffInvites(invites);
+    } catch {
+      setStaffInvites([]);
+    }
+  }, [me]);
+
+  const respondInvite = useCallback(async (invite, accept) => {
+    // Optimistically drop the card; mark the notification resolved either way.
+    setStaffInvites((prev) => prev.filter((i) => i.id !== invite.id));
+    await respondToStaffInvite(invite.metadata.bizId, accept);
+    try {
+      await updateDoc(doc(db, "notifications", invite.id), { resolved: true, read: true });
+    } catch {
+      // ignore
+    }
+  }, []);
 
   // Count pill + chevron for a category row (default chevron when count is 0).
   const rowRight = (n) =>
@@ -53,6 +82,7 @@ export default function InboxScreen({ navigation }) {
   useFocusEffect(
     useCallback(() => {
       (async () => {
+        loadStaffInvites();
         try {
           const [threads, blocked] = await Promise.all([getMyThreads(), getBlockedIds()]);
           const resolved = await Promise.all(
@@ -77,13 +107,58 @@ export default function InboxScreen({ navigation }) {
         }
         setLoading(false);
       })();
-    }, [me])
+    }, [me, loadStaffInvites])
   );
 
   const styles = createStyles(colors);
 
   const header = (
     <View>
+      {/* Staff invites (BUG 32.1) — Accept grants access; Decline removes it. */}
+      {staffInvites.map((inv) => (
+        <View
+          key={inv.id}
+          style={[styles.inviteCard, ELEVATION.card, { backgroundColor: colors.surface, borderColor: colors.primary }]}
+        >
+          <View style={styles.inviteTop}>
+            <View style={[styles.inviteIcon, { backgroundColor: colors.brandSoft }]}>
+              <Icon name="users" size={18} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[TYPE.bodySemibold, { color: colors.text }]} numberOfLines={2}>
+                {t("inbox.staffInvite.title", {
+                  business: inv.metadata?.businessName || t("inbox.staffInvite.aBusiness"),
+                  role: inv.metadata?.role || "",
+                })}
+              </Text>
+              <Text style={[TYPE.caption, { color: colors.textSecondary }]}>
+                {t("inbox.staffInvite.sub")}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.inviteActions}>
+            <TouchableOpacity
+              style={[styles.inviteBtn, { borderColor: colors.border }]}
+              onPress={() => respondInvite(inv, false)}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.inviteBtnText, { color: colors.textSecondary }]}>
+                {t("inbox.staffInvite.decline")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.inviteBtn, { backgroundColor: colors.primary, borderColor: colors.primary }]}
+              onPress={() => respondInvite(inv, true)}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.inviteBtnText, { color: colors.onPrimary }]}>
+                {t("inbox.staffInvite.accept")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ))}
+
       {/* ★ Ask Kinlo — pinned (spec §1.4) */}
       <TouchableOpacity
         onPress={() => navigation.navigate("AskKinlo")}
@@ -234,6 +309,27 @@ function createStyles(colors) {
       justifyContent: "center",
     },
     card: { borderRadius: RADII.card, borderWidth: 1, overflow: "hidden" },
+    // Staff invite card (BUG 32.1)
+    inviteCard: {
+      borderRadius: RADII.card,
+      borderWidth: 1,
+      padding: SPACING.card,
+      marginBottom: SPACING.md,
+    },
+    inviteTop: { flexDirection: "row", alignItems: "center", gap: SPACING.md },
+    inviteIcon: {
+      width: 38, height: 38, borderRadius: 19,
+      alignItems: "center", justifyContent: "center",
+    },
+    inviteActions: { flexDirection: "row", gap: SPACING.sm, marginTop: SPACING.md },
+    inviteBtn: {
+      flex: 1,
+      borderWidth: 1,
+      borderRadius: RADII.pill,
+      paddingVertical: 10,
+      alignItems: "center",
+    },
+    inviteBtnText: { fontSize: 14, fontWeight: "800" },
     groupRow: {
       flexDirection: "row",
       alignItems: "center",

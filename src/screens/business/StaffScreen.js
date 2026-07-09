@@ -145,13 +145,19 @@ export default function StaffScreen({ navigation }) {
 
           {staff.map((s) => {
             const wh = getWorkingHours(s);
-            const canHaveHours = s.role === "owner" || s.role === "instructor";
+            const canHaveHours = (s.role === "owner" || s.role === "instructor") && s.status !== "invited";
             return (
               <View key={s.id} style={[styles.cardWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <View style={styles.cardTop}>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.name, { color: colors.text }]}>{s.name || s.email || t("business.staff.member")}</Text>
                     <Text style={[styles.email, { color: colors.textTertiary }]} numberOfLines={1}>{s.email}</Text>
+                    {s.status === "invited" && (
+                      <View style={styles.pendingChip}>
+                        <Icon name="clock" size={11} color={colors.warning} />
+                        <Text style={[styles.pendingText, { color: colors.warning }]}>{t("business.staff.pendingAcceptance")}</Text>
+                      </View>
+                    )}
                   </View>
                   <View style={[styles.roleBadge, { backgroundColor: s.role === "owner" ? `${colors.primary}18` : colors.surfaceGlass }]}>
                     <Text style={[styles.roleText, { color: s.role === "owner" ? colors.primary : colors.textSecondary }]}>{roleName(s.role)}</Text>
@@ -253,6 +259,8 @@ function createStyles(colors) {
     timeRow: { flexDirection: "row", gap: 12, marginTop: 14 },
     name: { fontSize: 15, fontWeight: "700" },
     email: { fontSize: 12, marginTop: 2 },
+    pendingChip: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
+    pendingText: { fontSize: 11.5, fontWeight: "700" },
     roleBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
     roleText: { fontSize: 11.5, fontWeight: "700" },
     actions: { flexDirection: "row", gap: 12, marginLeft: 4 },

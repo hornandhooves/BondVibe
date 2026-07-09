@@ -85,6 +85,20 @@ export async function inviteStaffByHandle(handle, role) {
   }
 }
 
+/**
+ * Respond to a staff invite (BUG 32.1). Accept → active + membership; decline →
+ * removed. Server verifies the caller is the invitee. Returns { ok, status? }.
+ */
+export async function respondToStaffInvite(bizId, accept) {
+  try {
+    const fn = httpsCallable(getFunctions(), "respondToStaffInvite");
+    const res = await fn({ bizId, accept: !!accept });
+    return { ok: true, ...(res.data || {}) };
+  } catch (e) {
+    return { ok: false };
+  }
+}
+
 export async function updateStaffRole(staffUid, role, bizId = getMyBizId()) {
   if (!bizId || !staffUid) return;
   await updateDoc(doc(db, "businesses", bizId, "staff", staffUid), { role });
