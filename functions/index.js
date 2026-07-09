@@ -1760,7 +1760,10 @@ exports.onEventWritten = onDocumentWritten("events/{eventId}", async (event) => 
   const after = event.data?.after;
   if (!after || !after.exists) return; // deleted
   const data = after.data();
-  const desired = eventSearchKeywords(data);
+  // BUG 27: a host can opt an event out of Discover/search via the
+  // "List event publicly" toggle. Private events (listedPublicly === false)
+  // carry no keywords so the server-side keyword query never returns them.
+  const desired = data.listedPublicly === false ? [] : eventSearchKeywords(data);
   const current = Array.isArray(data.searchKeywords) ? data.searchKeywords : [];
   const same =
     current.length === desired.length &&

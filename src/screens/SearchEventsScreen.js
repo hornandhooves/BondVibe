@@ -58,7 +58,11 @@ const PAGE_SIZE = 20;
 const mapEventDocs = (docs) =>
   docs
     .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((e) => e.status !== "cancelled");
+    .filter((e) => e.status !== "cancelled")
+    // BUG 27: honor the host's "List event publicly" toggle. Only events
+    // explicitly opted out (listedPublicly === false) are hidden from
+    // discovery; legacy docs without the field stay listed.
+    .filter((e) => e.listedPublicly !== false);
 
 export default function SearchEventsScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
