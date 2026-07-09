@@ -45,7 +45,8 @@ export default function MatchChatScreen({ route, navigation }) {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.background }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={0}
     >
       <MatchHeader title={name || t("matching.matchChat.defaultTitle")} onBack={() => navigation.goBack()} />
       <FlatList
