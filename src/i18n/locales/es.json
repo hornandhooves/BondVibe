@@ -77,6 +77,21 @@
     "translating": "Traduciendo…",
     "failed": "No se pudo traducir ahora. Intenta de nuevo en un momento."
   },
+  "chooseHandle": {
+    "title": "Elige tu @usuario",
+    "subtitle": "Así te encuentran y te @mencionan. Solo letras y guiones bajos — elige bien, es permanente.",
+    "placeholder": "tuusuario",
+    "checking": "Verificando disponibilidad…",
+    "available": "Disponible",
+    "taken": "Ese usuario ya está ocupado",
+    "reserved": "Ese usuario está reservado",
+    "invalid": "3–30 letras o guiones bajos, y debe incluir una letra",
+    "rules": "Solo letras a–z y guiones bajos. Sin espacios, dígitos ni puntos.",
+    "claim": "Reservar @{{handle}}",
+    "permanentNote": "Tu usuario es permanente y no se puede cambiar después.",
+    "settingUp": "Preparando tu perfil…",
+    "errorGeneric": "No se pudo reservar ese usuario. Intenta de nuevo."
+  },
   "auth": {
     "emailPlaceholder": "Correo electrónico",
     "passwordPlaceholder": "Contraseña",

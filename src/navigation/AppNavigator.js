@@ -27,6 +27,7 @@ import LoginScreen from "../screens/LoginScreen";
 import SignupScreen from "../screens/SignupScreen";
 import LegalScreen from "../screens/LegalScreen";
 import ProfileSetupScreen from "../screens/ProfileSetupScreen";
+import ChooseHandleScreen from "../screens/ChooseHandleScreen";
 
 // Main Screens
 import HomeScreen from "../screens/HomeScreen";
@@ -355,6 +356,15 @@ const AppNavigator = forwardRef((props, ref) => {
                 );
                 navigateToRoute("ProfileSetup", { user });
               }
+              // 3.5 Every user needs a unique @handle (spec 10). Blocking: new
+              //     users pick one right after their profile; existing users are
+              //     backfilled here on their next launch. Like Legal/Profile it
+              //     does NOT set hasReachedHome — claimHandle writes handleLower,
+              //     this snapshot re-fires, and routing continues past this step.
+              else if (!userData.handleLower) {
+                console.log("🔗 No handle yet - navigating to ChooseHandle");
+                navigateToRoute("ChooseHandle", { user });
+              }
               // 4. Approved host needs to choose their type (free/paid) before
               //    hosting is activated. Only shown before Home is reached, so
               //    mid-session admin approvals won't interrupt the user.
@@ -514,6 +524,7 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="Signup" component={SignupScreen} />
           <Stack.Screen name="Legal" component={LegalScreen} />
           <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
+          <Stack.Screen name="ChooseHandle" component={ChooseHandleScreen} />
           <Stack.Screen
             name="HostTypeSelection"
             component={HostTypeSelectionScreen}

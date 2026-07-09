@@ -77,6 +77,21 @@
     "translating": "Translating…",
     "failed": "Couldn't translate right now. Try again in a moment."
   },
+  "chooseHandle": {
+    "title": "Choose your @handle",
+    "subtitle": "This is how people find you and @mention you. Letters and underscores only — pick well, it's permanent.",
+    "placeholder": "yourhandle",
+    "checking": "Checking availability…",
+    "available": "Available",
+    "taken": "That handle is taken",
+    "reserved": "That handle is reserved",
+    "invalid": "3–30 letters or underscores, and must include a letter",
+    "rules": "Letters a–z and underscores only. No spaces, digits or dots.",
+    "claim": "Claim @{{handle}}",
+    "permanentNote": "Your handle is permanent and can't be changed later.",
+    "settingUp": "Setting up your profile…",
+    "errorGeneric": "Couldn't claim that handle. Please try again."
+  },
   "auth": {
     "emailPlaceholder": "Email",
     "passwordPlaceholder": "Password",
