@@ -15,6 +15,7 @@ import GradientBackground from "../../components/GradientBackground";
 import DateField from "../../components/DateField";
 import { useTheme } from "../../contexts/ThemeContext";
 import { listSessionTypes, createBooking, updateBooking, getBooking, PAID_WITH } from "../../services/businessSessionsService";
+import { checkInstructorAvailability } from "../../services/businessAgendaService";
 import { listMembers } from "../../services/businessMembersService";
 
 export default function BookingFormScreen({ navigation, route }) {
@@ -70,12 +71,39 @@ export default function BookingFormScreen({ navigation, route }) {
     });
   };
 
-  const onSave = async () => {
+  const onSave = async (skipAvailabilityCheck = false) => {
     if (!type) { Alert.alert(t("business.booking.typeRequired")); return; }
     if (selected.length === 0) { Alert.alert(t("business.booking.memberRequired")); return; }
     const start = new Date(date);
     const [h, mn] = time.split(":").map((n) => parseInt(n, 10) || 0);
     start.setHours(h, mn, 0, 0);
+
+    // Instructor availability (BUG 6) — warn-and-allow, new bookings only (an
+    // edit would self-conflict). The host can Book anyway.
+    const instructorUid = params.instructorUid || params.staffUid || null;
+    if (!editing && !skipAvailabilityCheck && instructorUid) {
+      const avail = await checkInstructorAvailability({ instructorUid, start, durationMin: type.durationMin });
+      if (avail.conflict || avail.outOfHours) {
+        const hm = (d) => { const x = new Date(d); return `${String(x.getHours()).padStart(2, "0")}:${String(x.getMinutes()).padStart(2, "0")}`; };
+        const msgs = [];
+        if (avail.conflict && avail.conflictItem) {
+          msgs.push(t("business.agenda.conflictMsg", {
+            name: t("business.agenda.you"),
+            title: avail.conflictItem.title,
+            range: `${hm(avail.conflictItem.start)}–${hm(avail.conflictItem.end)}`,
+          }));
+        }
+        if (avail.outOfHours && avail.workingHours) {
+          msgs.push(t("business.agenda.outOfHoursMsg", { start: avail.workingHours.start, end: avail.workingHours.end }));
+        }
+        Alert.alert(t("business.agenda.placementWarnTitle"), msgs.join("\n\n"), [
+          { text: t("business.common.cancel"), style: "cancel" },
+          { text: t("business.agenda.continueAnyway"), onPress: () => onSave(true) },
+        ]);
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       if (editing) {

@@ -21,7 +21,7 @@ import { db } from "./firebase";
 import { getMyBizId } from "./businessService";
 import { listClasses, classesOnWeekday } from "./businessClassesService";
 import { listBookings, BOOKING_STATUS } from "./businessSessionsService";
-import { listStaff } from "./businessStaffService";
+import { listStaff, getWorkingHours } from "./businessStaffService";
 
 export const AGENDA_BLOCK_TYPE = { BLOCKED: "blocked", BUSY: "busy" };
 export const AGENDA_ITEM_KIND = { EVENT: "event", CLASS: "class", SESSION: "session", BLOCKED: "blocked" };
@@ -167,6 +167,59 @@ export async function getDayItems(instructorUid, instructorName, date, bizId = g
   });
 
   return items.sort((a, b) => a.start - b.start);
+}
+
+const hmToMin = (t) => {
+  const [h, m] = String(t || "0:0").split(":").map((n) => parseInt(n, 10) || 0);
+  return h * 60 + m;
+};
+
+/**
+ * Whether an instructor is free for the window [start, start+durationMin)
+ * (round-5 BUG 6). Tests the FULL window for overlap against every non-blocked
+ * item on that instructor's day, plus the staff member's working-hours range
+ * AND working day.
+ * @param {{instructorUid:string, instructorName?:string, start:Date, durationMin:number}} p
+ * @param {string} [bizId]
+ * @returns {Promise<{conflict:boolean, conflictItem:object|null, outOfHours:boolean}>}
+ */
+export async function checkInstructorAvailability(
+  { instructorUid, instructorName, start, durationMin },
+  bizId = getMyBizId()
+) {
+  const result = { conflict: false, conflictItem: null, outOfHours: false, workingHours: null };
+  if (!bizId || !instructorUid || !(start instanceof Date) || Number.isNaN(start.getTime())) {
+    return result;
+  }
+  const dur = Math.max(5, parseInt(durationMin, 10) || 60);
+  const startMs = start.getTime();
+  const endMs = startMs + dur * 60000;
+
+  const [items, staff] = await Promise.all([
+    getDayItems(instructorUid, instructorName, start, bizId),
+    listStaff(bizId).catch(() => []),
+  ]);
+
+  const conflictItem = items.find((it) => {
+    if (it.kind === AGENDA_ITEM_KIND.BLOCKED) return false; // non-blocked items only
+    const s = new Date(it.start).getTime();
+    const e = new Date(it.end).getTime();
+    return startMs < e && endMs > s;
+  });
+  if (conflictItem) {
+    result.conflict = true;
+    result.conflictItem = conflictItem;
+  }
+
+  const wh = getWorkingHours((staff || []).find((s) => s.id === instructorUid));
+  result.workingHours = { start: wh.start, end: wh.end };
+  const startMin = start.getHours() * 60 + start.getMinutes();
+  const endMin = startMin + dur;
+  const workingDay = Array.isArray(wh.days) ? wh.days.includes(start.getDay()) : true;
+  if (!workingDay || startMin < hmToMin(wh.start) || endMin > hmToMin(wh.end)) {
+    result.outOfHours = true;
+  }
+  return result;
 }
 
 /**

@@ -41,6 +41,7 @@ import useCities from "../hooks/useCities";
 import { uploadEventImages } from "../services/storageService";
 import { getHostMembershipPlans } from "../services/membershipService";
 import { createClass, updateClass, getClass } from "../services/businessClassesService";
+import { checkInstructorAvailability } from "../services/businessAgendaService";
 import InstructorPicker from "../components/business/InstructorPicker";
 import { buildEventSearchKeywords } from "../utils/eventSearch";
 import { checkAccountStatus } from "../services/stripeConnectService";
@@ -440,7 +441,7 @@ export default function CreateEventScreen({ navigation, route }) {
 
   // Generate recurring dates handled by recurrenceUtils
 
-  const handleCreateEvent = async () => {
+  const handleCreateEvent = async (skipAvailabilityCheck = false) => {
     console.log("✨ Create Event clicked");
 
     // Validation
@@ -519,6 +520,37 @@ export default function CreateEventScreen({ navigation, route }) {
         t("createEvent.validation.invalidEndDateMsg")
       );
       return;
+    }
+
+    // Instructor availability (BUG 6) — warn-and-allow before writing. Checks the
+    // real event window (date + duration) against the instructor's agenda and
+    // working hours; the host can Book anyway.
+    if (!skipAvailabilityCheck && instructorUid) {
+      const avail = await checkInstructorAvailability({
+        instructorUid,
+        instructorName,
+        start: eventDate,
+        durationMin: parseInt(durationMinutes, 10) || 180,
+      });
+      if (avail.conflict || avail.outOfHours) {
+        const hm = (d) => { const x = new Date(d); return `${String(x.getHours()).padStart(2, "0")}:${String(x.getMinutes()).padStart(2, "0")}`; };
+        const msgs = [];
+        if (avail.conflict && avail.conflictItem) {
+          msgs.push(t("business.agenda.conflictMsg", {
+            name: instructorName || t("business.agenda.you"),
+            title: avail.conflictItem.title,
+            range: `${hm(avail.conflictItem.start)}–${hm(avail.conflictItem.end)}`,
+          }));
+        }
+        if (avail.outOfHours && avail.workingHours) {
+          msgs.push(t("business.agenda.outOfHoursMsg", { start: avail.workingHours.start, end: avail.workingHours.end }));
+        }
+        Alert.alert(t("business.agenda.placementWarnTitle"), msgs.join("\n\n"), [
+          { text: t("business.common.cancel"), style: "cancel" },
+          { text: t("business.agenda.continueAnyway"), onPress: () => handleCreateEvent(true) },
+        ]);
+        return;
+      }
     }
 
     setLoading(true);
