@@ -8,7 +8,8 @@
  * Mounted by the tab navigator (`header` option), so individual tab-root
  * screens no longer render their own top bars.
  */
-import React from "react";
+import React, { useEffect } from "react";
+import * as Notifications from "expo-notifications";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
@@ -16,7 +17,7 @@ import Icon from "./Icon";
 import { useTheme } from "../contexts/ThemeContext";
 import { useMode } from "../contexts/ModeContext";
 import useUserRole from "../hooks/useUserRole";
-import { useInboxBadge } from "../hooks/useInboxBadge";
+import { useInboxBadges } from "../hooks/useInboxBadge";
 import { TYPE, SPACING, RADII } from "../constants/theme-tokens";
 
 export default function AppHeader({ title, navigation }) {
@@ -26,7 +27,11 @@ export default function AppHeader({ title, navigation }) {
   const { mode, setMode } = useMode();
   const { isHost } = useUserRole();
   // One inbox icon (BUG 13): unread chats + notifications, combined.
-  const unread = useInboxBadge();
+  const { total: unread } = useInboxBadges();
+  // Drive the native app-icon badge from the live unread total (spec 12, Fix B).
+  useEffect(() => {
+    Notifications.setBadgeCountAsync(unread).catch(() => {});
+  }, [unread]);
 
   return (
     <View

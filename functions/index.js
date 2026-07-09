@@ -39,7 +39,8 @@ const {
 } = require("./stripe/pricing");
 
 // Import push notification service
-const {sendBatchPushNotifications} = require("./notifications/pushService");
+const {sendBatchPushNotifications, unreadTotalForUser} =
+  require("./notifications/pushService");
 const bizAutomations = require("./business/automations");
 
 // Import event helpers (attendee/creator normalization)
@@ -339,6 +340,9 @@ exports.onNewMessage = onDocumentCreated(
             const pushToken = userData.pushToken;
 
             if (pushToken) {
+              // Icon badge (Fix B) = their current unread total + this message
+              // (the event_messages aggregate is incremented below, after send).
+              const badge = (await unreadTotalForUser(userId)) + 1;
               notifications.push({
                 pushToken,
                 title: `${senderName} in ${eventTitle}`,
@@ -349,6 +353,7 @@ exports.onNewMessage = onDocumentCreated(
                   conversationId: `event_${eventId}`,
                   eventTitle: eventTitle,
                 },
+                badge,
               });
 
               console.log(`📱 Queued notification for user: ${userId}`);
@@ -1578,6 +1583,9 @@ exports.onGroupMessage = onDocumentCreated(
           title: group.name || "Group",
           body: preview,
           data: {type: "group_message", groupId},
+          // Icon badge = their unread total (the notification above is already
+          // written, so it's included) — Fix B.
+          badge: await unreadTotalForUser(uid),
         });
       }
     }

@@ -414,6 +414,8 @@ export const registerPushToken = async (userId) => {
  */
 export const clearPushToken = async (userId) => {
   if (!userId) return;
+  // Clear the native app-icon badge on logout (spec 12, Fix B).
+  Notifications.setBadgeCountAsync(0).catch(() => {});
   try {
     await updateDoc(doc(db, "users", userId), {
       pushToken: null,
