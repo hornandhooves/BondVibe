@@ -348,7 +348,7 @@ export default function AgendaScreen({ navigation }) {
 
       {/* Day strip (day view only) */}
       {view === "day" && (
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayStrip}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hStrip} contentContainerStyle={styles.dayStrip}>
         {days.map((d) => {
           const on = d.toDateString() === date.toDateString();
           return (
@@ -363,7 +363,7 @@ export default function AgendaScreen({ navigation }) {
 
       {/* Instructor chips (All first) — hidden for reception */}
       {!isReception && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.staffStrip}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hStrip} contentContainerStyle={styles.staffStrip}>
           {chips.map((c) => {
             const on = c.id === selected;
             return (
@@ -607,18 +607,21 @@ function createStyles(colors) {
     whDayChip: { flex: 1, borderWidth: 1.5, borderRadius: 10, paddingVertical: 10, alignItems: "center" },
     whDayText: { fontSize: 12, fontWeight: "800" },
     whTimeRow: { flexDirection: "row", gap: 12, marginTop: 4 },
+    // Horizontal strips must not stretch vertically in the flex column, or they
+    // shove the grid to the bottom leaving a dead band (round-5 BUG 7).
+    hStrip: { flexGrow: 0 },
     dayStrip: { paddingHorizontal: 16, gap: 8, paddingVertical: 4 },
     dayCell: { width: 54, height: 62, borderRadius: 15, borderWidth: 1, alignItems: "center", justifyContent: "center", gap: 3 },
     dayName: { fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
     dayNum: { fontSize: 19, fontWeight: "800" },
-    staffStrip: { paddingHorizontal: 16, gap: 8, paddingVertical: 8 },
+    staffStrip: { paddingHorizontal: 16, gap: 8, paddingVertical: 5 },
     staffChip: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderRadius: 20, paddingLeft: 6, paddingRight: 14, height: 40 },
     staffAvatar: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
     staffAvatarText: { fontSize: 11, fontWeight: "800" },
     staffName: { fontSize: 13.5, fontWeight: "700", maxWidth: 120 },
     reqBanner: { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 16, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginTop: 4 },
     reqText: { flex: 1, fontSize: 13, fontWeight: "700" },
-    legend: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 20, paddingVertical: 8 },
+    legend: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 20, paddingVertical: 5 },
     legendItems: { flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 12 },
     legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
     legendDot: { width: 9, height: 9, borderRadius: 3 },
