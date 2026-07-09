@@ -61,7 +61,7 @@ const EVENT_DRAFT_KEY = "eventDraft";
 
 export default function CreateEventScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   // A "class" reuses this exact screen (kinlo_business/06 FIX 2): mode:'class' +
   // an instructor + weekly-by-default recurrence. Everything else (two-tier
@@ -450,7 +450,7 @@ export default function CreateEventScreen({ navigation, route }) {
 
   // Generate recurring dates handled by recurrenceUtils
 
-  const handleCreateEvent = async (skipAvailabilityCheck = false) => {
+  const handleCreateEvent = async (skipAvailabilityCheck = false, skipDatesIso = null) => {
     console.log("✨ Create Event clicked");
 
     // Validation
@@ -532,34 +532,75 @@ export default function CreateEventScreen({ navigation, route }) {
       return;
     }
 
-    // Instructor availability (BUG 6) — warn-and-allow before writing. Checks the
-    // real event window (date + duration) against the instructor's agenda and
-    // working hours; the host can Book anyway.
+    // Instructor availability (BUG 6 / 30) — warn-and-allow before writing.
+    // Validate EACH recurrence occurrence (Gap B), not just the first date, so a
+    // series that clashes on some dates surfaces a per-date summary. Blocked/OOO
+    // slots now count (Gap A). Warn-and-allow throughout.
+    const isRecurringSubmit = recurrenceConfig.type !== "none";
+    const occurrences = isRecurringSubmit
+      ? generateRecurringDates(eventDate, recurrenceConfig)
+      : [eventDate];
     if (!skipAvailabilityCheck && instructorUid) {
-      const avail = await checkInstructorAvailability({
-        instructorUid,
-        instructorName,
-        start: eventDate,
-        durationMin: parseInt(durationMinutes, 10) || 180,
-      });
-      if (avail.conflict || avail.outOfHours) {
-        const hm = (d) => { const x = new Date(d); return `${String(x.getHours()).padStart(2, "0")}:${String(x.getMinutes()).padStart(2, "0")}`; };
-        const msgs = [];
+      const durationMin = parseInt(durationMinutes, 10) || 180;
+      const hm = (d) => { const x = new Date(d); return `${String(x.getHours()).padStart(2, "0")}:${String(x.getMinutes()).padStart(2, "0")}`; };
+      // Probe up to a horizon so a long/unbounded series stays snappy.
+      const probe = occurrences.slice(0, 26);
+      const conflicts = [];
+      for (const occ of probe) {
+        const avail = await checkInstructorAvailability({ instructorUid, instructorName, start: occ, durationMin });
         if (avail.conflict && avail.conflictItem) {
-          const isBlocked = avail.conflictItem.kind === AGENDA_ITEM_KIND.BLOCKED;
-          msgs.push(t(isBlocked ? "business.agenda.conflictBlockedMsg" : "business.agenda.conflictMsg", {
-            name: instructorName || t("business.agenda.you"),
-            title: avail.conflictItem.title,
-            range: `${hm(avail.conflictItem.start)}–${hm(avail.conflictItem.end)}`,
-          }));
+          conflicts.push({ date: occ, item: avail.conflictItem });
+        } else if (avail.outOfHours && avail.workingHours) {
+          conflicts.push({ date: occ, outOfHours: avail.workingHours });
         }
-        if (avail.outOfHours && avail.workingHours) {
-          msgs.push(t("business.agenda.outOfHoursMsg", { start: avail.workingHours.start, end: avail.workingHours.end }));
+      }
+
+      if (conflicts.length > 0) {
+        // Single (non-recurring) event → the existing Cancel / Book anyway prompt.
+        if (!isRecurringSubmit) {
+          const c = conflicts[0];
+          const msgs = [];
+          if (c.item) {
+            const isBlocked = c.item.kind === AGENDA_ITEM_KIND.BLOCKED;
+            msgs.push(t(isBlocked ? "business.agenda.conflictBlockedMsg" : "business.agenda.conflictMsg", {
+              name: instructorName || t("business.agenda.you"),
+              title: c.item.title,
+              range: `${hm(c.item.start)}–${hm(c.item.end)}`,
+            }));
+          }
+          if (c.outOfHours) {
+            msgs.push(t("business.agenda.outOfHoursMsg", { start: c.outOfHours.start, end: c.outOfHours.end }));
+          }
+          Alert.alert(t("business.agenda.placementWarnTitle"), msgs.join("\n\n"), [
+            { text: t("business.common.cancel"), style: "cancel" },
+            { text: t("business.agenda.continueAnyway"), onPress: () => handleCreateEvent(true) },
+          ]);
+          return;
         }
-        Alert.alert(t("business.agenda.placementWarnTitle"), msgs.join("\n\n"), [
-          { text: t("business.common.cancel"), style: "cancel" },
-          { text: t("business.agenda.continueAnyway"), onPress: () => handleCreateEvent(true) },
-        ]);
+
+        // Recurring → per-date summary + Book anyway / Skip conflicting / Go back.
+        const fmtDate = (d) =>
+          new Date(d).toLocaleDateString(i18n.language, { weekday: "short", month: "short", day: "numeric" });
+        const lines = conflicts.map((c) =>
+          c.item
+            ? `${fmtDate(c.date)} · ${c.item.title} ${hm(c.item.start)}`
+            : `${fmtDate(c.date)} · ${t("createEvent.recurringConflict.outOfHours")}`,
+        );
+        const skipIso = conflicts.map((c) => c.date.toISOString());
+        const cleanCount = occurrences.length - conflicts.length;
+        const buttons = [
+          { text: t("createEvent.recurringConflict.bookAnyway"), onPress: () => handleCreateEvent(true) },
+        ];
+        if (cleanCount > 0) {
+          buttons.push({ text: t("createEvent.recurringConflict.skip"), onPress: () => handleCreateEvent(true, skipIso) });
+        }
+        buttons.push({ text: t("createEvent.recurringConflict.goBack"), style: "cancel" });
+        Alert.alert(
+          t("createEvent.recurringConflict.title"),
+          t("createEvent.recurringConflict.summary", { count: conflicts.length, total: occurrences.length }) +
+            "\n\n" + lines.join("\n"),
+          buttons,
+        );
         return;
       }
     }
@@ -594,10 +635,17 @@ export default function CreateEventScreen({ navigation, route }) {
           : null;
 
       // Get all dates for recurring events
-      const eventDates =
+      let eventDates =
         recurrenceConfig.type !== "none"
           ? generateRecurringDates(eventDate, recurrenceConfig)
           : [eventDate];
+
+      // BUG 30 Gap B: "Skip conflicting dates" — omit the occurrences the host
+      // chose to skip (regeneration is deterministic, so ISO strings match).
+      if (Array.isArray(skipDatesIso) && skipDatesIso.length) {
+        const skip = new Set(skipDatesIso);
+        eventDates = eventDates.filter((d) => !skip.has(d.toISOString()));
+      }
 
       console.log(`📅 Creating ${eventDates.length} event(s)...`);
 

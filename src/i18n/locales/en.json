@@ -521,6 +521,14 @@
       "private_session": "Private session",
       "blocked": "Blocked time (OOO)"
     },
+    "recurringConflict": {
+      "title": "Some dates conflict",
+      "summary": "{{count}} of {{total}} dates have a scheduling conflict:",
+      "outOfHours": "outside working hours",
+      "bookAnyway": "Book anyway",
+      "skip": "Skip conflicting dates",
+      "goBack": "Go back"
+    },
     "eventLength": "Event length",
     "maxPeople": "Max People",
     "priceLabel": "Price",

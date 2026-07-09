@@ -521,6 +521,14 @@
       "private_session": "Sesión privada",
       "blocked": "Tiempo bloqueado (fuera de oficina)"
     },
+    "recurringConflict": {
+      "title": "Algunas fechas tienen conflicto",
+      "summary": "{{count}} de {{total}} fechas tienen un conflicto de agenda:",
+      "outOfHours": "fuera del horario laboral",
+      "bookAnyway": "Reservar de todos modos",
+      "skip": "Omitir fechas en conflicto",
+      "goBack": "Volver"
+    },
     "eventLength": "Duración del evento",
     "maxPeople": "Máximo de personas",
     "priceLabel": "Precio",
