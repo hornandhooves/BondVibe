@@ -547,7 +547,10 @@ export default function EventChatScreen({ route, navigation }) {
           ]}
         >
           {!isMe && user && (
-            <Text style={[styles.senderName, { color: colors.primary }]}>
+            <Text
+              onPress={() => navigation.navigate("UserProfile", { userId: message.senderId })}
+              style={[styles.senderName, { color: colors.primary }]}
+            >
               {user.fullName || user.name || t("eventChat.host")}
             </Text>
           )}
@@ -573,7 +576,10 @@ export default function EventChatScreen({ route, navigation }) {
           ]}
         >
           {!isMe && user && (
-            <Text style={[styles.senderName, { color: colors.primary }]}>
+            <Text
+              onPress={() => navigation.navigate("UserProfile", { userId: message.senderId })}
+              style={[styles.senderName, { color: colors.primary }]}
+            >
               {user.fullName || user.name || t("eventChat.someone")}
             </Text>
           )}
@@ -606,6 +612,7 @@ export default function EventChatScreen({ route, navigation }) {
                 style={styles.senderAvatarSpacing}
               />
               <Text
+                onPress={() => navigation.navigate("UserProfile", { userId: message.senderId })}
                 style={[styles.senderName, { color: colors.textSecondary }]}
               >
                 {getUserDisplayName(user)}
@@ -668,7 +675,10 @@ export default function EventChatScreen({ route, navigation }) {
               name={getUserDisplayName(user)}
               style={styles.senderAvatarSpacing}
             />
-            <Text style={[styles.senderName, { color: colors.textSecondary }]}>
+            <Text
+              onPress={() => navigation.navigate("UserProfile", { userId: message.senderId })}
+              style={[styles.senderName, { color: colors.textSecondary }]}
+            >
               {getUserDisplayName(user)}
             </Text>
           </View>

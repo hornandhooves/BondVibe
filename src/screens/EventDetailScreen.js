@@ -1609,7 +1609,13 @@ export default function EventDetailScreen({ route, navigation }) {
                 style={[styles.sectionTitle, { color: colors.text }]}
               >{t("eventDetail.attendeesCount", { count: attendeesData.length })}</Text>
               {attendeesData.map((attendee, index) => (
-                <View key={index} style={styles.attendeeRow}>
+                <TouchableOpacity
+                  key={attendee.id || index}
+                  style={styles.attendeeRow}
+                  activeOpacity={attendee.id ? 0.7 : 1}
+                  disabled={!attendee.id}
+                  onPress={() => attendee.id && navigation.navigate("UserProfile", { userId: attendee.id })}
+                >
                   <View
                     style={[
                       styles.attendeeAvatar,
@@ -1624,7 +1630,7 @@ export default function EventDetailScreen({ route, navigation }) {
                   <Text style={[styles.attendeeName, { color: colors.text }]}>
                     {attendee.fullName || attendee.name || t("eventDetail.anonymous")}
                   </Text>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           </View>
