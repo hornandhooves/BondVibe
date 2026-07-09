@@ -114,6 +114,12 @@ export default function InboxScreen({ navigation }) {
           title={t("inbox.communityChats")}
           subtitle={t("inbox.communityChatsSub")}
           onPress={() => navigation.navigate("CommunityChats")}
+        />
+        <ListRow
+          icon="bell"
+          title={t("inbox.notifications")}
+          subtitle={t("inbox.notificationsSub")}
+          onPress={() => navigation.navigate("Notifications")}
           divider={false}
         />
       </View>

@@ -1,8 +1,9 @@
 /**
  * AppHeader — persistent chrome on all 5 tab roots (§1.2/§1.3):
  * title · [Attending|Hosting] segmented toggle (hosts/admins only) ·
- * ✉ Messages · 🔔 Notifications. Safe-area aware (works on iOS notch and
- * Android status bar — no magic paddingTop numbers).
+ * ✉ Messages (one icon; Notifications live inside Messages — BUG 13) with a
+ * combined unread badge. Safe-area aware (works on iOS notch and Android
+ * status bar — no magic paddingTop numbers).
  *
  * Mounted by the tab navigator (`header` option), so individual tab-root
  * screens no longer render their own top bars.
@@ -15,6 +16,7 @@ import Icon from "./Icon";
 import { useTheme } from "../contexts/ThemeContext";
 import { useMode } from "../contexts/ModeContext";
 import useUserRole from "../hooks/useUserRole";
+import { useInboxBadge } from "../hooks/useInboxBadge";
 import { TYPE, SPACING, RADII } from "../constants/theme-tokens";
 
 export default function AppHeader({ title, navigation }) {
@@ -23,6 +25,8 @@ export default function AppHeader({ title, navigation }) {
   const insets = useSafeAreaInsets();
   const { mode, setMode } = useMode();
   const { isHost } = useUserRole();
+  // One inbox icon (BUG 13): unread chats + notifications, combined.
+  const unread = useInboxBadge();
 
   return (
     <View
@@ -68,13 +72,11 @@ export default function AppHeader({ title, navigation }) {
           testID="header-messages"
         >
           <Icon name="message" size={23} color={colors.text} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => navigation.navigate("Notifications")}
-          hitSlop={hit}
-          testID="header-notifications"
-        >
-          <Icon name="bell" size={23} color={colors.text} />
+          {unread > 0 && (
+            <View style={[styles.badge, { backgroundColor: colors.error, borderColor: colors.background }]}>
+              <Text style={styles.badgeText}>{unread > 99 ? "99+" : unread}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -105,4 +107,17 @@ const styles = StyleSheet.create({
   },
   toggleText: { fontSize: 12 },
   actions: { flexDirection: "row", alignItems: "center", gap: SPACING.lg },
+  badge: {
+    position: "absolute",
+    top: -6,
+    right: -8,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    paddingHorizontal: 3,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: { color: "#FFFFFF", fontSize: 9, fontWeight: "800" },
 });

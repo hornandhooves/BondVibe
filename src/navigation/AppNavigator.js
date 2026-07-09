@@ -377,6 +377,14 @@ const AppNavigator = forwardRef((props, ref) => {
               else if (userData.aiOptIn === undefined) {
                 console.log("✨ AI opt-in not answered - navigating to AiOptIn");
                 hasReachedHome.current = true; // don't re-route mid-decision
+                // Register the push token here too (BUG 13): this branch sets
+                // hasReachedHome, so a brand-new attendee who hasn't answered the
+                // AI opt-in would otherwise never register a token this session
+                // and would receive no push notifications.
+                if (registeredPushTokenUid.current !== user.uid) {
+                  registeredPushTokenUid.current = user.uid;
+                  registerPushToken(user.uid);
+                }
                 navigateToRoute("AiOptIn", {
                   user,
                   params: { fromOnboarding: true },

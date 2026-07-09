@@ -703,6 +703,8 @@
     "matchChatsSub": "People you met through matching",
     "communityChats": "Community chats",
     "communityChatsSub": "Group chats for communities you're in",
+    "notifications": "Notifications",
+    "notificationsSub": "Activity, reminders and updates",
     "directMessages": "Direct messages",
     "noDMs": "No direct messages yet — say hi from someone's profile.",
     "noMessagesYet": "No messages yet. Start a conversation from someone's profile.",
