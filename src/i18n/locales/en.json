@@ -1576,7 +1576,10 @@
     "permTitle": "We need the camera",
     "permText": "To scan your attendees' QR codes and check them in.",
     "allowCamera": "Allow camera",
-    "hint": "Point at your attendee's QR code"
+    "hint": "Point at your attendee's QR code",
+    "pickEventTitle": "Who are you checking in?",
+    "pickEventSub": "Choose the event to check people into, then scan their QR codes.",
+    "noEvents": "You have no upcoming events to check people into."
   },
   "eventCheckIn": {
     "member": "Member",

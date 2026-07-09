@@ -1576,7 +1576,10 @@
     "permTitle": "Necesitamos la cámara",
     "permText": "Para escanear los códigos QR de tus asistentes y registrarlos.",
     "allowCamera": "Permitir cámara",
-    "hint": "Apunta al código QR de tu asistente"
+    "hint": "Apunta al código QR de tu asistente",
+    "pickEventTitle": "¿A quién vas a registrar?",
+    "pickEventSub": "Elige el evento para registrar a las personas y luego escanea sus códigos QR.",
+    "noEvents": "No tienes eventos próximos para registrar personas."
   },
   "eventCheckIn": {
     "member": "Miembro",

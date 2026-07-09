@@ -1,22 +1,50 @@
 import Icon from "../components/Icon";
-import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db, auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import { checkInFromScan, subscribeCheckins } from "../services/checkinService";
 
 export default function CheckInScannerScreen({ route, navigation }) {
-  const { eventId, eventTitle } = route.params || {};
+  const { eventId: paramEventId, eventTitle: paramEventTitle } = route.params || {};
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(true);
   const [result, setResult] = useState(null); // { ok, msg }
   const [count, setCount] = useState(0);
+  // Opened standalone (from Manage) there's no event context, so the scan can't
+  // be matched — pick a target event first (BUG 15), then scan the working path.
+  const [target, setTarget] = useState(paramEventId ? { id: paramEventId, title: paramEventTitle } : null);
+  const [events, setEvents] = useState([]);
+  const [loadingEvents, setLoadingEvents] = useState(!paramEventId);
   const styles = createStyles(colors);
+  const eventId = target?.id;
+  const eventTitle = target?.title;
+
+  const loadHostEvents = useCallback(async () => {
+    try {
+      const uid = auth.currentUser?.uid;
+      const snap = await getDocs(query(collection(db, "events"), where("creatorId", "==", uid)));
+      const now = Date.now();
+      const rows = snap.docs
+        .map((d) => ({ id: d.id, title: d.data().title || "Event", date: d.data().date }))
+        .filter((e) => !e.date || new Date(e.date).getTime() >= now - 12 * 3600000)
+        .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+      setEvents(rows);
+    } catch (e) {
+      setEvents([]);
+    } finally {
+      setLoadingEvents(false);
+    }
+  }, []);
+
+  useEffect(() => { if (!target) loadHostEvents(); }, [target, loadHostEvents]);
 
   useEffect(() => {
     if (!eventId) return;
@@ -55,6 +83,38 @@ export default function CheckInScannerScreen({ route, navigation }) {
       <View style={{ width: 28 }} />
     </View>
   );
+
+  // No event chosen yet → pick which event to check people into (BUG 15).
+  if (!target) {
+    return (
+      <GradientBackground>
+        <StatusBar style={isDark ? "light" : "dark"} />
+        {Header}
+        <View style={{ flex: 1, paddingHorizontal: 24 }}>
+          <Text style={[styles.pickTitle, { color: colors.text }]}>{t("checkInScanner.pickEventTitle")}</Text>
+          <Text style={[styles.pickSub, { color: colors.textSecondary }]}>{t("checkInScanner.pickEventSub")}</Text>
+          {loadingEvents ? (
+            <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>
+          ) : events.length === 0 ? (
+            <Text style={[styles.pickSub, { color: colors.textTertiary, marginTop: 20 }]}>{t("checkInScanner.noEvents")}</Text>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
+              {events.map((e) => (
+                <TouchableOpacity key={e.id} style={[styles.eventRow, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => setTarget({ id: e.id, title: e.title })}>
+                  <Icon name="calendar" size={18} color={colors.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.eventName, { color: colors.text }]} numberOfLines={1}>{e.title}</Text>
+                    {!!e.date && <Text style={[styles.eventDate, { color: colors.textTertiary }]}>{new Date(e.date).toLocaleString()}</Text>}
+                  </View>
+                  <Icon name="forward" size={18} color={colors.textTertiary} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      </GradientBackground>
+    );
+  }
 
   if (!permission) {
     return (
@@ -131,6 +191,19 @@ function createStyles(colors) {
     },
     headerTitle: { fontSize: 18, fontWeight: "700", flex: 1, textAlign: "center" },
     center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 12 },
+    pickTitle: { fontSize: 20, fontWeight: "700", marginTop: 8 },
+    pickSub: { fontSize: 14, lineHeight: 20, marginTop: 6, marginBottom: 16 },
+    eventRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      padding: 16,
+      borderRadius: 16,
+      borderWidth: 1,
+      marginBottom: 10,
+    },
+    eventName: { fontSize: 15, fontWeight: "600" },
+    eventDate: { fontSize: 12, marginTop: 2 },
     permTitle: { fontSize: 20, fontWeight: "700" },
     permText: { fontSize: 14, textAlign: "center", lineHeight: 20 },
     permBtn: { borderRadius: 16, paddingVertical: 14, paddingHorizontal: 28, marginTop: 8 },
