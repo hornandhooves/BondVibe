@@ -779,7 +779,7 @@
       "billedEvery": "Billed every {{interval}}. Cancel anytime.",
       "viaStripe": "via Stripe",
       "securePayment": "Secure payment via Stripe",
-      "subscribe": "Subscribe · ${{amount}}/{{interval}}",
+      "subscribe": "Subscribe · MX${{amount}}/{{interval}}",
       "proNote": "Includes Community Matching, AI tools, QR check-in and more.",
       "plusNote": "Unlimited matches at every event."
     },

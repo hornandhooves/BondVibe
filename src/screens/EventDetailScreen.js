@@ -28,6 +28,7 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { db, auth } from "../services/firebase";
+import { formatMXN } from "../utils/pricing";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import { AvatarDisplay } from "../components/AvatarPicker";
@@ -851,7 +852,7 @@ export default function EventDetailScreen({ route, navigation }) {
                 ]}
               >
                 <Text style={[styles.priceText, { color: colors.secondary }]}>
-                  ${eventPrice}
+                  {formatMXN(eventPrice)}
                 </Text>
               </View>
             ) : null}

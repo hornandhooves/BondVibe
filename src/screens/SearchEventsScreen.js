@@ -25,6 +25,7 @@ import { db } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import { formatISODate, formatEventTime } from "../utils/dateUtils";
+import { formatMXN } from "../utils/pricing";
 import {
   EVENT_CATEGORIES,
   normalizeCategory,
@@ -421,7 +422,7 @@ export default function SearchEventsScreen({ navigation, route }) {
               )}
               {event.price > 0 && (
                 <View style={styles.priceBadge}>
-                  <Text style={styles.priceBadgeText}>${event.price}</Text>
+                  <Text style={styles.priceBadgeText}>{formatMXN(event.price)}</Text>
                 </View>
               )}
               {isPast && (

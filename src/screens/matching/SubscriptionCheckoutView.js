@@ -8,6 +8,7 @@ import { View, Text, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../contexts/ThemeContext";
 import { MatchHeader, PrimaryButton } from "./matchUi";
+import { formatMXN } from "../../utils/pricing";
 
 export default function SubscriptionCheckoutView({
   title,
@@ -31,7 +32,7 @@ export default function SubscriptionCheckoutView({
           <View style={styles.rowBetween}>
             <Text style={[styles.plan, { color: colors.text }]}>{planName}</Text>
             <Text style={[styles.amount, { color: colors.text }]}>
-              ${amount} {currency}
+              {formatMXN(amount)}
             </Text>
           </View>
           <Text style={[styles.interval, { color: colors.textSecondary }]}>

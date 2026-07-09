@@ -23,6 +23,7 @@ import { db, auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import { formatISODate, formatEventTime } from "../utils/dateUtils";
+import { formatMXN } from "../utils/pricing";
 import {
   filterUpcomingEvents,
   filterPastEvents,
@@ -360,7 +361,7 @@ export default function MyEventsScreen({ navigation, route }) {
               )}
               {event.price > 0 && (
                 <View style={styles.priceBadge}>
-                  <Text style={styles.priceBadgeText}>${event.price}</Text>
+                  <Text style={styles.priceBadgeText}>{formatMXN(event.price)}</Text>
                 </View>
               )}
               {isPast && !showRateButton && (

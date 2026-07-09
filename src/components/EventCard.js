@@ -5,6 +5,7 @@ import Colors from '../constants/Colors';
 import Sizes from '../constants/Sizes';
 import Icon from './Icon';
 import { useTheme } from '../contexts/ThemeContext';
+import { formatMXN } from '../utils/pricing';
 
 export default function EventCard({ event, onPress }) {
   const { colors } = useTheme();
@@ -97,7 +98,7 @@ export default function EventCard({ event, onPress }) {
           {isFree ? (
             <Text style={styles.freeText}>{t("eventCard.free")}</Text>
           ) : (
-            <Text style={styles.priceText}>${event.price}</Text>
+            <Text style={styles.priceText}>{formatMXN(event.price)}</Text>
           )}
         </View>
       </View>

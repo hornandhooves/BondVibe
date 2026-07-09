@@ -1234,7 +1234,8 @@ export default function CreateEventScreen({ navigation, route }) {
                 <View style={[styles.field, { flex: 1, marginRight: 8, marginBottom: 0 }]}>
                   <Text style={[styles.label, { color: colors.text }]}>{t("createEvent.twoTier.localLabel")}</Text>
                   <View style={[styles.inputWrapper, { backgroundColor: colors.surfaceGlass, borderColor: colors.border }]}>
-                    <Icon name="location" size={20} color={colors.textSecondary} style={{ marginRight: 12 }} />
+                    <Icon name="location" size={20} color={colors.textSecondary} style={{ marginRight: 8 }} />
+                    <Text style={{ color: colors.textSecondary, fontWeight: "700", fontSize: 14, marginRight: 6 }}>MX$</Text>
                     <TextInput
                       style={[styles.input, { color: colors.text }]}
                       placeholder="80"
@@ -1249,7 +1250,8 @@ export default function CreateEventScreen({ navigation, route }) {
                 <View style={[styles.field, { flex: 1, marginLeft: 8, marginBottom: 0 }]}>
                   <Text style={[styles.label, { color: colors.text }]}>{t("createEvent.twoTier.generalLabel")}</Text>
                   <View style={[styles.inputWrapper, { backgroundColor: colors.surfaceGlass, borderColor: colors.border }]}>
-                    <Icon name="globe" size={20} color={colors.textSecondary} style={{ marginRight: 12 }} />
+                    <Icon name="globe" size={20} color={colors.textSecondary} style={{ marginRight: 8 }} />
+                    <Text style={{ color: colors.textSecondary, fontWeight: "700", fontSize: 14, marginRight: 6 }}>MX$</Text>
                     <TextInput
                       style={[styles.input, { color: colors.text }]}
                       placeholder="120"
@@ -1437,13 +1439,9 @@ export default function CreateEventScreen({ navigation, route }) {
                   },
                 ]}
               >
-                <Icon
-                  name="dollar"
-                  size={20}
-                  color={colors.textSecondary}
-                  type="ui"
-                  style={{ marginRight: 12 }}
-                />
+                <Text style={{ color: colors.textSecondary, fontWeight: "700", fontSize: 15, marginRight: 10 }}>
+                  MX$
+                </Text>
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
                   placeholder={isFree ? "0" : "100"}

@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "../../contexts/ThemeContext";
 import { PrimaryButton, SecondaryButton } from "./matchUi";
 import { getSubscriptionConfig, SUBSCRIPTION_DEFAULTS } from "../../services/configService";
+import { formatMXN } from "../../utils/pricing";
 
 export default function ProUpsellScreen({ route, navigation }) {
   const { colors } = useTheme();
@@ -37,7 +38,7 @@ export default function ProUpsellScreen({ route, navigation }) {
           {t("matching.proUpsell.title")}
         </Text>
         <Text style={[styles.price, { color: colors.primary }]}>
-          ${pro.amount} {pro.currency}
+          {formatMXN(pro.amount)}
           <Text style={[styles.per, { color: colors.textSecondary }]}> / {pro.interval}</Text>
         </Text>
         <View style={styles.perks}>

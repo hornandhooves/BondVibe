@@ -14,7 +14,8 @@ import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import { getHostFinance } from "../services/hostInsightsService";
 
-const money = (c) => `$${((c || 0) / 100).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// BUG 1: prefix MX$ so amounts read as MXN, never a bare $ (which reads as USD).
+const money = (c) => `MX$${((c || 0) / 100).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const monthLabel = (k) => {
   if (!k || k === "—") return "—";
   const [y, m] = k.split("-");

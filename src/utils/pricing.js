@@ -73,3 +73,18 @@ export const formatCentavos = (centavos) => {
     maximumFractionDigits: 2,
   })} MXN`;
 };
+
+/**
+ * Display a PESO amount unambiguously as MXN (BUG 1): `MX$199`, never a bare
+ * `$199` (which reads as USD). Pass whole pesos, not centavos. Integers show no
+ * decimals; fractional amounts show two.
+ * @param {number} pesos
+ * @returns {string}
+ */
+export const formatMXN = (pesos) => {
+  const n = Number(pesos) || 0;
+  const body = Number.isInteger(n)
+    ? n.toLocaleString("es-MX")
+    : n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `MX$${body}`;
+};

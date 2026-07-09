@@ -12,6 +12,7 @@ import AICard, { AIText } from "../AICard";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useTranslation } from "react-i18next";
 import { callClaude } from "../../services/claudeService";
+import { formatMXN } from "../../utils/pricing";
 import { TYPE, SPACING, RADII, BRAND, ELEVATION } from "../../constants/theme-tokens";
 
 export default function DraftWithAI({ onApply, navigation, placeholder }) {
@@ -118,7 +119,7 @@ export default function DraftWithAI({ onApply, navigation, placeholder }) {
                 <View style={[styles.tile, { backgroundColor: colors.sunken }]}>
                   <Text style={[TYPE.caption, { color: colors.textTertiary }]}>{t("draftWithAI.suggestedPrice")}</Text>
                   <Text style={[TYPE.title, { color: colors.text }]}>
-                    ${draft.priceSuggestion.amount}
+                    {formatMXN(draft.priceSuggestion.amount)}
                   </Text>
                   <Text style={[TYPE.caption, { color: colors.textSecondary }]} numberOfLines={2}>
                     {draft.priceSuggestion.rationale}
