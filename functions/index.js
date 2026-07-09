@@ -1482,15 +1482,10 @@ exports.onCarpoolRiderWritten = onDocumentWritten(
       return;
     }
 
-    // Approved: reward the driver + notify the rider.
-    await db.collection("users").doc(carpool.driverId).set(
-      {
-        carpoolStats: {
-          seatsShared: admin.firestore.FieldValue.increment(1),
-        },
-      },
-      {merge: true},
-    );
+    // Approved: notify the rider. The driver's carpoolStats.seatsShared is NOT
+    // credited here anymore (BUG 28.2) — approving a future ride shouldn't count
+    // as "helped." Credit happens once the event has ended, in
+    // creditCarpoolSeatsOnCompletion below.
     await db.collection("notifications").add({
       userId: riderId,
       type: "carpool_approved",
@@ -1501,6 +1496,91 @@ exports.onCarpoolRiderWritten = onDocumentWritten(
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       metadata: {eventId, eventTitle: carpool.eventTitle || ""},
     });
+  },
+);
+
+// ============================================
+// CARPOOL LOYALTY: credit drivers only for COMPLETED trips (BUG 28.2)
+// A driver's carpoolStats.seatsShared should count riders they actually helped
+// get to an event — not riders they approved for a future ride. This daily
+// sweep finds events that have ended (start + durationMinutes < now) and, for
+// each non-cancelled carpool that hasn't been credited yet, adds the number of
+// still-approved riders to the driver's lifetime counter.
+//
+// Idempotency: a per-carpool `seatsCredited` flag is claimed inside a
+// transaction, so a re-run/reopen can never double-count. Empty carpools are
+// flagged too, so they aren't rescanned forever.
+// ============================================
+exports.creditCarpoolSeatsOnCompletion = onSchedule(
+  {schedule: "every 24 hours", timeZone: "America/Mexico_City"},
+  async () => {
+    const now = Date.now();
+    // Non-cancelled events only (cancelled events never "completed").
+    const snap = await db
+      .collection("events")
+      .where("status", "==", "active")
+      .get();
+    let creditedSeats = 0;
+    let creditedCarpools = 0;
+
+    for (const docSnap of snap.docs) {
+      const e = docSnap.data();
+      const startMs = e.date?.toMillis ?
+        e.date.toMillis() :
+        (e.date ? new Date(e.date).getTime() : 0);
+      if (!startMs) continue;
+      const endMs = startMs + (e.durationMinutes || 180) * 60000;
+      if (endMs > now) continue; // event hasn't finished yet
+
+      const cpSnap = await db
+        .collection(`events/${docSnap.id}/carpools`)
+        .get();
+      for (const cp of cpSnap.docs) {
+        const carpool = cp.data();
+        if (carpool.status === "cancelled") continue;
+        if (carpool.seatsCredited) continue;
+
+        // Count riders still approved at completion time.
+        const ridersSnap = await cp.ref
+          .collection("riders")
+          .where("status", "==", "approved")
+          .get();
+        const approved = ridersSnap.size;
+
+        // Claim the credit atomically so concurrent/re-runs can't double-count.
+        const won = await db.runTransaction(async (tx) => {
+          const fresh = await tx.get(cp.ref);
+          if (fresh.data()?.seatsCredited) return false;
+          tx.set(
+            cp.ref,
+            {
+              seatsCredited: true,
+              creditedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            {merge: true},
+          );
+          return true;
+        });
+        if (!won) continue;
+
+        if (approved > 0 && carpool.driverId) {
+          await db.collection("users").doc(carpool.driverId).set(
+            {
+              carpoolStats: {
+                seatsShared: admin.firestore.FieldValue.increment(approved),
+              },
+            },
+            {merge: true},
+          );
+          creditedSeats += approved;
+          creditedCarpools++;
+        }
+      }
+    }
+    console.log(
+      `🚗 Carpool completion credit: ${creditedSeats} seat(s) across ` +
+      `${creditedCarpools} carpool(s)`,
+    );
   },
 );
 

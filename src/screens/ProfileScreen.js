@@ -295,6 +295,17 @@ export default function ProfileScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
+            {/* Carpool loyalty (BUG 28.2): lifetime completed-trip riders helped,
+                shown next to the rating. Only when > 0; reuses carpoolCard.hasHelped. */}
+            {(profile.carpoolStats?.seatsShared || 0) > 0 && (
+              <View style={[s.carpoolPill, { backgroundColor: colors.brandSoft }]}>
+                <Icon name="car" size={14} color={colors.primary} />
+                <Text style={[s.carpoolPillText, { color: colors.primary }]}>
+                  {t("carpoolCard.hasHelped", { count: profile.carpoolStats.seatsShared })}
+                </Text>
+              </View>
+            )}
+
             {/* Followers — separate from community members (BUG 23) */}
             <TouchableOpacity
               style={[s.followersRow, { borderColor: colors.border }]}
@@ -493,6 +504,19 @@ function createStyles(colors, isDark) {
     stat: { flex: 1, alignItems: "center", paddingVertical: 18 },
     statNumber: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5 },
     statLabel: { fontSize: 12, marginTop: 3, fontWeight: "500" },
+    // Carpool loyalty pill (BUG 28.2) — slim, centered, non-tappable.
+    carpoolPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "center",
+      gap: 6,
+      paddingVertical: 7,
+      paddingHorizontal: 14,
+      borderRadius: 999,
+      marginTop: -2,
+      marginBottom: 14,
+    },
+    carpoolPillText: { fontSize: 12.5, fontWeight: "700" },
     followersRow: {
       flexDirection: "row",
       alignItems: "center",

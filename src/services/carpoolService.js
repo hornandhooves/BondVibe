@@ -6,9 +6,10 @@
  * they own in the `riders/{userId}` subcollection); the driver approves. Seats
  * available are derived live from approved riders.
  *
- * Loyalty perk: a Cloud Function increments the driver's
- * `carpoolStats.seatsShared` when a rider is approved — a manipulation-proof
- * recognition of drivers who help the community get to events.
+ * Loyalty perk: a Cloud Function credits the driver's
+ * `carpoolStats.seatsShared` once the event has ended (by approved-rider count),
+ * not on approval (BUG 28.2) — a manipulation-proof recognition of drivers who
+ * actually helped the community get to events.
  */
 
 import {
