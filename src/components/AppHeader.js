@@ -32,7 +32,9 @@ export default function AppHeader({ title, navigation }) {
     <View
       style={[
         styles.wrap,
-        { paddingTop: insets.top + SPACING.sm, backgroundColor: "transparent" },
+        // Theme the safe-area/status-bar strip too (BUG 18) — a transparent
+        // header revealed a white bar under the status bar in dark mode.
+        { paddingTop: insets.top + SPACING.sm, backgroundColor: colors.background },
       ]}
     >
       <Text style={[TYPE.titleLg, styles.title, { color: colors.text }]} numberOfLines={1}>
