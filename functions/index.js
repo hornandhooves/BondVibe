@@ -29,6 +29,9 @@ const {verifyBearer, isAdminUid} = require("./lib/auth");
 // Import refunds AFTER Firebase is initialized
 const {cancelEventAttendance, hostCancelEvent} = require("./stripe/refunds");
 
+// @handle claiming/checking (server-enforced uniqueness).
+const {claimHandle, checkHandle, adminReassignHandle} = require("./handles");
+
 // Import pricing logic
 const {
   calculateEventSplit,
@@ -2007,6 +2010,9 @@ exports.getPricingInfo = onRequest({cors: true}, (req, res) => {
 
 exports.cancelEventAttendance = cancelEventAttendance;
 exports.hostCancelEvent = hostCancelEvent;
+exports.claimHandle = claimHandle;
+exports.checkHandle = checkHandle;
+exports.adminReassignHandle = adminReassignHandle;
 
 // Import Stripe Connect functions
 const {

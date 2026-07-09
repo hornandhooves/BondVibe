@@ -90,7 +90,8 @@ service cloud.firestore {
       allow create: if isSignedIn() && isOwner(userId) &&
                        !request.resource.data.keys()
                           .hasAny(['hostStats', 'carpoolStats', 'isPremium',
-                                   'plan', 'matchCountByEvent']) &&
+                                   'plan', 'matchCountByEvent',
+                                   'handle', 'handleLower']) &&
                        request.resource.data.get('role', 'user') in ['user', 'host'];
 
       // The owner can edit their profile but NOT hostStats/carpoolStats (host
@@ -104,7 +105,8 @@ service cloud.firestore {
                         !request.resource.data.diff(resource.data)
                           .affectedKeys()
                           .hasAny(['hostStats', 'carpoolStats', 'isPremium',
-                                   'plan', 'matchCountByEvent', 'hostApproved']) &&
+                                   'plan', 'matchCountByEvent', 'hostApproved',
+                                   'handle', 'handleLower']) &&
                         (!changing('role') ||
                          request.resource.data.role in ['user', 'host'])) ||
                        // Cross-account push-token de-dup: any user may CLEAR a
@@ -271,6 +273,15 @@ service cloud.firestore {
     // ============================================
     // RATINGS COLLECTION
     // ============================================
+    // @handle reservation registry (spec 10). The doc id IS the lowercase
+    // handle. Readable so the client can check availability + resolve a handle
+    // → uid; writes ONLY via the claimHandle/adminReassignHandle Cloud Functions
+    // (Admin SDK), never by clients — that's what guarantees uniqueness.
+    match /handles/{handleLower} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
     match /ratings/{ratingId} {
       allow read: if isSignedIn();
       // Only an attendee (not the host) of the rated event may create a rating,
