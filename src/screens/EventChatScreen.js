@@ -1,5 +1,5 @@
 import Icon from "../components/Icon";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -49,6 +49,258 @@ import {
   isUserAttending,
 } from "../utils/eventHelpers";
 
+// Display-name helper hoisted to module scope so the memoized row below can
+// use it without capturing the screen's render closure.
+function getUserDisplayName(user, t) {
+  if (!user) return t("eventChat.user");
+  return user.fullName || user.name || t("eventChat.user");
+}
+
+// BUG 12: MessageBubble lives at module scope (NOT inside the screen body) so
+// React keeps the same component type across renders — the message list is no
+// longer unmounted/remounted on every keystroke, which stops the avatar reload
+// "blink". Wrapped in React.memo so a row only re-renders when its own props
+// change. Everything it needs arrives via props.
+const MessageBubble = React.memo(function MessageBubble({
+  message,
+  user,
+  isMe,
+  status,
+  colors,
+  styles,
+  navigation,
+  isHost,
+  eventId,
+  currentUserName,
+  openInMaps,
+  t,
+  i18n,
+}) {
+  const time = new Date(message.createdAt).toLocaleTimeString(i18n.language, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  if (message.type === "poll" && message.data?.pollId) {
+    return (
+      <View
+        style={[
+          styles.messageBubble,
+          isMe ? styles.myMessage : styles.theirMessage,
+          { backgroundColor: "transparent", padding: 0 },
+        ]}
+      >
+        {!isMe && user && (
+          <Text
+            onPress={() => navigation.navigate("UserProfile", { userId: message.senderId })}
+            style={[styles.senderName, { color: colors.primary }]}
+          >
+            {user.fullName || user.name || t("eventChat.host")}
+          </Text>
+        )}
+        <PollCard
+          parent={["events", eventId]}
+          pollId={message.data.pollId}
+          isHost={isHost}
+        />
+        <Text style={[styles.timeStamp, { color: colors.textTertiary, marginTop: 4 }]}>
+          {time}
+        </Text>
+      </View>
+    );
+  }
+
+  if (message.type === "carpool" && message.data?.carpoolId) {
+    return (
+      <View
+        style={[
+          styles.messageBubble,
+          isMe ? styles.myMessage : styles.theirMessage,
+          { backgroundColor: "transparent", padding: 0 },
+        ]}
+      >
+        {!isMe && user && (
+          <Text
+            onPress={() => navigation.navigate("UserProfile", { userId: message.senderId })}
+            style={[styles.senderName, { color: colors.primary }]}
+          >
+            {user.fullName || user.name || t("eventChat.someone")}
+          </Text>
+        )}
+        <CarpoolCard
+          eventId={eventId}
+          carpoolId={message.data.carpoolId}
+          currentUserName={currentUserName}
+        />
+        <Text style={[styles.timeStamp, { color: colors.textTertiary, marginTop: 4 }]}>
+          {time}
+        </Text>
+      </View>
+    );
+  }
+
+  if (message.type === "location") {
+    return (
+      <View
+        style={[
+          styles.messageBubble,
+          isMe ? styles.myMessage : styles.theirMessage,
+        ]}
+      >
+        {!isMe && (
+          <View style={styles.senderInfo}>
+            <AvatarDisplay
+              avatar={user?.avatar}
+              size={24}
+              name={getUserDisplayName(user, t)}
+              style={styles.senderAvatarSpacing}
+            />
+            <Text
+              onPress={() => navigation.navigate("UserProfile", { userId: message.senderId })}
+              style={[styles.senderName, { color: colors.textSecondary }]}
+            >
+              {getUserDisplayName(user, t)}
+            </Text>
+          </View>
+        )}
+        <TouchableOpacity
+          style={[
+            styles.bubbleGlass,
+            {
+              backgroundColor: isMe
+                ? `${colors.primary}33`
+                : colors.surfaceGlass,
+              borderColor: isMe ? `${colors.primary}66` : colors.border,
+            },
+          ]}
+          onPress={() =>
+            openInMaps(message.location.latitude, message.location.longitude)
+          }
+        >
+          <Icon
+            name="location"
+            size={14}
+            color={colors.primary}
+            style={styles.locationIcon}
+          />
+          <Text style={[styles.locationText, { color: colors.text }]}>
+            {message.location.address}
+          </Text>
+          <Text
+            style={[styles.locationSubtext, { color: colors.textSecondary }]}
+          >
+            {t("eventChat.tapToOpenInMaps")}
+          </Text>
+          <View style={styles.messageFooter}>
+            <Text style={[styles.timeStamp, { color: colors.textTertiary }]}>
+              {time}
+            </Text>
+            {status && (
+              <Icon name={status.icon} size={12} color={status.color} />
+            )}
+          </View>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <View
+      style={[
+        styles.messageBubble,
+        isMe ? styles.myMessage : styles.theirMessage,
+      ]}
+    >
+      {!isMe && (
+        <View style={styles.senderInfo}>
+          <AvatarDisplay
+            avatar={user?.avatar}
+            size={24}
+            name={getUserDisplayName(user, t)}
+            style={styles.senderAvatarSpacing}
+          />
+          <Text
+            onPress={() => navigation.navigate("UserProfile", { userId: message.senderId })}
+            style={[styles.senderName, { color: colors.textSecondary }]}
+          >
+            {getUserDisplayName(user, t)}
+          </Text>
+        </View>
+      )}
+      <View
+        style={[
+          styles.bubbleGlass,
+          {
+            backgroundColor: isMe
+              ? `${colors.primary}33`
+              : colors.surfaceGlass,
+            borderColor: isMe ? `${colors.primary}66` : colors.border,
+          },
+        ]}
+      >
+        <MentionText
+          text={message.text}
+          style={[styles.messageText, { color: colors.text }]}
+          navigation={navigation}
+        />
+        <View style={styles.messageFooter}>
+          <Text style={[styles.timeStamp, { color: colors.textTertiary }]}>
+            {time}
+          </Text>
+          {status && (
+            <Icon name={status.icon} size={12} color={status.color} />
+          )}
+        </View>
+      </View>
+    </View>
+  );
+});
+
+// BUG 12: TypingIndicator hoisted to module scope for the same reason.
+const TypingIndicator = React.memo(function TypingIndicator({
+  typingUsers,
+  users,
+  colors,
+  styles,
+  t,
+}) {
+  if (typingUsers.length === 0) return null;
+
+  const typingUserNames = typingUsers
+    .map((userId) => {
+      const user = users[userId];
+      const displayName = getUserDisplayName(user, t);
+      return displayName.split(" ")[0];
+    })
+    .slice(0, 2);
+
+  let typingText = "";
+  if (typingUserNames.length === 1) {
+    typingText = t("eventChat.isTyping", { name: typingUserNames[0] });
+  } else if (typingUserNames.length === 2) {
+    typingText = t("eventChat.twoAreTyping", { name1: typingUserNames[0], name2: typingUserNames[1] });
+  } else {
+    typingText = t("eventChat.othersAreTyping", {
+      name1: typingUserNames[0],
+      name2: typingUserNames[1],
+      count: typingUsers.length - 2,
+    });
+  }
+
+  return (
+    <View style={styles.typingContainer}>
+      <Text style={[styles.typingText, { color: colors.textSecondary }]}>
+        {typingText}
+      </Text>
+      <View style={styles.typingDots}>
+        <View style={[styles.dot, { backgroundColor: colors.textSecondary }]} />
+        <View style={[styles.dot, { backgroundColor: colors.textSecondary }]} />
+        <View style={[styles.dot, { backgroundColor: colors.textSecondary }]} />
+      </View>
+    </View>
+  );
+});
+
 export default function EventChatScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
   const { t, i18n } = useTranslation();
@@ -85,6 +337,9 @@ export default function EventChatScreen({ route, navigation }) {
   // bottom (chat-scroll fix) — never yank them up from reading older messages.
   const isNearBottomRef = useRef(true);
   const typingTimeoutRef = useRef(null);
+  // BUG 12: only write the typing flag once per active window (not per keystroke)
+  // so remote devices don't get a Firestore update — and re-render — per letter.
+  const typingActiveRef = useRef(false);
   const previousMessageCountRef = useRef(0);
 
   // ============================================
@@ -299,6 +554,7 @@ export default function EventChatScreen({ route, navigation }) {
 
     const conversationId = `event_${eventId}`;
 
+    typingActiveRef.current = false;
     setTypingStatus(conversationId, auth.currentUser.uid, false);
 
     try {
@@ -319,15 +575,21 @@ export default function EventChatScreen({ route, navigation }) {
     setInputText(text);
 
     const conversationId = `event_${eventId}`;
-    setTypingStatus(conversationId, auth.currentUser.uid, true);
+    // Write `true` only on the first keystroke of a window — subsequent letters
+    // just push out the stop timer, so no per-letter Firestore setDoc.
+    if (!typingActiveRef.current) {
+      typingActiveRef.current = true;
+      setTypingStatus(conversationId, auth.currentUser.uid, true);
+    }
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
 
     typingTimeoutRef.current = setTimeout(() => {
+      typingActiveRef.current = false;
       setTypingStatus(conversationId, auth.currentUser.uid, false);
-    }, 8000);
+    }, 4000);
   };
 
   // Ask first — don't dump the raw GPS fix into the chat on a single tap.
@@ -553,241 +815,12 @@ export default function EventChatScreen({ route, navigation }) {
     return { icon: "check", color: colors.textTertiary };
   };
 
-  // ✅ HELPER: Get user display name (handles both fullName and name fields)
-  const getUserDisplayName = (user) => {
-    if (!user) return t("eventChat.user");
-    return user.fullName || user.name || t("eventChat.user");
-  };
+  // Styles are memoized so they aren't rebuilt (and the memoized rows below
+  // aren't handed a fresh `styles` object) on every keystroke — BUG 12.
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const styles = createStyles(colors);
-
-  const MessageBubble = ({ message }) => {
-    const isMe = message.senderId === auth.currentUser.uid;
-    const user = users[message.senderId];
-    const time = new Date(message.createdAt).toLocaleTimeString(i18n.language, {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-    const status = getMessageStatus(message);
-
-    if (message.type === "poll" && message.data?.pollId) {
-      return (
-        <View
-          style={[
-            styles.messageBubble,
-            isMe ? styles.myMessage : styles.theirMessage,
-            { backgroundColor: "transparent", padding: 0 },
-          ]}
-        >
-          {!isMe && user && (
-            <Text
-              onPress={() => navigation.navigate("UserProfile", { userId: message.senderId })}
-              style={[styles.senderName, { color: colors.primary }]}
-            >
-              {user.fullName || user.name || t("eventChat.host")}
-            </Text>
-          )}
-          <PollCard
-            parent={["events", eventId]}
-            pollId={message.data.pollId}
-            isHost={isHost}
-          />
-          <Text style={[styles.timeStamp, { color: colors.textTertiary, marginTop: 4 }]}>
-            {time}
-          </Text>
-        </View>
-      );
-    }
-
-    if (message.type === "carpool" && message.data?.carpoolId) {
-      return (
-        <View
-          style={[
-            styles.messageBubble,
-            isMe ? styles.myMessage : styles.theirMessage,
-            { backgroundColor: "transparent", padding: 0 },
-          ]}
-        >
-          {!isMe && user && (
-            <Text
-              onPress={() => navigation.navigate("UserProfile", { userId: message.senderId })}
-              style={[styles.senderName, { color: colors.primary }]}
-            >
-              {user.fullName || user.name || t("eventChat.someone")}
-            </Text>
-          )}
-          <CarpoolCard
-            eventId={eventId}
-            carpoolId={message.data.carpoolId}
-            currentUserName={currentUserName()}
-          />
-          <Text style={[styles.timeStamp, { color: colors.textTertiary, marginTop: 4 }]}>
-            {time}
-          </Text>
-        </View>
-      );
-    }
-
-    if (message.type === "location") {
-      return (
-        <View
-          style={[
-            styles.messageBubble,
-            isMe ? styles.myMessage : styles.theirMessage,
-          ]}
-        >
-          {!isMe && (
-            <View style={styles.senderInfo}>
-              <AvatarDisplay
-                avatar={user?.avatar}
-                size={24}
-                name={getUserDisplayName(user)}
-                style={styles.senderAvatarSpacing}
-              />
-              <Text
-                onPress={() => navigation.navigate("UserProfile", { userId: message.senderId })}
-                style={[styles.senderName, { color: colors.textSecondary }]}
-              >
-                {getUserDisplayName(user)}
-              </Text>
-            </View>
-          )}
-          <TouchableOpacity
-            style={[
-              styles.bubbleGlass,
-              {
-                backgroundColor: isMe
-                  ? `${colors.primary}33`
-                  : colors.surfaceGlass,
-                borderColor: isMe ? `${colors.primary}66` : colors.border,
-              },
-            ]}
-            onPress={() =>
-              openInMaps(message.location.latitude, message.location.longitude)
-            }
-          >
-            <Icon
-              name="location"
-              size={14}
-              color={colors.primary}
-              style={styles.locationIcon}
-            />
-            <Text style={[styles.locationText, { color: colors.text }]}>
-              {message.location.address}
-            </Text>
-            <Text
-              style={[styles.locationSubtext, { color: colors.textSecondary }]}
-            >
-              {t("eventChat.tapToOpenInMaps")}
-            </Text>
-            <View style={styles.messageFooter}>
-              <Text style={[styles.timeStamp, { color: colors.textTertiary }]}>
-                {time}
-              </Text>
-              {status && (
-                <Icon name={status.icon} size={12} color={status.color} />
-              )}
-            </View>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
-    return (
-      <View
-        style={[
-          styles.messageBubble,
-          isMe ? styles.myMessage : styles.theirMessage,
-        ]}
-      >
-        {!isMe && (
-          <View style={styles.senderInfo}>
-            <AvatarDisplay
-              avatar={user?.avatar}
-              size={24}
-              name={getUserDisplayName(user)}
-              style={styles.senderAvatarSpacing}
-            />
-            <Text
-              onPress={() => navigation.navigate("UserProfile", { userId: message.senderId })}
-              style={[styles.senderName, { color: colors.textSecondary }]}
-            >
-              {getUserDisplayName(user)}
-            </Text>
-          </View>
-        )}
-        <View
-          style={[
-            styles.bubbleGlass,
-            {
-              backgroundColor: isMe
-                ? `${colors.primary}33`
-                : colors.surfaceGlass,
-              borderColor: isMe ? `${colors.primary}66` : colors.border,
-            },
-          ]}
-        >
-          <MentionText
-            text={message.text}
-            style={[styles.messageText, { color: colors.text }]}
-            navigation={navigation}
-          />
-          <View style={styles.messageFooter}>
-            <Text style={[styles.timeStamp, { color: colors.textTertiary }]}>
-              {time}
-            </Text>
-            {status && (
-              <Icon name={status.icon} size={12} color={status.color} />
-            )}
-          </View>
-        </View>
-      </View>
-    );
-  };
-
-  const TypingIndicator = () => {
-    if (typingUsers.length === 0) return null;
-
-    const typingUserNames = typingUsers
-      .map((userId) => {
-        const user = users[userId];
-        const displayName = getUserDisplayName(user);
-        return displayName.split(" ")[0];
-      })
-      .slice(0, 2);
-
-    let typingText = "";
-    if (typingUserNames.length === 1) {
-      typingText = t("eventChat.isTyping", { name: typingUserNames[0] });
-    } else if (typingUserNames.length === 2) {
-      typingText = t("eventChat.twoAreTyping", { name1: typingUserNames[0], name2: typingUserNames[1] });
-    } else {
-      typingText = t("eventChat.othersAreTyping", {
-        name1: typingUserNames[0],
-        name2: typingUserNames[1],
-        count: typingUsers.length - 2,
-      });
-    }
-
-    return (
-      <View style={styles.typingContainer}>
-        <Text style={[styles.typingText, { color: colors.textSecondary }]}>
-          {typingText}
-        </Text>
-        <View style={styles.typingDots}>
-          <View
-            style={[styles.dot, { backgroundColor: colors.textSecondary }]}
-          />
-          <View
-            style={[styles.dot, { backgroundColor: colors.textSecondary }]}
-          />
-          <View
-            style={[styles.dot, { backgroundColor: colors.textSecondary }]}
-          />
-        </View>
-      </View>
-    );
-  };
+  // Current user's display name — passed to the memoized rows for CarpoolCard.
+  const currentName = currentUserName();
 
   if (loading) {
     return (
@@ -856,9 +889,30 @@ export default function EventChatScreen({ route, navigation }) {
         ) : (
           <>
             {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
+              <MessageBubble
+                key={message.id}
+                message={message}
+                user={users[message.senderId]}
+                isMe={message.senderId === auth.currentUser?.uid}
+                status={getMessageStatus(message)}
+                colors={colors}
+                styles={styles}
+                navigation={navigation}
+                isHost={isHost}
+                eventId={eventId}
+                currentUserName={currentName}
+                openInMaps={openInMaps}
+                t={t}
+                i18n={i18n}
+              />
             ))}
-            <TypingIndicator />
+            <TypingIndicator
+              typingUsers={typingUsers}
+              users={users}
+              colors={colors}
+              styles={styles}
+              t={t}
+            />
           </>
         )}
       </ScrollView>
