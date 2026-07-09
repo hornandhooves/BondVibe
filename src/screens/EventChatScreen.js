@@ -28,6 +28,8 @@ import CarpoolCard from "../components/CarpoolCard";
 import KeyboardAccessory from "../components/KeyboardAccessory";
 import PlaceAutocomplete from "../components/PlaceAutocomplete";
 import MentionText from "../components/MentionText";
+import MentionSuggestions from "../components/MentionSuggestions";
+import { replaceActiveMention } from "../utils/mentions";
 import { createCarpool } from "../services/carpoolService";
 import { notifyMentions } from "../services/userService";
 import { useTheme } from "../contexts/ThemeContext";
@@ -928,6 +930,13 @@ export default function EventChatScreen({ route, navigation }) {
           },
         ]}
       >
+        {/* @handle autocomplete — renders nothing unless a mention is active
+            (BUG 29). Picking one swaps the trailing @partial for the exact
+            @handle; typing-status logic in handleTextChange is untouched. */}
+        <MentionSuggestions
+          text={inputText}
+          onPick={(handle) => setInputText((prev) => replaceActiveMention(prev, handle))}
+        />
         <View
           style={[
             styles.inputWrapper,
