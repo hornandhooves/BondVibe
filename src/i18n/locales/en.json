@@ -3217,6 +3217,7 @@
       "fullDay": "Full day",
       "placementWarnTitle": "Check the schedule",
       "conflictMsg": "{{name}} already has \"{{title}}\" {{range}}.",
+      "conflictBlockedMsg": "{{name}} is marked unavailable {{range}}.",
       "outOfHoursMsg": "That's outside the working hours ({{start}}–{{end}}).",
       "continueAnyway": "Continue anyway",
       "free": "Free",

@@ -41,7 +41,7 @@ import useCities from "../hooks/useCities";
 import { uploadEventImages } from "../services/storageService";
 import { getHostMembershipPlans } from "../services/membershipService";
 import { createClass, updateClass, getClass } from "../services/businessClassesService";
-import { checkInstructorAvailability } from "../services/businessAgendaService";
+import { checkInstructorAvailability, AGENDA_ITEM_KIND } from "../services/businessAgendaService";
 import InstructorPicker from "../components/business/InstructorPicker";
 import { buildEventSearchKeywords } from "../utils/eventSearch";
 import { checkAccountStatus } from "../services/stripeConnectService";
@@ -546,7 +546,8 @@ export default function CreateEventScreen({ navigation, route }) {
         const hm = (d) => { const x = new Date(d); return `${String(x.getHours()).padStart(2, "0")}:${String(x.getMinutes()).padStart(2, "0")}`; };
         const msgs = [];
         if (avail.conflict && avail.conflictItem) {
-          msgs.push(t("business.agenda.conflictMsg", {
+          const isBlocked = avail.conflictItem.kind === AGENDA_ITEM_KIND.BLOCKED;
+          msgs.push(t(isBlocked ? "business.agenda.conflictBlockedMsg" : "business.agenda.conflictMsg", {
             name: instructorName || t("business.agenda.you"),
             title: avail.conflictItem.title,
             range: `${hm(avail.conflictItem.start)}–${hm(avail.conflictItem.end)}`,

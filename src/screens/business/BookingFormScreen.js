@@ -15,7 +15,7 @@ import GradientBackground from "../../components/GradientBackground";
 import DateField from "../../components/DateField";
 import { useTheme } from "../../contexts/ThemeContext";
 import { listSessionTypes, createBooking, updateBooking, getBooking, PAID_WITH } from "../../services/businessSessionsService";
-import { checkInstructorAvailability } from "../../services/businessAgendaService";
+import { checkInstructorAvailability, AGENDA_ITEM_KIND } from "../../services/businessAgendaService";
 import { listMembers } from "../../services/businessMembersService";
 
 export default function BookingFormScreen({ navigation, route }) {
@@ -87,7 +87,8 @@ export default function BookingFormScreen({ navigation, route }) {
         const hm = (d) => { const x = new Date(d); return `${String(x.getHours()).padStart(2, "0")}:${String(x.getMinutes()).padStart(2, "0")}`; };
         const msgs = [];
         if (avail.conflict && avail.conflictItem) {
-          msgs.push(t("business.agenda.conflictMsg", {
+          const isBlocked = avail.conflictItem.kind === AGENDA_ITEM_KIND.BLOCKED;
+          msgs.push(t(isBlocked ? "business.agenda.conflictBlockedMsg" : "business.agenda.conflictMsg", {
             name: t("business.agenda.you"),
             title: avail.conflictItem.title,
             range: `${hm(avail.conflictItem.start)}–${hm(avail.conflictItem.end)}`,

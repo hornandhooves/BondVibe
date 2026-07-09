@@ -216,8 +216,11 @@ export async function checkInstructorAvailability(
     listStaff(bizId).catch(() => []),
   ]);
 
+  // BUG 30 Gap A: block-off / "Unavailable" slots now count as conflicts — a
+  // block is the instructor saying "don't book me here", the strongest conflict.
+  // The caller distinguishes it via conflictItem.kind === BLOCKED to show the
+  // clearer "marked unavailable" message.
   const conflictItem = items.find((it) => {
-    if (it.kind === AGENDA_ITEM_KIND.BLOCKED) return false; // non-blocked items only
     const s = new Date(it.start).getTime();
     const e = new Date(it.end).getTime();
     return startMs < e && endMs > s;

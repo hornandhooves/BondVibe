@@ -3217,6 +3217,7 @@
       "fullDay": "Día completo",
       "placementWarnTitle": "Revisa la agenda",
       "conflictMsg": "{{name}} ya tiene \"{{title}}\" {{range}}.",
+      "conflictBlockedMsg": "{{name}} está marcado como no disponible {{range}}.",
       "outOfHoursMsg": "Está fuera del horario laboral ({{start}}–{{end}}).",
       "continueAnyway": "Continuar de todos modos",
       "free": "Libre",
