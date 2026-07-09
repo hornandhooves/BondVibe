@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Icon from "../components/Icon";
 import { Eye, EyeOff } from "lucide-react-native";
 import {
@@ -29,6 +29,24 @@ import KeyboardAccessory from "../components/KeyboardAccessory";
 import SuccessModal from "../components/SuccessModal";
 import SocialAuthButtons from "../components/SocialAuthButtons";
 import BondVibeLogo from "../components/BondVibeLogo";
+
+// BUG 12.1: the static header (logo + title + subtitle) is hoisted to module
+// scope and memoized so typing the email/password no longer re-renders it — the
+// BondVibeLogo stops re-rasterizing ("blinking") on every keystroke.
+const LoginHeader = React.memo(function LoginHeader({ colors, isDark, t, styles }) {
+  return (
+    <View style={styles.header}>
+      {/* New Echo Logo - adapts to theme */}
+      <View style={styles.logoContainer}>
+        <BondVibeLogo size={80} variant="adaptive" isDark={isDark} />
+      </View>
+      <Text style={[styles.title, { color: colors.text }]}>Kinlo</Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+        {t("welcome.tagline")}
+      </Text>
+    </View>
+  );
+});
 
 export default function LoginScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -209,7 +227,7 @@ export default function LoginScreen({ navigation }) {
     setErrorModal({ ...errorModal, visible: false });
   };
 
-  const styles = createStyles(colors);
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <KeyboardAvoidingView
@@ -227,18 +245,7 @@ export default function LoginScreen({ navigation }) {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.header}>
-              {/* New Echo Logo - adapts to theme */}
-              <View style={styles.logoContainer}>
-                <BondVibeLogo size={80} variant="adaptive" isDark={isDark} />
-              </View>
-              <Text style={[styles.title, { color: colors.text }]}>
-                Kinlo
-              </Text>
-              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                {t("welcome.tagline")}
-              </Text>
-            </View>
+            <LoginHeader colors={colors} isDark={isDark} t={t} styles={styles} />
 
             <View style={styles.form}>
               <View
