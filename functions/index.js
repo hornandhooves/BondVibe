@@ -2328,8 +2328,8 @@ exports.mercadoPagoWebhook = mercadopago.mercadoPagoWebhook;
 async function requireAdminUid(request) {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
-  const snap = await db.collection("users").doc(uid).get();
-  if (!snap.exists || snap.data().role !== "admin") {
+  // Claim-first admin check (isAdminUid), consistent across functions/.
+  if (!(await isAdminUid(uid))) {
     throw new HttpsError("permission-denied", "Admin only.");
   }
   return uid;

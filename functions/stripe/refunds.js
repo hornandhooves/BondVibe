@@ -7,6 +7,7 @@ const functions = require("firebase-functions/v2");
 const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const {getAttendeeId} = require("../utils/eventHelpers");
+const {isAdminUid} = require("../lib/auth");
 const db = admin.firestore();
 
 // Define Stripe secret
@@ -427,12 +428,10 @@ exports.hostCancelEvent = functions.https.onCall(
         attendeesCount: eventData.attendees ? eventData.attendees.length : 0,
       });
 
-      // Verificar permisos
+      // Verify permission — admins are authorized via the claim-first helper
+      // isAdminUid (defense-in-depth; matches the rest of functions/).
       if (eventData.creatorId !== userId) {
-        const userDoc = await db.collection("users").doc(userId).get();
-        const userData = userDoc.data();
-
-        if (!userData || userData.role !== "admin") {
+        if (!(await isAdminUid(userId))) {
           throw new functions.https.HttpsError(
             "permission-denied",
             "Only host or admin can cancel",
