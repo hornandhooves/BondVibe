@@ -19,8 +19,12 @@ import {
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useTheme } from "../contexts/ThemeContext";
 import { useTranslation } from "react-i18next";
-import i18n from "../i18n";
 import Icon from "./Icon";
+import { formatDuration, durationToDate, dateToMinutes } from "../utils/duration";
+
+// Re-exported so existing importers (CreateEventScreen, AgendaScreen) keep
+// working; the implementations now live in utils/duration for testability.
+export { formatDuration };
 
 const ITEM_H = 44;
 const VISIBLE = 5;
@@ -30,26 +34,7 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i); // 0..23
 const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5); // 0,5,..,55
 const DAYS = Array.from({ length: 14 }, (_, i) => i + 1); // 1..14 days
 
-/** Human label, e.g. 45→"45 min", 150→"2h 30m", 420→"7 hours", 2880→"2 days". */
-export function formatDuration(min) {
-  const m = parseInt(min, 10) || 0;
-  if (m < 60) return i18n.t("durationWheelModal.minShort", { m });
-  if (m < 1440) {
-    const h = Math.floor(m / 60);
-    const r = m % 60;
-    return r
-      ? i18n.t("durationWheelModal.hoursMinutesShort", { h, m: r })
-      : i18n.t(h === 1 ? "durationWheelModal.hourSingular" : "durationWheelModal.hoursPlural", { h });
-  }
-  const d = m / 1440;
-  const dVal = Number.isInteger(d) ? d : d.toFixed(1);
-  return i18n.t(d === 1 ? "durationWheelModal.daySingular" : "durationWheelModal.daysPlural", { d: dVal });
-}
-
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-const durationToDate = (min) =>
-  new Date(2000, 0, 1, Math.floor((min % 1440) / 60), min % 60, 0, 0);
-const dateToMinutes = (d) => d.getHours() * 60 + d.getMinutes();
 
 function nearestIdx(arr, target) {
   let best = 0;
