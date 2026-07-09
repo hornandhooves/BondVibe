@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Icon from "../components/Icon";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
@@ -36,13 +37,45 @@ import {
   markGroupNotificationsRead,
 } from "../services/hostGroupService";
 
+// Composer owns its own `text` state so a keystroke re-renders ONLY the input,
+// never the message list (chat-scroll fix §3). Memoized against parent renders.
+const ChatComposer = React.memo(function ChatComposer({ colors, styles, placeholder, onSend, leftActions }) {
+  const [text, setText] = useState("");
+  const send = () => {
+    const body = text.trim();
+    if (!body) return;
+    setText("");
+    onSend(body);
+  };
+  return (
+    <View style={[styles.inputBar, { borderTopColor: colors.border }]}>
+      {leftActions}
+      <TextInput
+        style={[styles.input, { color: colors.text, backgroundColor: colors.surfaceGlass }]}
+        placeholder={placeholder}
+        placeholderTextColor={colors.textTertiary}
+        value={text}
+        onChangeText={setText}
+        multiline
+      />
+      <TouchableOpacity
+        testID="send-button"
+        style={[styles.sendBtn, { backgroundColor: colors.primary, opacity: text.trim() ? 1 : 0.4 }]}
+        onPress={send}
+        disabled={!text.trim()}
+      >
+        <Icon name="send" size={20} color="#FFFFFF" />
+      </TouchableOpacity>
+    </View>
+  );
+});
+
 export default function GroupChatScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
   const { t, i18n } = useTranslation();
   const { groupId } = route.params || {};
   const [group, setGroup] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [text, setText] = useState("");
   const [inviteVisible, setInviteVisible] = useState(false);
   const [myEvents, setMyEvents] = useState([]);
   const [pollVisible, setPollVisible] = useState(false);
@@ -52,17 +85,17 @@ export default function GroupChatScreen({ route, navigation }) {
   const [spotifyVisible, setSpotifyVisible] = useState(false);
   const [spotifyDraft, setSpotifyDraft] = useState("");
   const [spotifySaving, setSpotifySaving] = useState(false);
-  const scrollRef = useRef(null);
   const uid = auth.currentUser?.uid;
 
   useEffect(() => {
     getGroup(groupId).then(setGroup);
     const unsub = subscribeGroupMessages(groupId, (m) => {
       setMessages(m);
-      // Read receipts (blue ✓✓ for senders) + clear my Home bell badge.
+      // Read receipts (blue ✓✓ for senders) + clear my Home bell badge. No
+      // manual scroll — the inverted list keeps the newest message pinned, so
+      // readBy/deliveredTo snapshots no longer bounce the list (chat-scroll fix).
       markGroupMessagesRead(groupId, m);
       markGroupNotificationsRead(groupId);
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     });
     return () => unsub();
   }, [groupId]);
@@ -109,19 +142,18 @@ export default function GroupChatScreen({ route, navigation }) {
     setInviteVisible(true);
   };
 
-  const handleSend = async () => {
-    const body = text.trim();
-    if (!body) return;
-    const guard = detectProhibitedContent(body);
-    if (guard.flagged) {
-      setText("");
-      reportProhibitedContent({ reason: guard.reason, content: body, groupId });
-      Alert.alert(t("groupChat.messageBlockedTitle"), PROHIBITED_MESSAGE);
-      return;
-    }
-    setText("");
-    await sendGroupMessage(groupId, body);
-  };
+  const onSend = useCallback(
+    (body) => {
+      const guard = detectProhibitedContent(body);
+      if (guard.flagged) {
+        reportProhibitedContent({ reason: guard.reason, content: body, groupId });
+        Alert.alert(t("groupChat.messageBlockedTitle"), PROHIBITED_MESSAGE);
+        return;
+      }
+      sendGroupMessage(groupId, body);
+    },
+    [groupId, t]
+  );
 
   const handleInvite = async (event) => {
     setInviteVisible(false);
@@ -164,6 +196,47 @@ export default function GroupChatScreen({ route, navigation }) {
   };
 
   const styles = createStyles(colors, isDark);
+
+  // Inverted FlatList wants newest-first; messages arrive oldest→newest.
+  const data = useMemo(() => [...messages].reverse(), [messages]);
+
+  const renderMessage = ({ item: m }) => {
+    const mine = m.senderId === uid;
+    if (m.type === "poll" && m.data?.pollId) {
+      return (
+        <View style={[styles.cardWrap, mine ? { alignSelf: "flex-end" } : { alignSelf: "flex-start" }]}>
+          <PollCard parent={["hostGroups", groupId]} pollId={m.data.pollId} isHost={isHost} />
+        </View>
+      );
+    }
+    if (m.type === "event_invite" && m.data?.eventId) {
+      return (
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate("EventDetail", { eventId: m.data.eventId })}
+          style={[styles.inviteCard, mine ? styles.mine : styles.theirs]}
+        >
+          <View style={styles.inviteRow}>
+            <Icon name="ticket" size={18} color={colors.primary} />
+            <Text style={[styles.inviteTitle, { color: colors.text }]} numberOfLines={2}>
+              {m.data.eventTitle || t("groupChat.defaultEventName")}
+            </Text>
+          </View>
+          <Text style={[styles.inviteCta, { color: colors.primary }]}>{t("groupChat.viewEvent")}</Text>
+        </TouchableOpacity>
+      );
+    }
+    return (
+      <View style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
+        <Text style={{ color: colors.text }}>{m.text}</Text>
+        {mine && (
+          <View style={styles.tickRow} testID={`tick-${tickStatus(m)}`}>
+            <TickIcon status={tickStatus(m)} />
+          </View>
+        )}
+      </View>
+    );
+  };
 
   return (
     <KeyboardAvoidingView
@@ -251,65 +324,19 @@ export default function GroupChatScreen({ route, navigation }) {
           </View>
         </View>
 
-        <ScrollView ref={scrollRef} contentContainerStyle={styles.messages}>
-          {messages.map((m) => {
-            const mine = m.senderId === uid;
-            if (m.type === "poll" && m.data?.pollId) {
-              return (
-                <View
-                  key={m.id}
-                  style={[styles.cardWrap, mine ? { alignSelf: "flex-end" } : { alignSelf: "flex-start" }]}
-                >
-                  <PollCard
-                    parent={["hostGroups", groupId]}
-                    pollId={m.data.pollId}
-                    isHost={isHost}
-                  />
-                </View>
-              );
-            }
-            if (m.type === "event_invite" && m.data?.eventId) {
-              return (
-                <TouchableOpacity
-                  key={m.id}
-                  activeOpacity={0.85}
-                  onPress={() =>
-                    navigation.navigate("EventDetail", { eventId: m.data.eventId })
-                  }
-                  style={[styles.inviteCard, mine ? styles.mine : styles.theirs]}
-                >
-                  <View style={styles.inviteRow}>
-                    <Icon name="ticket" size={18} color={colors.primary} />
-                    <Text style={[styles.inviteTitle, { color: colors.text }]} numberOfLines={2}>
-                      {m.data.eventTitle || t("groupChat.defaultEventName")}
-                    </Text>
-                  </View>
-                  <Text style={[styles.inviteCta, { color: colors.primary }]}>
-                    {t("groupChat.viewEvent")}
-                  </Text>
-                </TouchableOpacity>
-              );
-            }
-            return (
-              <View
-                key={m.id}
-                style={[styles.bubble, mine ? styles.mine : styles.theirs]}
-              >
-                <Text style={{ color: colors.text }}>{m.text}</Text>
-                {mine && (
-                  <View style={styles.tickRow} testID={`tick-${tickStatus(m)}`}>
-                    <TickIcon status={tickStatus(m)} />
-                  </View>
-                )}
-              </View>
-            );
-          })}
-          {messages.length === 0 && (
-            <Text style={[styles.empty, { color: colors.textTertiary }]}>
+        <FlatList
+          inverted
+          data={data}
+          keyExtractor={(m) => m.id}
+          renderItem={renderMessage}
+          contentContainerStyle={styles.messages}
+          keyboardShouldPersistTaps="handled"
+          ListEmptyComponent={
+            <Text style={[styles.empty, styles.emptyInverted, { color: colors.textTertiary }]}>
               {t("groupChat.noMessagesSayHi")}
             </Text>
-          )}
-        </ScrollView>
+          }
+        />
 
         {group?.hostOnly && !isHost ? (
           <View style={[styles.inputBar, { borderTopColor: colors.border, justifyContent: "center" }]}>
@@ -318,34 +345,24 @@ export default function GroupChatScreen({ route, navigation }) {
             </Text>
           </View>
         ) : (
-          <View style={[styles.inputBar, { borderTopColor: colors.border }]}>
-            {isHost && (
-              <TouchableOpacity style={styles.iconBtn} onPress={openInvite}>
-                <Icon name="ticket" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            )}
-            {isHost && (
-              <TouchableOpacity style={styles.iconBtn} onPress={() => setPollVisible(true)}>
-                <Icon name="chart" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            )}
-            <TextInput
-              style={[styles.input, { color: colors.text, backgroundColor: colors.surfaceGlass }]}
-              placeholder={t("groupChat.messagePlaceholder")}
-              placeholderTextColor={colors.textTertiary}
-              value={text}
-              onChangeText={setText}
-              multiline
-            />
-            <TouchableOpacity
-              testID="send-button"
-              style={[styles.sendBtn, { backgroundColor: colors.primary, opacity: text.trim() ? 1 : 0.4 }]}
-              onPress={handleSend}
-              disabled={!text.trim()}
-            >
-              <Icon name="send" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
+          <ChatComposer
+            colors={colors}
+            styles={styles}
+            placeholder={t("groupChat.messagePlaceholder")}
+            onSend={onSend}
+            leftActions={
+              isHost ? (
+                <>
+                  <TouchableOpacity style={styles.iconBtn} onPress={openInvite}>
+                    <Icon name="ticket" size={20} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.iconBtn} onPress={() => setPollVisible(true)}>
+                    <Icon name="chart" size={20} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </>
+              ) : null
+            }
+          />
         )}
 
         {/* Event invite picker */}
@@ -510,6 +527,8 @@ function createStyles(colors, isDark) {
     inviteTitle: { fontSize: 15, fontWeight: "700", flex: 1 },
     inviteCta: { fontSize: 13, fontWeight: "700", marginTop: 8 },
     empty: { textAlign: "center", marginTop: 40 },
+    // Inverted FlatList flips its ListEmptyComponent; counter-flip it upright.
+    emptyInverted: { transform: [{ scaleY: -1 }] },
     inputBar: {
       flexDirection: "row",
       alignItems: "flex-end",

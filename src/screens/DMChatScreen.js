@@ -73,10 +73,11 @@ export default function DMChatScreen({ route, navigation }) {
       >
         <FlatList
           ref={listRef}
-          data={messages}
+          inverted
+          data={[...messages].reverse()}
           keyExtractor={(m) => m.id}
           contentContainerStyle={styles.list}
-          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+          keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => {
             const mine = item.senderId === me;
             return (
@@ -95,7 +96,7 @@ export default function DMChatScreen({ route, navigation }) {
             );
           }}
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: colors.textTertiary }]}>{t("dmChat.sayHi")}</Text>
+            <Text style={[styles.empty, { color: colors.textTertiary, transform: [{ scaleY: -1 }] }]}>{t("dmChat.sayHi")}</Text>
           }
         />
         <View style={[styles.inputBar, { borderTopColor: colors.border }]}>

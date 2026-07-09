@@ -79,6 +79,9 @@ export default function EventChatScreen({ route, navigation }) {
   const [showDepPicker, setShowDepPicker] = useState(false);
   const [creatingCarpool, setCreatingCarpool] = useState(false);
   const scrollViewRef = useRef();
+  // Only auto-scroll a new message into view when the user is already at the
+  // bottom (chat-scroll fix) — never yank them up from reading older messages.
+  const isNearBottomRef = useRef(true);
   const typingTimeoutRef = useRef(null);
   const previousMessageCountRef = useRef(0);
 
@@ -190,10 +193,15 @@ export default function EventChatScreen({ route, navigation }) {
               setUsers((prev) => ({ ...prev, ...usersData }));
             }
 
-            setTimeout(
-              () => scrollViewRef.current?.scrollToEnd({ animated: true }),
-              100
-            );
+            // Only scroll on a genuinely new message AND when the user is at the
+            // bottom — not on readBy/deliveredTo-only snapshots (chat-scroll fix).
+            const hasNewMessage = currentCount > previousCount || previousCount === 0;
+            if (hasNewMessage && isNearBottomRef.current) {
+              setTimeout(
+                () => scrollViewRef.current?.scrollToEnd({ animated: true }),
+                100
+              );
+            }
           }
         );
 
@@ -255,9 +263,10 @@ export default function EventChatScreen({ route, navigation }) {
   const handleScroll = (event) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
 
-    // Verificar si está cerca del final (últimos 50px)
+    // Verificar si está cerca del final (últimos 80px)
     const isNearBottom =
-      contentSize.height - (contentOffset.y + layoutMeasurement.height) < 50;
+      contentSize.height - (contentOffset.y + layoutMeasurement.height) < 80;
+    isNearBottomRef.current = isNearBottom;
 
     if (isNearBottom && messages.length > 0) {
       const conversationId = `event_${eventId}`;
@@ -823,9 +832,10 @@ export default function EventChatScreen({ route, navigation }) {
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={100}
-        onContentSizeChange={() =>
-          scrollViewRef.current?.scrollToEnd({ animated: true })
-        }
+        // Pin content to the bottom so keyboard/suggestion-bar/input-growth
+        // layout changes don't drift the list (chat-scroll fix). Scrolling on a
+        // new message is handled in the subscription, gated by near-bottom.
+        maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
       >
         {messages.length === 0 ? (
           <View style={styles.emptyChat}>

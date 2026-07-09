@@ -51,10 +51,11 @@ export default function MatchChatScreen({ route, navigation }) {
       <MatchHeader title={name || t("matching.matchChat.defaultTitle")} onBack={() => navigation.goBack()} />
       <FlatList
         ref={listRef}
-        data={messages}
+        inverted
+        data={[...messages].reverse()}
         keyExtractor={(m) => m.id}
         contentContainerStyle={styles.list}
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+        keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => {
           const mine = item.senderId === me;
           return (
@@ -73,7 +74,7 @@ export default function MatchChatScreen({ route, navigation }) {
           );
         }}
         ListEmptyComponent={
-          <Text style={[styles.empty, { color: colors.textTertiary }]}>
+          <Text style={[styles.empty, { color: colors.textTertiary, transform: [{ scaleY: -1 }] }]}>
             {t("matching.matchChat.sayHi")}
           </Text>
         }
