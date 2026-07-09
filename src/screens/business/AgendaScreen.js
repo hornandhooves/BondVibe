@@ -10,7 +10,7 @@
 import React, { useState, useCallback, useMemo } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator,
-  Modal, TextInput,
+  Modal, TextInput, Alert,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from "@react-navigation/native";
@@ -133,15 +133,51 @@ export default function AgendaScreen({ navigation }) {
 
   const openSlot = (min) => { if (!isReception) setSlotModal({ min }); };
 
+  // BUG 6: warn (never block) when placing an event/session that overlaps the
+  // target instructor's agenda or falls outside their working hours. `min` is
+  // the slot start in minutes; the real length is chosen on the next form, so we
+  // check the tapped hour with a conservative 60-min default.
+  const runWithPlacementCheck = (min, durMin, proceed) => {
+    const targetUid = selected === "all" ? auth.currentUser?.uid : selected;
+    const targetStaff = staff.find((s) => s.id === targetUid);
+    const twh = getWorkingHours(selected === "all" ? targetStaff : selStaff);
+    const relevant = items.filter((it) => (selected === "all" ? it.instructorUid === targetUid : true));
+    const endMinP = min + (durMin || 60);
+    const conflict = relevant.find((it) => {
+      const s = minsFromMidnight(it.start);
+      const e = minsFromMidnight(it.end);
+      return min < e && endMinP > s;
+    });
+    const workStart = hourToMin(twh.start);
+    const workEnd = hourToMin(twh.end);
+    const out = min < workStart || endMinP > workEnd;
+    const msgs = [];
+    if (conflict) {
+      msgs.push(t("business.agenda.conflictMsg", {
+        name: conflict.instructorName || targetStaff?.name || t("business.agenda.you"),
+        title: conflict.title,
+        range: `${hhmm(conflict.start)}–${hhmm(conflict.end)}`,
+      }));
+    }
+    if (out) msgs.push(t("business.agenda.outOfHoursMsg", { start: twh.start, end: twh.end }));
+    if (!msgs.length) { proceed(); return; }
+    Alert.alert(t("business.agenda.placementWarnTitle"), msgs.join("\n\n"), [
+      { text: t("business.common.cancel"), style: "cancel" },
+      { text: t("business.agenda.continueAnyway"), onPress: proceed },
+    ]);
+  };
+
   const startNewSession = () => {
     const start = new Date(date);
     start.setHours(Math.floor(slotModal.min / 60), slotModal.min % 60, 0, 0);
     const m = slotModal.min; setSlotModal(null);
-    navigation.navigate("BusinessBookingForm", {
-      start: start.toISOString(),
-      instructorUid: selected === "all" ? auth.currentUser?.uid : selected,
-      time: `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`,
-    });
+    runWithPlacementCheck(m, 60, () =>
+      navigation.navigate("BusinessBookingForm", {
+        start: start.toISOString(),
+        instructorUid: selected === "all" ? auth.currentUser?.uid : selected,
+        time: `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`,
+      })
+    );
   };
 
   const openBlockDraft = () => { setBlockDraft({ min: slotModal.min, label: "", durationMin: 60 }); setSlotModal(null); };
@@ -163,10 +199,12 @@ export default function AgendaScreen({ navigation }) {
     const m = typeof min === "number" ? min : hourToMin(wh.start);
     start.setHours(Math.floor(m / 60), m % 60, 0, 0);
     setSlotModal(null);
-    navigation.navigate("CreateEvent", {
-      prefillStart: start.toISOString(),
-      instructorUid: selected === "all" ? auth.currentUser?.uid : selected,
-    });
+    runWithPlacementCheck(m, 60, () =>
+      navigation.navigate("CreateEvent", {
+        prefillStart: start.toISOString(),
+        instructorUid: selected === "all" ? auth.currentUser?.uid : selected,
+      })
+    );
   };
 
   // Clock icon → edit the selected instructor's working hours (reuses the
@@ -395,7 +433,7 @@ export default function AgendaScreen({ navigation }) {
         </ScrollView>
       ) : (
         /* Single-instructor day grid */
-        <ScrollView contentContainerStyle={{ height: hours.length * HOUR_H + 20 }} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={{ height: hours.length * HOUR_H + 96 }} showsVerticalScrollIndicator={false}>
           {hours.map((h, idx) => (
             <TouchableOpacity key={h} activeOpacity={0.6} style={[styles.hourRow, { height: HOUR_H, borderTopColor: colors.border, top: idx * HOUR_H }]} onPress={() => openSlot(h * 60)}>
               <Text style={[styles.hourLabel, { color: colors.textTertiary }]}>{pad2(h)}:00</Text>
@@ -587,7 +625,7 @@ function createStyles(colors) {
     itemMeta: { color: "rgba(255,255,255,0.9)", fontSize: 11, marginTop: 2, fontWeight: "600" },
     blockCard: { position: "absolute", left: 74, right: 14, flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 12, borderWidth: 1.5, borderStyle: "dashed", paddingHorizontal: 10 },
     blockText: { fontSize: 12, fontWeight: "700", flex: 1 },
-    allList: { paddingHorizontal: 16, paddingBottom: 30 },
+    allList: { paddingHorizontal: 16, paddingBottom: 96 },
     emptyAll: { textAlign: "center", paddingVertical: 40, fontSize: 13.5 },
     allRow: { flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 12 },
     allTime: { width: 46, fontSize: 12.5, fontWeight: "700" },
