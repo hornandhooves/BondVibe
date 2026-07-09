@@ -109,6 +109,9 @@ export default function CreateEventScreen({ navigation, route }) {
   });
 
   const [locationDetail, setLocationDetail] = useState("");
+  // Full street address behind the venue name (BUG 3). The field shows the venue
+  // NAME ("Estudio VIVO"); this keeps the formatted address for maps/deep-link.
+  const [venueAddress, setVenueAddress] = useState("");
   // Coordinates + place id captured from the Google Places picker (optional;
   // when present they let attendees open a precise pin in Maps).
   const [locationCoords, setLocationCoords] = useState(null); // { latitude, longitude }
@@ -248,6 +251,7 @@ export default function CreateEventScreen({ navigation, route }) {
     if (d.eventDate) setEventDate(new Date(d.eventDate));
     if (d.recurrenceConfig) setRecurrenceConfig(d.recurrenceConfig);
     if (typeof d.locationDetail === "string") setLocationDetail(d.locationDetail);
+    if (typeof d.venueAddress === "string") setVenueAddress(d.venueAddress);
     if (d.locationCoords) setLocationCoords(d.locationCoords);
     if (d.placeId) setPlaceId(d.placeId);
     if (typeof d.durationMinutes === "string") setDurationMinutes(d.durationMinutes);
@@ -583,6 +587,8 @@ export default function CreateEventScreen({ navigation, route }) {
         // Optional precise pin from the Places picker (null when typed free-text).
         locationCoords: locationCoords || null,
         placeId: placeId || null,
+        // Full street address kept behind the venue name (BUG 3) for maps.
+        venueAddress: venueAddress || null,
         // Event length in minutes (drives the "after event" matching window).
         durationMinutes: parseInt(durationMinutes, 10) || 180,
         maxPeople: parseInt(maxPeople),
@@ -1019,8 +1025,14 @@ export default function CreateEventScreen({ navigation, route }) {
             value={locationDetail}
             placeholder={t("createEvent.venuePlaceholder")}
             onSelect={(place) => {
-              // Prefer the full formatted address; fall back to typed text.
-              setLocationDetail(place.address || place.description || "");
+              // Show the venue NAME in the field (BUG 3); keep the full address
+              // separately for the map/deep-link. Free-text has no name → the
+              // typed text is both the display and there's no distinct address.
+              const displayName = place.name || place.address || place.description || "";
+              setLocationDetail(displayName);
+              setVenueAddress(
+                place.address && place.address !== displayName ? place.address : ""
+              );
               if (
                 typeof place.latitude === "number" &&
                 typeof place.longitude === "number"

@@ -690,7 +690,7 @@ export default function EventDetailScreen({ route, navigation }) {
     typeof event.locationCoords.latitude === "number" &&
     typeof event.locationCoords.longitude === "number"
       ? `${event.locationCoords.latitude},${event.locationCoords.longitude}`
-      : eventLocation;
+      : event.venueAddress || eventLocation;
   const mapsUrl = event.placeId
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
         mapsQuery
@@ -1011,6 +1011,12 @@ export default function EventDetailScreen({ route, navigation }) {
                 <Text style={[styles.infoValue, { color: colors.text }]}>
                   {eventLocation}
                 </Text>
+                {/* Full street address behind the venue name (BUG 3). */}
+                {!!event.venueAddress && (
+                  <Text style={[styles.infoLabel, { color: colors.textSecondary, marginTop: 2 }]}>
+                    {event.venueAddress}
+                  </Text>
+                )}
                 {!!event.location && (
                   <Text style={[styles.infoLabel, { color: colors.primary, marginTop: 2 }]}>
                     {t("eventDetail.openInMaps")}
