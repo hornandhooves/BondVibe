@@ -30,6 +30,7 @@ import GradientBackground from "../components/GradientBackground";
 import { AvatarFrame } from "../components/CategoryIcon";
 import { usePremium } from "../hooks/usePremium";
 import { getFollowers } from "../services/followService";
+import { getHostGroups } from "../services/hostGroupService";
 import { BRAND } from "../constants/theme-tokens";
 
 const TRAIT_LABEL_KEYS = {
@@ -47,6 +48,8 @@ export default function ProfileScreen({ navigation }) {
   const [profile, setProfile] = useState(null);
   const [followersCount, setFollowersCount] = useState(0);
   const [eventsCount, setEventsCount] = useState(0);
+  // Community members = distinct people across the groups this host owns (BUG 23).
+  const [memberUids, setMemberUids] = useState([]);
   const [editing, setEditing] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -66,15 +69,20 @@ export default function ProfileScreen({ navigation }) {
   const loadProfile = async () => {
     try {
       const uid = auth.currentUser.uid;
-      const [userDoc, followerIds, evSnap] = await Promise.all([
+      const [userDoc, followerIds, evSnap, hostGroups] = await Promise.all([
         getDoc(doc(db, "users", uid)),
         getFollowers(uid),
         getCountFromServer(
           query(collection(db, "events"), where("creatorId", "==", uid))
         ).catch(() => ({ data: () => ({ count: 0 }) })),
+        getHostGroups(uid).catch(() => []),
       ]);
       setFollowersCount(followerIds.length);
       setEventsCount(evSnap.data().count || 0);
+      // Union of members across the groups this host owns, minus the host.
+      const members = new Set();
+      (hostGroups || []).forEach((g) => (g.memberIds || []).forEach((m) => m !== uid && members.add(m)));
+      setMemberUids([...members]);
       if (userDoc.exists()) {
         const data = userDoc.data();
         setProfile(data);
@@ -250,17 +258,17 @@ export default function ProfileScreen({ navigation }) {
               </View>
             )}
 
-            {/* ── Stats row ── */}
+            {/* ── Stats row (BUG 23: each deep-links to the right place) ── */}
             <View style={[s.statsRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <TouchableOpacity
                 style={s.stat}
-                onPress={() => navigation.navigate("FollowList", { userId: auth.currentUser.uid, type: "followers" })}
+                onPress={() => navigation.navigate("MyEvents", { initialTab: "hosting" })}
               >
                 <Text style={[s.statNumber, { color: colors.text }]}>{eventsCount}</Text>
                 <Text style={[s.statLabel, { color: colors.textSecondary }]}>{t("profile.events")}</Text>
               </TouchableOpacity>
 
-              <View style={s.statCenter}>
+              <TouchableOpacity style={s.statCenter} onPress={() => navigation.navigate("RatingsOverview")}>
                 <LinearGradient colors={BRAND.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.statCenterGrad}>
                   <View style={s.statCenterNumberRow}>
                     <Text style={s.statCenterNumber}>{ratingValue}</Text>
@@ -268,16 +276,33 @@ export default function ProfileScreen({ navigation }) {
                   </View>
                   <Text style={s.statCenterLabel}>{t("profile.rating")}</Text>
                 </LinearGradient>
-              </View>
+              </TouchableOpacity>
 
               <TouchableOpacity
                 style={s.stat}
-                onPress={() => navigation.navigate("FollowList", { userId: auth.currentUser.uid, type: "followers" })}
+                onPress={() => navigation.navigate("FollowList", {
+                  userId: auth.currentUser.uid,
+                  type: "members",
+                  uids: memberUids,
+                  title: t("profile.members"),
+                })}
               >
-                <Text style={[s.statNumber, { color: colors.text }]}>{followersCount}</Text>
+                <Text style={[s.statNumber, { color: colors.text }]}>{memberUids.length}</Text>
                 <Text style={[s.statLabel, { color: colors.textSecondary }]}>{t("profile.members")}</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Followers — separate from community members (BUG 23) */}
+            <TouchableOpacity
+              style={[s.followersRow, { borderColor: colors.border }]}
+              onPress={() => navigation.navigate("FollowList", { userId: auth.currentUser.uid, type: "followers" })}
+            >
+              <Icon name="users" size={16} color={colors.textSecondary} />
+              <Text style={[s.followersText, { color: colors.textSecondary }]}>
+                {t("profile.followersCount", { count: followersCount })}
+              </Text>
+              <Icon name="forward" size={16} color={colors.textTertiary} />
+            </TouchableOpacity>
 
             {/* ── Kinlo Pro banner ── */}
             {canManageStripe && (
@@ -464,6 +489,17 @@ function createStyles(colors, isDark) {
     stat: { flex: 1, alignItems: "center", paddingVertical: 18 },
     statNumber: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5 },
     statLabel: { fontSize: 12, marginTop: 3, fontWeight: "500" },
+    followersRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      borderWidth: 1,
+      borderRadius: 14,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      marginBottom: 14,
+    },
+    followersText: { flex: 1, fontSize: 13.5, fontWeight: "600" },
     statCenter: { flex: 1.1 },
     statCenterGrad: { alignItems: "center", paddingVertical: 18, borderRadius: 0 },
     statCenterNumberRow: { flexDirection: "row", alignItems: "center", gap: 3 },

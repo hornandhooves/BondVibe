@@ -589,6 +589,8 @@
     "events": "Events",
     "rating": "Rating",
     "members": "Members",
+    "followersCount_one": "{{count}} follower",
+    "followersCount_other": "{{count}} followers",
     "kinloProTitle": "Kinlo Pro",
     "kinloProActive": "ACTIVE",
     "kinloProSub": "Community Matching included",
@@ -1772,6 +1774,7 @@
     "following": "Following",
     "follow": "Follow",
     "noFollowers": "No followers yet.",
+    "noMembers": "No community members yet.",
     "noFollowing": "Not following anyone yet."
   },
   "userProfile": {

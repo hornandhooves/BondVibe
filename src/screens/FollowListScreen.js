@@ -1,6 +1,8 @@
 /**
- * FollowListScreen — shows the list of followers or following for a user.
- * Route params: { userId, type: "followers" | "following" }
+ * FollowListScreen — shows a list of people. Followers/following for a user, or
+ * an explicit set of uids (e.g. a host's community members — BUG 23).
+ * Route params: { userId, type: "followers" | "following",
+ *   uids?: string[] (explicit list — overrides type), title?: string }
  */
 import React, { useState, useCallback } from "react";
 import {
@@ -26,7 +28,7 @@ const normAvatar = (a) =>
   !a ? null : typeof a === "string" ? { type: "emoji", value: a } : a;
 
 export default function FollowListScreen({ route, navigation }) {
-  const { userId, type } = route.params || {};
+  const { userId, type, uids: uidsParam, title } = route.params || {};
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const me = auth.currentUser?.uid;
@@ -37,8 +39,9 @@ export default function FollowListScreen({ route, navigation }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const uids =
-        type === "followers"
+      const uids = Array.isArray(uidsParam)
+        ? uidsParam
+        : type === "followers"
           ? await getFollowers(userId)
           : await getFollowing(userId);
 
@@ -63,7 +66,7 @@ export default function FollowListScreen({ route, navigation }) {
     } finally {
       setLoading(false);
     }
-  }, [userId, type, me]);
+  }, [userId, type, me, uidsParam]);
 
   useFocusEffect(
     useCallback(() => {
@@ -92,7 +95,7 @@ export default function FollowListScreen({ route, navigation }) {
           <Icon name="back" size={28} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {type === "followers" ? t("followList.followersTitle") : t("followList.followingTitle")}
+          {title || (type === "followers" ? t("followList.followersTitle") : t("followList.followingTitle"))}
         </Text>
         <View style={{ width: 28 }} />
       </View>
@@ -148,7 +151,11 @@ export default function FollowListScreen({ route, navigation }) {
           )}
           ListEmptyComponent={
             <Text style={[styles.empty, { color: colors.textTertiary }]}>
-              {type === "followers" ? t("followList.noFollowers") : t("followList.noFollowing")}
+              {uidsParam
+                ? t("followList.noMembers")
+                : type === "followers"
+                  ? t("followList.noFollowers")
+                  : t("followList.noFollowing")}
             </Text>
           }
         />

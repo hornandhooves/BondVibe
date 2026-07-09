@@ -589,6 +589,8 @@
     "events": "Eventos",
     "rating": "Calificación",
     "members": "Miembros",
+    "followersCount_one": "{{count}} seguidor",
+    "followersCount_other": "{{count}} seguidores",
     "kinloProTitle": "Kinlo Pro",
     "kinloProActive": "ACTIVO",
     "kinloProSub": "Incluye Community Matching",
@@ -1772,6 +1774,7 @@
     "following": "Siguiendo",
     "follow": "Seguir",
     "noFollowers": "Aún no hay seguidores.",
+    "noMembers": "Aún no hay miembros de la comunidad.",
     "noFollowing": "Aún no sigues a nadie."
   },
   "userProfile": {
