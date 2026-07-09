@@ -1064,93 +1064,117 @@ export default function EventChatScreen({ route, navigation }) {
       </Modal>
 
       {/* Offer a ride (car pool) modal */}
-      <Modal visible={carpoolModalVisible} transparent animationType="slide">
-        <View style={styles.pollModalOverlay}>
-          <View style={[styles.pollModalCard, { backgroundColor: colors.background }]}>
-            <Text style={[styles.pollModalTitle, { color: colors.text }]}>
-              {t("eventChat.carpool.title")}
-            </Text>
-            <TextInput
-              style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
-              placeholder={t("eventChat.carpool.seatsPlaceholder")}
-              placeholderTextColor={colors.textTertiary}
-              value={carpoolForm.seatsTotal}
-              onChangeText={(v) =>
-                setCarpoolForm((f) => ({ ...f, seatsTotal: v.replace(/[^0-9]/g, "") }))
-              }
-              keyboardType="number-pad"
-            />
-            <TouchableOpacity
-              style={[styles.pollInput, { borderColor: colors.border, justifyContent: "center" }]}
-              onPress={() => setShowPickupSearch(true)}
+      {/* BUG 28: an INLINE bottom-sheet (not a RN <Modal>) so the pickup
+          PlaceAutocomplete's own <Modal> can present over it — two stacked RN
+          Modals silently fail on iOS. BUG 28.1: KeyboardAvoidingView + a
+          scrollable body keep every field above the keyboard / time cylinder. */}
+      {carpoolModalVisible && (
+        <View style={styles.sheetOverlay}>
+          <TouchableOpacity
+            style={styles.sheetBackdrop}
+            activeOpacity={1}
+            onPress={() => setCarpoolModalVisible(false)}
+          />
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+          >
+            <View
+              style={[
+                styles.pollModalCard,
+                styles.sheetCard,
+                { backgroundColor: colors.background },
+              ]}
             >
-              <Text style={{ color: carpoolForm.from ? colors.text : colors.textTertiary }} numberOfLines={1}>
-                {carpoolForm.from || t("eventChat.carpool.pickupPlaceholder")}
+              <Text style={[styles.pollModalTitle, { color: colors.text }]}>
+                {t("eventChat.carpool.title")}
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.pollInput, { borderColor: colors.border, justifyContent: "center" }]}
-              onPress={() => setShowDepPicker(true)}
-            >
-              <Text style={{ color: carpoolForm.departureTime ? colors.text : colors.textTertiary }}>
-                {carpoolForm.departureTime || t("eventChat.carpool.departureTimePlaceholder")}
-              </Text>
-            </TouchableOpacity>
-            {showDepPicker && (
-              <View>
-                <DateTimePicker
-                  value={carpoolForm.departureDate || new Date()}
-                  mode="time"
-                  display={Platform.OS === "ios" ? "spinner" : "default"}
-                  onChange={(e, d) => {
-                    if (Platform.OS !== "ios") setShowDepPicker(false);
-                    if (d) {
-                      const t = d.toLocaleTimeString([], {
-                        hour: "numeric",
-                        minute: "2-digit",
-                      });
-                      setCarpoolForm((f) => ({
-                        ...f,
-                        departureTime: t,
-                        departureDate: d,
-                      }));
-                    }
-                  }}
+              <ScrollView
+                style={styles.sheetScroll}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <TextInput
+                  style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
+                  placeholder={t("eventChat.carpool.seatsPlaceholder")}
+                  placeholderTextColor={colors.textTertiary}
+                  value={carpoolForm.seatsTotal}
+                  onChangeText={(v) =>
+                    setCarpoolForm((f) => ({ ...f, seatsTotal: v.replace(/[^0-9]/g, "") }))
+                  }
+                  keyboardType="number-pad"
                 />
-                {Platform.OS === "ios" && (
-                  <TouchableOpacity
-                    style={{ alignSelf: "flex-end", padding: 8 }}
-                    onPress={() => setShowDepPicker(false)}
-                  >
-                    <Text style={{ color: colors.primary, fontWeight: "700" }}>{t("eventChat.carpool.done")}</Text>
-                  </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.pollInput, { borderColor: colors.border, justifyContent: "center" }]}
+                  onPress={() => setShowPickupSearch(true)}
+                >
+                  <Text style={{ color: carpoolForm.from ? colors.text : colors.textTertiary }} numberOfLines={1}>
+                    {carpoolForm.from || t("eventChat.carpool.pickupPlaceholder")}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.pollInput, { borderColor: colors.border, justifyContent: "center" }]}
+                  onPress={() => setShowDepPicker(true)}
+                >
+                  <Text style={{ color: carpoolForm.departureTime ? colors.text : colors.textTertiary }}>
+                    {carpoolForm.departureTime || t("eventChat.carpool.departureTimePlaceholder")}
+                  </Text>
+                </TouchableOpacity>
+                {showDepPicker && (
+                  <View>
+                    <DateTimePicker
+                      value={carpoolForm.departureDate || new Date()}
+                      mode="time"
+                      display={Platform.OS === "ios" ? "spinner" : "default"}
+                      onChange={(e, d) => {
+                        if (Platform.OS !== "ios") setShowDepPicker(false);
+                        if (d) {
+                          const t = d.toLocaleTimeString([], {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          });
+                          setCarpoolForm((f) => ({
+                            ...f,
+                            departureTime: t,
+                            departureDate: d,
+                          }));
+                        }
+                      }}
+                    />
+                    {Platform.OS === "ios" && (
+                      <TouchableOpacity
+                        style={{ alignSelf: "flex-end", padding: 8 }}
+                        onPress={() => setShowDepPicker(false)}
+                      >
+                        <Text style={{ color: colors.primary, fontWeight: "700" }}>{t("eventChat.carpool.done")}</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 )}
+                <TextInput
+                  style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
+                  placeholder={t("eventChat.carpool.notesPlaceholder")}
+                  placeholderTextColor={colors.textTertiary}
+                  value={carpoolForm.notes}
+                  onChangeText={(v) => setCarpoolForm((f) => ({ ...f, notes: v }))}
+                  maxLength={120}
+                />
+              </ScrollView>
+              <View style={styles.pollModalActions}>
+                <TouchableOpacity onPress={() => setCarpoolModalVisible(false)}>
+                  <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>
+                    {t("eventChat.cancel")}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleCreateCarpool} disabled={creatingCarpool}>
+                  <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                    {creatingCarpool ? t("eventChat.carpool.posting") : t("eventChat.carpool.offerRide")}
+                  </Text>
+                </TouchableOpacity>
               </View>
-            )}
-            <TextInput
-              style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
-              placeholder={t("eventChat.carpool.notesPlaceholder")}
-              placeholderTextColor={colors.textTertiary}
-              value={carpoolForm.notes}
-              onChangeText={(v) => setCarpoolForm((f) => ({ ...f, notes: v }))}
-              maxLength={120}
-            />
-            <View style={styles.pollModalActions}>
-              <TouchableOpacity onPress={() => setCarpoolModalVisible(false)}>
-                <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>
-                  {t("eventChat.cancel")}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleCreateCarpool} disabled={creatingCarpool}>
-                <Text style={{ color: colors.primary, fontWeight: "700" }}>
-                  {creatingCarpool ? t("eventChat.carpool.posting") : t("eventChat.carpool.offerRide")}
-                </Text>
-              </TouchableOpacity>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </View>
-        <KeyboardAccessory />
-      </Modal>
+      )}
 
       {/* Places search launched from the "share location" prompt */}
       <PlaceAutocomplete
@@ -1249,6 +1273,20 @@ function createStyles(colors) {
       justifyContent: "flex-end",
       backgroundColor: "rgba(0,0,0,0.5)",
     },
+    // BUG 28: inline bottom-sheet overlay (replaces the carpool RN <Modal>).
+    sheetOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: "flex-end",
+      zIndex: 20,
+    },
+    sheetBackdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0,0,0,0.5)",
+    },
+    // Cap the card height so the ScrollView body scrolls instead of the card
+    // growing past the screen when the keyboard/time cylinder is open (28.1).
+    sheetCard: { maxHeight: "85%" },
+    sheetScroll: { flexGrow: 0, flexShrink: 1 },
     pollModalCard: {
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
