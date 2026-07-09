@@ -25,16 +25,22 @@ export function formatDuration(min) {
   return i18n.t(d === 1 ? "durationWheelModal.daySingular" : "durationWheelModal.daysPlural", { d: dVal });
 }
 
-/** Encode an hours+minutes duration as a time-of-day on a fixed base date. */
+/**
+ * Encode an hours+minutes duration as a time-of-day on a fixed base date, in
+ * UTC. The iOS countdown picker is pinned to UTC (timeZoneOffsetInMinutes={0}),
+ * so encode/decode must use UTC too — otherwise, in a non-UTC device zone
+ * (e.g. Mexico), the read-back drifts by the offset and the header shows +1h
+ * vs the wheel (round-5 BUG 4).
+ */
 export const durationToDate = (min) => {
   const m = Math.max(0, parseInt(min, 10) || 0);
-  return new Date(2000, 0, 1, Math.floor((m % 1440) / 60), m % 60, 0, 0);
+  return new Date(Date.UTC(2000, 0, 1, Math.floor((m % 1440) / 60), m % 60, 0, 0));
 };
 
 /**
- * Read a duration back as whole minutes from the spinner's Date. Only the
- * time-of-day is used; the base date contributes nothing, so a 0-hour pick
- * stays 0 (never inherits an hour) — BUG 4.
+ * Read a duration back as whole minutes from the spinner's Date, in UTC. Only
+ * the time-of-day matters; using UTC keeps a 0-hour pick at 0 in every device
+ * timezone (round-5 BUG 4).
  */
 export const dateToMinutes = (d) =>
-  d instanceof Date ? d.getHours() * 60 + d.getMinutes() : 0;
+  d instanceof Date ? d.getUTCHours() * 60 + d.getUTCMinutes() : 0;

@@ -201,6 +201,10 @@ export default function DurationWheelModal({ visible, value, onSelect, onClose }
               display="spinner"
               value={iosDate}
               minuteInterval={5}
+              // Read/write the spinner value in UTC so it matches durationToDate/
+              // dateToMinutes; otherwise a non-UTC device zone drifts the header
+              // by the offset (round-5 BUG 4).
+              timeZoneOffsetInMinutes={0}
               onChange={(e, d) => d && setIosDate(d)}
               style={{ height: ITEM_H * VISIBLE }}
             />
