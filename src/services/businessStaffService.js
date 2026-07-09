@@ -18,6 +18,9 @@ export const STAFF_ROLES = ["owner", "instructor", "reception"];
 // (kinlo_business/06 FIX 4). days: 0=Sun … 6=Sat.
 export const DEFAULT_WORKING_HOURS = { days: [1, 2, 3, 4, 5, 6], start: "07:00", end: "20:00" };
 
+/** Valid 24-hour HH:MM (00–23 : 00–59), single or double-digit hour. */
+export const isValidHM = (t) => /^([01]?\d|2[0-3]):[0-5]\d$/.test(String(t || "").trim());
+
 /** A staff member's working hours, falling back to the sensible default. */
 export function getWorkingHours(staff) {
   const wh = staff?.workingHours;

@@ -22,7 +22,7 @@ import DurationWheelModal, { formatDuration } from "../../components/DurationWhe
 import { useTheme } from "../../contexts/ThemeContext";
 import { BRAND } from "../../constants/theme-tokens";
 import { auth } from "../../services/firebase";
-import { listStaff, getWorkingHours, setWorkingHours } from "../../services/businessStaffService";
+import { listStaff, getWorkingHours, setWorkingHours, isValidHM } from "../../services/businessStaffService";
 import {
   getDayItems, getAllDayItems, getRangeCounts, createAgendaBlock, deleteAgendaBlock, AGENDA_ITEM_KIND,
 } from "../../services/businessAgendaService";
@@ -207,16 +207,37 @@ export default function AgendaScreen({ navigation }) {
     );
   };
 
-  // Clock icon → edit the selected instructor's working hours (reuses the
-  // StaffScreen logic). Falls back to the owner when "All" is selected.
+  // Clock icon → edit working hours (BUG 7.1). Opens on the selected chip
+  // (owner when "All"); an explicit instructor selector in the modal (+ "All
+  // staff") lets the host retarget, instead of silently defaulting to the owner.
   const openWorkingHours = () => {
-    const target = selected === "all" ? staff.find((s) => s.id === auth.currentUser?.uid) : selStaff;
-    const w = getWorkingHours(target);
-    setWhEdit({ id: (target && target.id) || auth.currentUser?.uid, days: [...w.days], start: w.start, end: w.end });
+    const targetId = selected === "all" ? auth.currentUser?.uid : selected;
+    const w = getWorkingHours(staff.find((s) => s.id === targetId));
+    setWhEdit({ id: targetId, days: [...w.days], start: w.start, end: w.end });
   };
+  // Retarget the editor. "all" keeps the current values to apply to everyone.
+  const pickWhTarget = (id) => {
+    if (id === "all") { setWhEdit((w) => ({ ...w, id: "all" })); return; }
+    const w = getWorkingHours(staff.find((s) => s.id === id));
+    setWhEdit({ id, days: [...w.days], start: w.start, end: w.end });
+  };
+  const whTargets = [
+    { id: "all", name: t("business.staff.allStaff") },
+    ...staff.filter((s) => s.role === "owner" || s.role === "instructor").map((s) => ({ id: s.id, name: s.name || t("business.agenda.you") })),
+  ];
   const toggleWhDay = (d) => setWhEdit((w) => ({ ...w, days: w.days.includes(d) ? w.days.filter((x) => x !== d) : [...w.days, d] }));
   const saveWH = async () => {
-    await setWorkingHours(whEdit.id, { days: whEdit.days, start: whEdit.start.trim(), end: whEdit.end.trim() });
+    if (!isValidHM(whEdit.start) || !isValidHM(whEdit.end)) {
+      Alert.alert(t("business.staff.invalidTime"));
+      return;
+    }
+    const hours = { days: whEdit.days, start: whEdit.start.trim(), end: whEdit.end.trim() };
+    if (whEdit.id === "all") {
+      const targets = staff.filter((s) => s.role === "owner" || s.role === "instructor");
+      await Promise.all(targets.map((s) => setWorkingHours(s.id, hours)));
+    } else {
+      await setWorkingHours(whEdit.id, hours);
+    }
     setWhEdit(null);
     loadDay();
   };
@@ -516,6 +537,18 @@ export default function AgendaScreen({ navigation }) {
         <View style={styles.centerBackdrop}>
           <View style={[styles.editCard, { backgroundColor: colors.surface }]}>
             <Text style={[styles.sheetTitle, { color: colors.text }]}>{t("business.staff.workingHours")}</Text>
+            {/* Instructor selector (BUG 7.1) — retarget, incl. All staff. */}
+            <Text style={[styles.whHint, { color: colors.textTertiary }]}>{t("business.staff.whFor")}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hStrip} contentContainerStyle={styles.whTargetRow}>
+              {whTargets.map((tt) => {
+                const on = whEdit?.id === tt.id;
+                return (
+                  <TouchableOpacity key={tt.id} onPress={() => pickWhTarget(tt.id)} style={[styles.whTargetChip, { borderColor: on ? colors.primary : colors.border, backgroundColor: on ? `${colors.primary}18` : "transparent" }]}>
+                    <Text style={[styles.whTargetText, { color: on ? colors.primary : colors.textSecondary }]} numberOfLines={1}>{tt.name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
             <Text style={[styles.whHint, { color: colors.textTertiary }]}>{t("business.staff.workingDays")}</Text>
             <View style={styles.whDayRow}>
               {[0, 1, 2, 3, 4, 5, 6].map((d) => {
@@ -534,9 +567,10 @@ export default function AgendaScreen({ navigation }) {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.whHint, { color: colors.textTertiary }]}>{t("business.staff.endTime")}</Text>
-                <TextInput style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} value={whEdit?.end} onChangeText={(v) => setWhEdit((w) => ({ ...w, end: v }))} placeholder="20:00" placeholderTextColor={colors.textTertiary} />
+                <TextInput style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} value={whEdit?.end} onChangeText={(v) => setWhEdit((w) => ({ ...w, end: v }))} placeholder="20:00" placeholderTextColor={colors.textTertiary} keyboardType="numbers-and-punctuation" />
               </View>
             </View>
+            <Text style={[styles.whHint, { color: colors.textTertiary, marginTop: 8 }]}>{t("business.staff.timeFormatHint")}</Text>
             <View style={styles.editActions}>
               <TouchableOpacity style={[styles.editBtn, { borderColor: colors.border, borderWidth: 1 }]} onPress={() => setWhEdit(null)}><Text style={[styles.editBtnText, { color: colors.textSecondary }]}>{t("business.common.cancel")}</Text></TouchableOpacity>
               <TouchableOpacity style={[styles.editBtn, { backgroundColor: colors.primary }]} onPress={saveWH}><Text style={[styles.editBtnText, { color: "#fff" }]}>{t("business.agenda.save")}</Text></TouchableOpacity>
@@ -603,6 +637,9 @@ function createStyles(colors) {
     yearMonth: { fontSize: 13.5, fontWeight: "800", textTransform: "capitalize" },
     yearCount: { fontSize: 18, fontWeight: "800" },
     whHint: { fontSize: 12, fontWeight: "600", marginTop: 10, marginBottom: 6 },
+    whTargetRow: { gap: 8, paddingVertical: 2 },
+    whTargetChip: { borderWidth: 1.5, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 7 },
+    whTargetText: { fontSize: 12.5, fontWeight: "800", maxWidth: 140 },
     whDayRow: { flexDirection: "row", gap: 6 },
     whDayChip: { flex: 1, borderWidth: 1.5, borderRadius: 10, paddingVertical: 10, alignItems: "center" },
     whDayText: { fontSize: 12, fontWeight: "800" },

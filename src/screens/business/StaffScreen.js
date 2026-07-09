@@ -15,7 +15,7 @@ import { auth } from "../../services/firebase";
 import Icon from "../../components/Icon";
 import GradientBackground from "../../components/GradientBackground";
 import { useTheme } from "../../contexts/ThemeContext";
-import { listStaff, inviteStaff, inviteStaffByHandle, updateStaffRole, removeStaff, getWorkingHours, setWorkingHours, listRoles, listStaffInvites } from "../../services/businessStaffService";
+import { listStaff, inviteStaff, inviteStaffByHandle, updateStaffRole, removeStaff, getWorkingHours, setWorkingHours, listRoles, listStaffInvites, isValidHM } from "../../services/businessStaffService";
 import UserSearchField from "../../components/UserSearchField";
 
 const weekdayShort = (i, lang) => new Date(2024, 0, 7 + i).toLocaleDateString(lang || "en", { weekday: "narrow" });
@@ -42,6 +42,11 @@ export default function StaffScreen({ navigation }) {
   const toggleWhDay = (d) =>
     setWhEdit((w) => ({ ...w, days: w.days.includes(d) ? w.days.filter((x) => x !== d) : [...w.days, d] }));
   const saveWorkingHours = async () => {
+    // Reject invalid 24h times (BUG 7.1).
+    if (!isValidHM(whEdit.start) || !isValidHM(whEdit.end)) {
+      Alert.alert(t("business.staff.invalidTime"));
+      return;
+    }
     await setWorkingHours(whEdit.id, { days: whEdit.days, start: whEdit.start.trim(), end: whEdit.end.trim() });
     setWhEdit(null);
     load();
@@ -217,9 +222,10 @@ export default function StaffScreen({ navigation }) {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.roleHint, { color: colors.textTertiary, marginTop: 0, marginBottom: 6 }]}>{t("business.staff.endTime")}</Text>
-                <TextInput style={[styles.input, inputStyle, { marginBottom: 0 }]} value={whEdit?.end} onChangeText={(v) => setWhEdit((w) => ({ ...w, end: v }))} placeholder="20:00" placeholderTextColor={colors.textTertiary} />
+                <TextInput style={[styles.input, inputStyle, { marginBottom: 0 }]} value={whEdit?.end} onChangeText={(v) => setWhEdit((w) => ({ ...w, end: v }))} placeholder="20:00" placeholderTextColor={colors.textTertiary} keyboardType="numbers-and-punctuation" />
               </View>
             </View>
+            <Text style={[styles.roleHint, { color: colors.textTertiary, marginTop: 8 }]}>{t("business.staff.timeFormatHint")}</Text>
             <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primary }]} onPress={saveWorkingHours}><Text style={styles.saveText}>{t("business.agenda.save")}</Text></TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
