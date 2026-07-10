@@ -342,24 +342,21 @@ const createLikeAndMaybeMatch = onCall(async (request) => {
         metadata: {eventId, matchId},
       });
     }
-    const [toDoc, fromDoc] = await Promise.all([toUserRef.get(), fromUserRef.get()]);
-    const docByUid = {[toUid]: toDoc, [from]: fromDoc};
-    const pushes = [];
-    for (const ruid of recipients) {
-      const d = docByUid[ruid];
-      if (d && d.exists && d.data().pushToken) {
-        pushes.push({
-          pushToken: d.data().pushToken,
-          uid: ruid,
-          lang: baseLang(d.data().language),
-          titleKey: tk,
-          bodyKey: bk,
-          params,
-          data: {type: "new_match", eventId, matchId},
-        });
-      }
+    // Push ONLY to the passive recipient (toUid). The actor (from) just tapped
+    // like and their client surfaces the match synchronously (result.matched),
+    // so a push to them is redundant. Both still get the in-app doc above.
+    const toDoc = await toUserRef.get();
+    if (toDoc.exists && toDoc.data().pushToken) {
+      await sendBatchPushNotifications([{
+        pushToken: toDoc.data().pushToken,
+        uid: toUid,
+        lang: baseLang(toDoc.data().language),
+        titleKey: tk,
+        bodyKey: bk,
+        params,
+        data: {type: "new_match", eventId, matchId},
+      }]);
     }
-    if (pushes.length) await sendBatchPushNotifications(pushes);
   }
   return result;
 });
