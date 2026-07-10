@@ -3464,6 +3464,7 @@
       "remove": "Quitar",
       "role": {
         "owner": "Dueño",
+        "manager": "Gerente",
         "instructor": "Instructor",
         "reception": "Recepción"
       },

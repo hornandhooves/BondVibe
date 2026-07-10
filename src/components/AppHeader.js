@@ -17,6 +17,7 @@ import Icon from "./Icon";
 import { useTheme } from "../contexts/ThemeContext";
 import { useMode } from "../contexts/ModeContext";
 import useUserRole from "../hooks/useUserRole";
+import { useBusiness } from "../contexts/BusinessContext";
 import { useInboxBadges } from "../hooks/useInboxBadge";
 import { TYPE, SPACING, RADII } from "../constants/theme-tokens";
 
@@ -26,6 +27,10 @@ export default function AppHeader({ title, navigation }) {
   const insets = useSafeAreaInsets();
   const { mode, setMode } = useMode();
   const { isHost } = useUserRole();
+  // BUG 32.5: accepted staff of a business (non-host) can also enter the hosting
+  // view — a business membership is a first-class way in, riding the owner's Pro.
+  const { businesses } = useBusiness();
+  const canHostView = isHost || businesses.length > 0;
   // One inbox icon (BUG 13): unread chats + notifications, combined.
   const { total: unread } = useInboxBadges();
   // Drive the native app-icon badge from the live unread total (spec 12, Fix B).
@@ -46,7 +51,7 @@ export default function AppHeader({ title, navigation }) {
         {title}
       </Text>
 
-      {isHost && (
+      {canHostView && (
         <View style={[styles.toggle, { backgroundColor: colors.sunken, borderColor: colors.border }]}>
           {["attending", "hosting"].map((m) => {
             const active = mode === m;

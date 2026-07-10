@@ -32,6 +32,11 @@ export default function ManageScreen({ navigation }) {
   const { allowed: bizAllowed, tier: bizTier } = useEntitlement("business_erp");
   // BUG 32.2: the active business (own or a staff membership) + switcher.
   const { businesses, activeBizId, switchBusiness } = useBusiness();
+  // BUG 32.5: staff of the active business ride the OWNER's Pro license — no
+  // paywall — and see their role instead of a Pro badge.
+  const activeMembership = businesses.find((b) => b.bizId === activeBizId);
+  const activeIsStaff = !!activeMembership && !activeMembership.isOwner;
+  const canOpenBiz = bizAllowed || activeIsStaff;
 
   useFocusEffect(
     useCallback(() => {
@@ -116,7 +121,7 @@ export default function ManageScreen({ navigation }) {
             <TouchableOpacity
               activeOpacity={0.9}
               onPress={() =>
-                navigation.navigate(bizAllowed ? "BusinessHub" : paywallRouteForTier(bizTier), { from: "business_erp" })
+                navigation.navigate(canOpenBiz ? "BusinessHub" : paywallRouteForTier(bizTier), { from: "business_erp" })
               }
               style={[styles.bizCard, ELEVATION.card]}
             >
@@ -127,7 +132,15 @@ export default function ManageScreen({ navigation }) {
                 <View style={{ flex: 1 }}>
                   <View style={styles.rowRight}>
                     <Text style={styles.bizName} numberOfLines={1}>{business.name}</Text>
-                    <ProBadge tier="pro" />
+                    {activeIsStaff ? (
+                      <View style={styles.roleChip}>
+                        <Text style={styles.roleChipText}>
+                          {t(`business.staff.role.${activeMembership.role}`, { defaultValue: activeMembership.role })}
+                        </Text>
+                      </View>
+                    ) : (
+                      <ProBadge tier="pro" />
+                    )}
                   </View>
                   <Text style={styles.bizSub} numberOfLines={1}>{t("manage.businessCardSub")}</Text>
                 </View>
@@ -154,7 +167,7 @@ export default function ManageScreen({ navigation }) {
               title={t("business.manageRow.title")}
               subtitle={t("business.manageRow.subtitle")}
               onPress={() =>
-                navigation.navigate(bizAllowed ? "BusinessHub" : paywallRouteForTier(bizTier), {
+                navigation.navigate(canOpenBiz ? "BusinessHub" : paywallRouteForTier(bizTier), {
                   from: "business_erp",
                 })
               }
@@ -260,6 +273,14 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   bizName: { color: "#FFFFFF", fontSize: 16, fontWeight: "800", flexShrink: 1 },
+  // Role chip (BUG 32.5) — shown to staff instead of the owner's Pro badge.
+  roleChip: {
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderRadius: RADII.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  roleChipText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800", textTransform: "capitalize" },
   bizSub: { color: "rgba(255,255,255,0.6)", fontSize: 12.5, marginTop: 2 },
   statRow: { flexDirection: "row", gap: 10, marginTop: 16 },
   statTile: {

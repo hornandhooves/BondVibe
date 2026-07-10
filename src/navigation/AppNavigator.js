@@ -13,6 +13,7 @@ import { ActivityIndicator, View } from "react-native";
 // Contexts
 import { useAuthContext } from "../contexts/AuthContext";
 import { ModeProvider, useMode } from "../contexts/ModeContext";
+import { useBusiness } from "../contexts/BusinessContext";
 import { useTheme } from "../contexts/ThemeContext";
 import useUserRole from "../hooks/useUserRole";
 
@@ -165,7 +166,11 @@ const Tab = createBottomTabNavigator();
 function EventsTabRoot(props) {
   const { isHosting } = useMode();
   const { isHost } = useUserRole();
-  return isHosting && isHost ? <ManageScreen {...props} /> : <MyEventsScreen {...props} />;
+  // BUG 32.5: an accepted staff member (business membership) can reach Manage
+  // too, not just app-level hosts.
+  const { businesses } = useBusiness();
+  const canHostView = isHost || businesses.length > 0;
+  return isHosting && canHostView ? <ManageScreen {...props} /> : <MyEventsScreen {...props} />;
 }
 
 const TAB_META = {
