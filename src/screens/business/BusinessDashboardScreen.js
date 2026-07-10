@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Share,
   Modal,
+  TextInput,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
@@ -31,7 +32,7 @@ import { formatCentavos } from "../../utils/pricing";
 
 export default function BusinessDashboardScreen({ navigation }) {
   const { colors, isDark } = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [rangeId, setRangeId] = useState(DEFAULT_RANGE);
   const [customFrom, setCustomFrom] = useState(null);
   const [customTo, setCustomTo] = useState(null);
@@ -42,15 +43,54 @@ export default function BusinessDashboardScreen({ navigation }) {
   // Scope control lives here now (BUG 17) — Whole business / Choose event.
   const [pickerOpen, setPickerOpen] = useState(false);
   const [events, setEvents] = useState([]);
+  const [pickerSearch, setPickerSearch] = useState("");
+
+  // BUG 35: split the picker list into Upcoming / Past (filtered by the search
+  // query), each already sorted for scoping — soonest-first upcoming, most-recent
+  // past.
+  const pickerGroups = useMemo(() => {
+    const q = pickerSearch.trim().toLowerCase();
+    const matched = q
+      ? events.filter((e) => (e.title || "").toLowerCase().includes(q))
+      : events;
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const t0 = todayStart.getTime();
+    const upcoming = matched
+      .filter((e) => new Date(e.date || 0).getTime() >= t0)
+      .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+    const past = matched
+      .filter((e) => new Date(e.date || 0).getTime() < t0)
+      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+    return { upcoming, past };
+  }, [events, pickerSearch]);
 
   const openEventPicker = async () => {
     setPickerOpen(true);
+    setPickerSearch("");
     try {
       const uid = auth.currentUser?.uid;
       const snap = await getDocs(query(collection(db, "events"), where("creatorId", "==", uid)));
       setEvents(
         snap.docs
-          .map((d) => ({ id: d.id, title: d.data().title || "Event", date: d.data().date }))
+          .map((d) => {
+            const e = d.data();
+            return {
+              id: d.id,
+              title: e.title || "Event",
+              date: e.date,
+              agendaType: e.agendaType || "general",
+              status: e.status,
+              location: e.location || e.venueAddress || "",
+              city: e.city || "",
+              // Attendance hint: real attendees when present, else participantCount.
+              attendees: Array.isArray(e.attendees) ? e.attendees.length : (e.participantCount || null),
+              maxPeople: e.maxPeople || null,
+            };
+          })
+          // BUG 35: never list blocked (personal) time or cancelled events — they
+          // can't be a meaningful dashboard scope (no attendees/revenue).
+          .filter((e) => e.agendaType !== "blocked" && e.status !== "cancelled")
           .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
       );
     } catch (e) {
@@ -305,7 +345,8 @@ export default function BusinessDashboardScreen({ navigation }) {
         )}
       </ScrollView>
 
-      {/* Event picker for "Choose event" scope (BUG 17) */}
+      {/* Event picker for "Choose event" scope (BUG 17/35) — search, Upcoming/Past
+          grouping, rich identifiable rows, Whole-business reset. */}
       <Modal visible={pickerOpen} transparent animationType="slide" onRequestClose={() => setPickerOpen(false)}>
         <View style={styles.backdrop}>
           <View style={[styles.sheet, { backgroundColor: colors.background }]}>
@@ -315,28 +356,81 @@ export default function BusinessDashboardScreen({ navigation }) {
                 <Icon name="close" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
-            <ScrollView style={{ maxHeight: 420 }}>
-              {events.length === 0 ? (
-                <Text style={{ color: colors.textTertiary, textAlign: "center", paddingVertical: 24 }}>
-                  {t("business.hub.noEvents")}
-                </Text>
-              ) : (
-                events.map((ev) => (
-                  <TouchableOpacity
-                    key={ev.id}
-                    style={[styles.eventRow, { borderColor: colors.border }]}
-                    onPress={() => {
-                      setEventScope({ id: ev.id, title: ev.title });
-                      setPickerOpen(false);
-                    }}
-                  >
-                    <Text style={[styles.eventName, { color: colors.text }]} numberOfLines={1}>{ev.title}</Text>
-                    <Text style={[styles.eventDate, { color: colors.textTertiary }]}>
-                      {ev.date ? new Date(ev.date).toLocaleDateString() : ""}
-                    </Text>
-                  </TouchableOpacity>
-                ))
-              )}
+
+            {/* Search */}
+            <View style={[styles.pickerSearch, { backgroundColor: colors.surfaceGlass, borderColor: colors.border }]}>
+              <Icon name="search" size={16} color={colors.textTertiary} />
+              <TextInput
+                style={[styles.pickerSearchInput, { color: colors.text }]}
+                value={pickerSearch}
+                onChangeText={setPickerSearch}
+                placeholder={t("business.hub.searchEvents")}
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="none"
+                returnKeyType="search"
+              />
+            </View>
+
+            <ScrollView style={{ maxHeight: 460 }} keyboardShouldPersistTaps="handled">
+              {/* Whole business quick-reset */}
+              <TouchableOpacity
+                style={[styles.wholeBizRow, { borderColor: colors.border }]}
+                onPress={() => { setWholeBusiness(); setPickerOpen(false); }}
+              >
+                <View style={[styles.typeChip, { backgroundColor: colors.brandSoft }]}>
+                  <Icon name="wallet" size={13} color={colors.primary} />
+                </View>
+                <Text style={[styles.eventName, { flex: 1, color: colors.text }]}>{t("business.hub.scopeWhole")}</Text>
+                {!isEventScoped && <Icon name="check" size={18} color={colors.primary} />}
+              </TouchableOpacity>
+
+              {[
+                { key: "upcoming", label: t("business.hub.upcoming"), rows: pickerGroups.upcoming, empty: t("business.hub.noUpcoming") },
+                { key: "past", label: t("business.hub.past"), rows: pickerGroups.past, empty: t("business.hub.noPast") },
+              ].map((section) => (
+                <View key={section.key}>
+                  <Text style={[styles.pickerSectionLabel, { color: colors.textTertiary }]}>{section.label}</Text>
+                  {section.rows.length === 0 ? (
+                    <Text style={[styles.pickerEmpty, { color: colors.textTertiary }]}>{section.empty}</Text>
+                  ) : (
+                    section.rows.map((ev) => {
+                      const selected = isEventScoped && scopeEvent?.id === ev.id;
+                      const typeLabel = ev.agendaType === "group_session" ? t("business.hub.typeClass")
+                        : ev.agendaType === "private_session" ? t("business.hub.typeSession")
+                          : t("business.hub.typeEvent");
+                      const when = ev.date
+                        ? new Date(ev.date).toLocaleString(i18n.language, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+                        : "";
+                      const venue = ev.location || ev.city || "";
+                      return (
+                        <TouchableOpacity
+                          key={ev.id}
+                          style={[styles.eventRow, { borderColor: selected ? colors.primary : colors.border }]}
+                          onPress={() => { setEventScope({ id: ev.id, title: ev.title }); setPickerOpen(false); }}
+                          activeOpacity={0.85}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <View style={styles.eventRowTop}>
+                              <View style={[styles.typeChip, { backgroundColor: colors.brandSoft }]}>
+                                <Text style={[styles.typeChipText, { color: colors.primary }]}>{typeLabel}</Text>
+                              </View>
+                              <Text style={[styles.eventName, { flex: 1, color: colors.text }]} numberOfLines={1}>{ev.title}</Text>
+                              {selected && <Icon name="check" size={18} color={colors.primary} />}
+                            </View>
+                            <Text style={[styles.eventMeta, { color: colors.textSecondary }]} numberOfLines={1}>
+                              {when}
+                              {ev.attendees != null ? ` · ${t("business.hub.going", { count: ev.attendees })}` : ""}
+                            </Text>
+                            {!!venue && (
+                              <Text style={[styles.eventMeta, { color: colors.textTertiary }]} numberOfLines={1}>{venue}</Text>
+                            )}
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })
+                  )}
+                </View>
+              ))}
             </ScrollView>
           </View>
         </View>
@@ -359,9 +453,18 @@ function createStyles(colors) {
     sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 34 },
     sheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
     sheetTitle: { fontSize: 17, fontWeight: "800" },
-    eventRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 14, gap: 12 },
-    eventName: { fontSize: 15, fontWeight: "600", flex: 1 },
-    eventDate: { fontSize: 12.5 },
+    eventRow: { flexDirection: "row", alignItems: "center", borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 12, gap: 12 },
+    eventRowTop: { flexDirection: "row", alignItems: "center", gap: 8 },
+    eventName: { fontSize: 15, fontWeight: "700" },
+    eventMeta: { fontSize: 12.5, marginTop: 3 },
+    // BUG 35: picker search + grouping + type chip
+    pickerSearch: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 8 },
+    pickerSearchInput: { flex: 1, fontSize: 15, padding: 0 },
+    wholeBizRow: { flexDirection: "row", alignItems: "center", gap: 10, borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 14 },
+    typeChip: { flexDirection: "row", alignItems: "center", justifyContent: "center", minWidth: 26, height: 22, paddingHorizontal: 8, borderRadius: 8 },
+    typeChipText: { fontSize: 11, fontWeight: "800" },
+    pickerSectionLabel: { fontSize: 12, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.4, marginTop: 16, marginBottom: 4 },
+    pickerEmpty: { fontSize: 13, paddingVertical: 12 },
     scopeCard: { marginHorizontal: 20, marginTop: 10, borderWidth: 1, borderRadius: 16, padding: 16 },
     scopeName: { fontSize: 15, fontWeight: "800" },
     scopeStats: { flexDirection: "row", gap: 10, marginTop: 12 },
