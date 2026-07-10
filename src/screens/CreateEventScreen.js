@@ -42,6 +42,7 @@ import { uploadEventImages } from "../services/storageService";
 import { getHostMembershipPlans } from "../services/membershipService";
 import { createClass, updateClass, getClass } from "../services/businessClassesService";
 import { checkInstructorAvailability, AGENDA_ITEM_KIND } from "../services/businessAgendaService";
+import { getMyBizId } from "../services/businessService";
 import InstructorPicker from "../components/business/InstructorPicker";
 import { buildEventSearchKeywords } from "../utils/eventSearch";
 import { checkAccountStatus } from "../services/stripeConnectService";
@@ -583,17 +584,26 @@ export default function CreateEventScreen({ navigation, route }) {
     const occurrences = isRecurringSubmit
       ? generateRecurringDates(eventDate, recurrenceConfig)
       : [eventDate];
-    if (!skipAvailabilityCheck && instructorUid) {
+    // An unassigned event lands on the OWNER's agenda day (businessAgendaService
+    // treats instructorUid === bizId as the owner, and unassigned items fall to
+    // that day). So when no instructor is picked, check the owner's day (bizId)
+    // — otherwise event-vs-event conflicts on the owner's calendar were never
+    // detected (the check only ran when an instructor was assigned). The
+    // out-of-hours warning stays tied to an explicitly-assigned instructor to
+    // avoid spurious working-hours warnings for casual event creation.
+    const ownerUid = getMyBizId();
+    const checkUid = instructorUid || ownerUid;
+    if (!skipAvailabilityCheck && checkUid) {
       const durationMin = parseInt(durationMinutes, 10) || 180;
       const hm = (d) => { const x = new Date(d); return `${String(x.getHours()).padStart(2, "0")}:${String(x.getMinutes()).padStart(2, "0")}`; };
       // Probe up to a horizon so a long/unbounded series stays snappy.
       const probe = occurrences.slice(0, 26);
       const conflicts = [];
       for (const occ of probe) {
-        const avail = await checkInstructorAvailability({ instructorUid, instructorName, start: occ, durationMin });
+        const avail = await checkInstructorAvailability({ instructorUid: checkUid, instructorName, start: occ, durationMin });
         if (avail.conflict && avail.conflictItem) {
           conflicts.push({ date: occ, item: avail.conflictItem });
-        } else if (avail.outOfHours && avail.workingHours) {
+        } else if (instructorUid && avail.outOfHours && avail.workingHours) {
           conflicts.push({ date: occ, outOfHours: avail.workingHours });
         }
       }
