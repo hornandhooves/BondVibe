@@ -2746,6 +2746,7 @@
       "title": "Kinlo para Negocios",
       "subtitle": "Miembros, paquetes, finanzas — todo tu negocio"
     },
+    "ownerStripeIncomplete": "El dueño del negocio aún no ha completado su configuración de pagos en Stripe, así que no se puede cobrar. Pídele que la termine.",
     "common": {
       "errorTitle": "Algo salió mal",
       "tryAgain": "Inténtalo de nuevo.",

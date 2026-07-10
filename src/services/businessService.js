@@ -37,6 +37,20 @@ export const getMyBizId = () => activeBizId || auth.currentUser?.uid || null;
 export const getOwnBizId = () => auth.currentUser?.uid || null;
 
 /**
+ * The owner uid of the active business (BUG 32.6) — who should be paid for
+ * things created in the current business context. null when there's no active
+ * business (a casual host), so callers fall back to the creator. Reads the
+ * business doc's ownerUid (source of truth, survives a transfer).
+ * @returns {Promise<string|null>}
+ */
+export async function getActiveOwnerUid() {
+  const bizId = activeBizId;
+  if (!bizId) return null;
+  const biz = await getBusiness(bizId);
+  return biz?.ownerUid || bizId;
+}
+
+/**
  * The user's staff memberships (BUG 32.2) from `users/{uid}.staffOf`, an array
  * of `{ bizId, role }`. Written server-side when an invite is accepted (32.1).
  * @returns {Promise<Array<{bizId:string, role:string}>>}

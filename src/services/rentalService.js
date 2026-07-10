@@ -28,6 +28,7 @@ import {
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
+import { getActiveOwnerUid } from "./businessService";
 import { logger } from "../utils/logger";
 
 export const VEHICLE_TYPES = ["scooter", "bike", "car"];
@@ -305,8 +306,12 @@ export const ensureProvider = async ({ name, city } = {}) => {
 export const createVehicle = async (data) => {
   const uid = auth.currentUser?.uid;
   if (!uid) throw new Error("Sign in required.");
+  // BUG 32.6: staff-listed vehicles pay the business OWNER; null → payout falls
+  // back to ownerId (== the lister) for a solo host.
+  const businessOwnerUid = await getActiveOwnerUid();
   const ref = await addDoc(collection(db, "vehicles"), {
     ownerId: uid,
+    businessOwnerUid: businessOwnerUid || null,
     providerId: data.providerId || null,
     type: VEHICLE_TYPES.includes(data.type) ? data.type : "scooter",
     title: data.title || "Vehicle",

@@ -44,7 +44,7 @@ const {sendBatchPushNotifications, unreadTotalForUser} =
 const bizAutomations = require("./business/automations");
 
 // Import event helpers (attendee/creator normalization)
-const {getAttendeeIds, getEventCreatorId} = require("./utils/eventHelpers");
+const {getAttendeeIds, getEventCreatorId, getHostIdForPayout} = require("./utils/eventHelpers");
 
 // Community Matching functions (defined in ./matching, re-exported below).
 const matching = require("./matching/matching");
@@ -467,7 +467,10 @@ exports.createEventPaymentIntent = onRequest(
       }
 
       const eventData = eventDoc.data();
-      const hostId = getEventCreatorId(eventData);
+      // BUG 32.6: pay the business OWNER for staff-created events (businessOwnerUid),
+      // else the creator. Also scopes the two-tier member lookup to the owner's biz.
+      const hostId = getHostIdForPayout(eventData);
+      const paidToBusinessOwner = !!eventData.businessOwnerUid;
 
       // Two-tier pricing (kinlo_business/05 §C): a Local member is charged the
       // event's local price. Resolve the caller's tier from their linked CRM
@@ -507,6 +510,15 @@ exports.createEventPaymentIntent = onRequest(
 
       const hostData = hostDoc.data();
       const stripeAccountId = hostData.stripeConnect?.accountId;
+
+      // BUG 32.6: a staff member can't fix the owner's Stripe — give a clear,
+      // owner-specific message instead of a generic host error.
+      if ((eventData.price || 0) > 0 && !stripeAccountId && paidToBusinessOwner) {
+        return res.status(400).json({
+          error: "owner_stripe_incomplete",
+          details: "business_owner_stripe_incomplete",
+        });
+      }
 
       // NEW: Calculate fees using new pricing model (admin-configurable rates)
       const {calculateCheckoutAmount, getPricingConfig} = require("./stripe/pricing");
@@ -724,7 +736,9 @@ exports.createMembershipPaymentIntent = onRequest(
         return res.status(400).json({error: "This plan is no longer available"});
       }
 
-      const hostId = plan.hostId;
+      // BUG 32.6: pay the business OWNER for a staff-created plan, else the plan host.
+      const hostId = plan.businessOwnerUid || plan.hostId;
+      const paidToBusinessOwner = !!plan.businessOwnerUid;
 
       // Host must have a Stripe Connect account able to accept payments
       const hostDoc = await db.collection("users").doc(hostId).get();
@@ -733,6 +747,12 @@ exports.createMembershipPaymentIntent = onRequest(
       }
       const hostData = hostDoc.data();
       const stripeAccountId = hostData.stripeConnect?.accountId;
+      if (!stripeAccountId && paidToBusinessOwner) {
+        return res.status(400).json({
+          error: "owner_stripe_incomplete",
+          details: "business_owner_stripe_incomplete",
+        });
+      }
       // Verify the host can actually charge by asking Stripe — the Firestore
       // chargesEnabled/canCreatePaidEvents flags are client-forgeable.
       if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
@@ -2698,13 +2718,20 @@ exports.reserveVehicle = onCall({secrets: [stripeSecretKey]}, async (request) =>
   const deposit = pre.depositCentavos || (pre.specs && pre.specs.depositCentavos) || 0;
   const isFree = price === 0;
 
-  // Resolve the host's Stripe Connect account (reused from their host payouts).
+  // Resolve the payout account (reused from their host payouts). BUG 32.6: a
+  // vehicle listed by staff pays the business OWNER (businessOwnerUid), else the
+  // listing owner.
   let hostAccount = null;
+  const payoutUid = pre.businessOwnerUid || pre.ownerId;
+  const paidToBusinessOwner = !!pre.businessOwnerUid;
   if (!isFree) {
-    const ownerSnap = pre.ownerId ?
-      await db.collection("users").doc(pre.ownerId).get() : null;
+    const ownerSnap = payoutUid ?
+      await db.collection("users").doc(payoutUid).get() : null;
     const sc = ownerSnap && ownerSnap.exists ? ownerSnap.data().stripeConnect : null;
     hostAccount = sc && sc.accountId ? sc.accountId : null;
+    if (!hostAccount && paidToBusinessOwner) {
+      throw new HttpsError("failed-precondition", "business_owner_stripe_incomplete");
+    }
     // Ask Stripe whether the account can actually charge — the Firestore
     // chargesEnabled/payoutsEnabled flags are client-forgeable.
     if (!stripe) stripe = require("stripe")(stripeSecretKey.value());

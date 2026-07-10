@@ -49,9 +49,24 @@ function getEventCreatorId(eventData) {
   return eventData.creatorId || eventData.createdBy || eventData.hostId;
 }
 
+/**
+ * Who receives the Stripe payout (BUG 32.6). Staff create events/classes inside
+ * the owner's business, so the money must go to the business OWNER — not the
+ * staff creator (who has no Stripe account). Prefer the explicit
+ * `businessOwnerUid` stamped at create; otherwise fall back to the creator.
+ * Keeps `createdBy`/`creatorId` honest (authorship, agenda, CRM).
+ * @param {object} data event/class/membership/rental doc
+ * @return {string|undefined}
+ */
+function getHostIdForPayout(data) {
+  if (!data) return undefined;
+  return data.businessOwnerUid || getEventCreatorId(data);
+}
+
 module.exports = {
   getAttendeeId,
   getAttendeeIds,
   isUserAttending,
   getEventCreatorId,
+  getHostIdForPayout,
 };

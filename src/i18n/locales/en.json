@@ -2746,6 +2746,7 @@
       "title": "Kinlo for Business",
       "subtitle": "Members, packages, finance — run it all"
     },
+    "ownerStripeIncomplete": "The business owner hasn't finished their Stripe payout setup yet, so this can't be charged. Please ask them to complete it.",
     "common": {
       "errorTitle": "Something went wrong",
       "tryAgain": "Please try again.",

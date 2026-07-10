@@ -215,9 +215,12 @@ export default function CheckoutScreen({ route, navigation }) {
       );
     } catch (error) {
       console.error("❌ Payment error:", error);
+      // BUG 32.6: the business owner hasn't finished Stripe setup — a clear,
+      // owner-specific message (the buyer/staff can't fix it themselves).
+      const ownerIncomplete = /owner_stripe_incomplete|business_owner_stripe_incomplete/.test(error?.message || "");
       Alert.alert(
         t("paymentCheckout.paymentErrorTitle"),
-        t("paymentCheckout.paymentErrorRetryMessage"),
+        ownerIncomplete ? t("business.ownerStripeIncomplete") : t("paymentCheckout.paymentErrorRetryMessage"),
       );
     } finally {
       setProcessing(false);

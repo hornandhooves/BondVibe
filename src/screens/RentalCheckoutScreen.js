@@ -58,6 +58,7 @@ export default function RentalCheckoutScreen({ route, navigation }) {
         const messages = {
           vehicle_unavailable: t("rentals.checkout.vehicleUnavailable"),
           host_payouts_not_ready: t("rentals.checkout.hostPayoutsNotReady"),
+          business_owner_stripe_incomplete: t("business.ownerStripeIncomplete"),
         };
         Alert.alert(t("rentals.checkout.couldntReserveTitle"), messages[res.error] || res.error || t("rentals.common.pleaseTryAgain"));
         setProcessing(false);

@@ -43,6 +43,7 @@ import { getHostMembershipPlans } from "../services/membershipService";
 import { createClass, updateClass, getClass } from "../services/businessClassesService";
 import { checkInstructorAvailability, AGENDA_ITEM_KIND } from "../services/businessAgendaService";
 import { getMyBizId } from "../services/businessService";
+import { useBusiness } from "../contexts/BusinessContext";
 import InstructorPicker from "../components/business/InstructorPicker";
 import { buildEventSearchKeywords } from "../utils/eventSearch";
 import { checkAccountStatus } from "../services/stripeConnectService";
@@ -63,6 +64,10 @@ const EVENT_DRAFT_KEY = "eventDraft";
 export default function CreateEventScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
   const { t, i18n } = useTranslation();
+  // BUG 32.6: within a business context, the payout owner is the active
+  // business's owner (staff-created events pay the owner, not the staff creator).
+  const { businesses, activeBizId } = useBusiness();
+  const businessOwnerUid = businesses.find((b) => b.bizId === activeBizId)?.ownerUid || null;
 
   // A "class" reuses this exact screen (kinlo_business/06 FIX 2): mode:'class' +
   // an instructor + weekly-by-default recurrence. Everything else (two-tier
@@ -754,6 +759,10 @@ export default function CreateEventScreen({ navigation, route }) {
         kind: mode,
         instructorUid: instructorUid || null,
         instructorName: instructorName || null,
+        // BUG 32.6: who gets paid — the business owner (staff ride the owner's
+        // Stripe). Equals the creator for an owner's own event. createdBy stays
+        // the real creator.
+        businessOwnerUid: businessOwnerUid || null,
         hostName:
           userData?.fullName ||
           userData?.name ||
@@ -809,6 +818,8 @@ export default function CreateEventScreen({ navigation, route }) {
           // the event payload).
           listedPublicly: effectiveListedPublicly,
           agendaType,
+          // BUG 32.6: staff-created classes pay the business owner.
+          businessOwnerUid: businessOwnerUid || null,
         };
         // Edit updates the existing class (FIX 7); otherwise create a new one.
         let created = null;

@@ -50,3 +50,15 @@ export const getEventCreatorId = (eventData) => {
   if (!eventData) return undefined;
   return eventData.creatorId || eventData.createdBy || eventData.hostId;
 };
+
+/**
+ * Who receives the Stripe payout (BUG 32.6). Prefer the explicit
+ * `businessOwnerUid` (staff create inside the owner's business → owner is paid),
+ * else the creator. Keeps createdBy/creatorId honest.
+ * @param {object} data
+ * @returns {string|undefined}
+ */
+export const getHostIdForPayout = (data) => {
+  if (!data) return undefined;
+  return data.businessOwnerUid || getEventCreatorId(data);
+};

@@ -52,7 +52,7 @@ export function BusinessProvider({ children }) {
       // Own business (if created) — always owner.
       const own = await getBusiness(getOwnBizId());
       if (own) {
-        list.push({ bizId: own.id, role: "owner", name: own.name || "My business", isOwner: true });
+        list.push({ bizId: own.id, role: "owner", name: own.name || "My business", isOwner: true, ownerUid: own.ownerUid || own.id });
         seen.add(own.id);
       }
 
@@ -68,6 +68,7 @@ export function BusinessProvider({ children }) {
           role: m.role || "instructor",
           name: biz.name || "Business",
           isOwner: (m.role || "") === "owner",
+          ownerUid: biz.ownerUid || biz.id,
         });
       }
 

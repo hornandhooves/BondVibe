@@ -58,7 +58,13 @@ export default function MembershipCheckoutScreen({ route, navigation }) {
     try {
       const intent = await createMembershipPaymentIntent(plan.id);
       if (!intent.success) {
-        Alert.alert(t("membershipCheckout.couldNotStartTitle"), intent.error || t("membershipCheckout.tryAgain"));
+        // BUG 32.6: clear owner-setup message when the business owner's Stripe
+        // isn't ready (the buyer can't fix it).
+        const ownerIncomplete = /owner_stripe_incomplete|business_owner_stripe_incomplete/.test(intent.error || "");
+        Alert.alert(
+          t("membershipCheckout.couldNotStartTitle"),
+          ownerIncomplete ? t("business.ownerStripeIncomplete") : (intent.error || t("membershipCheckout.tryAgain")),
+        );
         setProcessing(false);
         return;
       }
