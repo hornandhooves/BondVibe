@@ -1972,6 +1972,42 @@
         "body": "shared a new post"
       }
     },
+    "host": {
+      "request": {
+        "title": "New host request 📝",
+        "body": "{{name}} wants to become a host. Review their application!",
+        "pushBody": "{{name}} wants to become a host"
+      },
+      "approved": {
+        "title": "Congratulations!",
+        "body": "Your host request has been approved! Admin says: \"{{message}}\""
+      },
+      "rejected": {
+        "title": "Host Request Update",
+        "body": "Your host request was reviewed. Admin says: \"{{message}}\""
+      }
+    },
+    "staff": {
+      "invite": {
+        "title": "Staff invitation 👥",
+        "body": "{{business}} invited you to join as {{role}}."
+      }
+    },
+    "ownerTransfer": {
+      "request": {
+        "title": "Ownership transfer 🔑",
+        "body": "{{business}} requested an ownership transfer."
+      },
+      "declined": {
+        "title": "Transfer declined",
+        "body": "Your ownership transfer was not approved."
+      },
+      "approved": {
+        "title": "Ownership transferred 🔑",
+        "newBody": "{{business}} is now yours.",
+        "oldBody": "Ownership of {{business}} was transferred."
+      }
+    },
     "event": {
       "waitlistPromoted": {
         "title": "You're in! 🎉",

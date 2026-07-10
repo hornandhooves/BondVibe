@@ -1972,6 +1972,42 @@
         "body": "compartió una nueva publicación"
       }
     },
+    "host": {
+      "request": {
+        "title": "Nueva solicitud de anfitrión 📝",
+        "body": "{{name}} quiere ser anfitrión. ¡Revisa su solicitud!",
+        "pushBody": "{{name}} quiere ser anfitrión"
+      },
+      "approved": {
+        "title": "¡Felicidades!",
+        "body": "¡Tu solicitud de anfitrión fue aprobada! El administrador dice: \"{{message}}\""
+      },
+      "rejected": {
+        "title": "Actualización de solicitud de anfitrión",
+        "body": "Tu solicitud de anfitrión fue revisada. El administrador dice: \"{{message}}\""
+      }
+    },
+    "staff": {
+      "invite": {
+        "title": "Invitación de personal 👥",
+        "body": "{{business}} te invitó a unirte como {{role}}."
+      }
+    },
+    "ownerTransfer": {
+      "request": {
+        "title": "Transferencia de propiedad 🔑",
+        "body": "{{business}} solicitó una transferencia de propiedad."
+      },
+      "declined": {
+        "title": "Transferencia rechazada",
+        "body": "Tu transferencia de propiedad no fue aprobada."
+      },
+      "approved": {
+        "title": "Propiedad transferida 🔑",
+        "newBody": "{{business}} ahora es tuyo.",
+        "oldBody": "La propiedad de {{business}} fue transferida."
+      }
+    },
     "event": {
       "waitlistPromoted": {
         "title": "¡Entraste! 🎉",

@@ -153,24 +153,41 @@ exports.createNotification = onCall(async (request) => {
 
   const str = (v, max) =>
     v == null ? "" : String(v).slice(0, max);
-  const metadata = {};
-  if (d.metadata && typeof d.metadata === "object" &&
-      !Array.isArray(d.metadata)) {
-    // Shallow-copy scalar entries only; cap size to keep docs small.
-    const keys = Object.keys(d.metadata).slice(0, 20);
-    for (const k of keys) {
-      const val = d.metadata[k];
-      if (val == null || typeof val === "object") continue;
-      metadata[String(k).slice(0, 64)] = str(val, 500);
+  const sanitizeScalars = (obj) => {
+    const out = {};
+    if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+      for (const k of Object.keys(obj).slice(0, 20)) {
+        const val = obj[k];
+        if (val == null || typeof val === "object") continue;
+        out[String(k).slice(0, 64)] = str(val, 500);
+      }
     }
-  }
+    return out;
+  };
+  const metadata = sanitizeScalars(d.metadata);
+
+  // BUG 34: a caller may pass i18n key + params instead of pre-rendered text, so
+  // the recipient's client renders it in THEIR language. Store the keys + params;
+  // the English title/message is generated from the catalog as the fallback.
+  const titleKey = d.titleKey ? str(d.titleKey, 200) : null;
+  const bodyKey = d.bodyKey ? str(d.bodyKey, 200) : null;
+  const params = sanitizeScalars(d.params);
+  const title = titleKey ?
+    tPush(titleKey, "en", params) :
+    (str(d.title, 200) || "Notification");
+  const message = bodyKey ?
+    tPush(bodyKey, "en", params) :
+    str(d.message != null ? d.message : d.body, 1000);
 
   await db.collection("notifications").add({
     userId: toUserId,
     fromUserId: uid,
     type,
-    title: str(d.title, 200) || "Notification",
-    message: str(d.message != null ? d.message : d.body, 1000),
+    title,
+    message,
+    ...(titleKey ? {titleKey} : {}),
+    ...(bodyKey ? {bodyKey} : {}),
+    ...(titleKey || bodyKey ? {params} : {}),
     icon: str(d.icon, 40) || "bell",
     read: false,
     metadata,
@@ -2548,6 +2565,9 @@ exports.onNewHostRequest = onDocumentCreated(
       // Prepare notifications for all admins
       const notifications = [];
 
+      // BUG 34: recipient = each ADMIN. key+params; English fallback from the
+      // catalog; the push carries each admin's own language (from adminData).
+      const hrParams = {name: requesterName};
       for (const adminDoc of adminsSnapshot.docs) {
         const adminData = adminDoc.data();
         const pushToken = adminData.pushToken;
@@ -2556,8 +2576,11 @@ exports.onNewHostRequest = onDocumentCreated(
         await db.collection("notifications").add({
           userId: adminDoc.id,
           type: "host_request",
-          title: "New Host Request 📝",
-          message: `${requesterName} wants to become a host. Review their application!`,
+          title: tPush("notifications.host.request.title", "en", hrParams),
+          message: tPush("notifications.host.request.body", "en", hrParams),
+          titleKey: "notifications.host.request.title",
+          bodyKey: "notifications.host.request.body",
+          params: hrParams,
           icon: "👑",
           read: false,
           metadata: {
@@ -2573,8 +2596,11 @@ exports.onNewHostRequest = onDocumentCreated(
         if (pushToken) {
           notifications.push({
             pushToken,
-            title: "New Host Request 👑",
-            body: `${requesterName} wants to become a host`,
+            uid: adminDoc.id,
+            lang: baseLang(adminData.language),
+            titleKey: "notifications.host.request.title",
+            bodyKey: "notifications.host.request.pushBody",
+            params: hrParams,
             data: {
               type: "host_request",
               requestId: requestId,
@@ -3119,18 +3145,25 @@ exports.inviteBusinessStaff = onCall(async (request) => {
   } catch (e) {
     ownerName = "";
   }
-  const notifyInvite = (targetUid, roleVal) =>
-    db.collection("notifications").add({
+  // BUG 34: recipient = the INVITEE (in-app only). key+params; English fallback
+  // from the catalog.
+  const notifyInvite = (targetUid, roleVal) => {
+    const params = {business: bizName || "A business", role: roleVal};
+    return db.collection("notifications").add({
       userId: targetUid,
       type: "staff_invite",
-      title: "Staff invitation 👥",
-      message: `${bizName || "A business"} invited you to join as ${roleVal}.`,
+      title: tPush("notifications.staff.invite.title", "en", params),
+      message: tPush("notifications.staff.invite.body", "en", params),
+      titleKey: "notifications.staff.invite.title",
+      bodyKey: "notifications.staff.invite.body",
+      params,
       icon: "👥",
       read: false,
       resolved: false,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       metadata: {bizId, role: roleVal, businessName: bizName || "", fromUid: uid, fromName: ownerName || ""},
     });
+  };
 
   // Add by @handle (spec 10): resolve the handle → an existing app user and
   // send them an invite (status:"invited" + notification).
@@ -3247,11 +3280,16 @@ exports.claimStaffInvites = onCall(async (request) => {
       invitedBy: inv.invitedBy || inv.bizId,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     }, {merge: true});
+    // BUG 34: recipient = the INVITEE. key+params; English fallback from catalog.
+    const inviteParams = {business: bizName || "A business", role: inv.role};
     await db.collection("notifications").add({
       userId: uid,
       type: "staff_invite",
-      title: "Staff invitation 👥",
-      message: `${bizName || "A business"} invited you to join as ${inv.role}.`,
+      title: tPush("notifications.staff.invite.title", "en", inviteParams),
+      message: tPush("notifications.staff.invite.body", "en", inviteParams),
+      titleKey: "notifications.staff.invite.title",
+      bodyKey: "notifications.staff.invite.body",
+      params: inviteParams,
       icon: "👥",
       read: false,
       resolved: false,
@@ -3382,13 +3420,17 @@ exports.requestOwnerTransfer = onCall(async (request) => {
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  // Notify Kinlo admins.
+  // Notify Kinlo admins (recipient = each admin; in-app only). BUG 34: key+params.
+  const otrParams = {business: bizName || "A business"};
   const adminsSnap = await db.collection("users").where("role", "==", "admin").get();
   await Promise.all(adminsSnap.docs.map((d) => db.collection("notifications").add({
     userId: d.id,
     type: "owner_transfer_request",
-    title: "Ownership transfer 🔑",
-    message: `${bizName || "A business"} requested an ownership transfer.`,
+    title: tPush("notifications.ownerTransfer.request.title", "en", otrParams),
+    message: tPush("notifications.ownerTransfer.request.body", "en", otrParams),
+    titleKey: "notifications.ownerTransfer.request.title",
+    bodyKey: "notifications.ownerTransfer.request.body",
+    params: otrParams,
     icon: "🔑",
     read: false,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -3429,11 +3471,15 @@ exports.approveOwnerTransfer = onCall(async (request) => {
       decidedBy: uid,
       decidedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+    // Recipient = the requesting OWNER (in-app only). BUG 34: key+params.
     await db.collection("notifications").add({
       userId: fromUid,
       type: "owner_transfer_result",
-      title: "Transfer declined",
-      message: "Your ownership transfer was not approved.",
+      title: tPush("notifications.ownerTransfer.declined.title", "en", {}),
+      message: tPush("notifications.ownerTransfer.declined.body", "en", {}),
+      titleKey: "notifications.ownerTransfer.declined.title",
+      bodyKey: "notifications.ownerTransfer.declined.body",
+      params: {},
       icon: "🔑",
       read: false,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -3465,18 +3511,29 @@ exports.approveOwnerTransfer = onCall(async (request) => {
     decidedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  await Promise.all([toUid, fromUid].map((target) => db.collection("notifications").add({
-    userId: target,
-    type: "owner_transfer_result",
-    title: "Ownership transferred 🔑",
-    message: target === toUid ?
-      `${tr.businessName || "A business"} is now yours.` :
-      `Ownership of ${tr.businessName || "your business"} was transferred.`,
-    icon: "🔑",
-    read: false,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    metadata: {transferId, bizId, approved: true},
-  })));
+  // Recipients = the NEW owner (toUid) and the demoted OLD owner (fromUid) — each
+  // gets its own body key. BUG 34: key+params; English fallback from the catalog.
+  await Promise.all([toUid, fromUid].map((target) => {
+    const isNew = target === toUid;
+    const params = {business: tr.businessName || "your business"};
+    const titleKey = "notifications.ownerTransfer.approved.title";
+    const bodyKey = isNew ?
+      "notifications.ownerTransfer.approved.newBody" :
+      "notifications.ownerTransfer.approved.oldBody";
+    return db.collection("notifications").add({
+      userId: target,
+      type: "owner_transfer_result",
+      title: tPush(titleKey, "en", params),
+      message: tPush(bodyKey, "en", params),
+      titleKey,
+      bodyKey,
+      params,
+      icon: "🔑",
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      metadata: {transferId, bizId, approved: true},
+    });
+  }));
 
   return {ok: true, status: "approved"};
 });

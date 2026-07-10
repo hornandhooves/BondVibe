@@ -435,10 +435,13 @@ export default function AdminDashboardScreen({ navigation }) {
         hostApproved: true,
       });
 
+      // BUG 34: send key+params so the REQUESTER sees it in their language
+      // (not the admin's). The admin's custom {{message}} is passed as a param.
       await createNotification(currentRequest.userId, {
         type: "host_approved",
-        title: t("adminDashboard.congratulations"),
-        message: t("adminDashboard.hostApprovedNotification", { message }),
+        titleKey: "notifications.host.approved.title",
+        bodyKey: "notifications.host.approved.body",
+        params: { message },
         icon: "tent",
       });
 
@@ -474,8 +477,9 @@ export default function AdminDashboardScreen({ navigation }) {
 
       await createNotification(currentRequest.userId, {
         type: "host_rejected",
-        title: t("adminDashboard.hostRequestUpdate"),
-        message: t("adminDashboard.hostRejectedNotification", { message }),
+        titleKey: "notifications.host.rejected.title",
+        bodyKey: "notifications.host.rejected.body",
+        params: { message },
         icon: "clipboard",
       });
 

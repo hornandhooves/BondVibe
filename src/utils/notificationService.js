@@ -28,6 +28,11 @@ export const createNotification = async (userId, notification) => {
       type: notification.type,
       title: notification.title,
       message: notification.message,
+      // BUG 34: forward i18n key + params so the recipient sees it in THEIR
+      // language (not the author's).
+      titleKey: notification.titleKey,
+      bodyKey: notification.bodyKey,
+      params: notification.params || {},
       icon: notification.icon || "bell",
       metadata: notification.metadata || {},
     });
