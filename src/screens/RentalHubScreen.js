@@ -263,7 +263,7 @@ export default function RentalHubScreen({ route, navigation }) {
             </View>
             <ScrollView contentContainerStyle={{ paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
               <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t("rentals.hub.city")}</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginBottom: 16 }} contentContainerStyle={{ alignItems: "center" }}>
                 {[{ k: null, l: t("rentals.hub.allCities") }, ...cities.map((c) => ({ k: c, l: c }))].map((c) => {
                   const active = c.k === city;
                   return (

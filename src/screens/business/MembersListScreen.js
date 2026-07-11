@@ -96,6 +96,7 @@ export default function MembersListScreen({ navigation }) {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={{ flexGrow: 0 }}
         contentContainerStyle={styles.chipsRow}
       >
         {chips.map((c) => {
@@ -175,7 +176,7 @@ function createStyles(colors) {
     searchWrap: { paddingHorizontal: 20, paddingBottom: 10 },
     searchBox: { flexDirection: "row", alignItems: "center", gap: 8, height: 40, borderRadius: 20, paddingHorizontal: 14 },
     searchInput: { flex: 1, fontSize: 14 },
-    chipsRow: { paddingHorizontal: 20, gap: 8, paddingBottom: 10 },
+    chipsRow: { paddingHorizontal: 20, gap: 8, paddingBottom: 10, alignItems: "center" },
     chip: { paddingHorizontal: 13, paddingVertical: 7, borderRadius: 16 },
     chipText: { fontSize: 12.5, fontWeight: "700" },
     loading: { flex: 1, justifyContent: "center", alignItems: "center" },

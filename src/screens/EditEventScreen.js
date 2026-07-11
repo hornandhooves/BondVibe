@@ -820,6 +820,7 @@ export default function EditEventScreen({ route, navigation }) {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
+            style={{ flexGrow: 0 }}
             contentContainerStyle={styles.categoryScroll}
           >
             {CATEGORIES.map((cat) => (
@@ -883,6 +884,7 @@ export default function EditEventScreen({ route, navigation }) {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
+            style={{ flexGrow: 0 }}
             contentContainerStyle={styles.categoryScroll}
           >
             {EVENT_LANGUAGES.map((lang) => (
@@ -1327,6 +1329,7 @@ function createStyles(colors) {
     },
     categoryScroll: {
       gap: 8,
+      alignItems: "center",
     },
     categoryChip: {
       borderRadius: 10,

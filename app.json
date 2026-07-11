@@ -2,6 +2,7 @@
   "expo": {
     "name": "Kinlo",
     "slug": "bondvibe",
+    "owner": "hornandhooves",
     "scheme": "kinlo",
     "version": "1.0.0",
     "orientation": "portrait",

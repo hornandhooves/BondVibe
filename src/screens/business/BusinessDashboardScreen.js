@@ -241,7 +241,7 @@ export default function BusinessDashboardScreen({ navigation }) {
         )}
 
         {/* Range selector */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rangeRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={styles.rangeRow}>
           {RANGE_IDS.map((id) => {
             const active = rangeId === id;
             return (
@@ -472,7 +472,7 @@ function createStyles(colors) {
     scopeStatNum: { fontSize: 22, fontWeight: "800" },
     scopeStatLabel: { fontSize: 11, fontWeight: "600", marginTop: 2 },
     scopeNote: { fontSize: 11, marginTop: 12, lineHeight: 15 },
-    rangeRow: { paddingHorizontal: 20, gap: 8, paddingVertical: 8 },
+    rangeRow: { paddingHorizontal: 20, gap: 8, paddingVertical: 8, alignItems: "center" },
     rangeChip: { paddingHorizontal: 13, paddingVertical: 7, borderRadius: 16 },
     rangeText: { fontSize: 12.5, fontWeight: "700" },
     customRow: { flexDirection: "row", gap: 12, paddingHorizontal: 20, paddingBottom: 8 },

@@ -77,6 +77,7 @@ export default function ManageScreen({ navigation }) {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
+              style={{ flexGrow: 0 }}
               contentContainerStyle={styles.switcherRow}
             >
               {businesses.map((b) => {
@@ -224,7 +225,7 @@ const styles = StyleSheet.create({
   content: { paddingBottom: SPACING.xxxl },
   rowRight: { flexDirection: "row", alignItems: "center", gap: 6 },
   // Business switcher (BUG 32.2)
-  switcherRow: { paddingHorizontal: SPACING.screen, gap: SPACING.sm, paddingVertical: 2 },
+  switcherRow: { paddingHorizontal: SPACING.screen, gap: SPACING.sm, paddingVertical: 2, alignItems: "center" },
   switcherChip: {
     flexDirection: "row",
     alignItems: "center",

@@ -136,7 +136,7 @@ export default function CsvImportScreen({ navigation }) {
                   {t(`business.csv.field.${f.key}`)}
                   {f.required && <Text style={{ color: colors.error }}> *</Text>}
                 </Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.colChips}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={styles.colChips}>
                   {parsed.headers.map((h, idx) => {
                     const active = map[f.key] === idx;
                     return (
@@ -198,7 +198,7 @@ function createStyles(colors) {
     detected: { fontSize: 13, fontWeight: "600", marginTop: 18, marginBottom: 6 },
     mapField: { marginTop: 14 },
     mapLabel: { fontSize: 14, fontWeight: "700", marginBottom: 8 },
-    colChips: { gap: 8, paddingRight: 8 },
+    colChips: { gap: 8, paddingRight: 8, alignItems: "center" },
     colChip: { borderWidth: 1.5, borderRadius: 16, paddingHorizontal: 13, paddingVertical: 8, maxWidth: 160 },
     colChipText: { fontSize: 13, fontWeight: "600" },
     consentNote: { fontSize: 12, lineHeight: 17, marginTop: 18 },

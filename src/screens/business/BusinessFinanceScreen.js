@@ -102,7 +102,7 @@ export default function BusinessFinanceScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rangeRow}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={styles.rangeRow}>
         {RANGE_IDS.filter((r) => r !== "custom").map((id) => {
           const active = rangeId === id;
           return (
@@ -217,7 +217,7 @@ function createStyles(colors) {
   return StyleSheet.create({
     header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 60, paddingBottom: 10 },
     headerTitle: { fontSize: 20, fontWeight: "800" },
-    rangeRow: { paddingHorizontal: 20, gap: 8, paddingBottom: 10 },
+    rangeRow: { paddingHorizontal: 20, gap: 8, paddingBottom: 10, alignItems: "center" },
     rangeChip: { paddingHorizontal: 13, paddingVertical: 7, borderRadius: 16 },
     rangeText: { fontSize: 12.5, fontWeight: "700" },
     loading: { flex: 1, justifyContent: "center", alignItems: "center" },
