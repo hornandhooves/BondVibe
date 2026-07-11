@@ -30,7 +30,7 @@ import useClaude from "../../hooks/useClaude";
 import TrendLines, { TREND_COLORS } from "../../components/TrendLines";
 import { computeDashboard, computeOccupancy, dashboardToCsv } from "../../services/businessAnalyticsService";
 import { RANGE_IDS, DEFAULT_RANGE, rangeBounds, rangeLabelKey } from "../../constants/businessRanges";
-import { formatCentavos } from "../../utils/pricing";
+import { formatCentavosCompact } from "../../utils/pricing";
 import { FONTS } from "../../constants/theme-tokens";
 
 const WEEKDAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
@@ -184,6 +184,9 @@ export default function BusinessDashboardScreen({ navigation }) {
   };
 
   const styles = createStyles(colors);
+  // Flat KPI/insight cards use the exact spec border (#ECE8F2) in light; dark
+  // keeps the theme token. No shadow on these cards — only CTAs and P&L carry one.
+  const cardBorder = isDark ? colors.border : "#ECE8F2";
 
   // Occupancy + check-in resolve by scope. Event-scoped derives from eventStats
   // (real, already loaded); whole-business uses the reserved-occupancy query and
@@ -216,7 +219,7 @@ export default function BusinessDashboardScreen({ navigation }) {
 
   const fmtKpi = (k) => {
     if (k.value == null) return "—";
-    if (k.kind === "money") return formatCentavos(k.value);
+    if (k.kind === "money") return formatCentavosCompact(k.value);
     if (k.kind === "pct") return `${k.value}%`;
     return k.value;
   };
@@ -329,7 +332,7 @@ export default function BusinessDashboardScreen({ navigation }) {
                 return (
                   <Card
                     key={k.key}
-                    style={[styles.kpiCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    style={[styles.kpiCard, { backgroundColor: colors.surface, borderColor: cardBorder }]}
                     {...(onPressKpi ? { activeOpacity: 0.85, onPress: onPressKpi } : {})}
                   >
                     {k.value == null && <View style={styles.needsDot} />}
@@ -356,7 +359,7 @@ export default function BusinessDashboardScreen({ navigation }) {
 
             {/* Multi-line trend: attendance · revenue · new members */}
             <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>{t("business.dashboard.trendTitle")}</Text>
-            <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: cardBorder }]}>
               {metrics && metrics.series && metrics.series.length >= 2 && metrics.attendanceCount + metrics.revenueCents + metrics.newMembers > 0 ? (
                 <>
                   <TrendLines series={metrics.series} height={132} />
@@ -392,7 +395,7 @@ export default function BusinessDashboardScreen({ navigation }) {
               return (
                 <>
                   <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>{t("business.dashboard.bestDays")}</Text>
-                  <View style={[styles.insightCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <View style={[styles.insightCard, { backgroundColor: colors.surface, borderColor: cardBorder }]}>
                     <View style={styles.dayRow}>
                       {order.map((di) => {
                         const v = hist[di] || 0;
@@ -432,7 +435,7 @@ export default function BusinessDashboardScreen({ navigation }) {
               return (
                 <>
                   <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>{t("business.dashboard.pricingMix")}</Text>
-                  <View style={[styles.insightCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <View style={[styles.insightCard, { backgroundColor: colors.surface, borderColor: cardBorder }]}>
                     {[
                       { label: t("business.dashboard.tierLocal"), val: local, pct: localPct, c: colors.primary },
                       { label: t("business.dashboard.tierGeneral"), val: general, pct: 100 - localPct, c: "#8a86a0" },
@@ -458,7 +461,7 @@ export default function BusinessDashboardScreen({ navigation }) {
             {metrics && (
               <>
                 <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>{t("business.dashboard.memberFlow")}</Text>
-                <View style={[styles.insightCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <View style={[styles.insightCard, { backgroundColor: colors.surface, borderColor: cardBorder }]}>
                   <View style={styles.flowRow}>
                     {[
                       { key: "joined", value: metrics.newMembers, tone: colors.success },

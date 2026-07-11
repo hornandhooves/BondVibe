@@ -75,6 +75,24 @@ export const formatCentavos = (centavos) => {
 };
 
 /**
+ * Compact MXN for tight KPI tiles: `$132`, `$1.2k`, `$41.2k`, `$1.2M` — no
+ * `.00 MXN` tail, so a money value never wraps to two lines. Keeps a leading
+ * minus for losses. Full precision stays in formatCentavos (used elsewhere).
+ * @param {number} centavos
+ * @returns {string}
+ */
+export const formatCentavosCompact = (centavos) => {
+  const pesos = (Number(centavos) || 0) / 100;
+  const abs = Math.abs(pesos);
+  const sign = pesos < 0 ? "-" : "";
+  let body;
+  if (abs >= 1000000) body = `${(abs / 1000000).toFixed(1)}M`;
+  else if (abs >= 1000) body = `${(abs / 1000).toFixed(1)}k`;
+  else body = `${Math.round(abs)}`;
+  return `${sign}$${body}`;
+};
+
+/**
  * Display a PESO amount unambiguously as MXN (BUG 1): `MX$199`, never a bare
  * `$199` (which reads as USD). Pass whole pesos, not centavos. Integers show no
  * decimals; fractional amounts show two.
