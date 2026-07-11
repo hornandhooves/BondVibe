@@ -4,6 +4,23 @@ jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")
 );
 
+// react-native-maps is a native module (F1 map) — stub it so screens that
+// import the map component (SearchEventsScreen) can render under jest.
+jest.mock("react-native-maps", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  const Stub = (props) => React.createElement(View, props, props.children);
+  return {
+    __esModule: true,
+    default: Stub,
+    Marker: Stub,
+    Circle: Stub,
+    Callout: Stub,
+    PROVIDER_GOOGLE: "google",
+    PROVIDER_DEFAULT: "default",
+  };
+});
+
 // expo-localization's native binary isn't present under jest — stub it to the
 // device default (English) so src/i18n/index.js can resolve a language.
 jest.mock("expo-localization", () => ({

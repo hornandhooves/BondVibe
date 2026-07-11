@@ -21,7 +21,7 @@ import {
   limit,
   startAfter,
 } from "firebase/firestore";
-import { db } from "../services/firebase";
+import { auth, db } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import { formatISODate, formatEventTime } from "../utils/dateUtils";
@@ -40,6 +40,8 @@ import Icon, { getCategoryIcon } from "../components/Icon";
 import FilterChips from "../components/FilterChips";
 import SelectDropdown from "../components/SelectDropdown";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import EventMap from "../components/search/EventMap";
+import ListMapToggle from "../components/search/ListMapToggle";
 
 // Language filter options
 const LANGUAGE_OPTIONS = [
@@ -69,6 +71,7 @@ export default function SearchEventsScreen({ navigation, route }) {
   const { t } = useTranslation();
   const { cities: LOCATIONS } = useCities({ includeAll: true });
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState("list"); // F1: "list" | "map" (default list)
   const [events, setEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -457,14 +460,21 @@ export default function SearchEventsScreen({ navigation, route }) {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="back" size={28} color={colors.text} type="ui" />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
+        <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
           {selectedCategory !== "all"
             ? getCurrentCategoryLabel()
             : t("searchEvents.headerAll")}
         </Text>
-        <View style={{ width: 28 }} />
+        <ListMapToggle value={viewMode} onChange={setViewMode} />
       </View>
 
+      {viewMode === "map" ? (
+        <EventMap
+          events={filteredEvents}
+          navigation={navigation}
+          currentUid={auth.currentUser?.uid}
+        />
+      ) : (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -691,6 +701,7 @@ export default function SearchEventsScreen({ navigation, route }) {
           </>
         )}
       </ScrollView>
+      )}
     </GradientBackground>
   );
 }
@@ -706,7 +717,7 @@ function createStyles(colors) {
       paddingTop: 60,
       paddingBottom: 20,
     },
-    headerTitle: { fontSize: 20, fontWeight: "700", letterSpacing: -0.3 },
+    headerTitle: { fontSize: 20, fontWeight: "700", letterSpacing: -0.3, flex: 1, marginLeft: 12 },
     scrollView: { flex: 1 },
     scrollContent: { paddingHorizontal: 24, paddingBottom: 40 },
     searchBar: {

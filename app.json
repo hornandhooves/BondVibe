@@ -85,6 +85,11 @@
       "edgeToEdgeEnabled": true,
       "icon": "./assets/icon.png",
       "package": "com.bondvibe.app",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDP2zxLDMAXu8XOevVCL3wAE6s3z_UT7Qc"
+        }
+      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#7C3AED"

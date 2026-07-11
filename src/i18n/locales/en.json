@@ -328,7 +328,10 @@
     "noEventsFound": "No upcoming events found",
     "adjustFilters": "Try adjusting your filters or search terms",
     "free_badge": "FREE",
-    "ended": "Ended"
+    "ended": "Ended",
+    "viewList": "List",
+    "viewMap": "Map",
+    "notOnMap": "{{count}} not on map"
   },
   "eventLocation": {
     "lockedHint": "exact address after you reserve",
