@@ -3287,7 +3287,8 @@
         "atRisk": "At risk",
         "churn": "Churn",
         "recovered": "Recovered",
-        "revenue": "Revenue"
+        "revenue": "Revenue",
+        "netMargin": "Net profit"
       }
     },
     "momentum": {
@@ -3403,6 +3404,40 @@
       "shareReceipt": "Share receipt",
       "owes": "Owes {{amount}}",
       "applyToBalance": "Apply to balance"
+    },
+    "expense": {
+      "title": "Record expense",
+      "plTitle": "Expenses & P&L",
+      "entrySub": "Track costs and net profit",
+      "amount": "Amount (MXN)",
+      "amountRequiredTitle": "Enter an amount",
+      "amountRequiredMsg": "The expense amount must be greater than zero.",
+      "categoryLabel": "Category",
+      "category": {
+        "rent": "Rent",
+        "staff": "Staff",
+        "marketing": "Marketing",
+        "supplies": "Supplies",
+        "utilities": "Utilities",
+        "other": "Other"
+      },
+      "methodLabel": "Paid with",
+      "date": "Date",
+      "note": "Note",
+      "notePlaceholder": "What was this for…",
+      "receipt": "Receipt",
+      "addReceipt": "Add a photo",
+      "save": "Record expense",
+      "savedTitle": "Expense recorded",
+      "savedMsg": "It's now in your P&L for the range.",
+      "revenue": "Revenue",
+      "expensesLabel": "Expenses",
+      "netProfit": "Net profit",
+      "margin": "{{pct}}% margin",
+      "byCategory": "By category",
+      "ledger": "Expenses",
+      "noExpenses": "No expenses in this range yet.",
+      "add": "Record an expense"
     },
     "classes": {
       "title": "Classes",

@@ -8,6 +8,7 @@
 import { listMembers, MEMBER_STATUS } from "./businessMembersService";
 import { listAttendanceInRange } from "./businessAttendanceService";
 import { listPaymentsInRange, revenueSummary } from "./businessPaymentsService";
+import { listExpensesInRange, expenseSummary } from "./businessExpensesService";
 import { previousBounds, chartBuckets } from "../constants/businessRanges";
 
 const toMillis = (ts) => {
@@ -31,7 +32,7 @@ export async function computeDashboard(bounds) {
   const toIso = to.toISOString();
   const prev = previousBounds(bounds);
 
-  const [members, attendance, prevAttendance, payments, prevPayments] = await Promise.all([
+  const [members, attendance, prevAttendance, payments, prevPayments, expenses] = await Promise.all([
     listMembers(),
     listAttendanceInRange(fromIso, toIso),
     prev
@@ -41,6 +42,7 @@ export async function computeDashboard(bounds) {
     prev
       ? listPaymentsInRange(prev.from.toISOString(), prev.to.toISOString())
       : Promise.resolve([]),
+    listExpensesInRange(fromIso, toIso),
   ]);
 
   const fromMs = from.getTime();
@@ -101,6 +103,9 @@ export async function computeDashboard(bounds) {
     // revenue from the Finance ledger (real).
     revenueCents: revenueSummary(payments).total,
     revenueTrend: pctDelta(revenueSummary(payments).total, revenueSummary(prevPayments).total),
+    // expenses + net P&L (dashboard handoff §8): net margin flows into the KPIs.
+    expensesCents: expenseSummary(expenses).total,
+    netCents: revenueSummary(payments).total - expenseSummary(expenses).total,
     series,
   };
 }
@@ -118,6 +123,9 @@ export function dashboardToCsv(d, rangeLabel) {
     ["prospects", d.prospects],
     ["at_risk", d.atRisk],
     ["churn_est", d.churn],
+    ["revenue_cents", d.revenueCents ?? ""],
+    ["expenses_cents", d.expensesCents ?? ""],
+    ["net_cents", d.netCents ?? ""],
   ];
   return rows.map((r) => r.join(",")).join("\n");
 }

@@ -3287,7 +3287,8 @@
         "atRisk": "En riesgo",
         "churn": "Abandono",
         "recovered": "Recuperados",
-        "revenue": "Ingresos"
+        "revenue": "Ingresos",
+        "netMargin": "Utilidad neta"
       }
     },
     "momentum": {
@@ -3403,6 +3404,40 @@
       "shareReceipt": "Compartir recibo",
       "owes": "Debe {{amount}}",
       "applyToBalance": "Aplicar al saldo"
+    },
+    "expense": {
+      "title": "Registrar gasto",
+      "plTitle": "Gastos y utilidad",
+      "entrySub": "Controla costos y utilidad neta",
+      "amount": "Monto (MXN)",
+      "amountRequiredTitle": "Ingresa un monto",
+      "amountRequiredMsg": "El monto del gasto debe ser mayor que cero.",
+      "categoryLabel": "Categoría",
+      "category": {
+        "rent": "Renta",
+        "staff": "Personal",
+        "marketing": "Marketing",
+        "supplies": "Insumos",
+        "utilities": "Servicios",
+        "other": "Otro"
+      },
+      "methodLabel": "Pagado con",
+      "date": "Fecha",
+      "note": "Nota",
+      "notePlaceholder": "Para qué fue…",
+      "receipt": "Recibo",
+      "addReceipt": "Agregar foto",
+      "save": "Registrar gasto",
+      "savedTitle": "Gasto registrado",
+      "savedMsg": "Ya está en tu utilidad para el rango.",
+      "revenue": "Ingresos",
+      "expensesLabel": "Gastos",
+      "netProfit": "Utilidad neta",
+      "margin": "{{pct}}% de margen",
+      "byCategory": "Por categoría",
+      "ledger": "Gastos",
+      "noExpenses": "Aún no hay gastos en este rango.",
+      "add": "Registrar un gasto"
     },
     "classes": {
       "title": "Clases",

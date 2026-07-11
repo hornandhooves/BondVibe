@@ -95,6 +95,16 @@ export const uploadPostImage = async (userId, imageUri) => {
   return getDownloadURL(postRef);
 };
 
+/** Upload an expense receipt photo (Finance/P&L); returns its URL. */
+export const uploadExpenseReceipt = async (bizId, imageUri) => {
+  const compressedUri = await compressImage(imageUri);
+  const response = await fetch(compressedUri);
+  const blob = await response.blob();
+  const receiptRef = ref(storage, `businesses/${bizId}/expenses/${Date.now()}.jpg`);
+  await uploadBytes(receiptRef, blob);
+  return getDownloadURL(receiptRef);
+};
+
 /** Upload a moderation-report evidence image; returns its URL. */
 export const uploadReportEvidence = async (groupId, imageUri) => {
   const compressedUri = await compressImage(imageUri);

@@ -175,6 +175,7 @@ export default function BusinessDashboardScreen({ navigation }) {
         { key: "churn", value: metrics.churn, estimate: true },
         { key: "recovered", value: metrics.recovered },
         { key: "revenue", value: metrics.revenueCents, trend: metrics.revenueTrend, money: true },
+        { key: "netMargin", value: metrics.netCents, money: true, netTone: true },
       ]
     : [];
 
@@ -279,7 +280,17 @@ export default function BusinessDashboardScreen({ navigation }) {
                     {t(`business.dashboard.kpi.${k.key}`)}
                     {k.estimate ? ` · ${t("business.dashboard.est")}` : ""}
                   </Text>
-                  <Text style={[styles.kpiValue, { color: colors.text }]}>
+                  <Text
+                    style={[
+                      styles.kpiValue,
+                      {
+                        color:
+                          k.netTone && k.value != null
+                            ? k.value >= 0 ? colors.success : colors.error
+                            : colors.text,
+                      },
+                    ]}
+                  >
                     {k.value == null ? "—" : k.money ? formatCentavos(k.value) : k.value}
                   </Text>
                   {typeof k.trend === "number" && (

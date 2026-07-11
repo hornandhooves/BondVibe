@@ -190,8 +190,14 @@ export default function BusinessFinanceScreen({ navigation }) {
             </View>
           )}
 
-          {/* Payouts */}
+          {/* Expenses & P&L + Payouts */}
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 22 }]}>
+            <ListRow
+              icon="wallet"
+              title={t("business.expense.plTitle")}
+              subtitle={t("business.expense.entrySub")}
+              onPress={() => navigation.navigate("BusinessExpenses")}
+            />
             <ListRow
               icon="payment"
               title={t("business.finance.payouts")}
