@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
@@ -95,13 +96,28 @@ export default function ChooseHandleScreen() {
     if (status !== "available" || claiming) return;
     setClaiming(true);
     setError("");
-    const r = await claimHandle(value);
+    // BUG 35.1: guard the claim with a 15s timeout so a stalled/flaky call can't
+    // hang the spinner forever. On timeout the button re-enables and a retry
+    // alert is surfaced; the CTA itself is also a retry affordance.
+    const CLAIM_TIMEOUT_MS = 15000;
+    const timeout = new Promise((resolve) =>
+      setTimeout(() => resolve({ success: false, code: "timeout" }), CLAIM_TIMEOUT_MS),
+    );
+    const r = await Promise.race([claimHandle(value), timeout]);
     if (r.success) {
       // Do NOT navigate — the AppNavigator snapshot re-routes once handleLower
       // is written. Show a brief "setting up" state until it does.
       setClaimed(true);
+      return;
+    }
+    setClaiming(false);
+    if (r.code === "timeout") {
+      setError(t("chooseHandle.errorTimeout"));
+      Alert.alert(t("chooseHandle.timeoutTitle"), t("chooseHandle.errorTimeout"), [
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("chooseHandle.retry"), onPress: onClaim },
+      ]);
     } else {
-      setClaiming(false);
       setError(r.error || t("chooseHandle.errorGeneric"));
       if (r.code === "already-exists") setStatus("taken");
     }
@@ -156,6 +172,7 @@ export default function ChooseHandleScreen() {
             autoFocus
             maxLength={30}
             returnKeyType="done"
+            editable={!claiming}
           />
           {status === "checking" && <ActivityIndicator size="small" color={colors.textTertiary} />}
         </View>

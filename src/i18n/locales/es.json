@@ -90,7 +90,10 @@
     "claim": "Reservar @{{handle}}",
     "permanentNote": "Tu usuario es permanente y no se puede cambiar después.",
     "settingUp": "Preparando tu perfil…",
-    "errorGeneric": "No se pudo reservar ese usuario. Intenta de nuevo."
+    "errorGeneric": "No se pudo reservar ese usuario. Intenta de nuevo.",
+    "errorTimeout": "Esto está tardando demasiado. Revisa tu conexión e inténtalo de nuevo.",
+    "timeoutTitle": "Problema de conexión",
+    "retry": "Reintentar"
   },
   "userSearch": {
     "placeholder": "Busca @usuario o nombre",

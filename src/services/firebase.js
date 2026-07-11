@@ -48,7 +48,11 @@ if (getApps().length === 1 && !global._firebaseAuthInitialized) {
 
 export { auth };
 
-// Initialize Firestore
+// Initialize Firestore (memory cache — the firebase JS SDK's disk persistence
+// relies on IndexedDB, which is absent under React Native/Hermes and silently
+// degrades to memory anyway; see BUG 35). Protection against an offline
+// empty-cache cold start signing out a legit user lives in the AppNavigator
+// user-doc listener's `fromCache` orphan guard instead.
 export const db = getFirestore(app);
 console.log("[Firebase] 📦 Firestore initialized");
 

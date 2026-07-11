@@ -90,7 +90,10 @@
     "claim": "Claim @{{handle}}",
     "permanentNote": "Your handle is permanent and can't be changed later.",
     "settingUp": "Setting up your profile…",
-    "errorGeneric": "Couldn't claim that handle. Please try again."
+    "errorGeneric": "Couldn't claim that handle. Please try again.",
+    "errorTimeout": "This is taking too long. Check your connection and try again.",
+    "timeoutTitle": "Connection problem",
+    "retry": "Retry"
   },
   "userSearch": {
     "placeholder": "Search @handle or name",
