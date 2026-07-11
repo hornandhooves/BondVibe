@@ -51,6 +51,9 @@ const {getAttendeeIds, getEventCreatorId, getHostIdForPayout} = require("./utils
 const {
   snapApproxGrid, deriveArea, deriveVenue, coordFromData, coordsEqual,
 } = require("./lib/eventLocation");
+// Modular FieldValue — same as admin.firestore.FieldValue in prod, but stub-safe
+// under the functions emulator (whose admin stub drops the namespaced statics).
+const {FieldValue} = require("firebase-admin/firestore");
 
 // Community Matching functions (defined in ./matching, re-exported below).
 const matching = require("./matching/matching");
@@ -2017,13 +2020,13 @@ exports.setEventLocation = onCall(async (request) => {
   const publicUpdate = {
     area: area.trim(),
     locationLocked: true,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   };
   if (approxCoords) publicUpdate.approxCoords = approxCoords;
   batch.set(ref, publicUpdate, {merge: true});
 
   // Private doc: the exact detail, participant-gated by rules.
-  const privateDoc = {updatedAt: admin.firestore.FieldValue.serverTimestamp()};
+  const privateDoc = {updatedAt: FieldValue.serverTimestamp()};
   if (venueName != null) privateDoc.venueName = venueName;
   if (address != null) privateDoc.address = address;
   if (approxCoords && exactCoords) {
@@ -2158,7 +2161,7 @@ exports.onEventWritten = onDocumentWritten("events/{eventId}", async (event) => 
       venueName: deriveVenue(data.location),
       address: data.venueAddress || data.location || null,
       exactCoords: exact || null,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     }, {merge: true});
   }
 });
