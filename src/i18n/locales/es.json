@@ -331,7 +331,14 @@
     "ended": "Finalizado",
     "viewList": "Lista",
     "viewMap": "Mapa",
-    "notOnMap": "{{count}} sin ubicación"
+    "notOnMap": "{{count}} sin ubicación",
+    "searchPlace": "Buscar un lugar",
+    "filters": "Filtros",
+    "clearAll": "Limpiar todo",
+    "showResults": "Ver resultados",
+    "searchThisArea": "Buscar en esta zona",
+    "locationDeniedTitle": "Ubicación desactivada",
+    "locationDeniedMsg": "Activa la ubicación para ver eventos cerca de ti, o busca un lugar."
   },
   "eventLocation": {
     "lockedHint": "dirección exacta al reservar",

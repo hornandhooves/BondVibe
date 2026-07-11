@@ -3,7 +3,7 @@
  * react-native-maps. Verifies the F2-strict rule: non-participants get an
  * approximate CIRCLE, participants get an exact pin, no-coords are off-map.
  */
-import { buildMapData, isParticipant, regionFor, DEFAULT_REGION } from '../src/utils/eventMapData';
+import { buildMapData, isParticipant, regionFor, DEFAULT_REGION, isWithinRegion, filterMarkersToRegion } from '../src/utils/eventMapData';
 import { APPROX_CIRCLE_RADIUS_M } from '../src/utils/eventLocation';
 
 const exact = { latitude: 20.2114, longitude: -87.4654 };
@@ -70,6 +70,27 @@ describe('buildMapData — F2 strict circle-vs-pin', () => {
   it('handles empty / null input', () => {
     expect(buildMapData([], 'u1')).toEqual({ markers: [], offMapCount: 0, initialRegion: DEFAULT_REGION });
     expect(buildMapData(null, 'u1').markers).toEqual([]);
+  });
+});
+
+describe('isWithinRegion / filterMarkersToRegion ("Search this area")', () => {
+  const region = { latitude: 20.2, longitude: -87.4, latitudeDelta: 0.1, longitudeDelta: 0.1 };
+  it('point inside the region box is within', () => {
+    expect(isWithinRegion({ latitude: 20.22, longitude: -87.43 }, region)).toBe(true);
+  });
+  it('point outside the region box is not within', () => {
+    expect(isWithinRegion({ latitude: 20.4, longitude: -87.4 }, region)).toBe(false);
+  });
+  it('no region → everything is within', () => {
+    expect(isWithinRegion({ latitude: 99, longitude: 99 }, null)).toBe(true);
+  });
+  it('filterMarkersToRegion keeps only in-region markers', () => {
+    const markers = [
+      { id: 'in', coords: { latitude: 20.21, longitude: -87.41 } },
+      { id: 'out', coords: { latitude: 21.0, longitude: -87.4 } },
+    ];
+    expect(filterMarkersToRegion(markers, region).map((m) => m.id)).toEqual(['in']);
+    expect(filterMarkersToRegion(markers, null)).toHaveLength(2);
   });
 });
 

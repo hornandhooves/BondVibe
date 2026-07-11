@@ -331,7 +331,14 @@
     "ended": "Ended",
     "viewList": "List",
     "viewMap": "Map",
-    "notOnMap": "{{count}} not on map"
+    "notOnMap": "{{count}} not on map",
+    "searchPlace": "Search a place",
+    "filters": "Filters",
+    "clearAll": "Clear all",
+    "showResults": "Show results",
+    "searchThisArea": "Search this area",
+    "locationDeniedTitle": "Location is off",
+    "locationDeniedMsg": "Turn on location to find events near you, or search a place instead."
   },
   "eventLocation": {
     "lockedHint": "exact address after you reserve",

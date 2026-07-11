@@ -28,6 +28,7 @@ import {
   Baby,
   // Semantic / UI
   Compass,
+  Crosshair,
   Home,
   Calendar,
   Users,
@@ -230,6 +231,7 @@ const NAME_TO_COMPONENT = {
   music2: Music2,
   playlist: Music2,
   refresh: RefreshCw,
+  crosshair: Crosshair,
   rotate: RotateCcw,
   send: Send,
   sun: Sun,

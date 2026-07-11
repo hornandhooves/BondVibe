@@ -52,6 +52,19 @@ export const regionFor = (markers) => {
   };
 };
 
+/** Whether a point falls inside a MapView region (center ± delta/2). */
+export const isWithinRegion = (coords, region) => {
+  if (!coords || !region) return true;
+  return (
+    Math.abs(coords.latitude - region.latitude) <= region.latitudeDelta / 2 &&
+    Math.abs(coords.longitude - region.longitude) <= region.longitudeDelta / 2
+  );
+};
+
+/** Keep only the markers inside `region` ("Search this area"). */
+export const filterMarkersToRegion = (markers, region) =>
+  region ? (markers || []).filter((m) => isWithinRegion(m.coords, region)) : markers || [];
+
 /**
  * @param {Array} events filteredEvents (the same set the list shows)
  * @param {string} uid the current user's uid

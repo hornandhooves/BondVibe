@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -37,24 +36,11 @@ import { EVENT_LANGUAGES } from "../utils/eventCategories";
 import { isEventPast } from "../utils/eventFilters";
 import { useFocusEffect } from "@react-navigation/native";
 import Icon, { getCategoryIcon } from "../components/Icon";
-import FilterChips from "../components/FilterChips";
-import SelectDropdown from "../components/SelectDropdown";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import EventMap from "../components/search/EventMap";
 import ListMapToggle from "../components/search/ListMapToggle";
-
-// Language filter options
-const LANGUAGE_OPTIONS = [
-  { id: "all", label: "All Languages" },
-  ...EVENT_LANGUAGES,
-];
-
-// Filter options
-const PRICE_OPTIONS = [
-  { id: "all", label: "All type of events" },
-  { id: "free", label: "Free" },
-  { id: "paid", label: "Paid" },
-];
+import EventFilters, { activeFilterCount } from "../components/search/EventFilters";
+import FiltersSheet from "../components/search/FiltersSheet";
 
 const PAGE_SIZE = 20;
 const mapEventDocs = (docs) =>
@@ -72,6 +58,7 @@ export default function SearchEventsScreen({ navigation, route }) {
   const { cities: LOCATIONS } = useCities({ includeAll: true });
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState("list"); // F1: "list" | "map" (default list)
+  const [filtersSheetOpen, setFiltersSheetOpen] = useState(false);
   const [events, setEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -319,6 +306,47 @@ export default function SearchEventsScreen({ navigation, route }) {
     setSelectedCategory(categoryId);
   };
 
+  // Filter props shared by List (inline) and Map (FiltersSheet).
+  const resetFilters = () => {
+    setSearchQuery("");
+    setSelectedLocation("all");
+    setSelectedCategory("all");
+    setPriceFilter("all");
+    setLanguageFilter(EVENT_LANGUAGES.map((l) => l.id));
+    setDateFrom(null);
+    setDateTo(null);
+  };
+  const filterProps = {
+    searchQuery,
+    setSearchQuery,
+    selectedLocation,
+    setSelectedLocation,
+    locations: LOCATIONS,
+    selectedCategory,
+    onCategoryChange: handleCategoryChange,
+    categoryOptions,
+    priceFilter,
+    setPriceFilter,
+    languageFilter,
+    setLanguageFilter,
+    dateFrom,
+    dateTo,
+    setDatePicker,
+    onClearDates: () => {
+      setDateFrom(null);
+      setDateTo(null);
+    },
+  };
+  const activeCount = activeFilterCount({
+    searchQuery,
+    selectedLocation,
+    selectedCategory,
+    priceFilter,
+    languageFilter,
+    dateFrom,
+    dateTo,
+  });
+
   const styles = createStyles(colors);
 
   const EventCard = ({ event }) => {
@@ -473,6 +501,8 @@ export default function SearchEventsScreen({ navigation, route }) {
           events={filteredEvents}
           navigation={navigation}
           currentUid={auth.currentUser?.uid}
+          activeFilterCount={activeCount}
+          onOpenFilters={() => setFiltersSheetOpen(true)}
         />
       ) : (
       <ScrollView
@@ -490,171 +520,8 @@ export default function SearchEventsScreen({ navigation, route }) {
           }
         }}
       >
-        {/* Search Bar */}
-        <View
-          style={[
-            styles.searchBar,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.borderStrong,
-            },
-          ]}
-        >
-          <Icon name="search" size={20} color={colors.textTertiary} type="ui" />
-          <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder={t("searchEvents.searchPlaceholder")}
-            placeholderTextColor={colors.textTertiary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-
-        {/* Location Filter */}
-        <FilterChips
-          label={t("searchEvents.cityLabel")}
-          value={selectedLocation}
-          onValueChange={setSelectedLocation}
-          options={LOCATIONS}
-          type="city"
-        />
-
-        {/* Category Filter */}
-        <FilterChips
-          label={t("searchEvents.communitiesLabel")}
-          value={selectedCategory}
-          onValueChange={handleCategoryChange}
-          options={categoryOptions}
-          type="category"
-        />
-
-        {/* Price & Language Filters */}
-        <View style={styles.filtersRow}>
-          <View style={styles.filterDropdown}>
-            <SelectDropdown
-              label={t("searchEvents.priceLabel")}
-              value={priceFilter}
-              onValueChange={setPriceFilter}
-              options={PRICE_OPTIONS}
-              placeholder={t("searchEvents.allPrices")}
-            />
-          </View>
-          <View style={styles.filterDropdown}>
-            <SelectDropdown
-              label={t("searchEvents.languageLabel")}
-              value={languageFilter}
-              onValueChange={setLanguageFilter}
-              options={EVENT_LANGUAGES}
-              placeholder={t("searchEvents.allLanguages")}
-              type="language"
-              multiSelect
-            />
-          </View>
-        </View>
-
-        {/* Date range filter */}
-        <View style={styles.filtersRow}>
-          <View style={styles.filterDropdown}>
-            <Text style={[styles.dateFilterLabel, { color: colors.textSecondary }]}>
-              {t("searchEvents.from")}
-            </Text>
-            <TouchableOpacity
-              style={[styles.dateFilterBtn, { backgroundColor: colors.surfaceGlass, borderColor: colors.border }]}
-              onPress={() => setDatePicker("from")}
-            >
-              <Text style={{ color: dateFrom ? colors.text : colors.textTertiary }}>
-                {dateFrom ? formatISODate(dateFrom.toISOString()) : t("searchEvents.anyDate")}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.filterDropdown}>
-            <Text style={[styles.dateFilterLabel, { color: colors.textSecondary }]}>
-              {t("searchEvents.to")}
-            </Text>
-            <TouchableOpacity
-              style={[styles.dateFilterBtn, { backgroundColor: colors.surfaceGlass, borderColor: colors.border }]}
-              onPress={() => setDatePicker("to")}
-            >
-              <Text style={{ color: dateTo ? colors.text : colors.textTertiary }}>
-                {dateTo ? formatISODate(dateTo.toISOString()) : t("searchEvents.anyDate")}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        {(dateFrom || dateTo) && (
-          <TouchableOpacity
-            onPress={() => {
-              setDateFrom(null);
-              setDateTo(null);
-            }}
-            style={styles.clearDates}
-          >
-            <Text style={{ color: colors.primary, fontWeight: "600" }}>
-              {t("searchEvents.clearDates")}
-            </Text>
-          </TouchableOpacity>
-        )}
-        {/* Android: native date dialog */}
-        {datePicker && Platform.OS === "android" && (
-          <DateTimePicker
-            value={(datePicker === "from" ? dateFrom : dateTo) || new Date()}
-            mode="date"
-            display="default"
-            onChange={(event, selected) => {
-              setDatePicker(null);
-              if (event.type === "set" && selected) {
-                if (datePicker === "from") setDateFrom(selected);
-                else setDateTo(selected);
-              }
-            }}
-          />
-        )}
-
-        {/* iOS: spinner ("cylinder") inside a modal with Done/Cancel */}
-        {Platform.OS === "ios" && (
-          <Modal
-            visible={!!datePicker}
-            transparent
-            animationType="slide"
-            onRequestClose={() => setDatePicker(null)}
-          >
-            <View style={styles.pickerOverlay}>
-              <View
-                style={[
-                  styles.pickerModal,
-                  { backgroundColor: isDark ? "#1a1a2e" : "#ffffff" },
-                ]}
-              >
-                <View style={styles.pickerHeader}>
-                  <TouchableOpacity onPress={() => setDatePicker(null)}>
-                    <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>
-                      {t("searchEvents.cancel")}
-                    </Text>
-                  </TouchableOpacity>
-                  <Text style={{ color: colors.text, fontWeight: "700" }}>
-                    {datePicker === "from" ? t("searchEvents.from") : t("searchEvents.to")}
-                  </Text>
-                  <TouchableOpacity onPress={() => setDatePicker(null)}>
-                    <Text style={{ color: colors.primary, fontWeight: "700" }}>{t("searchEvents.done")}</Text>
-                  </TouchableOpacity>
-                </View>
-                <DateTimePicker
-                  value={(datePicker === "from" ? dateFrom : dateTo) || new Date()}
-                  mode="date"
-                  display="spinner"
-                  textColor={colors.text}
-                  themeVariant={isDark ? "dark" : "light"}
-                  onChange={(_e, selected) => {
-                    if (selected) {
-                      if (datePicker === "from") setDateFrom(selected);
-                      else setDateTo(selected);
-                    }
-                  }}
-                />
-              </View>
-            </View>
-          </Modal>
-        )}
+        {/* Filters (shared with the Map-mode FiltersSheet) */}
+        <EventFilters {...filterProps} />
 
         {/* Results Header */}
         <View style={styles.resultsHeader}>
@@ -701,6 +568,71 @@ export default function SearchEventsScreen({ navigation, route }) {
           </>
         )}
       </ScrollView>
+      )}
+
+      {/* Filters sheet (Map mode) — the SAME controls as List. */}
+      <FiltersSheet
+        visible={filtersSheetOpen}
+        onClose={() => setFiltersSheetOpen(false)}
+        count={activeCount}
+        onReset={resetFilters}
+      >
+        <EventFilters {...filterProps} />
+      </FiltersSheet>
+
+      {/* Date pickers at screen level so they work from the list AND the sheet. */}
+      {datePicker && Platform.OS === "android" && (
+        <DateTimePicker
+          value={(datePicker === "from" ? dateFrom : dateTo) || new Date()}
+          mode="date"
+          display="default"
+          onChange={(event, selected) => {
+            setDatePicker(null);
+            if (event.type === "set" && selected) {
+              if (datePicker === "from") setDateFrom(selected);
+              else setDateTo(selected);
+            }
+          }}
+        />
+      )}
+      {Platform.OS === "ios" && (
+        <Modal
+          visible={!!datePicker}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setDatePicker(null)}
+        >
+          <View style={styles.pickerOverlay}>
+            <View style={[styles.pickerModal, { backgroundColor: isDark ? "#1a1a2e" : "#ffffff" }]}>
+              <View style={styles.pickerHeader}>
+                <TouchableOpacity onPress={() => setDatePicker(null)}>
+                  <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>
+                    {t("searchEvents.cancel")}
+                  </Text>
+                </TouchableOpacity>
+                <Text style={{ color: colors.text, fontWeight: "700" }}>
+                  {datePicker === "from" ? t("searchEvents.from") : t("searchEvents.to")}
+                </Text>
+                <TouchableOpacity onPress={() => setDatePicker(null)}>
+                  <Text style={{ color: colors.primary, fontWeight: "700" }}>{t("searchEvents.done")}</Text>
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker
+                value={(datePicker === "from" ? dateFrom : dateTo) || new Date()}
+                mode="date"
+                display="spinner"
+                textColor={colors.text}
+                themeVariant={isDark ? "dark" : "light"}
+                onChange={(_e, selected) => {
+                  if (selected) {
+                    if (datePicker === "from") setDateFrom(selected);
+                    else setDateTo(selected);
+                  }
+                }}
+              />
+            </View>
+          </View>
+        </Modal>
       )}
     </GradientBackground>
   );
