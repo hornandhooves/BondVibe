@@ -35,14 +35,17 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
 
   const { userEmail, fullName, fromProfile } = route.params || {};
 
-  // Where to go once the user has made (or deferred) their choice. From the
-  // onboarding flow we land on Home; when opened from Profile we go back.
+  // Where to go once the user has made (or deferred) their choice. Opened from
+  // Profile → pop back. During ONBOARDING → do NOT self-navigate: the hostConfig
+  // write we just made re-fires the AppNavigator user-doc listener, which
+  // advances the flow (→ AiOptIn → MainTabs), exactly like Legal/ProfileSetup.
+  // (The old reset to "Home" targeted a route that no longer exists after the
+  // 5-tab MainTabs refactor — a dead/no-op action that raced the router.)
   const goAfterSelection = () => {
     if (fromProfile && navigation.canGoBack()) {
       navigation.goBack();
-    } else {
-      navigation.reset({ index: 0, routes: [{ name: "Home" }] });
     }
+    // else: onboarding — the AppNavigator router takes over from here.
   };
 
   const handleDecideLater = async () => {

@@ -45,13 +45,13 @@
     <div class="emoji">🔄</div>
     <h1>Session Expired</h1>
     <p>Your setup session has expired. Returning you to the BondVibe app so you can try again…</p>
-    <a href="bondvibe://stripe/refresh" class="button">Open BondVibe App</a>
+    <a href="kinlo://stripe/refresh" class="button">Open BondVibe App</a>
     <p class="note">If you're not redirected automatically, tap the button above or close this tab and reopen the app.</p>
   </div>
   <script>
     // Auto-return to the app (intercepted by openAuthSessionAsync).
     (function () {
-      var deepLink = "bondvibe://stripe/refresh";
+      var deepLink = "kinlo://stripe/refresh";
       setTimeout(function () {
         window.location.href = deepLink;
       }, 400);

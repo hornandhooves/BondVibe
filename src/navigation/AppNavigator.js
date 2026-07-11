@@ -325,6 +325,16 @@ const AppNavigator = forwardRef((props, ref) => {
 
         unsubscribeFirestore = onSnapshot(
           doc(db, "users", user.uid),
+          // includeMetadataChanges is REQUIRED because the router below gates on
+          // metadata.fromCache / hasPendingWrites (BUG 36). By default Firestore
+          // does NOT re-deliver a snapshot for a metadata-only transition
+          // (cache→server, pending→confirmed) when the document DATA is unchanged.
+          // So after the guard waits on a cache/pending snapshot, the
+          // server-confirmed snapshot it needs would never arrive — deadlocking
+          // onboarding (sign-in appears to do nothing; stuck on Legal). Subscribing
+          // to metadata changes delivers that server-confirmed snapshot so routing
+          // can advance. (new-user auth-flow deadlock)
+          { includeMetadataChanges: true },
           (docSnapshot) => {
             console.log("📄 Firestore document updated");
 

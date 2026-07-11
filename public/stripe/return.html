@@ -71,7 +71,7 @@
         Your Stripe account has been connected successfully. Returning you to
         the BondVibe app…
       </p>
-      <a href="bondvibe://stripe/return" class="button">Open BondVibe App</a>
+      <a href="kinlo://stripe/return" class="button">Open BondVibe App</a>
       <p class="note">
         If you're not redirected automatically, tap the button above or close
         this tab and reopen the app.
@@ -82,7 +82,7 @@
       // auth session (openAuthSessionAsync), this redirect is intercepted and
       // the browser closes automatically — no manual tap needed.
       (function () {
-        var deepLink = "bondvibe://stripe/return";
+        var deepLink = "kinlo://stripe/return";
         setTimeout(function () {
           window.location.href = deepLink;
         }, 400);

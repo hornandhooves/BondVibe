@@ -118,7 +118,7 @@ function App() {
     // ✅ Check if app was opened from a notification (cold start)
     checkInitialNotification();
 
-    // ✅ Deep links — group invites: bondvibe://join-group/<code>
+    // ✅ Deep links — group invites: kinlo://join-group/<code>
     Linking.getInitialURL().then((url) => url && handleDeepLink(url));
     const linkSub = Linking.addEventListener("url", ({ url }) =>
       handleDeepLink(url)
