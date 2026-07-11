@@ -17,6 +17,7 @@ import {
   TextInput,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
 import { doc, getDoc, collection, getDocs, query, where } from "firebase/firestore";
 import Icon from "../../components/Icon";
@@ -26,9 +27,13 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { db, auth } from "../../services/firebase";
 import { useBusinessScope } from "../../contexts/BusinessScopeContext";
 import useClaude from "../../hooks/useClaude";
-import { computeDashboard, dashboardToCsv } from "../../services/businessAnalyticsService";
+import TrendLines, { TREND_COLORS } from "../../components/TrendLines";
+import { computeDashboard, computeOccupancy, dashboardToCsv } from "../../services/businessAnalyticsService";
 import { RANGE_IDS, DEFAULT_RANGE, rangeBounds, rangeLabelKey } from "../../constants/businessRanges";
 import { formatCentavos } from "../../utils/pricing";
+import { FONTS } from "../../constants/theme-tokens";
+
+const WEEKDAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 export default function BusinessDashboardScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -38,6 +43,7 @@ export default function BusinessDashboardScreen({ navigation }) {
   const [customTo, setCustomTo] = useState(null);
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [occupancy, setOccupancy] = useState({ pct: null, events: 0 });
   const { isEventScoped, event: scopeEvent, setEventScope, setWholeBusiness } = useBusinessScope();
   const [eventStats, setEventStats] = useState(null);
   // Scope control lives here now (BUG 17) — Whole business / Choose event.
@@ -145,6 +151,21 @@ export default function BusinessDashboardScreen({ navigation }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromIso, toIso]);
 
+  // Whole-business occupancy (reserved basis) — one extra events query, only when
+  // NOT scoped to a single event (the event-scoped card derives its own %).
+  useEffect(() => {
+    if (isEventScoped) return;
+    let alive = true;
+    setOccupancy({ pct: null, events: 0 });
+    computeOccupancy(bounds).then((o) => {
+      if (alive) setOccupancy(o);
+    });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromIso, toIso, isEventScoped]);
+
   // AI read — grounded server-side; fallback:true when AI is off/unavailable.
   const rangeLabel = t(rangeLabelKey(rangeId));
   const { data: ai, loading: aiLoading, fallback: aiFallback } = useClaude(
@@ -163,21 +184,42 @@ export default function BusinessDashboardScreen({ navigation }) {
   };
 
   const styles = createStyles(colors);
-  const maxBar = Math.max(1, ...(metrics?.series || []).map((s) => s.value));
 
+  // Occupancy + check-in resolve by scope. Event-scoped derives from eventStats
+  // (real, already loaded); whole-business uses the reserved-occupancy query and
+  // has no cheap whole-business check-in signal → honest "—" (dashboard §A).
+  const evCap = eventStats?.capacity || 0;
+  const evGoing = eventStats?.going || 0;
+  // Clamp to 100%: an event can be oversold (capacity lowered post-RSVP) or hold
+  // stale check-in docs after an attendee leaves — neither should render >100%.
+  const occupancyPct = isEventScoped
+    ? evCap > 0 ? Math.min(100, Math.round((evGoing / evCap) * 100)) : null
+    : occupancy.pct;
+  const checkInPct = isEventScoped && evGoing > 0 ? Math.min(100, Math.round(((eventStats?.checkedIn || 0) / evGoing) * 100)) : null;
+  const noShowPct = checkInPct != null ? 100 - checkInPct : null;
+
+  // Curated KPI wall (mock 8 + Phase-1 Net profit). Demoted member-funnel metrics
+  // (active/new/prospects/churn/recovered) still ship in the CSV export + trend.
   const kpis = metrics
     ? [
-        { key: "active", value: metrics.activeInRange },
-        { key: "attendance", value: metrics.attendanceCount, trend: metrics.attendanceTrend },
-        { key: "newMembers", value: metrics.newMembers, trend: metrics.newTrend },
-        { key: "prospects", value: metrics.prospects },
-        { key: "atRisk", value: metrics.atRisk },
-        { key: "churn", value: metrics.churn, estimate: true },
-        { key: "recovered", value: metrics.recovered },
-        { key: "revenue", value: metrics.revenueCents, trend: metrics.revenueTrend, money: true },
-        { key: "netMargin", value: metrics.netCents, money: true, netTone: true },
+        { key: "attendance", value: metrics.attendanceCount, kind: "count", trend: metrics.attendanceTrend, tap: "biz_attendance" },
+        { key: "occupancy", value: occupancyPct, kind: "pct" },
+        { key: "checkInRate", value: checkInPct, kind: "pct", sub: noShowPct != null ? t("business.dashboard.noShow", { pct: noShowPct }) : null },
+        { key: "revenue", value: metrics.revenueCents, kind: "money", trend: metrics.revenueTrend },
+        { key: "netMargin", value: metrics.netCents, kind: "money", netTone: true },
+        { key: "arpu", value: metrics.arpuCents, kind: "money" },
+        { key: "repeatRate", value: metrics.repeatRate, kind: "pct" },
+        { key: "atRisk", value: metrics.atRisk, kind: "count", sub: t("business.dashboard.membersSub"), tap: "biz_atRisk" },
+        { key: "creditsUnredeemed", value: metrics.creditsUnredeemed, kind: "count", sub: t("business.dashboard.deferredSub") },
       ]
     : [];
+
+  const fmtKpi = (k) => {
+    if (k.value == null) return "—";
+    if (k.kind === "money") return formatCentavos(k.value);
+    if (k.kind === "pct") return `${k.value}%`;
+    return k.value;
+  };
 
   return (
     <GradientBackground>
@@ -272,54 +314,137 @@ export default function BusinessDashboardScreen({ navigation }) {
           </View>
         ) : (
           <>
-            {/* KPI grid */}
+            {/* KPI grid (curated) — tappable cards drill into AnalyticsDetail;
+                honest "—" + amber dot when a signal has no data yet. */}
             <View style={styles.kpiGrid}>
-              {kpis.map((k) => (
-                <View key={k.key} style={[styles.kpiCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  <Text style={[styles.kpiLabel, { color: colors.textTertiary }]}>
-                    {t(`business.dashboard.kpi.${k.key}`)}
-                    {k.estimate ? ` · ${t("business.dashboard.est")}` : ""}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.kpiValue,
-                      {
-                        color:
-                          k.netTone && k.value != null
-                            ? k.value >= 0 ? colors.success : colors.error
-                            : colors.text,
-                      },
-                    ]}
+              {kpis.map((k) => {
+                const Card = k.tap ? TouchableOpacity : View;
+                return (
+                  <Card
+                    key={k.key}
+                    style={[styles.kpiCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    {...(k.tap ? { activeOpacity: 0.85, onPress: () => navigation.navigate("AnalyticsDetail", { metric: k.tap, range: { from: fromIso, to: toIso } }) } : {})}
                   >
-                    {k.value == null ? "—" : k.money ? formatCentavos(k.value) : k.value}
-                  </Text>
-                  {typeof k.trend === "number" && (
-                    <Text style={[styles.kpiTrend, { color: k.trend >= 0 ? colors.success : colors.error }]}>
-                      {k.trend >= 0 ? "↑" : "↓"} {Math.abs(k.trend)}%
+                    {k.value == null && <View style={styles.needsDot} />}
+                    <Text style={[styles.kpiLabel, { color: colors.textTertiary }]}>{t(`business.dashboard.kpi.${k.key}`)}</Text>
+                    <Text
+                      style={[
+                        styles.kpiValue,
+                        { color: k.netTone && k.value != null ? (k.value >= 0 ? colors.success : colors.error) : colors.text },
+                      ]}
+                    >
+                      {fmtKpi(k)}
                     </Text>
-                  )}
-                </View>
-              ))}
+                    {typeof k.trend === "number" ? (
+                      <Text style={[styles.kpiTrend, { color: k.trend >= 0 ? colors.success : "#C2410C" }]}>
+                        {k.trend >= 0 ? "↑" : "↓"} {Math.abs(k.trend)}%
+                      </Text>
+                    ) : k.sub ? (
+                      <Text style={[styles.kpiSub, { color: colors.textTertiary }]}>{k.sub}</Text>
+                    ) : null}
+                  </Card>
+                );
+              })}
             </View>
 
-            {/* Attendance chart */}
-            <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>{t("business.dashboard.attendanceTrend")}</Text>
+            {/* Multi-line trend: attendance · revenue · new members */}
+            <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>{t("business.dashboard.trendTitle")}</Text>
             <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              {metrics && metrics.attendanceCount > 0 ? (
-                <View style={styles.chart}>
-                  {metrics.series.map((s, i) => (
-                    <View key={i} style={styles.barCol}>
-                      <View style={styles.barTrack}>
-                        <View style={[styles.barFill, { height: `${(s.value / maxBar) * 100}%`, backgroundColor: colors.primary }]} />
+              {metrics && metrics.series && metrics.series.length >= 2 && metrics.attendanceCount + metrics.revenueCents + metrics.newMembers > 0 ? (
+                <>
+                  <TrendLines series={metrics.series} height={132} />
+                  <View style={styles.xLabels}>
+                    {metrics.series.map((s, i) => (
+                      <Text key={i} style={[styles.xLabel, { color: colors.textTertiary }]} numberOfLines={1}>{s.label}</Text>
+                    ))}
+                  </View>
+                  <View style={styles.legend}>
+                    {[
+                      { c: TREND_COLORS.attendance, k: "legendAttendance" },
+                      { c: TREND_COLORS.revenue, k: "legendRevenue" },
+                      { c: TREND_COLORS.newMembers, k: "legendNew" },
+                    ].map((l) => (
+                      <View key={l.k} style={styles.legendItem}>
+                        <View style={[styles.legendDot, { backgroundColor: l.c }]} />
+                        <Text style={[styles.legendText, { color: colors.textSecondary }]}>{t(`business.dashboard.${l.k}`)}</Text>
                       </View>
-                      <Text style={[styles.barLabel, { color: colors.textTertiary }]}>{s.label}</Text>
-                    </View>
-                  ))}
-                </View>
+                    ))}
+                  </View>
+                </>
               ) : (
                 <Text style={[styles.emptyChart, { color: colors.textTertiary }]}>{t("business.dashboard.noAttendance")}</Text>
               )}
             </View>
+
+            {/* Insight: best days to schedule (attendance by weekday) */}
+            {metrics && metrics.attendanceCount > 0 && (() => {
+              const hist = metrics.weekdayHistogram || [];
+              const order = [1, 2, 3, 4, 5, 6, 0]; // Mon→Sun
+              const peakIdx = hist.reduce((best, v, i) => (v > (hist[best] || 0) ? i : best), 0);
+              const peakMax = Math.max(1, ...hist);
+              return (
+                <>
+                  <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>{t("business.dashboard.bestDays")}</Text>
+                  <View style={[styles.insightCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={styles.dayRow}>
+                      {order.map((di) => {
+                        const v = hist[di] || 0;
+                        const isPeak = di === peakIdx && v > 0;
+                        const h = Math.max(4, Math.round((v / peakMax) * 84));
+                        return (
+                          <View key={di} style={styles.dayCol}>
+                            <View style={styles.dayBarTrack}>
+                              {isPeak ? (
+                                <LinearGradient colors={["#7C3AED", "#C026D3"]} style={[styles.dayBar, { height: h }]} />
+                              ) : (
+                                <View style={[styles.dayBar, { height: h, backgroundColor: v > 0 ? "#C9B0F2" : "#EDE7FB" }]} />
+                              )}
+                            </View>
+                            <Text style={[styles.dayLetter, { color: isPeak ? colors.primary : colors.textTertiary, fontFamily: isPeak ? FONTS.bodyBold : FONTS.bodyMedium }]}>
+                              {t(`business.dashboard.weekday.${WEEKDAY_KEYS[di]}`)}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                    {hist[peakIdx] > 0 && (
+                      <Text style={[styles.insightNote, { color: colors.textSecondary }]}>
+                        {t("business.dashboard.bestDayNote", { day: t(`business.dashboard.weekdayFull.${WEEKDAY_KEYS[peakIdx]}`) })}
+                      </Text>
+                    )}
+                  </View>
+                </>
+              );
+            })()}
+
+            {/* Insight: Local vs General pricing mix (a PRICING split, not residency) */}
+            {metrics && (metrics.pricingMix.local + metrics.pricingMix.general) > 0 && (() => {
+              const { local, general } = metrics.pricingMix;
+              const total = local + general;
+              const localPct = Math.round((local / total) * 100);
+              return (
+                <>
+                  <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>{t("business.dashboard.pricingMix")}</Text>
+                  <View style={[styles.insightCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    {[
+                      { label: t("business.dashboard.tierLocal"), val: local, pct: localPct, c: colors.primary },
+                      { label: t("business.dashboard.tierGeneral"), val: general, pct: 100 - localPct, c: "#8a86a0" },
+                    ].map((row) => (
+                      <View key={row.label} style={styles.mixRow}>
+                        <View style={styles.mixTop}>
+                          <Text style={[styles.mixLabel, { color: colors.text }]}>{row.label}</Text>
+                          <Text style={[styles.mixPct, { color: colors.textSecondary }]}>{row.pct}%</Text>
+                        </View>
+                        <View style={[styles.mixTrack, { backgroundColor: "#F1EAFB" }]}>
+                          <View style={[styles.mixFill, { width: `${row.pct}%`, backgroundColor: row.c }]} />
+                        </View>
+                      </View>
+                    ))}
+                    <Text style={[styles.insightNote, { color: colors.textTertiary }]}>{t("business.dashboard.pricingMixNote")}</Text>
+                  </View>
+                </>
+              );
+            })()}
 
             {/* AI read */}
             {aiLoading ? (
@@ -488,20 +613,35 @@ function createStyles(colors) {
     rangeText: { fontSize: 12.5, fontWeight: "700" },
     customRow: { flexDirection: "row", gap: 12, paddingHorizontal: 20, paddingBottom: 8 },
     loadingBox: { paddingVertical: 60, alignItems: "center" },
-    kpiGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 10, marginTop: 8 },
-    kpiCard: { width: "47%", borderWidth: 1, borderRadius: 14, padding: 13, flexGrow: 1 },
-    kpiLabel: { fontSize: 11, fontWeight: "600" },
-    kpiValue: { fontSize: 24, fontWeight: "800", marginTop: 4, letterSpacing: -0.5 },
-    kpiTrend: { fontSize: 11.5, fontWeight: "700", marginTop: 2 },
-    kpiHint: { fontSize: 10, marginTop: 2 },
-    sectionLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.6, textTransform: "uppercase", marginTop: 22, marginBottom: 10, paddingHorizontal: 24 },
-    chartCard: { marginHorizontal: 20, borderWidth: 1, borderRadius: 16, padding: 16 },
-    chart: { flexDirection: "row", alignItems: "flex-end", height: 120, gap: 8 },
-    barCol: { flex: 1, alignItems: "center", gap: 6 },
-    barTrack: { width: "100%", height: 96, justifyContent: "flex-end", borderRadius: 6, overflow: "hidden", backgroundColor: "transparent" },
-    barFill: { width: "100%", borderRadius: 6, minHeight: 3 },
-    barLabel: { fontSize: 9.5 },
-    emptyChart: { fontSize: 13, textAlign: "center", paddingVertical: 30 },
+    kpiGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 9, marginTop: 8 },
+    kpiCard: { width: "47%", borderWidth: 1, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 13, flexGrow: 1 },
+    kpiLabel: { fontFamily: FONTS.bodySemibold, fontSize: 10.5, letterSpacing: 0.2 },
+    kpiValue: { fontFamily: FONTS.display, fontSize: 22, marginTop: 4, letterSpacing: -0.5 },
+    kpiTrend: { fontFamily: FONTS.bodyBold, fontSize: 11, marginTop: 2 },
+    kpiSub: { fontFamily: FONTS.bodyMedium, fontSize: 11, marginTop: 2 },
+    needsDot: { position: "absolute", top: 9, right: 9, width: 7, height: 7, borderRadius: 4, backgroundColor: "#E8A33D" },
+    sectionLabel: { fontFamily: FONTS.bodyBold, fontSize: 10.5, letterSpacing: 0.6, textTransform: "uppercase", marginTop: 22, marginBottom: 9, paddingHorizontal: 20 },
+    chartCard: { marginHorizontal: 16, borderWidth: 1, borderRadius: 16, padding: 15 },
+    xLabels: { flexDirection: "row", justifyContent: "space-between", marginTop: 6 },
+    xLabel: { fontFamily: FONTS.bodyMedium, fontSize: 9.5, flex: 1, textAlign: "center" },
+    legend: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 12 },
+    legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+    legendDot: { width: 9, height: 9, borderRadius: 5 },
+    legendText: { fontFamily: FONTS.bodySemibold, fontSize: 11.5 },
+    emptyChart: { fontFamily: FONTS.bodyMedium, fontSize: 13, textAlign: "center", paddingVertical: 30 },
+    insightCard: { marginHorizontal: 16, borderWidth: 1, borderRadius: 16, padding: 15 },
+    dayRow: { flexDirection: "row", alignItems: "flex-end", gap: 6, height: 96 },
+    dayCol: { flex: 1, alignItems: "center", justifyContent: "flex-end", gap: 6 },
+    dayBarTrack: { width: "100%", height: 84, justifyContent: "flex-end", alignItems: "center" },
+    dayBar: { width: "100%", borderRadius: 5, minHeight: 4 },
+    dayLetter: { fontSize: 9.5 },
+    insightNote: { fontFamily: FONTS.bodyMedium, fontSize: 12, marginTop: 12, lineHeight: 17 },
+    mixRow: { marginBottom: 12 },
+    mixTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
+    mixLabel: { fontFamily: FONTS.bodySemibold, fontSize: 13.5 },
+    mixPct: { fontFamily: FONTS.display, fontSize: 13, letterSpacing: -0.2 },
+    mixTrack: { height: 7, borderRadius: 4, overflow: "hidden" },
+    mixFill: { height: 7, borderRadius: 4 },
     aiCard: { marginHorizontal: 20, marginTop: 22, borderRadius: 16, padding: 16 },
     aiHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
     aiEyebrow: { fontSize: 11.5, fontWeight: "700", color: "#fff" },

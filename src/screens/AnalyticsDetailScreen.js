@@ -17,6 +17,8 @@ import GradientBackground from "../components/GradientBackground";
 import { AvatarDisplay } from "../components/AvatarPicker";
 import { getHostMembersDetail } from "../services/hostInsightsService";
 import { getMembershipState } from "../utils/membershipUtils";
+import { listMembers, MEMBER_STATUS } from "../services/businessMembersService";
+import { listAttendanceInRange } from "../services/businessAttendanceService";
 
 const normAvatar = (a) =>
   !a ? null : typeof a === "string" ? { type: "emoji", value: a } : a;
@@ -46,6 +48,14 @@ export default function AnalyticsDetailScreen({ route, navigation }) {
       title: t("analyticsDetail.expiring.title"),
       tip: t("analyticsDetail.expiring.tip"),
     },
+    biz_attendance: {
+      title: t("analyticsDetail.biz_attendance.title"),
+      tip: t("analyticsDetail.biz_attendance.tip"),
+    },
+    biz_atRisk: {
+      title: t("analyticsDetail.biz_atRisk.title"),
+      tip: t("analyticsDetail.biz_atRisk.tip"),
+    },
   };
   const cfg = CONFIG[metric] || CONFIG.members;
   const [rows, setRows] = useState([]);
@@ -53,6 +63,44 @@ export default function AnalyticsDetailScreen({ route, navigation }) {
 
   useEffect(() => {
     (async () => {
+      // Business-CRM drill-downs (Dashboard KPI taps) read the businesses/{bizId}
+      // ledger, NOT the app-membership model the other metrics use.
+      if (metric.startsWith("biz_")) {
+        try {
+          if (metric === "biz_atRisk") {
+            const members = await listMembers({ status: MEMBER_STATUS.AT_RISK });
+            setRows(
+              members.map((m) => ({
+                userId: m.id,
+                name: m.name || t("analyticsDetail.memberFallback"),
+                title: t("analyticsDetail.biz_atRisk.row"),
+                sub: m.phone || m.email || "",
+                avatar: null,
+              }))
+            );
+          } else if (metric === "biz_attendance") {
+            const range = route.params?.range;
+            const att = range?.from && range?.to ? await listAttendanceInRange(range.from, range.to) : [];
+            setRows(
+              att
+                .slice()
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .map((a) => ({
+                  userId: a.id,
+                  name: a.memberName || t("analyticsDetail.memberFallback"),
+                  title: a.classTitle || t("analyticsDetail.classFallback"),
+                  sub: fmtDate(a.date),
+                  avatar: null,
+                }))
+            );
+          }
+        } catch (e) {
+          // ignore
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
       try {
         const { memberships, redemptions } = await getHostMembersDetail();
         let list = [];

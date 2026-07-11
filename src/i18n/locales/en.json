@@ -2276,6 +2276,16 @@
       "title": "Expiring soon",
       "tip": "These memberships expire within 7 days. A message or renewal offer NOW protects this revenue."
     },
+    "biz_attendance": {
+      "title": "Attendance",
+      "tip": "Every check-in in this range. Regulars renew more — celebrate them.",
+      "row": "Attended"
+    },
+    "biz_atRisk": {
+      "title": "At-risk members",
+      "tip": "Members you've flagged at risk. A quick message or offer now can win them back.",
+      "row": "At risk"
+    },
     "classFallback": "Class",
     "membershipFallback": "Membership",
     "memberFallback": "Member",
@@ -3288,8 +3298,28 @@
         "churn": "Churn",
         "recovered": "Recovered",
         "revenue": "Revenue",
-        "netMargin": "Net profit"
-      }
+        "netMargin": "Net profit",
+        "occupancy": "Occupancy",
+        "checkInRate": "Check-in rate",
+        "arpu": "ARPU",
+        "repeatRate": "Repeat rate",
+        "creditsUnredeemed": "Credits unredeemed"
+      },
+      "noShow": "no-show {{pct}}%",
+      "membersSub": "members",
+      "deferredSub": "deferred",
+      "trendTitle": "Trend",
+      "legendAttendance": "Attendance",
+      "legendRevenue": "Revenue",
+      "legendNew": "New",
+      "bestDays": "Best days to schedule",
+      "bestDayNote": "{{day}} is your busiest — put your best classes there.",
+      "weekday": { "sun": "S", "mon": "M", "tue": "T", "wed": "W", "thu": "T", "fri": "F", "sat": "S" },
+      "weekdayFull": { "sun": "Sunday", "mon": "Monday", "tue": "Tuesday", "wed": "Wednesday", "thu": "Thursday", "fri": "Friday", "sat": "Saturday" },
+      "pricingMix": "Local vs General",
+      "tierLocal": "Local rate",
+      "tierGeneral": "General rate",
+      "pricingMixNote": "Based on each member's checkout price tier — a pricing split, not residency."
     },
     "momentum": {
       "title": "Member health status",

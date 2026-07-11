@@ -2276,6 +2276,16 @@
       "title": "Por vencer pronto",
       "tip": "Estas membresías vencen en los próximos 7 días. Un mensaje u oferta de renovación AHORA protege este ingreso."
     },
+    "biz_attendance": {
+      "title": "Asistencia",
+      "tip": "Cada check-in en este rango. Los habituales renuevan más — recompénsalos.",
+      "row": "Asistió"
+    },
+    "biz_atRisk": {
+      "title": "Miembros en riesgo",
+      "tip": "Miembros que marcaste en riesgo. Un mensaje u oferta ahora puede recuperarlos.",
+      "row": "En riesgo"
+    },
     "classFallback": "Clase",
     "membershipFallback": "Membresía",
     "memberFallback": "Miembro",
@@ -3288,8 +3298,28 @@
         "churn": "Abandono",
         "recovered": "Recuperados",
         "revenue": "Ingresos",
-        "netMargin": "Utilidad neta"
-      }
+        "netMargin": "Utilidad neta",
+        "occupancy": "Ocupación",
+        "checkInRate": "Tasa de check-in",
+        "arpu": "ARPU",
+        "repeatRate": "Tasa de repetición",
+        "creditsUnredeemed": "Créditos sin usar"
+      },
+      "noShow": "ausencias {{pct}}%",
+      "membersSub": "miembros",
+      "deferredSub": "diferidos",
+      "trendTitle": "Tendencia",
+      "legendAttendance": "Asistencia",
+      "legendRevenue": "Ingresos",
+      "legendNew": "Nuevos",
+      "bestDays": "Mejores días para programar",
+      "bestDayNote": "{{day}} es tu día más concurrido — pon ahí tus mejores clases.",
+      "weekday": { "sun": "D", "mon": "L", "tue": "M", "wed": "X", "thu": "J", "fri": "V", "sat": "S" },
+      "weekdayFull": { "sun": "Domingo", "mon": "Lunes", "tue": "Martes", "wed": "Miércoles", "thu": "Jueves", "fri": "Viernes", "sat": "Sábado" },
+      "pricingMix": "Local vs General",
+      "tierLocal": "Tarifa local",
+      "tierGeneral": "Tarifa general",
+      "pricingMixNote": "Según la tarifa de cobro de cada miembro — es una división de precio, no de residencia."
     },
     "momentum": {
       "title": "Estado de salud del miembro",
