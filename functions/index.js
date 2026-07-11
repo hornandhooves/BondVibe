@@ -1990,6 +1990,28 @@ function snapApproxGrid(coords) {
     Number((Math.round(v / APPROX_GRID_DEG) * APPROX_GRID_DEG).toFixed(4));
   return {latitude: snap(coords.latitude), longitude: snap(coords.longitude)};
 }
+// `location` is "Venue, City" — the tail is a coarse (city-level) area label,
+// the head is the venue name. Never expose the street through `area`.
+function deriveArea(location, city) {
+  if (typeof location === "string" && location.includes(",")) {
+    const tail = location.split(",").pop().trim();
+    if (tail) return tail;
+  }
+  return city || null;
+}
+function deriveVenue(location) {
+  if (typeof location === "string" && location.includes(",")) {
+    return location.split(",")[0].trim();
+  }
+  return (typeof location === "string" && location.trim()) || null;
+}
+function coordFromData(c) {
+  return c && Number.isFinite(c.latitude) && Number.isFinite(c.longitude) ?
+    {latitude: c.latitude, longitude: c.longitude} : null;
+}
+function coordsEqual(a, b) {
+  return !!a && !!b && a.latitude === b.latitude && a.longitude === b.longitude;
+}
 
 /**
  * F2 — set an event's GATED location. The client sends the exact venue/address/
@@ -2102,7 +2124,9 @@ exports.joinEvent = onCall(async (request) => {
  * @return {string[]} Deduped lowercase keyword/prefix tokens.
  */
 function eventSearchKeywords(data) {
-  const text = [data.title, data.location, data.city, data.category]
+  // F2: fold in `area` so gated events are still findable by their coarse zone
+  // even once the exact `location` is stripped from the public doc (Phase B).
+  const text = [data.title, data.location, data.area, data.city, data.category]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
@@ -2124,16 +2148,50 @@ exports.onEventWritten = onDocumentWritten("events/{eventId}", async (event) => 
   const after = event.data?.after;
   if (!after || !after.exists) return; // deleted
   const data = after.data();
+
+  // F2 Phase A: derive the coarse gated fields (area + approxCoords) and mirror
+  // the exact detail into the participant-gated private doc. ADDITIVE — the
+  // legacy public location/locationCoords are left in place (Phase B strips
+  // them). Idempotent + loop-guarded: only writes when something actually
+  // changed, so the self-update below doesn't cause an infinite trigger loop.
+  const exact = coordFromData(data.locationCoords);
+  const approx = snapApproxGrid(exact);
+  const area = deriveArea(data.location, data.city);
+
+  const gatingPatch = {};
+  if (area && data.area !== area) gatingPatch.area = area;
+  if (approx && !coordsEqual(data.approxCoords, approx)) gatingPatch.approxCoords = approx;
+  if ((area || approx) && data.locationLocked !== true) gatingPatch.locationLocked = true;
+  const gatingChanged = Object.keys(gatingPatch).length > 0;
+
   // BUG 27: a host can opt an event out of Discover/search via the
   // "List event publicly" toggle. Private events (listedPublicly === false)
   // carry no keywords so the server-side keyword query never returns them.
-  const desired = data.listedPublicly === false ? [] : eventSearchKeywords(data);
+  const desired = data.listedPublicly === false ?
+    [] : eventSearchKeywords({...data, area}); // fold the fresh area in now
   const current = Array.isArray(data.searchKeywords) ? data.searchKeywords : [];
-  const same =
+  const kwChanged = !(
     current.length === desired.length &&
-    desired.every((k) => current.includes(k));
-  if (same) return;
-  await after.ref.update({searchKeywords: desired});
+    desired.every((k) => current.includes(k))
+  );
+
+  if (!kwChanged && !gatingChanged) return; // steady state — nothing to do
+
+  const update = {...gatingPatch};
+  if (kwChanged) update.searchKeywords = desired;
+  await after.ref.update(update);
+
+  // Mirror the exact detail into the participant-gated private doc when the
+  // gating fields were (re)computed. Writing a subcollection doc does NOT
+  // re-fire this events/{id} trigger, so there's no loop.
+  if (gatingChanged && (exact || data.venueAddress || data.location)) {
+    await after.ref.collection("private").doc("location").set({
+      venueName: deriveVenue(data.location),
+      address: data.venueAddress || data.location || null,
+      exactCoords: exact || null,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, {merge: true});
+  }
 });
 
 /**
