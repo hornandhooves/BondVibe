@@ -186,6 +186,16 @@ export default function BusinessHubScreen({ navigation }) {
               onPress={() => navigation.navigate("MomentumBoard")}
             />
           )}
+          {allows("momentum") && (
+            <ListRow
+              icon="gift"
+              iconColor={colors.warning}
+              iconBg={`${colors.warning}1A`}
+              title={t("business.hub.birthdaysTitle")}
+              subtitle={t("business.hub.birthdaysSubtitle")}
+              onPress={() => navigation.navigate("BusinessBirthdays")}
+            />
+          )}
           {allows("automations") && (
             <ListRow
               icon="broadcast"

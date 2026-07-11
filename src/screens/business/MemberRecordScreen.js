@@ -4,7 +4,7 @@
  * with reason), attendance ledger (mark present, auto-deduct, history), tags,
  * notes timeline.
  */
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -105,6 +105,17 @@ export default function MemberRecordScreen({ route, navigation }) {
     setPackages(all.filter((p) => audienceAllows(p.audienceTier, member?.pricingTier)));
     setAssignVisible(true);
   };
+
+  // Deep-link from Birthdays "Gift a pack": open the assign sheet once the member
+  // has loaded (openAssign filters packages by the member's pricing tier).
+  const autoAssignedRef = useRef(false);
+  useEffect(() => {
+    if (route.params?.openAssign && member && !autoAssignedRef.current) {
+      autoAssignedRef.current = true;
+      openAssign();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [member]);
 
   const onAssignPackage = async (pkg) => {
     setAssignVisible(false);

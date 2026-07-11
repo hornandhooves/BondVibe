@@ -46,6 +46,7 @@ import BusinessSetupScreen from "../screens/business/BusinessSetupScreen";
 import MembersListScreen from "../screens/business/MembersListScreen";
 import MemberFormScreen from "../screens/business/MemberFormScreen";
 import MemberRecordScreen from "../screens/business/MemberRecordScreen";
+import BusinessBirthdaysScreen from "../screens/business/BusinessBirthdaysScreen";
 import CsvImportScreen from "../screens/business/CsvImportScreen";
 import PackagesScreen from "../screens/business/PackagesScreen";
 import PackageFormScreen from "../screens/business/PackageFormScreen";
@@ -659,6 +660,7 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="BusinessMembers" component={MembersListScreen} />
           <Stack.Screen name="BusinessMemberForm" component={MemberFormScreen} />
           <Stack.Screen name="BusinessMemberRecord" component={MemberRecordScreen} />
+          <Stack.Screen name="BusinessBirthdays" component={BusinessBirthdaysScreen} />
           <Stack.Screen name="BusinessCsvImport" component={CsvImportScreen} />
           <Stack.Screen name="BusinessPackages" component={PackagesScreen} />
           <Stack.Screen name="BusinessPackageForm" component={PackageFormScreen} />

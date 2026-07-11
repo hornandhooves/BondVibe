@@ -149,7 +149,7 @@ export default function ExpenseFormScreen({ navigation }) {
 
           <View style={styles.field}>
             <Text style={[styles.label, { color: colors.textTertiary }]}>{t("business.expense.date")}</Text>
-            <DateField label={t("business.expense.date")} value={date} onChange={setDate} />
+            <DateField value={date} onChange={setDate} />
           </View>
 
           <View style={styles.field}>

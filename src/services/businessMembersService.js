@@ -105,6 +105,26 @@ export const canSms = (member) =>
   !!(member && member.smsConsent && member.smsConsent.granted === true && member.phone);
 
 /**
+ * Birthday privacy (dashboard handoff §Birthdays, HARD rule): we store the full
+ * DOB but NEVER expose the year or an age. These two exposers are the only
+ * sanctioned read path — MM-DD for matching, a localized day+month for display.
+ * UTC-pinned (consistent with the length-picker UTC fix) so "today" doesn't drift.
+ */
+export const birthdayMMDD = (member) => {
+  if (!member?.dob) return null;
+  const d = new Date(member.dob);
+  if (!isFinite(d.getTime())) return null;
+  return `${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+};
+
+export const birthdayLabel = (member, locale = "es-MX") => {
+  if (!member?.dob) return null;
+  const d = new Date(member.dob);
+  if (!isFinite(d.getTime())) return null;
+  return d.toLocaleDateString(locale, { day: "numeric", month: "short", timeZone: "UTC" });
+};
+
+/**
  * List members (newest first). Search / status / tag filtering is applied
  * client-side so no composite index is needed for typical member counts.
  * @param {{search?:string, status?:string, tag?:string}} opts
@@ -160,6 +180,8 @@ export async function createMember(data = {}, businessName = "", bizId = getMyBi
     businessName: businessName || null, // denormalized so a linked attendee can read it
     phone: (data.phone || "").trim() || null,
     email: (data.email || "").trim() || null,
+    // Full DOB stored; exposed only as MM-DD via birthdayMMDD/birthdayLabel.
+    dob: data.dob || null,
     status: data.status || MEMBER_STATUS.ACTIVE,
     tags: Array.isArray(data.tags) ? data.tags : [],
     notes: data.notes ? [{ text: String(data.notes).trim(), at: new Date().toISOString() }] : [],

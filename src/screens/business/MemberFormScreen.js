@@ -22,10 +22,21 @@ import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import Icon from "../../components/Icon";
 import GradientBackground from "../../components/GradientBackground";
+import DateField from "../../components/DateField";
 import { useTheme } from "../../contexts/ThemeContext";
 import { getBusiness, listBranches } from "../../services/businessService";
 import { createMember, updateMember, getMember, buildSmsConsent } from "../../services/businessMembersService";
 import { verticalTagsKey } from "../../constants/businessVerticals";
+
+// Persist a birthday as UTC-midnight of the LOCAL calendar day the host picked,
+// so the UTC MM-DD read path (birthdayMMDD/birthdayLabel) reports exactly that
+// day regardless of the host's timezone — and the picker never disagrees with
+// the Birthdays screen. `isoToLocalDob` is the exact inverse, for edit-load.
+const dobToISO = (d) => (d ? new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString() : null);
+const isoToLocalDob = (iso) => {
+  const d = new Date(iso);
+  return isFinite(d.getTime()) ? new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) : null;
+};
 
 export default function MemberFormScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
@@ -44,6 +55,7 @@ export default function MemberFormScreen({ route, navigation }) {
   const [tagDraft, setTagDraft] = useState("");
   const [notes, setNotes] = useState("");
   const [smsConsent, setSmsConsent] = useState(false);
+  const [dob, setDob] = useState(null);
   const [balanceOwed, setBalanceOwed] = useState("");
   const [branches, setBranches] = useState([]);
   const [branchId, setBranchId] = useState(null);
@@ -61,6 +73,7 @@ export default function MemberFormScreen({ route, navigation }) {
           setEmail(m.email || "");
           setTags(Array.isArray(m.tags) ? m.tags : []);
           setSmsConsent(m.smsConsent?.granted === true);
+          setDob(m.dob ? isoToLocalDob(m.dob) : null);
           setBalanceOwed(m.balanceOwedCents ? String(m.balanceOwedCents / 100) : "");
           setBranchId(m.branchId || null);
         }
@@ -101,6 +114,7 @@ export default function MemberFormScreen({ route, navigation }) {
           phone: phone.trim() || null,
           email: email.trim() || null,
           tags,
+          dob: dobToISO(dob),
           branchId: branchId || null,
           balanceOwedCents: owedCents,
           smsConsent: buildSmsConsent(smsConsent, "edit"),
@@ -113,6 +127,7 @@ export default function MemberFormScreen({ route, navigation }) {
             phone: phone.trim(),
             email: email.trim(),
             tags,
+            dob: dobToISO(dob),
             notes: notes.trim(),
             branchId: branchId || null,
             balanceOwedCents: owedCents,
@@ -190,6 +205,17 @@ export default function MemberFormScreen({ route, navigation }) {
                 autoCapitalize="none"
               />
             </View>
+          </View>
+
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.textTertiary }]}>{t("business.form.dobLabel")}</Text>
+            <DateField
+              value={dob}
+              onChange={setDob}
+              onClear={() => setDob(null)}
+              placeholder={t("business.form.dobPlaceholder")}
+            />
+            <Text style={[styles.hintNote, { color: colors.textTertiary }]}>{t("business.form.dobHint")}</Text>
           </View>
 
           <View style={styles.field}>
@@ -337,6 +363,7 @@ function createStyles(colors) {
     field: { marginBottom: 16 },
     row: { flexDirection: "row", gap: 12 },
     label: { fontSize: 11, fontWeight: "700", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 8 },
+    hintNote: { fontSize: 11.5, marginTop: 6, lineHeight: 16 },
     input: { borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14 },
     textarea: { minHeight: 70, textAlignVertical: "top" },
     tagsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
