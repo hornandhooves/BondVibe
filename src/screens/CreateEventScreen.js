@@ -525,6 +525,21 @@ export default function CreateEventScreen({ navigation, route }) {
       );
       return;
     }
+    // F1 Phase 3: coordinates are required going forward so the event can be
+    // pinned on the map — the venue must be picked from the place suggestions.
+    // (Availability blocks and business classes are exempt — not on discovery.)
+    if (
+      !isBlocked && !isClass &&
+      (!locationCoords ||
+        !Number.isFinite(locationCoords.latitude) ||
+        !Number.isFinite(locationCoords.longitude))
+    ) {
+      Alert.alert(
+        t("createEvent.validation.missingInfoTitle"),
+        t("createEvent.validation.missingCoordsMsg")
+      );
+      return;
+    }
     // A blocked/OOO slot needs no capacity or price (BUG 27.1) — relax those.
     if (!isBlocked && (!maxPeople || parseInt(maxPeople) < 1)) {
       Alert.alert(t("createEvent.validation.invalidMaxPeopleTitle"), t("createEvent.validation.invalidMaxPeopleMsg"));

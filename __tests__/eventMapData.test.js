@@ -3,7 +3,7 @@
  * react-native-maps. Verifies the F2-strict rule: non-participants get an
  * approximate CIRCLE, participants get an exact pin, no-coords are off-map.
  */
-import { buildMapData, isParticipant, regionFor, DEFAULT_REGION, isWithinRegion, filterMarkersToRegion } from '../src/utils/eventMapData';
+import { buildMapData, isParticipant, regionFor, DEFAULT_REGION, isWithinRegion, filterMarkersToRegion, clusterMarkers } from '../src/utils/eventMapData';
 import { APPROX_CIRCLE_RADIUS_M } from '../src/utils/eventLocation';
 
 const exact = { latitude: 20.2114, longitude: -87.4654 };
@@ -91,6 +91,45 @@ describe('isWithinRegion / filterMarkersToRegion ("Search this area")', () => {
     ];
     expect(filterMarkersToRegion(markers, region).map((m) => m.id)).toEqual(['in']);
     expect(filterMarkersToRegion(markers, null)).toHaveLength(2);
+  });
+});
+
+describe('clusterMarkers', () => {
+  const region = { latitude: 20.2, longitude: -87.4, latitudeDelta: 0.6, longitudeDelta: 0.6 }; // cell 0.1
+
+  it('clusters markers in the same cell, keeps distant ones single', () => {
+    const markers = [
+      { id: 'a', coords: { latitude: 20.21, longitude: -87.41 } },
+      { id: 'b', coords: { latitude: 20.23, longitude: -87.42 } }, // same 0.1 cell as a
+      { id: 'c', coords: { latitude: 20.55, longitude: -87.1 } }, // far → single
+    ];
+    const { clusters, singles } = clusterMarkers(markers, region);
+    expect(clusters).toHaveLength(1);
+    expect(clusters[0].count).toBe(2);
+    expect(singles.map((s) => s.id)).toEqual(['c']);
+  });
+
+  it('does not cluster below 2 markers', () => {
+    const one = [{ id: 'a', coords: { latitude: 20, longitude: -87 } }];
+    expect(clusterMarkers(one, region)).toEqual({ clusters: [], singles: one });
+  });
+
+  it('no region → everything single', () => {
+    const markers = [
+      { id: 'a', coords: { latitude: 20, longitude: -87 } },
+      { id: 'b', coords: { latitude: 20, longitude: -87 } },
+    ];
+    expect(clusterMarkers(markers, null)).toEqual({ clusters: [], singles: markers });
+  });
+
+  it('zooming in (smaller region) splits a cluster back into singles', () => {
+    const markers = [
+      { id: 'a', coords: { latitude: 20.201, longitude: -87.401 } },
+      { id: 'b', coords: { latitude: 20.209, longitude: -87.409 } },
+    ];
+    expect(clusterMarkers(markers, region).clusters).toHaveLength(1); // wide → clustered
+    const zoomed = { latitude: 20.2, longitude: -87.4, latitudeDelta: 0.006, longitudeDelta: 0.006 };
+    expect(clusterMarkers(markers, zoomed).clusters).toHaveLength(0); // zoomed → split
   });
 });
 

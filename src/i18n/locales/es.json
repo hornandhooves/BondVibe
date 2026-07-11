@@ -337,6 +337,7 @@
     "clearAll": "Limpiar todo",
     "showResults": "Ver resultados",
     "searchThisArea": "Buscar en esta zona",
+    "eventsHere": "{{count}} eventos aquí",
     "locationDeniedTitle": "Ubicación desactivada",
     "locationDeniedMsg": "Activa la ubicación para ver eventos cerca de ti, o busca un lugar."
   },
@@ -479,6 +480,7 @@
       "missingDescriptionMsg": "Ingresa una descripción para el evento.",
       "missingInstructorMsg": "Elige un instructor para la clase.",
       "missingVenueMsg": "Ingresa un lugar o dirección específica.",
+      "missingCoordsMsg": "Elige la ubicación de las sugerencias para que aparezca en el mapa.",
       "invalidMaxPeopleTitle": "Máximo de personas inválido",
       "invalidMaxPeopleMsg": "El máximo de personas debe ser al menos 1.",
       "invalidPriceTitle": "Precio inválido",

@@ -337,6 +337,7 @@
     "clearAll": "Clear all",
     "showResults": "Show results",
     "searchThisArea": "Search this area",
+    "eventsHere": "{{count}} events here",
     "locationDeniedTitle": "Location is off",
     "locationDeniedMsg": "Turn on location to find events near you, or search a place instead."
   },
@@ -479,6 +480,7 @@
       "missingDescriptionMsg": "Please enter an event description.",
       "missingInstructorMsg": "Choose an instructor for the class.",
       "missingVenueMsg": "Please enter a specific venue or address.",
+      "missingCoordsMsg": "Pick the location from the suggestions so it can show on the map.",
       "invalidMaxPeopleTitle": "Invalid Max People",
       "invalidMaxPeopleMsg": "Maximum people must be at least 1.",
       "invalidPriceTitle": "Invalid Price",

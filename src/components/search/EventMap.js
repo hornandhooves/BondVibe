@@ -8,7 +8,7 @@
  * "Search this area" (re-query the visible region), and distance on the callout.
  */
 import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Modal, ScrollView } from "react-native";
 import MapView, { Marker, Circle } from "react-native-maps";
 import * as Location from "expo-location";
 import { useTranslation } from "react-i18next";
@@ -18,7 +18,7 @@ import { getCategoryLabel } from "../../utils/eventCategories";
 import { formatISODate, formatEventTime } from "../../utils/dateUtils";
 import { formatMXN } from "../../utils/pricing";
 import PlaceAutocomplete from "../../components/PlaceAutocomplete";
-import { buildMapData, filterMarkersToRegion } from "../../utils/eventMapData";
+import { buildMapData, filterMarkersToRegion, clusterMarkers } from "../../utils/eventMapData";
 import { haversineKm, formatDistanceKm } from "../../utils/geo";
 
 const FOCUS_DELTA = 0.08;
@@ -41,21 +41,31 @@ export default function EventMap({ events, navigation, currentUid, activeFilterC
   const [locating, setLocating] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [tracks, setTracks] = useState(true);
+  const [clusterList, setClusterList] = useState(null); // co-located cluster → list sheet
+
+  // Stable signature of the marker SET (ids) — resets below fire when the set
+  // actually changes, not on every filter re-run that keeps the same events.
+  const markerSig = useMemo(() => allMarkers.map((m) => m.id).join("|"), [allMarkers]);
 
   // The event set changed (filters) → drop any "search this area" constraint.
   useEffect(() => {
     setSearchedRegion(null);
     setMoved(false);
-  }, [allMarkers.length]);
+  }, [markerSig]);
 
-  const markers = searchedRegion ? filterMarkersToRegion(allMarkers, searchedRegion) : allMarkers;
-  const selected = markers.find((m) => m.id === selectedId) || null;
+  const markers = useMemo(
+    () => (searchedRegion ? filterMarkersToRegion(allMarkers, searchedRegion) : allMarkers),
+    [allMarkers, searchedRegion],
+  );
+  // Cluster for the current zoom; lone markers render as pins/circles.
+  const { clusters, singles } = useMemo(() => clusterMarkers(markers, region), [markers, region]);
+  const selected = singles.find((m) => m.id === selectedId) || null;
 
   useEffect(() => {
     setTracks(true);
     const id = setTimeout(() => setTracks(false), 1200);
     return () => clearTimeout(id);
-  }, [markers.length]);
+  }, [singles.length, clusters.length, isDark]);
 
   const onRegionChangeComplete = useCallback(
     (r) => {
@@ -72,6 +82,27 @@ export default function EventMap({ events, navigation, currentUid, activeFilterC
     setSearchedRegion(region);
     setMoved(false);
     setSelectedId(null);
+  };
+
+  const zoomToCluster = (cluster) => {
+    mapRef.current?.animateToRegion(
+      {
+        latitude: cluster.coords.latitude,
+        longitude: cluster.coords.longitude,
+        latitudeDelta: Math.max(region.latitudeDelta / 2.5, 0.01),
+        longitudeDelta: Math.max(region.longitudeDelta / 2.5, 0.01),
+      },
+      400,
+    );
+  };
+
+  // Zooming only helps when the members sit at DIFFERENT points. Co-located
+  // events (F2 snaps every non-participant to the same ~1km grid cell) can never
+  // zoom-split, so open a list instead — otherwise those events are unreachable.
+  const onClusterPress = (cluster) => {
+    const distinct = new Set(cluster.markers.map((m) => `${m.coords.latitude},${m.coords.longitude}`));
+    if (distinct.size > 1) zoomToCluster(cluster);
+    else setClusterList(cluster.markers);
   };
 
   const goNearMe = async () => {
@@ -149,7 +180,14 @@ export default function EventMap({ events, navigation, currentUid, activeFilterC
           onRegionChangeComplete={onRegionChangeComplete}
           onPress={() => setSelectedId(null)}
         >
-          {markers.map((m) =>
+          {clusters.map((c) => (
+            <Marker key={c.id} coordinate={c.coords} onPress={() => onClusterPress(c)} tracksViewChanges={tracks} anchor={{ x: 0.5, y: 0.5 }}>
+              <View style={[styles.cluster, { backgroundColor: colors.primary, borderColor: colors.onPrimary }]}>
+                <Text style={[styles.clusterText, { color: colors.onPrimary }]}>{c.count}</Text>
+              </View>
+            </Marker>
+          ))}
+          {singles.map((m) =>
             m.kind === "circle" ? (
               <React.Fragment key={m.id}>
                 <Circle
@@ -220,7 +258,63 @@ export default function EventMap({ events, navigation, currentUid, activeFilterC
           />
         )}
       </View>
+
+      {/* Co-located cluster → a list so every event stays reachable. */}
+      <ClusterListSheet
+        markers={clusterList}
+        colors={colors}
+        styles={styles}
+        t={t}
+        priceLabel={priceLabel}
+        distanceOrigin={distanceOrigin}
+        onSelect={(id) => {
+          setClusterList(null);
+          navigation.navigate("EventDetail", { eventId: id });
+        }}
+        onClose={() => setClusterList(null)}
+      />
     </View>
+  );
+}
+
+function ClusterListSheet({ markers, colors, styles, t, priceLabel, distanceOrigin, onSelect, onClose }) {
+  return (
+    <Modal visible={!!markers} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.clusterOverlay}>
+        <TouchableOpacity style={styles.clusterBackdrop} activeOpacity={1} onPress={onClose} />
+        <View style={[styles.clusterSheet, { backgroundColor: colors.surface }]}>
+          <View style={styles.clusterHandle}>
+            <View style={[styles.clusterGrip, { backgroundColor: colors.borderStrong }]} />
+            <Text style={[styles.clusterHeader, { color: colors.text }]}>
+              {t("searchEvents.eventsHere", { count: markers ? markers.length : 0 })}
+            </Text>
+          </View>
+          <ScrollView style={styles.clusterBody} showsVerticalScrollIndicator={false}>
+            {(markers || []).map((m) => {
+              const ev = m.event;
+              const CategoryIcon = getCategoryIcon(ev.category);
+              const areaLabel = m.locked ? ev.area || t("eventLocation.approxArea") : ev.area || ev.location || "";
+              const dist = formatDistanceKm(haversineKm(distanceOrigin, m.coords));
+              return (
+                <TouchableOpacity key={m.id} style={[styles.clusterRow, { borderBottomColor: colors.border }]} onPress={() => onSelect(ev.id)} activeOpacity={0.85}>
+                  <View style={[styles.categoryChip, { backgroundColor: `${colors.primary}26` }]}>
+                    <CategoryIcon size={12} color={colors.primary} strokeWidth={2} />
+                    <Text style={[styles.categoryChipText, { color: colors.primary }]}>{getCategoryLabel(ev.category)}</Text>
+                  </View>
+                  <View style={styles.clusterRowBody}>
+                    <Text style={[styles.calloutTitle, { color: colors.text }]} numberOfLines={1}>{ev.title}</Text>
+                    <Text style={[styles.calloutSub, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {[areaLabel, priceLabel(ev), dist].filter(Boolean).join(" · ")}
+                    </Text>
+                  </View>
+                  <Icon name="forward" size={18} color={colors.textTertiary} type="ui" />
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -322,6 +416,33 @@ function createStyles(colors) {
       borderRadius: 11,
     },
     lockChipText: { fontSize: 11, fontWeight: "800", letterSpacing: -0.2 },
+    // Cluster count bubble
+    cluster: {
+      minWidth: 34,
+      height: 34,
+      borderRadius: 17,
+      paddingHorizontal: 8,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 2,
+    },
+    clusterText: { fontSize: 13, fontWeight: "800" },
+    // Cluster list sheet
+    clusterOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" },
+    clusterBackdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
+    clusterSheet: { maxHeight: "70%", borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingBottom: 24 },
+    clusterHandle: { alignItems: "center", paddingTop: 10, paddingBottom: 8 },
+    clusterGrip: { width: 40, height: 4, borderRadius: 2, marginBottom: 12 },
+    clusterHeader: { fontSize: 15.5, fontWeight: "800", letterSpacing: -0.3 },
+    clusterBody: { paddingHorizontal: 16 },
+    clusterRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingVertical: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    clusterRowBody: { flex: 1, gap: 3 },
     // "Search this area" (top-center over the map)
     searchArea: {
       position: "absolute",

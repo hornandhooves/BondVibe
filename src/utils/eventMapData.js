@@ -65,6 +65,46 @@ export const isWithinRegion = (coords, region) => {
 export const filterMarkersToRegion = (markers, region) =>
   region ? (markers || []).filter((m) => isWithinRegion(m.coords, region)) : markers || [];
 
+// The visible span is divided into ~this many grid cells per axis; markers that
+// land in the same cell at the current zoom collapse into one cluster.
+const CLUSTER_CELLS = 6;
+
+/**
+ * Grid-cluster markers for the current zoom (region). Cells with 2+ markers
+ * become a cluster (count bubble at the centroid); lone markers stay as-is.
+ * Pure + testable; works with BOTH pins and F2 circles (a cluster hides the
+ * approx circles until you zoom in, so nothing leaks). Zooming in (smaller
+ * region) shrinks the cells → clusters split back into individual markers.
+ * @returns {{ clusters: Array<{id,coords,count,markers}>, singles: Array }}
+ */
+export const clusterMarkers = (markers, region) => {
+  const list = markers || [];
+  const cell = region ? Math.max(region.latitudeDelta, region.longitudeDelta) / CLUSTER_CELLS : 0;
+  if (!(cell > 0) || list.length < 2) return { clusters: [], singles: list };
+
+  const cells = new Map();
+  for (const m of list) {
+    if (!m.coords) continue;
+    const key = `${Math.floor(m.coords.latitude / cell)}:${Math.floor(m.coords.longitude / cell)}`;
+    const bucket = cells.get(key);
+    if (bucket) bucket.push(m);
+    else cells.set(key, [m]);
+  }
+
+  const clusters = [];
+  const singles = [];
+  for (const [key, ms] of cells) {
+    if (ms.length === 1) {
+      singles.push(ms[0]);
+      continue;
+    }
+    const lat = ms.reduce((s, m) => s + m.coords.latitude, 0) / ms.length;
+    const lng = ms.reduce((s, m) => s + m.coords.longitude, 0) / ms.length;
+    clusters.push({ id: `cluster-${key}`, coords: { latitude: lat, longitude: lng }, count: ms.length, markers: ms });
+  }
+  return { clusters, singles };
+};
+
 /**
  * @param {Array} events filteredEvents (the same set the list shows)
  * @param {string} uid the current user's uid
