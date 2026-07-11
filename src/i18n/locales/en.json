@@ -3326,7 +3326,7 @@
       "bestDayNote": "{{day}} is your busiest — put your best classes there.",
       "weekday": { "sun": "S", "mon": "M", "tue": "T", "wed": "W", "thu": "T", "fri": "F", "sat": "S" },
       "weekdayFull": { "sun": "Sunday", "mon": "Monday", "tue": "Tuesday", "wed": "Wednesday", "thu": "Thursday", "fri": "Friday", "sat": "Saturday" },
-      "pricingMix": "Local vs General",
+      "pricingMix": "Local vs General · pricing mix",
       "tierLocal": "Local rate",
       "tierGeneral": "General rate",
       "pricingMixNote": "Based on each member's checkout price tier — a pricing split, not residency.",

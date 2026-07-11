@@ -3326,7 +3326,7 @@
       "bestDayNote": "{{day}} es tu día más concurrido — pon ahí tus mejores clases.",
       "weekday": { "sun": "D", "mon": "L", "tue": "M", "wed": "X", "thu": "J", "fri": "V", "sat": "S" },
       "weekdayFull": { "sun": "Domingo", "mon": "Lunes", "tue": "Martes", "wed": "Miércoles", "thu": "Jueves", "fri": "Viernes", "sat": "Sábado" },
-      "pricingMix": "Local vs General",
+      "pricingMix": "Local vs General · mezcla de tarifa",
       "tierLocal": "Tarifa local",
       "tierGeneral": "Tarifa general",
       "pricingMixNote": "Según la tarifa de cobro de cada miembro — es una división de precio, no de residencia.",

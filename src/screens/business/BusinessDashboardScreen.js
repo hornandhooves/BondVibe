@@ -205,8 +205,8 @@ export default function BusinessDashboardScreen({ navigation }) {
         { key: "attendance", value: metrics.attendanceCount, kind: "count", trend: metrics.attendanceTrend, tap: "biz_attendance" },
         { key: "occupancy", value: occupancyPct, kind: "pct" },
         { key: "checkInRate", value: checkInPct, kind: "pct", sub: noShowPct != null ? t("business.dashboard.noShow", { pct: noShowPct }) : null },
-        { key: "revenue", value: metrics.revenueCents, kind: "money", trend: metrics.revenueTrend },
-        { key: "netMargin", value: metrics.netCents, kind: "money", netTone: true },
+        { key: "revenue", value: metrics.revenueCents, kind: "money", trend: metrics.revenueTrend, tapScreen: "BusinessFinance" },
+        { key: "netMargin", value: metrics.netCents, kind: "money", netTone: true, tapScreen: "BusinessExpenses" },
         { key: "arpu", value: metrics.arpuCents, kind: "money" },
         { key: "repeatRate", value: metrics.repeatRate, kind: "pct" },
         { key: "atRisk", value: metrics.atRisk, kind: "count", sub: t("business.dashboard.membersSub"), tap: "biz_atRisk" },
@@ -318,12 +318,19 @@ export default function BusinessDashboardScreen({ navigation }) {
                 honest "—" + amber dot when a signal has no data yet. */}
             <View style={styles.kpiGrid}>
               {kpis.map((k) => {
-                const Card = k.tap ? TouchableOpacity : View;
+                // Money/CRM KPIs route to their real source screen (Finance / P&L);
+                // member KPIs open the honest AnalyticsDetail business branch.
+                const onPressKpi = k.tapScreen
+                  ? () => navigation.navigate(k.tapScreen)
+                  : k.tap
+                    ? () => navigation.navigate("AnalyticsDetail", { metric: k.tap, range: { from: fromIso, to: toIso } })
+                    : null;
+                const Card = onPressKpi ? TouchableOpacity : View;
                 return (
                   <Card
                     key={k.key}
                     style={[styles.kpiCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                    {...(k.tap ? { activeOpacity: 0.85, onPress: () => navigation.navigate("AnalyticsDetail", { metric: k.tap, range: { from: fromIso, to: toIso } }) } : {})}
+                    {...(onPressKpi ? { activeOpacity: 0.85, onPress: onPressKpi } : {})}
                   >
                     {k.value == null && <View style={styles.needsDot} />}
                     <Text style={[styles.kpiLabel, { color: colors.textTertiary }]}>{t(`business.dashboard.kpi.${k.key}`)}</Text>
