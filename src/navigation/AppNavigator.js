@@ -466,6 +466,11 @@ const AppNavigator = forwardRef((props, ref) => {
               else {
                 console.log("✅ All checks passed - navigating to MainTabs");
                 hasReachedHome.current = true;
+                // BUG 35 route-cache: remember this uid is fully onboarded so an
+                // offline cold start (empty memory cache → fromCache miss) can
+                // route straight to MainTabs instead of stranding a known user on
+                // the loading screen. Cleared when the account is confirmed gone.
+                AsyncStorage.setItem("@onboarded_uid", user.uid).catch(() => {});
                 if (registeredPushTokenUid.current !== user.uid) {
                   registeredPushTokenUid.current = user.uid;
                   registerPushToken(user.uid);
@@ -492,14 +497,27 @@ const AppNavigator = forwardRef((props, ref) => {
               }
               // BUG 35: an offline / empty-cache cold start emits a fromCache
               // miss (exists()===false only because nothing is cached yet) — this
-              // must NOT sign out a legitimate returning user. Wait for the
-              // server-confirmed snapshot; only a real server miss (fromCache
-              // false) below runs the orphan/sign-out handling.
+              // must NOT sign out a legitimate returning user. If this uid is a
+              // known fully-onboarded user (route-cache), optimistically route to
+              // MainTabs so the app is usable offline; otherwise just wait. Either
+              // way, only a server-confirmed miss (fromCache false) below runs the
+              // orphan/sign-out handling, which reconciles a genuinely deleted
+              // account once the network returns. hasReachedHome is left false so
+              // the eventual server snapshot still finalizes (push token, flag).
               if (docSnapshot.metadata.fromCache) {
-                console.log(
-                  "📴 User doc missing from cache (likely offline) — waiting for server-confirmed snapshot, not signing out",
-                );
-                setLoading(false);
+                AsyncStorage.getItem("@onboarded_uid").then((onboardedUid) => {
+                  if (onboardedUid === user.uid) {
+                    console.log(
+                      "📴 Offline, known onboarded user — routing to MainTabs from route-cache",
+                    );
+                    navigateToRoute("MainTabs", { user });
+                  } else {
+                    console.log(
+                      "📴 User doc missing from cache (likely offline) — waiting for server-confirmed snapshot, not signing out",
+                    );
+                  }
+                  setLoading(false);
+                });
                 return;
               }
               AsyncStorage.getItem("@account_deleting").then(
@@ -517,6 +535,9 @@ const AppNavigator = forwardRef((props, ref) => {
                   }
                 },
               );
+              // Account confirmed gone server-side — drop the route-cache so a
+              // deleted account can't optimistically reach MainTabs offline.
+              AsyncStorage.removeItem("@onboarded_uid").catch(() => {});
               navigateToRoute("Login");
               auth.signOut();
             }
