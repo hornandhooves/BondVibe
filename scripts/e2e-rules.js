@@ -105,6 +105,25 @@ const arrVals = (f) => (f?.arrayValue?.values || []).map((v) => v.stringValue);
   chk("host CAN read private/location", await readDoc(`events/${ev}/private/location`, host.headers), [200, 404]);
   chk("participant CANNOT write private/location (server-only)", await patchDoc(`events/${ev}/private/location?updateMask.fieldPaths=address`, { address: s("Calle 8") }, member.headers), 403);
 
+  // Trigger integration: onEventWritten derives the coarse gated fields on the
+  // public doc and mirrors the exact detail into private/location. (The public
+  // derivation needs no FieldValue; the private write uses serverTimestamp, so
+  // it only passes on the node-20 functions runtime.)
+  const evGate = `e2egate_${Date.now()}`;
+  chk("host creates event with exact coords", await createDoc(`events?documentId=${evGate}`, {
+    title: s("Gate"), creatorId: s(host.uid), attendees: arr([member.uid]), price: i(0), status: s("active"),
+    location: s("Casa Azul, Tulum Centro"), city: s("tulum"),
+    locationCoords: { mapValue: { fields: { latitude: { doubleValue: 20.2114 }, longitude: { doubleValue: -87.4654 } } } },
+  }, host.headers), 200);
+  await sleep(2500); // let onEventWritten run (+ converge)
+  const gf = await getFields(`events/${evGate}`, host.headers);
+  chk("trigger derived public area", gf?.area?.stringValue, "Tulum Centro");
+  chk("trigger derived public approxCoords", !!gf?.approxCoords?.mapValue, true);
+  chk("trigger set locationLocked", gf?.locationLocked?.booleanValue, true);
+  const pf = await getFields(`events/${evGate}/private/location`, host.headers);
+  chk("trigger mirrored exact into private (node-20 runtime)", !!pf?.exactCoords?.mapValue, true);
+  cleanup.push(`events/${evGate}`);
+
   // ---- RATINGS ----
   section("Ratings");
   const ratingId = `e2er_${Date.now()}`;
