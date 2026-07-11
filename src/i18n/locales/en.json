@@ -330,6 +330,15 @@
     "free_badge": "FREE",
     "ended": "Ended"
   },
+  "eventLocation": {
+    "lockedHint": "exact address after you reserve",
+    "approxArea": "Approximate area",
+    "approxNote": "Approximate area — the exact spot is shared after you reserve.",
+    "reserveToUnlock": "Reserve your spot to unlock the exact location",
+    "joinToUnlock": "Join to see the exact location",
+    "revealedTitle": "Exact location",
+    "noMapLocation": "This event has no map location yet"
+  },
   "eventDetail": {
     "errorNotFoundTitle": "Event Not Found",
     "errorNotFoundText": "This event may have been deleted or cancelled",

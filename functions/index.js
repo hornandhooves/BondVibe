@@ -1977,6 +1977,77 @@ exports.redeemBusinessGuestCode = onCall(async (request) => {
  * users can't both pass a stale capacity check and overbook. Paid events go
  * through checkout; membership joins go through reserveMembershipCredit.
  */
+// F2: snap exact coords to a ~0.01° (~1km) grid for the public `approxCoords`.
+// Snap (never per-read jitter) so averaging many reads can't recover the point.
+const APPROX_GRID_DEG = 0.01;
+function snapApproxGrid(coords) {
+  if (!coords ||
+      !Number.isFinite(coords.latitude) ||
+      !Number.isFinite(coords.longitude)) {
+    return null;
+  }
+  const snap = (v) =>
+    Number((Math.round(v / APPROX_GRID_DEG) * APPROX_GRID_DEG).toFixed(4));
+  return {latitude: snap(coords.latitude), longitude: snap(coords.longitude)};
+}
+
+/**
+ * F2 — set an event's GATED location. The client sends the exact venue/address/
+ * coords; the server writes only a coarse { area, approxCoords, locationLocked }
+ * to the public event doc and the exact detail to events/{id}/private/location
+ * (readable only by participants). The exact fields never leave the private doc.
+ * Only the event creator / co-host may call this. Additive in Phase A: the legacy
+ * public location/locationCoords are left untouched (Phase B strips them).
+ */
+exports.setEventLocation = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const {eventId, venueName, address, exactCoords, area, entryNotes} =
+    request.data || {};
+  if (!eventId) throw new HttpsError("invalid-argument", "Missing eventId.");
+  if (!area || typeof area !== "string" || !area.trim()) {
+    throw new HttpsError("invalid-argument", "Missing area (coarse label).");
+  }
+
+  const ref = db.collection("events").doc(eventId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Event not found.");
+  const e = snap.data();
+  const creatorId = getEventCreatorId(e);
+  const coHosts = Array.isArray(e.coHosts) ? e.coHosts : [];
+  if (uid !== creatorId && !coHosts.includes(uid)) {
+    throw new HttpsError("permission-denied", "Only the host can set the location.");
+  }
+
+  const approxCoords = snapApproxGrid(exactCoords);
+
+  const batch = db.batch();
+  // Public doc: coarse only. merge so legacy fields stay put in Phase A.
+  const publicUpdate = {
+    area: area.trim(),
+    locationLocked: true,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  if (approxCoords) publicUpdate.approxCoords = approxCoords;
+  batch.set(ref, publicUpdate, {merge: true});
+
+  // Private doc: the exact detail, participant-gated by rules.
+  const privateDoc = {updatedAt: admin.firestore.FieldValue.serverTimestamp()};
+  if (venueName != null) privateDoc.venueName = venueName;
+  if (address != null) privateDoc.address = address;
+  if (approxCoords && exactCoords) {
+    privateDoc.exactCoords = {
+      latitude: exactCoords.latitude,
+      longitude: exactCoords.longitude,
+    };
+  }
+  if (entryNotes != null) privateDoc.entryNotes = entryNotes;
+  batch.set(ref.collection("private").doc("location"), privateDoc, {merge: true});
+
+  await batch.commit();
+  return {success: true, area: area.trim(), approxCoords: approxCoords || null};
+});
+
 exports.joinEvent = onCall(async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");

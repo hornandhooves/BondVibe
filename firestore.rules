@@ -154,9 +154,12 @@ service cloud.firestore {
       allow create: if isSignedIn() &&
                        request.resource.data.creatorId == request.auth.uid &&
                        request.resource.data.get('featured', false) == false &&
+                       // F2: the coarse gated-location fields are server-computed
+                       // (setEventLocation CF, Admin SDK) — a client can't forge them.
                        !request.resource.data.keys()
                           .hasAny(['featuredUntil', 'featuredTier',
-                                   'averageRating', 'totalRatings', 'matching']);
+                                   'averageRating', 'totalRatings', 'matching',
+                                   'approxCoords', 'area']);
 
       // - Admin: full control.
       // - Creator: anything except server-owned fields (featured/* and the
@@ -168,7 +171,8 @@ service cloud.firestore {
                          !request.resource.data.diff(resource.data)
                            .affectedKeys()
                            .hasAny(['featured', 'featuredUntil', 'featuredTier',
-                                    'averageRating', 'totalRatings', 'matching'])) ||
+                                    'averageRating', 'totalRatings', 'matching',
+                                    'approxCoords', 'area'])) ||
                         // Co-hosts can edit content, but not server-owned fields
                         // nor ownership (creatorId/coHosts stay creator-managed).
                         (resource.data.coHosts != null &&
@@ -177,7 +181,8 @@ service cloud.firestore {
                            .affectedKeys()
                            .hasAny(['featured', 'featuredUntil', 'featuredTier',
                                     'averageRating', 'totalRatings',
-                                    'creatorId', 'coHosts', 'matching'])) ||
+                                    'creatorId', 'coHosts', 'matching',
+                                    'approxCoords', 'area'])) ||
                         // Attendees: a user may only REMOVE themselves (leave).
                         // Joining is server-side (joinEvent Cloud Function /
                         // payment webhook, Admin SDK) so capacity + payment are
@@ -191,9 +196,17 @@ service cloud.firestore {
                         (onlyUpdating(['interested']) &&
                          (selfAdded('interested') || selfRemoved('interested'))));
       
-      allow delete: if isSignedIn() && 
+      allow delete: if isSignedIn() &&
                        (resource.data.creatorId == request.auth.uid || isAdmin());
-      
+
+      // F2: exact location (venueName/address/exactCoords/entry notes) lives here,
+      // readable ONLY by participants (creator or in attendees[] — the paid/joined
+      // gate). Writes are server-only (setEventLocation CF via the Admin SDK).
+      match /private/{doc} {
+        allow read: if isSignedIn() && isEventParticipant(eventId);
+        allow write: if false;
+      }
+
       match /messages/{messageId} {
         allow read: if isSignedIn() && isEventParticipant(eventId);
         allow create: if isSignedIn() && 

@@ -93,6 +93,18 @@ const arrVals = (f) => (f?.arrayValue?.values || []).map((v) => v.stringValue);
   chk("attendee CANNOT set averageRating", await patchDoc(`events/${ev}?updateMask.fieldPaths=averageRating`, { averageRating: { doubleValue: 5 } }, member.headers), 403);
   chk("host CANNOT set featured via update", await patchDoc(`events/${ev}?updateMask.fieldPaths=featured`, { featured: b(true) }, host.headers), 403);
 
+  // ---- F2: gated location ----
+  // Coarse gated fields are server-only (setEventLocation CF / migration) — a
+  // client cannot write them to the public doc (key-based deny in the guards).
+  chk("host CANNOT set approxCoords on public doc", await patchDoc(`events/${ev}?updateMask.fieldPaths=approxCoords`, { approxCoords: s("x") }, host.headers), 403);
+  chk("host CANNOT set area on public doc", await patchDoc(`events/${ev}?updateMask.fieldPaths=area`, { area: s("Tulum Centro") }, host.headers), 403);
+  // Exact location lives in events/{id}/private/location, readable only by
+  // participants; writes are server-only (Admin SDK).
+  chk("non-participant CANNOT read private/location", await readDoc(`events/${ev}/private/location`, stranger.headers), 403);
+  chk("participant (member) CAN read private/location", await readDoc(`events/${ev}/private/location`, member.headers), [200, 404]);
+  chk("host CAN read private/location", await readDoc(`events/${ev}/private/location`, host.headers), [200, 404]);
+  chk("participant CANNOT write private/location (server-only)", await patchDoc(`events/${ev}/private/location?updateMask.fieldPaths=address`, { address: s("Calle 8") }, member.headers), 403);
+
   // ---- RATINGS ----
   section("Ratings");
   const ratingId = `e2er_${Date.now()}`;
