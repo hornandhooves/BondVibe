@@ -82,9 +82,25 @@ export const getFeaturedEvents = async (max = 10) => {
       orderBy("featuredUntil", "desc")
     );
     const snapshot = await getDocs(q);
+    // BUG 37: `featuredUntil` is only the paid promo window (7/14/30 days) and
+    // is independent of when the event actually happens, so a past-dated event
+    // lingers in the carousel until its promo expires. Also drop events whose
+    // date has already passed. The event date lives on `date` (stored as an ISO
+    // string; recurring events have date:null). Client-side because Firestore
+    // allows only one range field per query and `featuredUntil` already uses it.
+    // A 12h grace keeps an event visible through the day it runs; undated
+    // (recurring) events are never hidden.
+    const cutoffMs = Date.now() - 12 * 60 * 60 * 1000;
+    const eventStartMs = (e) => {
+      const d = e.date ?? e.startAt ?? e.eventDate;
+      if (!d) return Infinity; // undated / recurring → don't hide it
+      const ms = d?.toMillis ? d.toMillis() : new Date(d).getTime();
+      return Number.isNaN(ms) ? Infinity : ms; // unparseable → keep, don't hide
+    };
     return snapshot.docs
       .map((d) => ({ id: d.id, ...d.data() }))
       .filter((e) => e.status !== "cancelled")
+      .filter((e) => eventStartMs(e) >= cutoffMs) // drop events already finished
       .slice(0, max);
   } catch (e) {
     console.error("❌ getFeaturedEvents:", e);
