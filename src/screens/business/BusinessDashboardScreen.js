@@ -446,6 +446,47 @@ export default function BusinessDashboardScreen({ navigation }) {
               );
             })()}
 
+            {/* Insight: member flow — retention (returning actives) + real churn /
+                recovered from the status-change log; honest "—" while it builds. */}
+            {metrics && (
+              <>
+                <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>{t("business.dashboard.memberFlow")}</Text>
+                <View style={[styles.insightCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <View style={styles.flowRow}>
+                    {[
+                      { key: "joined", value: metrics.newMembers, tone: colors.success },
+                      { key: "churned", value: metrics.churnLogged, tone: "#C2410C", tap: "biz_churned" },
+                      { key: "recovered", value: metrics.recoveredLogged, tone: colors.primary },
+                    ].map((c) => {
+                      const Cell = c.tap ? TouchableOpacity : View;
+                      return (
+                        <Cell
+                          key={c.key}
+                          style={styles.flowCell}
+                          {...(c.tap && c.value != null ? { activeOpacity: 0.85, onPress: () => navigation.navigate("AnalyticsDetail", { metric: c.tap, range: { from: fromIso, to: toIso } }) } : {})}
+                        >
+                          <Text style={[styles.flowNum, { color: c.value == null ? colors.textTertiary : c.tone }]}>{c.value == null ? "—" : c.value}</Text>
+                          <Text style={[styles.flowLabel, { color: colors.textTertiary }]}>{t(`business.dashboard.flow.${c.key}`)}</Text>
+                        </Cell>
+                      );
+                    })}
+                  </View>
+                  <View style={styles.retentionRow}>
+                    <View style={styles.mixTop}>
+                      <Text style={[styles.mixLabel, { color: colors.text }]}>{t("business.dashboard.retention")}</Text>
+                      <Text style={[styles.mixPct, { color: colors.textSecondary }]}>{metrics.retentionRate == null ? "—" : `${metrics.retentionRate}%`}</Text>
+                    </View>
+                    <View style={[styles.mixTrack, { backgroundColor: "#E1F5EC" }]}>
+                      <View style={[styles.mixFill, { width: `${metrics.retentionRate || 0}%`, backgroundColor: colors.success }]} />
+                    </View>
+                  </View>
+                  <Text style={[styles.insightNote, { color: colors.textTertiary }]}>
+                    {metrics.churnLogged == null ? t("business.dashboard.flowBuilding") : t("business.dashboard.flowNote")}
+                  </Text>
+                </View>
+              </>
+            )}
+
             {/* AI read */}
             {aiLoading ? (
               <View style={[styles.aiCard, { backgroundColor: colors.ink || "#160F22" }]}>
@@ -642,6 +683,11 @@ function createStyles(colors) {
     mixPct: { fontFamily: FONTS.display, fontSize: 13, letterSpacing: -0.2 },
     mixTrack: { height: 7, borderRadius: 4, overflow: "hidden" },
     mixFill: { height: 7, borderRadius: 4 },
+    flowRow: { flexDirection: "row", marginBottom: 4 },
+    flowCell: { flex: 1, alignItems: "center", paddingVertical: 4 },
+    flowNum: { fontFamily: FONTS.display, fontSize: 22, letterSpacing: -0.5 },
+    flowLabel: { fontFamily: FONTS.bodySemibold, fontSize: 10.5, letterSpacing: 0.2, marginTop: 3 },
+    retentionRow: { marginTop: 12 },
     aiCard: { marginHorizontal: 20, marginTop: 22, borderRadius: 16, padding: 16 },
     aiHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
     aiEyebrow: { fontSize: 11.5, fontWeight: "700", color: "#fff" },

@@ -2286,6 +2286,11 @@
       "tip": "Members you've flagged at risk. A quick message or offer now can win them back.",
       "row": "At risk"
     },
+    "biz_churned": {
+      "title": "Churned this period",
+      "tip": "Members marked inactive in this range — your churn. A win-back offer is worth a shot before they're gone for good.",
+      "row": "Churned"
+    },
     "classFallback": "Class",
     "membershipFallback": "Membership",
     "memberFallback": "Member",
@@ -3324,7 +3329,12 @@
       "pricingMix": "Local vs General",
       "tierLocal": "Local rate",
       "tierGeneral": "General rate",
-      "pricingMixNote": "Based on each member's checkout price tier — a pricing split, not residency."
+      "pricingMixNote": "Based on each member's checkout price tier — a pricing split, not residency.",
+      "memberFlow": "Member flow",
+      "flow": { "joined": "Joined", "churned": "Churned", "recovered": "Recovered" },
+      "retention": "Retention",
+      "flowNote": "Churn & recovered come from status changes; retention = last period's active members who returned.",
+      "flowBuilding": "Retention = last period's active members who returned. Churn & recovered start counting as members change status."
     },
     "birthdays": {
       "title": "Birthdays",

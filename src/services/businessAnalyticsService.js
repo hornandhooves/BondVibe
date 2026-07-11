@@ -136,6 +136,31 @@ export async function computeDashboard(bounds) {
     else if (tier === PRICING_TIER.GENERAL) generalVisits += 1;
   }
 
+  // Retention (dashboard handoff §Status-log): of members active in the prior
+  // equal window, the share active again this window — so a 30d range yields 30d
+  // retention, a quarter yields 90d, etc. Zero extra reads (prevAttendance loaded).
+  const prevActiveIds = new Set(prevAttendance.map((a) => a.memberId));
+  const returned = [...attendedIds].filter((id) => prevActiveIds.has(id)).length;
+  const retentionRate = prevActiveIds.size > 0 ? Math.round((returned / prevActiveIds.size) * 100) : null;
+
+  // Real churn / recovered from the member status-change log. Honest-null until
+  // any history has been logged (the log is forward-looking) — then real counts.
+  const anyStatusLog = members.some((m) => Array.isArray(m.statusLog) && m.statusLog.length > 0);
+  let churnLogged = null;
+  let recoveredLogged = null;
+  if (anyStatusLog) {
+    churnLogged = 0;
+    recoveredLogged = 0;
+    for (const m of members) {
+      for (const e of m.statusLog || []) {
+        const t = new Date(e.at).getTime();
+        if (!isFinite(t) || t < fromMs || t >= toMs) continue;
+        if (e.to === MEMBER_STATUS.INACTIVE) churnLogged += 1;
+        else if (e.from === MEMBER_STATUS.INACTIVE && e.to === MEMBER_STATUS.ACTIVE) recoveredLogged += 1;
+      }
+    }
+  }
+
   return {
     range: { from: fromIso, to: toIso },
     totalMembers: members.length,
@@ -162,6 +187,10 @@ export async function computeDashboard(bounds) {
     arpuCents,
     distinctPayers,
     creditsUnredeemed,
+    // status-log (dashboard handoff §Status-log): real retention + churn/recovered.
+    retentionRate,
+    churnLogged,
+    recoveredLogged,
     // best days + pricing mix insight cards.
     weekdayHistogram,
     pricingMix: { local: localVisits, general: generalVisits },
@@ -227,7 +256,9 @@ export function dashboardToCsv(d, rangeLabel) {
     ["arpu_cents", d.arpuCents ?? ""],
     ["repeat_rate_pct", d.repeatRate ?? ""],
     ["credits_unredeemed", d.creditsUnredeemed ?? ""],
-    ["recovered", d.recovered ?? ""],
+    ["retention_rate_pct", d.retentionRate ?? ""],
+    ["churned", d.churnLogged ?? ""],
+    ["recovered", d.recoveredLogged ?? ""],
     ["visits_local", d.pricingMix?.local ?? ""],
     ["visits_general", d.pricingMix?.general ?? ""],
   ];

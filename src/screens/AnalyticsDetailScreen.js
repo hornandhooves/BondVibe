@@ -56,6 +56,10 @@ export default function AnalyticsDetailScreen({ route, navigation }) {
       title: t("analyticsDetail.biz_atRisk.title"),
       tip: t("analyticsDetail.biz_atRisk.tip"),
     },
+    biz_churned: {
+      title: t("analyticsDetail.biz_churned.title"),
+      tip: t("analyticsDetail.biz_churned.tip"),
+    },
   };
   const cfg = CONFIG[metric] || CONFIG.members;
   const [rows, setRows] = useState([]);
@@ -78,6 +82,24 @@ export default function AnalyticsDetailScreen({ route, navigation }) {
                 avatar: null,
               }))
             );
+          } else if (metric === "biz_churned") {
+            // Window-scoped to match the Member-flow "Churned" count exactly: one
+            // row per →inactive transition in the range (not a lifetime snapshot).
+            const range = route.params?.range;
+            const from = range?.from ? new Date(range.from).getTime() : -Infinity;
+            const to = range?.to ? new Date(range.to).getTime() : Infinity;
+            const members = await listMembers();
+            const events = [];
+            for (const m of members) {
+              for (const e of m.statusLog || []) {
+                const ts = new Date(e.at).getTime();
+                if (e.to === MEMBER_STATUS.INACTIVE && isFinite(ts) && ts >= from && ts < to) {
+                  events.push({ ts, userId: m.id, name: m.name || t("analyticsDetail.memberFallback") });
+                }
+              }
+            }
+            events.sort((a, b) => b.ts - a.ts);
+            setRows(events.map((e) => ({ userId: e.userId, name: e.name, title: t("analyticsDetail.biz_churned.row"), sub: fmtDate(e.ts), avatar: null })));
           } else if (metric === "biz_attendance") {
             const range = route.params?.range;
             const att = range?.from && range?.to ? await listAttendanceInRange(range.from, range.to) : [];

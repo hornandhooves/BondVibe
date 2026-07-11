@@ -2286,6 +2286,11 @@
       "tip": "Miembros que marcaste en riesgo. Un mensaje u oferta ahora puede recuperarlos.",
       "row": "En riesgo"
     },
+    "biz_churned": {
+      "title": "Bajas del periodo",
+      "tip": "Miembros marcados como inactivos en este rango — tus bajas. Vale la pena una oferta de reactivación antes de perderlos del todo.",
+      "row": "Baja"
+    },
     "classFallback": "Clase",
     "membershipFallback": "Membresía",
     "memberFallback": "Miembro",
@@ -3324,7 +3329,12 @@
       "pricingMix": "Local vs General",
       "tierLocal": "Tarifa local",
       "tierGeneral": "Tarifa general",
-      "pricingMixNote": "Según la tarifa de cobro de cada miembro — es una división de precio, no de residencia."
+      "pricingMixNote": "Según la tarifa de cobro de cada miembro — es una división de precio, no de residencia.",
+      "memberFlow": "Flujo de miembros",
+      "flow": { "joined": "Ingresaron", "churned": "Se perdieron", "recovered": "Recuperados" },
+      "retention": "Retención",
+      "flowNote": "Bajas y recuperados vienen de los cambios de estado; retención = miembros activos del periodo anterior que regresaron.",
+      "flowBuilding": "Retención = miembros activos del periodo anterior que regresaron. Las bajas y recuperados empiezan a contar conforme cambian de estado."
     },
     "birthdays": {
       "title": "Cumpleaños",

@@ -214,14 +214,26 @@ export async function createMember(data = {}, businessName = "", bizId = getMyBi
 export async function updateMember(memberId, patch = {}, bizId = getMyBizId()) {
   if (!bizId || !memberId) return;
   const clean = { ...patch, updatedAt: serverTimestamp() };
+  // One read covers both the note-append and the status-change log.
+  const needsExisting = clean.appendNote || clean.status !== undefined;
+  const existing = needsExisting ? await getMember(memberId, bizId) : null;
   if (clean.appendNote) {
-    const existing = await getMember(memberId, bizId);
     const notes = Array.isArray(existing?.notes) ? existing.notes : [];
     clean.notes = [
       { text: String(clean.appendNote).trim(), at: new Date().toISOString() },
       ...notes,
     ];
     delete clean.appendNote;
+  }
+  // Status-change log (dashboard handoff §Status-log): real churn (→inactive) and
+  // recovered (inactive→active) come from these transitions, not a snapshot count.
+  // Log ONLY an actual change, capped so the doc can't grow unbounded.
+  if (clean.status !== undefined && existing && (existing.status || MEMBER_STATUS.ACTIVE) !== clean.status) {
+    const log = Array.isArray(existing.statusLog) ? existing.statusLog : [];
+    clean.statusLog = [
+      { from: existing.status || MEMBER_STATUS.ACTIVE, to: clean.status, at: new Date().toISOString() },
+      ...log,
+    ].slice(0, 50);
   }
   await updateDoc(memberRef(bizId, memberId), clean);
 }
