@@ -5,7 +5,7 @@
  * single fixed P&L card. Reuses businessRanges, revenueSummary, expenseSummary
  * and the Finance Share/CSV pattern. Net margin also flows into the Dashboard.
  */
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -54,32 +54,26 @@ export default function BusinessExpensesScreen({ navigation }) {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const bounds = useMemo(
-    () => rangeBounds(rangeId, { from: customFrom, to: customTo }),
-    [rangeId, customFrom, customTo],
-  );
-  const fromIso = bounds.from.toISOString();
-  const toIso = bounds.to.toISOString();
-
+  // Compute bounds fresh at load time (not memoized to mount) so the "to = now"
+  // upper bound advances — otherwise a just-added expense dated after mount is
+  // filtered out until the screen is remounted. Re-runs on focus + range change.
   const load = useCallback(async () => {
+    const b = rangeBounds(rangeId, { from: customFrom, to: customTo });
     setLoading(true);
     const [pays, exps] = await Promise.all([
-      listPaymentsInRange(fromIso, toIso),
-      listExpensesInRange(fromIso, toIso),
+      listPaymentsInRange(b.from.toISOString(), b.to.toISOString()),
+      listExpensesInRange(b.from.toISOString(), b.to.toISOString()),
     ]);
     setPayments(pays);
     setExpenses(exps);
     setLoading(false);
-  }, [fromIso, toIso]);
+  }, [rangeId, customFrom, customTo]);
 
   useFocusEffect(
     useCallback(() => {
       load();
     }, [load]),
   );
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const rev = revenueSummary(payments);
   const exp = expenseSummary(expenses);
@@ -177,7 +171,7 @@ export default function BusinessExpensesScreen({ navigation }) {
                 {[
                   { label: t("business.expense.income"), value: formatCentavosCompact(rev.total), tone: "#fff" },
                   { label: t("business.expense.expensesLabel"), value: `−${formatCentavosCompact(exp.total)}`, tone: "#fff" },
-                  { label: t("business.expense.marginLabel"), value: pl.marginPct == null ? "—" : `${pl.marginPct}%`, tone: PL_POSITIVE },
+                  { label: t("business.expense.marginLabel"), value: pl.marginPct == null ? "—" : `${pl.marginPct}%`, tone: pl.marginPct != null && pl.marginPct < 0 ? PL_LOSS : PL_POSITIVE },
                 ].map((s) => (
                   <View key={s.label} style={styles.plSubCol}>
                     <Text style={styles.plSubLabel}>{s.label}</Text>
