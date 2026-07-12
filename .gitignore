@@ -35,6 +35,8 @@ App_Backup.js
 crash_log.txt
 functions/firebase-debug.log
 firebase-debug.log
+firestore-debug.log
+.firebase/
 bondvibe-dev-firebase-adminsdk-*.json
 *-firebase-adminsdk-*.json
 bondvibe-dev-firebase-adminsdk-*.json
@@ -47,7 +49,7 @@ cleanup-firebase.js
 *.zip
 
 # Design handoff (reference only)
-design_handoff_bondvibe_theme/
+design_handoff_*/
 
 design_handoff_bondvibe_theme 2/
 .claude/
