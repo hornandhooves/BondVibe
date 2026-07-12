@@ -808,6 +808,12 @@ service cloud.firestore {
                               (isBizStaff(bizId) && bizStaffRole(bizId) != "reception");
       }
 
+      // Expenses ledger (P&L) — same finance gate as payments.
+      match /expenses/{expenseId} {
+        allow read, write: if isBizOwnerUid(bizId) ||
+                              (isBizStaff(bizId) && bizStaffRole(bizId) != "reception");
+      }
+
       // Classes / schedule (roster + waitlist).
       match /classes/{classId} {
         allow read, write: if isBizStaff(bizId) || isBizOwnerUid(bizId);

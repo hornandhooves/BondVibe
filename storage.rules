@@ -68,6 +68,15 @@ service firebase.storage {
                       isImageUnder(10 * 1024 * 1024);
     }
 
+    // Business expense receipts (P&L). v1: bizId === the owner's uid, so the
+    // owner uploads under their own namespace — mirrors the uid-scoped rules
+    // above. The receipt URL is only referenced by the finance-gated expense doc.
+    match /businesses/{bizId}/expenses/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == bizId &&
+                      isImageUnder(10 * 1024 * 1024);
+    }
+
     // Everything else is denied by default.
     match /{allPaths=**} {
       allow read, write: if false;
