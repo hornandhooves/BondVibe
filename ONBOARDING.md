@@ -91,6 +91,44 @@ git checkout feat/<short-name> && git merge origin/main
 
 ---
 
+## Part 5 — Claude Design access (optional)
+"Claude Design" is the **Design mode** of the Claude app, connected to GitHub via
+the **`claude-design-import`** GitHub App. It lets Claude read the full project
+and work against it in the design canvas.
+
+**Access is per-account — it is not shared.** You don't hand over your connection;
+each person connects their own Claude account. Three things are needed:
+
+1. **Their own Claude license with Design.** They need a Claude plan that includes
+   Design mode (e.g. Max). Without it, the Design surface won't appear — verify
+   their license is equivalent.
+2. **GitHub access to the repo (owner does this).** Add them as a collaborator /
+   member of `hornandhooves/BondVibe` (same as Part 0, step 1). The
+   `claude-design-import` app is **already installed on the org** with access to
+   the repo — no reinstall needed; they just need repo access on GitHub.
+3. **They connect their own Claude to GitHub.** In their Claude app → **Design**
+   mode → **connect GitHub** (authorize `claude-design-import` with their account).
+   Since they're a collaborator and the app is installed on the org, `BondVibe`
+   shows up for them to open.
+   - If the repo doesn't appear: go to
+     `https://github.com/apps/claude-design-import/installations/new`, choose the
+     account/org, and select `BondVibe`. If GitHub asks for org-owner approval, the
+     request goes to the owner.
+
+**Task split**
+| Owner | New team member |
+|---|---|
+| Invite them as a repo collaborator | Have a Claude plan with Design |
+| Approve the app request if it arrives | Connect GitHub in their Claude (authorize `claude-design-import`) |
+| — | Select / open BondVibe |
+
+> Access is per-account. Adding them as a collaborator + the app lets them read the
+> code and (per the app's permissions) possibly open PRs — which fits the
+> branch → PR flow. Don't grant repo-admin unless they need to change
+> settings / branch protection.
+
+---
+
 ## Handy commands
 | What | Command |
 |---|---|
