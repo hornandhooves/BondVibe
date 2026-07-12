@@ -62,6 +62,8 @@ import BusinessFinanceScreen from "../screens/business/BusinessFinanceScreen";
 import PaymentFormScreen from "../screens/business/PaymentFormScreen";
 import BusinessExpensesScreen from "../screens/business/BusinessExpensesScreen";
 import ExpenseFormScreen from "../screens/business/ExpenseFormScreen";
+import SetTargetScreen from "../screens/business/SetTargetScreen";
+import TargetTrackerScreen from "../screens/business/TargetTrackerScreen";
 import ClassesScreen from "../screens/business/ClassesScreen";
 import ClassFormScreen from "../screens/business/ClassFormScreen";
 import ClassRosterScreen from "../screens/business/ClassRosterScreen";
@@ -677,6 +679,8 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="BusinessPaymentForm" component={PaymentFormScreen} />
           <Stack.Screen name="BusinessExpenses" component={BusinessExpensesScreen} />
           <Stack.Screen name="BusinessExpenseForm" component={ExpenseFormScreen} />
+          <Stack.Screen name="BusinessSetTarget" component={SetTargetScreen} />
+          <Stack.Screen name="BusinessTargetTracker" component={TargetTrackerScreen} />
           <Stack.Screen name="BusinessClasses" component={ClassesScreen} />
           <Stack.Screen name="BusinessClassForm" component={ClassFormScreen} />
           <Stack.Screen name="BusinessClassRoster" component={ClassRosterScreen} />

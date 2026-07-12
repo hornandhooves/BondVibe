@@ -814,6 +814,12 @@ service cloud.firestore {
                               (isBizStaff(bizId) && bizStaffRole(bizId) != "reception");
       }
 
+      // Revenue Targets goal doc — finance data, same gate as payments/expenses.
+      match /goals/{goalId} {
+        allow read, write: if isBizOwnerUid(bizId) ||
+                              (isBizStaff(bizId) && bizStaffRole(bizId) != "reception");
+      }
+
       // Classes / schedule (roster + waitlist).
       match /classes/{classId} {
         allow read, write: if isBizStaff(bizId) || isBizOwnerUid(bizId);

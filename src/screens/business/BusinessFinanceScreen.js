@@ -199,6 +199,12 @@ export default function BusinessFinanceScreen({ navigation }) {
               onPress={() => navigation.navigate("BusinessExpenses")}
             />
             <ListRow
+              icon="crosshair"
+              title={t("business.goal.entryTitle")}
+              subtitle={t("business.goal.entrySub")}
+              onPress={() => navigation.navigate("BusinessTargetTracker")}
+            />
+            <ListRow
               icon="payment"
               title={t("business.finance.payouts")}
               subtitle={t("business.finance.payoutsSub")}
