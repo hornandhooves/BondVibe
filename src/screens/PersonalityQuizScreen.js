@@ -98,7 +98,7 @@ export default function PersonalityQuizScreen({ navigation }) {
   const handleSuccessClose = () => {
     setShowSuccessModal(false);
     // Navigate back to Profile screen
-    navigation.navigate("MainTabs", { screen: "ProfileTab" });
+    navigation.navigate("Profile");
   };
 
   const getCurrentAnswer = () => answers[currentQuestion.id];

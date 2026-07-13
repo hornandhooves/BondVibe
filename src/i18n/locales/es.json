@@ -7,7 +7,8 @@
       "wall": "Muro",
       "events": "Eventos",
       "rentals": "Rentas",
-      "profile": "Perfil"
+      "profile": "Perfil",
+      "business": "Negocio"
     }
   },
   "common": {
@@ -263,6 +264,8 @@
     "headerTitle": "Mis eventos",
     "joined": "Unidos",
     "hosting": "Organizando",
+    "discoverNearYou": "Descubre eventos cerca de ti",
+    "popular": "Popular",
     "upcoming": "Próximos",
     "past": "Pasados",
     "memberships": {
@@ -332,6 +335,8 @@
     "viewList": "Lista",
     "viewMap": "Mapa",
     "notOnMap": "{{count}} sin ubicación",
+    "mapUnavailableTitle": "Mapa no disponible",
+    "mapUnavailableText": "No se pudo cargar el mapa en esta versión. Usa la vista Lista para explorar eventos.",
     "searchPlace": "Buscar un lugar",
     "filters": "Filtros",
     "clearAll": "Limpiar todo",
@@ -669,6 +674,12 @@
     "events": "Eventos",
     "rating": "Calificación",
     "members": "Miembros",
+    "followers": "Seguidores",
+    "follows": "Siguiendo",
+    "hosted": "Organizados",
+    "published": "Publicados",
+    "carpool": "Carpool",
+    "communities": "Comunidades",
     "followersCount_one": "{{count}} seguidor",
     "followersCount_other": "{{count}} seguidores",
     "kinloProTitle": "Kinlo Pro",
@@ -681,6 +692,7 @@
     "account": "CUENTA",
     "switchToHosting": "Cambiar a modo host",
     "switchToHostingSub": "Crea tus propias experiencias",
+    "modeSection": "Modo",
     "settings": "Ajustes",
     "settingsSub": "Apariencia, IA, seguridad, cuenta",
     "traits": {
@@ -1290,6 +1302,10 @@
   "manage": {
     "createEvent": "Crear evento",
     "createEventSub": "Redacta con IA · Copiloto anfitrión",
+    "searchYourEvents": "Busca tus eventos…",
+    "capacity": "{{going}} / {{max}} asistentes",
+    "action": { "checkIn": "Check-in", "roster": "Lista", "edit": "Editar" },
+    "empty": { "noUpcoming": "No hay eventos próximos", "noPast": "No hay eventos pasados", "text": "Crea un evento y aparecerá aquí." },
     "yourBusiness": "Tu negocio",
     "thisEvent": "Este evento",
     "switchBusiness": "Cambiar de negocio",

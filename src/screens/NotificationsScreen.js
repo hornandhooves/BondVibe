@@ -313,7 +313,7 @@ export default function NotificationsScreen({ navigation }) {
         break;
 
       case "host_rejected":
-        navigation.navigate("MainTabs", { screen: "ProfileTab" });
+        navigation.navigate("Profile");
         break;
 
       case "host_request":

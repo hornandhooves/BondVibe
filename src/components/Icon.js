@@ -201,6 +201,7 @@ const NAME_TO_COMPONENT = {
   block: Ban,
   languages: Globe,
   profession: Briefcase,
+  business: Briefcase,
   energy: Zap,
   category: Coffee,
   hiking: Mountain,

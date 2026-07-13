@@ -14,6 +14,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import Icon from "./Icon";
+import { AvatarDisplay } from "./AvatarPicker";
 import { useTheme } from "../contexts/ThemeContext";
 import { useMode } from "../contexts/ModeContext";
 import useUserRole from "../hooks/useUserRole";
@@ -25,8 +26,8 @@ export default function AppHeader({ title, navigation }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { mode, setMode } = useMode();
-  const { isHost } = useUserRole();
+  const { mode } = useMode();
+  const { isHost, avatar, fullName } = useUserRole();
   // BUG 32.5: accepted staff of a business (non-host) can also enter the hosting
   // view — a business membership is a first-class way in, riding the owner's Pro.
   const { businesses } = useBusiness();
@@ -51,31 +52,19 @@ export default function AppHeader({ title, navigation }) {
         {title}
       </Text>
 
-      {canHostView && (
-        <View style={[styles.toggle, { backgroundColor: colors.sunken, borderColor: colors.border }]}>
-          {["attending", "hosting"].map((m) => {
-            const active = mode === m;
-            return (
-              <TouchableOpacity
-                key={m}
-                onPress={() => setMode(m)}
-                style={[styles.toggleSeg, active && { backgroundColor: colors.surface }]}
-                testID={`mode-${m}`}
-              >
-                <Text
-                  style={[
-                    TYPE.caption,
-                    styles.toggleText,
-                    { color: active ? colors.primary : colors.textTertiary },
-                  ]}
-                >
-                  {m === "attending" ? t("navigation.attending") : t("navigation.hosting")}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
+      {/* T3: non-interactive mode tag (the toggle now lives in Profile). Shown
+          only for host-capable users; a pure attendee is always "attending". */}
+      {canHostView && (() => {
+        const tint = mode === "hosting" ? colors.primary : colors.success;
+        return (
+          <View style={[styles.tag, { backgroundColor: tint + "1A" }]} testID={`mode-tag-${mode}`}>
+            <View style={[styles.tagDot, { backgroundColor: tint }]} />
+            <Text style={[TYPE.caption, styles.tagText, { color: tint }]}>
+              {mode === "hosting" ? t("navigation.hosting") : t("navigation.attending")}
+            </Text>
+          </View>
+        );
+      })()}
 
       <View style={styles.actions}>
         <TouchableOpacity
@@ -89,6 +78,15 @@ export default function AppHeader({ title, navigation }) {
               <Text style={styles.badgeText}>{unread > 99 ? "99+" : unread}</Text>
             </View>
           )}
+        </TouchableOpacity>
+
+        {/* Profile moved out of the tab bar (T1): its avatar lives here. */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate("Profile")}
+          hitSlop={hit}
+          testID="header-profile"
+        >
+          <AvatarDisplay avatar={avatar} size={30} name={fullName} />
         </TouchableOpacity>
       </View>
     </View>
@@ -106,18 +104,16 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.sm,
   },
   title: { flex: 1 },
-  toggle: {
+  tag: {
     flexDirection: "row",
-    borderRadius: RADII.pill,
-    borderWidth: 1,
-    padding: 2,
-  },
-  toggleSeg: {
+    alignItems: "center",
+    gap: 6,
     borderRadius: RADII.pill,
     paddingHorizontal: SPACING.md,
     paddingVertical: 5,
   },
-  toggleText: { fontSize: 12 },
+  tagDot: { width: 7, height: 7, borderRadius: 4 },
+  tagText: { fontSize: 12, fontWeight: "700" },
   actions: { flexDirection: "row", alignItems: "center", gap: SPACING.lg },
   badge: {
     position: "absolute",

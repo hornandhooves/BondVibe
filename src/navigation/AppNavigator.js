@@ -17,6 +17,7 @@ import { ModeProvider, useMode } from "../contexts/ModeContext";
 import { useBusiness } from "../contexts/BusinessContext";
 import { useTheme } from "../contexts/ThemeContext";
 import useUserRole from "../hooks/useUserRole";
+import useCanManageBusiness from "../hooks/useCanManageBusiness";
 
 // Components
 import SuccessModal from "../components/SuccessModal";
@@ -185,21 +186,36 @@ const TAB_META = {
   WallTab: { labelKey: "navigation.tabs.wall", icon: "wall" },
   EventsTab: { labelKey: "navigation.tabs.events", icon: "events" },
   RentalsTab: { labelKey: "navigation.tabs.rentals", icon: "bike" },
-  ProfileTab: { labelKey: "navigation.tabs.profile", icon: "profile" },
+  BusinessTab: { labelKey: "navigation.tabs.business", icon: "business" },
 };
+
+// T2: the Business tab is a LAUNCHER into the existing (pushed) BusinessHub —
+// tabPress is prevented so this placeholder screen is never actually rendered.
+// This keeps the hub untouched (its own back button stays meaningful).
+const BusinessTabPlaceholder = () => null;
+
+// The Events tab shows "Your events" in Hosting mode (T4b), else the tab label.
+function TabHeader({ routeName, navigation }) {
+  const { t } = useTranslation();
+  const { mode } = useMode();
+  let title = "";
+  if (routeName !== "HomeTab") {
+    title =
+      routeName === "EventsTab" && mode === "hosting"
+        ? t("manage.yourEvents")
+        : t(TAB_META[routeName].labelKey);
+  }
+  return <AppHeader title={title} navigation={navigation} />;
+}
 
 function MainTabs() {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const canManageBusiness = useCanManageBusiness();
   return (
     <Tab.Navigator
       screenOptions={({ route, navigation }) => ({
-        header: () => (
-          <AppHeader
-            title={route.name === "HomeTab" ? "" : t(TAB_META[route.name].labelKey)}
-            navigation={navigation}
-          />
-        ),
+        header: () => <TabHeader routeName={route.name} navigation={navigation} />,
         tabBarIcon: ({ color, focused }) => (
           <Icon
             name={TAB_META[route.name].icon}
@@ -222,7 +238,22 @@ function MainTabs() {
       <Tab.Screen name="WallTab" component={FeedScreen} />
       <Tab.Screen name="EventsTab" component={EventsTabRoot} />
       <Tab.Screen name="RentalsTab" component={RentalHubScreen} />
-      <Tab.Screen name="ProfileTab" component={ProfileScreen} />
+      {canManageBusiness && (
+        <Tab.Screen
+          name="BusinessTab"
+          component={BusinessTabPlaceholder}
+          options={{
+            tabBarBadge: "PRO",
+            tabBarBadgeStyle: { backgroundColor: colors.primary, color: "#fff", fontSize: 8, fontWeight: "800" },
+          }}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              e.preventDefault();
+              navigation.navigate("BusinessHub", { from: "tab" });
+            },
+          })}
+        />
+      )}
     </Tab.Navigator>
   );
 }
@@ -246,7 +277,7 @@ const AppNavigator = forwardRef((props, ref) => {
 
   const AUTH_SCREENS = ["Welcome", "Login", "Signup"];
   // Inside MainTabs the "current route" is the focused tab, not "MainTabs".
-  const TAB_ROUTES = ["HomeTab", "WallTab", "EventsTab", "RentalsTab", "ProfileTab"];
+  const TAB_ROUTES = ["HomeTab", "WallTab", "EventsTab", "RentalsTab", "BusinessTab"];
 
   const navigateToRoute = (routeName, { user = null, params = {} } = {}) => {
     setInitialUser(user);
@@ -654,6 +685,8 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
           <Stack.Screen name="EditEvent" component={EditEventScreen} />
           <Stack.Screen name="MyEvents" component={MyEventsScreen} />
+          {/* T1: Profile is a pushed screen (opened from the header avatar), not a tab. */}
+          <Stack.Screen name="Profile" component={ProfileScreen} />
           <Stack.Screen name="BondVibePro" component={BondVibeProScreen} />
           <Stack.Screen name="CheckInScanner" component={CheckInScannerScreen} />
           <Stack.Screen name="HostCRM" component={HostCRMScreen} />

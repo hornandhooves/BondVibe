@@ -8,8 +8,41 @@
  * "Search this area" (re-query the visible region), and distance on the callout.
  */
 import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Modal, ScrollView } from "react-native";
-import MapView, { Marker, Circle } from "react-native-maps";
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Modal, ScrollView, UIManager } from "react-native";
+
+// react-native-maps is a NATIVE module. On a build made before it was linked
+// (stale pods), the JS shim still imports fine but the native view managers
+// aren't registered, so rendering <MapView>/<Marker> throws "View config not
+// found for AIRMapMarker" and takes down the whole Search screen. Load it
+// defensively; the MapErrorBoundary below catches that render failure (or a
+// null component) and shows a friendly fallback instead of crashing. We do NOT
+// pre-flight the view-manager registry — that misfired as a false negative and
+// hid a perfectly good map; catching the actual error is what's reliable.
+let MapView, Marker, Circle;
+try {
+  const Maps = require("react-native-maps");
+  MapView = Maps.default;
+  Marker = Maps.Marker;
+  Circle = Maps.Circle;
+} catch (e) {
+  MapView = Marker = Circle = null;
+}
+
+// Whether the native map view managers are registered in THIS binary. Uses the
+// same API react-native-maps uses internally (hasViewManagerConfig) so it stays
+// silent when absent — checking here lets us skip rendering the map on a build
+// without the native module (rendering it throws "View config not found for
+// AIRMapMarker" and, in dev, flashes the LogBox error). MapErrorBoundary below
+// is the belt-and-suspenders net.
+function nativeMapsAvailable() {
+  try {
+    const has = UIManager.hasViewManagerConfig;
+    if (typeof has !== "function") return false;
+    return has.call(UIManager, "AIRMap") || has.call(UIManager, "AIRGoogleMap");
+  } catch (e) {
+    return false;
+  }
+}
 import * as Location from "expo-location";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -23,7 +56,62 @@ import { haversineKm, formatDistanceKm } from "../../utils/geo";
 
 const FOCUS_DELTA = 0.08;
 
-export default function EventMap({ events, navigation, currentUid, activeFilterCount = 0, onOpenFilters }) {
+// Default export renders the real map, wrapped in an error boundary: if the
+// native module is missing (stale build) the map render throws and we show a
+// friendly fallback instead of taking down the Search screen. With maps linked
+// it renders normally. The List/Map toggle lives above this in
+// SearchEventsScreen, so the user can always switch back.
+export default function EventMap(props) {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  // Skip the map entirely when the native module isn't in this build: a clean
+  // fallback with no render attempt (so dev doesn't flash a LogBox error).
+  if (!MapView || !nativeMapsAvailable()) {
+    return <MapUnavailable colors={colors} t={t} />;
+  }
+  // Belt-and-suspenders: if the pre-check ever wrong-positives, catch the map
+  // render failure instead of taking down the Search screen.
+  return (
+    <MapErrorBoundary fallback={<MapUnavailable colors={colors} t={t} />}>
+      <EventMapView {...props} />
+    </MapErrorBoundary>
+  );
+}
+
+class MapErrorBoundary extends React.Component {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(error) {
+    // Expected on builds without the react-native-maps native module linked.
+    console.warn("EventMap: native map unavailable —", error?.message);
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+
+function MapUnavailable({ colors, t }) {
+  return (
+    <View style={[unavailableStyles.wrap, { backgroundColor: colors.background }]} testID="map-unavailable">
+      <View style={[unavailableStyles.iconCircle, { backgroundColor: colors.brandSoft }]}>
+        <Icon name="location" size={30} color={colors.primary} type="ui" />
+      </View>
+      <Text style={[unavailableStyles.title, { color: colors.text }]}>{t("searchEvents.mapUnavailableTitle")}</Text>
+      <Text style={[unavailableStyles.text, { color: colors.textSecondary }]}>{t("searchEvents.mapUnavailableText")}</Text>
+    </View>
+  );
+}
+
+const unavailableStyles = StyleSheet.create({
+  wrap: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40, gap: 14 },
+  iconCircle: { width: 72, height: 72, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  title: { fontSize: 18, fontWeight: "800", letterSpacing: -0.3, textAlign: "center" },
+  text: { fontSize: 14, fontWeight: "500", textAlign: "center", lineHeight: 21 },
+});
+
+function EventMapView({ events, navigation, currentUid, activeFilterCount = 0, onOpenFilters }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const styles = createStyles(colors);

@@ -1,296 +1,250 @@
 /**
- * ManageScreen — the host dashboard hub (§1.3/§1.4). Root of the Events tab
- * when Host Mode = Hosting. Pure hub: every row links to an existing screen —
- * no business logic moved. (The old ProfileScreen "Host Tools" grid lives here.)
+ * ManageScreen — "Your events" (T4b): the Hosting root of the Events tab. A real
+ * hosted-events list with a search box, Upcoming/Past, a prominent Create event
+ * button, and per-card Check-in / Roster / Edit plus a capacity bar. The
+ * "Your business" entry moved to the Business tab (T2), so this no longer touches
+ * the Business Hub.
  */
 import React, { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+} from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from "@react-navigation/native";
-import { auth } from "../services/firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { LinearGradient } from "expo-linear-gradient";
+import { auth, db } from "../services/firebase";
 import GradientBackground from "../components/GradientBackground";
 import Icon from "../components/Icon";
-import ListRow from "../components/ListRow";
-import SectionHeader from "../components/SectionHeader";
-import ProBadge from "../components/ProBadge";
-import useEntitlement from "../hooks/useEntitlement";
-import { paywallRouteForTier } from "../components/ProGate";
 import { useTheme } from "../contexts/ThemeContext";
 import { TYPE, SPACING, RADII, BRAND, ELEVATION } from "../constants/theme-tokens";
-import { getBusiness } from "../services/businessService";
-import { listMembers, MEMBER_STATUS } from "../services/businessMembersService";
-import { claimStaffInvites } from "../services/businessStaffService";
-import { useBusiness } from "../contexts/BusinessContext";
+import { filterUpcomingEvents, filterPastEvents } from "../utils/eventFilters";
+import { formatISODate, formatEventTime } from "../utils/dateUtils";
 
 export default function ManageScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
-  const [business, setBusiness] = useState(null);
-  const [memberStats, setMemberStats] = useState({ total: 0, active: 0, atRisk: 0 });
-  const { allowed: bizAllowed, tier: bizTier } = useEntitlement("business_erp");
-  // BUG 32.2: the active business (own or a staff membership) + switcher.
-  const { businesses, activeBizId, switchBusiness } = useBusiness();
-  // BUG 32.5: staff of the active business ride the OWNER's Pro license — no
-  // paywall — and see their role instead of a Pro badge.
-  const activeMembership = businesses.find((b) => b.bizId === activeBizId);
-  const activeIsStaff = !!activeMembership && !activeMembership.isOwner;
-  const canOpenBiz = bizAllowed || activeIsStaff;
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [timeFilter, setTimeFilter] = useState("upcoming"); // upcoming | past
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const uid = auth.currentUser?.uid;
+      if (!uid) {
+        setEvents([]);
+        return;
+      }
+      const snap = await getDocs(query(collection(db, "events"), where("creatorId", "==", uid)));
+      setEvents(
+        snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((e) => e.status !== "cancelled"),
+      );
+    } catch (e) {
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      const uid = auth.currentUser?.uid;
-      if (!uid) return;
-      // Auto-link any pending staff invites for this account (FIX 4).
-      claimStaffInvites().catch(() => {});
-      // Real stats for the "Your business" card — for the ACTIVE business, which
-      // for a staff member is the owner's business (BUG 32.2). Re-runs when the
-      // active business resolves or the user switches.
-      if (!activeBizId) { setBusiness(null); return; }
-      getBusiness(activeBizId)
-        .then(async (b) => {
-          setBusiness(b);
-          if (!b) return;
-          const members = await listMembers({}, activeBizId);
-          setMemberStats({
-            total: members.length,
-            active: members.filter((m) => (m.status || "active") === MEMBER_STATUS.ACTIVE).length,
-            atRisk: members.filter((m) => m.status === MEMBER_STATUS.AT_RISK).length,
-          });
-        })
-        .catch(() => {});
-    }, [activeBizId])
+      load();
+    }, [load]),
   );
 
-  const card = [styles.card, ELEVATION.card, { backgroundColor: colors.surface, borderColor: colors.border }];
+  const q = search.trim().toLowerCase();
+  const byTime = timeFilter === "upcoming" ? filterUpcomingEvents(events) : filterPastEvents(events);
+  const filtered = (q ? byTime.filter((e) => (e.title || "").toLowerCase().includes(q)) : byTime).sort(
+    (a, b) => {
+      const da = new Date(a.date).getTime();
+      const dbb = new Date(b.date).getTime();
+      return timeFilter === "upcoming" ? da - dbb : dbb - da;
+    },
+  );
+
+  const styles = createStyles(colors);
+
+  const EventRow = ({ event }) => {
+    const going = Array.isArray(event.attendees) ? event.attendees.length : event.participantCount || 0;
+    const cap = event.maxPeople || event.maxAttendees || 0;
+    const pct = cap > 0 ? Math.min(100, Math.round((going / cap) * 100)) : 0;
+    const actions = [
+      { key: "checkin", icon: "qr", label: t("manage.action.checkIn"), onPress: () => navigation.navigate("CheckInScanner", { eventId: event.id, eventTitle: event.title }) },
+      { key: "roster", icon: "users", label: t("manage.action.roster"), onPress: () => navigation.navigate("EventRoster", { eventId: event.id }) },
+      { key: "edit", icon: "edit", label: t("manage.action.edit"), onPress: () => navigation.navigate("EditEvent", { eventId: event.id }) },
+    ];
+    return (
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <TouchableOpacity onPress={() => navigation.navigate("EventDetail", { eventId: event.id })} activeOpacity={0.85} style={styles.cardBody}>
+          <View style={styles.cardTop}>
+            <View style={[styles.catChip, { backgroundColor: `${colors.primary}1A` }]}>
+              <Text style={[styles.catText, { color: colors.primary }]}>{event.category || t("myEvents.event")}</Text>
+            </View>
+            <Text style={[styles.cardDate, { color: colors.textSecondary }]}>
+              {formatISODate(event.date)} · {formatEventTime(event.date, event.time)}
+            </Text>
+          </View>
+          <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
+            {event.title || t("myEvents.untitledEvent")}
+          </Text>
+          {cap > 0 && (
+            <>
+              <Text style={[styles.capText, { color: colors.textSecondary }]}>{t("manage.capacity", { going, max: cap })}</Text>
+              <View style={[styles.capTrack, { backgroundColor: `${colors.primary}18` }]}>
+                <View style={[styles.capFill, { width: `${pct}%`, backgroundColor: colors.primary }]} />
+              </View>
+            </>
+          )}
+        </TouchableOpacity>
+        <View style={[styles.actionsRow, { borderTopColor: colors.border }]}>
+          {actions.map((a, i) => (
+            <TouchableOpacity
+              key={a.key}
+              style={[styles.action, i > 0 && { borderLeftColor: colors.border, borderLeftWidth: StyleSheet.hairlineWidth }]}
+              onPress={a.onPress}
+            >
+              <Icon name={a.icon} size={16} color={colors.primary} />
+              <Text style={[styles.actionLabel, { color: colors.primary }]}>{a.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  };
 
   return (
     <GradientBackground>
       <StatusBar style={isDark ? "light" : "dark"} />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Business switcher (BUG 32.2) — only when the user belongs to more than
-            one business (own + staff memberships). Picks the active one. */}
-        {businesses.length > 1 && (
-          <>
-            <SectionHeader title={t("manage.switchBusiness")} />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={{ flexGrow: 0 }}
-              contentContainerStyle={styles.switcherRow}
-            >
-              {businesses.map((b) => {
-                const on = b.bizId === activeBizId;
-                return (
-                  <TouchableOpacity
-                    key={b.bizId}
-                    activeOpacity={0.85}
-                    onPress={() => switchBusiness(b.bizId)}
-                    style={[
-                      styles.switcherChip,
-                      {
-                        backgroundColor: on ? `${colors.primary}1A` : colors.surface,
-                        borderColor: on ? colors.primary : colors.border,
-                      },
-                    ]}
-                  >
-                    <Icon name="wallet" size={14} color={on ? colors.primary : colors.textTertiary} />
-                    <Text
-                      numberOfLines={1}
-                      style={[styles.switcherText, { color: on ? colors.primary : colors.text }]}
-                    >
-                      {b.name}
-                    </Text>
-                    {!b.isOwner && (
-                      <Text style={[styles.switcherRole, { color: colors.textTertiary }]}>
-                        {t("manage.staffTag")}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </>
-        )}
 
-        {/* Your business — the dark ERP/CRM card (mockup #1). When the host has a
-            business, show real stats; otherwise a discovery row → paywall/setup. */}
-        {business ? (
-          <>
-            <SectionHeader title={t("manage.yourBusiness")} />
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() =>
-                navigation.navigate(canOpenBiz ? "BusinessHub" : paywallRouteForTier(bizTier), { from: "business_erp" })
-              }
-              style={[styles.bizCard, ELEVATION.card]}
-            >
-              <View style={styles.bizTop}>
-                <View style={styles.bizIcon}>
-                  <Icon name="wallet" size={20} color="#FFFFFF" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={styles.rowRight}>
-                    <Text style={styles.bizName} numberOfLines={1}>{business.name}</Text>
-                    {activeIsStaff ? (
-                      <View style={styles.roleChip}>
-                        <Text style={styles.roleChipText}>
-                          {t(`business.staff.role.${activeMembership.role}`, { defaultValue: activeMembership.role })}
-                        </Text>
-                      </View>
-                    ) : (
-                      <ProBadge tier="pro" />
-                    )}
-                  </View>
-                  <Text style={styles.bizSub} numberOfLines={1}>{t("manage.businessCardSub")}</Text>
-                </View>
-                <Icon name="forward" size={18} color="rgba(255,255,255,0.6)" />
-              </View>
-              <View style={styles.statRow}>
-                {[
-                  { n: memberStats.total, k: t("manage.statMembers") },
-                  { n: memberStats.active, k: t("manage.statActive") },
-                  { n: memberStats.atRisk, k: t("manage.statAtRisk") },
-                ].map((s, i) => (
-                  <View key={i} style={styles.statTile}>
-                    <Text style={styles.statNum}>{s.n}</Text>
-                    <Text style={styles.statLabel}>{s.k}</Text>
-                  </View>
-                ))}
-              </View>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <View style={[card, { marginTop: SPACING.md }]}>
-            <ListRow
-              icon="wallet"
-              title={t("business.manageRow.title")}
-              subtitle={t("business.manageRow.subtitle")}
-              onPress={() =>
-                navigation.navigate(canOpenBiz ? "BusinessHub" : paywallRouteForTier(bizTier), {
-                  from: "business_erp",
-                })
-              }
-              right={
-                <View style={styles.rowRight}>
-                  <ProBadge tier="pro" />
-                  <Icon name="forward" size={18} color={colors.textTertiary} />
-                </View>
-              }
-              divider={false}
-            />
+      {/* Search */}
+      <View style={[styles.searchBar, { backgroundColor: colors.surfaceGlass, borderColor: colors.border }]}>
+        <Icon name="search" size={16} color={colors.textTertiary} />
+        <TextInput
+          style={[styles.searchInput, { color: colors.text }]}
+          value={search}
+          onChangeText={setSearch}
+          placeholder={t("manage.searchYourEvents")}
+          placeholderTextColor={colors.textTertiary}
+          returnKeyType="search"
+          testID="your-events-search"
+        />
+      </View>
+
+      {/* Upcoming / Past */}
+      <View style={styles.filters}>
+        {["upcoming", "past"].map((f) => (
+          <TouchableOpacity key={f} style={styles.filterTab} onPress={() => setTimeFilter(f)}>
+            <View style={[styles.filterGlass, { borderBottomColor: timeFilter === f ? colors.primary : "transparent" }]}>
+              <Text style={[styles.filterText, { color: timeFilter === f ? colors.primary : colors.textSecondary }]}>{t(`myEvents.${f}`)}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Create event — prominent */}
+      <TouchableOpacity onPress={() => navigation.navigate("CreateEvent")} activeOpacity={0.85} testID="manage-create-event" style={styles.createWrap}>
+        <LinearGradient colors={BRAND.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.createBtn, ELEVATION.floatingBrand]}>
+          <View style={styles.createIcon}>
+            <Icon name="add" size={22} color="#FFFFFF" />
           </View>
-        )}
+          <View style={{ flex: 1 }}>
+            <Text style={[TYPE.label, styles.createText]}>{t("manage.createEvent")}</Text>
+            <Text style={styles.createSub}>{t("manage.createEventSub")}</Text>
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
 
-        {/* Quick access — just the two event-level shortcuts (BUG 2). Business-wide
-            tools (members, money, analytics, memberships, ratings) live in the hub
-            above; check-in is reachable inside each event and from the hub. */}
-        <SectionHeader title={t("manage.quickAccess")} />
-        <TouchableOpacity
-          onPress={() => navigation.navigate("CreateEvent")}
-          activeOpacity={0.85}
-          testID="manage-create-event"
-        >
-          <LinearGradient
-            colors={BRAND.gradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={[styles.createBtn, ELEVATION.floatingBrand]}
-          >
-            <View style={styles.createIcon}>
-              <Icon name="add" size={22} color="#FFFFFF" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[TYPE.label, styles.createText]}>{t("manage.createEvent")}</Text>
-              <Text style={styles.createSub}>{t("manage.createEventSub")}</Text>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
-        <View style={[card, { marginTop: SPACING.md }]}>
-          <ListRow
-            icon="calendar"
-            title={t("manage.hostedEvents")}
-            subtitle={t("manage.hostedEventsSubtitle")}
-            onPress={() => navigation.navigate("MyEvents", { initialTab: "hosting" })}
-            divider={false}
-          />
+      {/* List */}
+      {loading ? (
+        <View style={styles.loading}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      </ScrollView>
+      ) : filtered.length === 0 ? (
+        <View style={styles.empty}>
+          <View style={[styles.emptyArt, { backgroundColor: colors.brandSoft }]}>
+            <Icon name="calendar" size={36} color={colors.primary} />
+          </View>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            {timeFilter === "past" ? t("manage.empty.noPast") : t("manage.empty.noUpcoming")}
+          </Text>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t("manage.empty.text")}</Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+          {filtered.map((ev) => (
+            <EventRow key={ev.id} event={ev} />
+          ))}
+        </ScrollView>
+      )}
     </GradientBackground>
   );
 }
 
-const styles = StyleSheet.create({
-  content: { paddingBottom: SPACING.xxxl },
-  rowRight: { flexDirection: "row", alignItems: "center", gap: 6 },
-  // Business switcher (BUG 32.2)
-  switcherRow: { paddingHorizontal: SPACING.screen, gap: SPACING.sm, paddingVertical: 2, alignItems: "center" },
-  switcherChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderWidth: 1,
-    borderRadius: RADII.pill,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    maxWidth: 220,
-  },
-  switcherText: { fontSize: 13.5, fontWeight: "700", flexShrink: 1 },
-  switcherRole: { fontSize: 11, fontWeight: "700" },
-  createBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.md,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: RADII.card,
-    marginHorizontal: SPACING.screen,
-    marginTop: SPACING.sm,
-  },
-  createIcon: {
-    width: 44, height: 44, borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.22)",
-    alignItems: "center", justifyContent: "center",
-  },
-  createText: { color: "#FFFFFF", fontSize: 17 },
-  createSub: { color: "rgba(255,255,255,0.9)", fontSize: 12.5, fontWeight: "600", marginTop: 2 },
-  card: {
-    borderRadius: RADII.card,
-    borderWidth: 1,
-    marginHorizontal: SPACING.screen,
-    overflow: "hidden",
-  },
-  bizCard: {
-    backgroundColor: "#1C1B2E",
-    borderRadius: RADII.card,
-    marginHorizontal: SPACING.screen,
-    padding: 16,
-  },
-  bizTop: { flexDirection: "row", alignItems: "center", gap: 12 },
-  bizIcon: {
-    width: 44, height: 44, borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.14)",
-    alignItems: "center", justifyContent: "center",
-  },
-  bizName: { color: "#FFFFFF", fontSize: 16, fontWeight: "800", flexShrink: 1 },
-  // Role chip (BUG 32.5) — shown to staff instead of the owner's Pro badge.
-  roleChip: {
-    backgroundColor: "rgba(255,255,255,0.16)",
-    borderRadius: RADII.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  roleChipText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800", textTransform: "capitalize" },
-  bizSub: { color: "rgba(255,255,255,0.6)", fontSize: 12.5, marginTop: 2 },
-  statRow: { flexDirection: "row", gap: 10, marginTop: 16 },
-  statTile: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 14,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  statNum: { color: "#FFFFFF", fontSize: 20, fontWeight: "800" },
-  statLabel: { color: "rgba(255,255,255,0.6)", fontSize: 11.5, fontWeight: "600", marginTop: 2 },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    searchBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginHorizontal: SPACING.screen,
+      marginTop: SPACING.sm,
+      marginBottom: SPACING.md,
+      paddingHorizontal: 14,
+      paddingVertical: 11,
+      borderRadius: RADII.card,
+      borderWidth: 1,
+    },
+    searchInput: { flex: 1, fontSize: 15, padding: 0 },
+    filters: { flexDirection: "row", paddingHorizontal: SPACING.screen, marginBottom: SPACING.md },
+    filterTab: { flex: 1 },
+    filterGlass: { paddingVertical: 10, alignItems: "center", borderBottomWidth: 2 },
+    filterText: { fontSize: 14, fontWeight: "700" },
+    createWrap: { marginHorizontal: SPACING.screen, marginBottom: SPACING.md },
+    createBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: SPACING.md,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderRadius: RADII.card,
+    },
+    createIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      backgroundColor: "rgba(255,255,255,0.22)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    createText: { color: "#FFFFFF", fontSize: 17 },
+    createSub: { color: "rgba(255,255,255,0.9)", fontSize: 12.5, fontWeight: "600", marginTop: 2 },
+    loading: { flex: 1, justifyContent: "center", alignItems: "center" },
+    listContent: { paddingHorizontal: SPACING.screen, paddingBottom: SPACING.xxxl },
+    card: { borderRadius: RADII.card, borderWidth: 1, marginBottom: SPACING.md, overflow: "hidden" },
+    cardBody: { padding: 16 },
+    cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
+    catChip: { paddingVertical: 4, paddingHorizontal: 12, borderRadius: 8 },
+    catText: { fontSize: 11, fontWeight: "700" },
+    cardDate: { fontSize: 12.5, fontWeight: "600" },
+    cardTitle: { fontSize: 17, fontWeight: "700", letterSpacing: -0.3, marginBottom: 10 },
+    capText: { fontSize: 12.5, fontWeight: "600", marginBottom: 6 },
+    capTrack: { height: 7, borderRadius: 4, overflow: "hidden" },
+    capFill: { height: 7, borderRadius: 4 },
+    actionsRow: { flexDirection: "row", borderTopWidth: StyleSheet.hairlineWidth },
+    action: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12 },
+    actionLabel: { fontSize: 13, fontWeight: "700" },
+    empty: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 40 },
+    emptyArt: { width: 72, height: 72, borderRadius: 20, alignItems: "center", justifyContent: "center", marginBottom: 20 },
+    emptyTitle: { fontSize: 20, fontWeight: "700", marginBottom: 10, letterSpacing: -0.3 },
+    emptyText: { fontSize: 14, textAlign: "center", lineHeight: 22 },
+  });
+}

@@ -39,6 +39,8 @@ import {
 } from "../services/membershipService";
 import * as ImagePicker from "expo-image-picker";
 import { hasMyCheckin, shareRecapPhoto } from "../services/recapService";
+import FeaturedCarousel from "../components/FeaturedCarousel";
+import { getFeaturedEvents } from "../services/promotionService";
 
 export default function MyEventsScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
@@ -47,13 +49,13 @@ export default function MyEventsScreen({ navigation, route }) {
   const [displayedEvents, setDisplayedEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Get initial values from navigation params or use defaults
-  const initialTab = route?.params?.initialTab || "joined";
+  // T4a: single-axis Attending root — no more Joined/Hosting sub-tabs (hosting is
+  // its own EventsTab root, ManageScreen). Only Upcoming/Past remains.
   const initialSubTab = route?.params?.initialSubTab || "upcoming";
 
-  const [activeTab, setActiveTab] = useState(initialTab); // joined | hosting
   const [timeFilter, setTimeFilter] = useState(initialSubTab); // upcoming | past
   const [currentUser, setCurrentUser] = useState(null);
+  const [popularEvents, setPopularEvents] = useState([]);
 
   // Rating state
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -62,11 +64,8 @@ export default function MyEventsScreen({ navigation, route }) {
   const [checkedInEvents, setCheckedInEvents] = useState({}); // { eventId: true }
   const [activeMembershipCount, setActiveMembershipCount] = useState(0);
 
-  // Update tabs when navigation params change
+  // Update time filter when navigation params change
   useEffect(() => {
-    if (route?.params?.initialTab) {
-      setActiveTab(route.params.initialTab);
-    }
     if (route?.params?.initialSubTab) {
       setTimeFilter(route.params.initialSubTab);
     }
@@ -84,7 +83,23 @@ export default function MyEventsScreen({ navigation, route }) {
         console.log("📱 MyEventsScreen focused - reloading events...");
         loadMyEvents();
       }
-    }, [activeTab, currentUser])
+    }, [currentUser])
+  );
+
+  // Popular events for the Discover carousel (F1) — featured/public upcoming.
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        try {
+          const feat = await getFeaturedEvents(10);
+          setPopularEvents(
+            (feat || []).filter((e) => getEventCreatorId(e) !== auth.currentUser?.uid),
+          );
+        } catch (e) {
+          setPopularEvents([]);
+        }
+      })();
+    }, [])
   );
 
   // Keep the attendee's membership summary fresh (credits/passes live here now,
@@ -108,16 +123,12 @@ export default function MyEventsScreen({ navigation, route }) {
     applyTimeFilter();
   }, [timeFilter, allEvents]);
 
-  // Check which events have been rated when viewing past joined events
+  // Check which events have been rated when viewing past events
   useEffect(() => {
-    if (
-      activeTab === "joined" &&
-      timeFilter === "past" &&
-      displayedEvents.length > 0
-    ) {
+    if (timeFilter === "past" && displayedEvents.length > 0) {
       checkRatedEvents();
     }
-  }, [displayedEvents, activeTab, timeFilter]);
+  }, [displayedEvents, timeFilter]);
 
   const loadCurrentUser = async () => {
     try {
@@ -161,38 +172,23 @@ export default function MyEventsScreen({ navigation, route }) {
   const loadMyEvents = async () => {
     setLoading(true);
     try {
-      let userEvents = [];
+      // Only the events this user attends (server-side), not the whole
+      // collection. attendees uses the canonical UID-string format.
+      const joinedQuery = query(
+        collection(db, "events"),
+        where("attendees", "array-contains", auth.currentUser.uid)
+      );
+      const snapshot = await getDocs(joinedQuery);
 
-      if (activeTab === "hosting") {
-        const hostingQuery = query(
-          collection(db, "events"),
-          where("creatorId", "==", auth.currentUser.uid)
+      const userEvents = snapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter(
+          (event) =>
+            event.status !== "cancelled" &&
+            getEventCreatorId(event) !== auth.currentUser.uid
         );
-        const snapshot = await getDocs(hostingQuery);
-        userEvents = snapshot.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .filter((event) => event.status !== "cancelled");
-        console.log("📅 Hosting events:", userEvents.length);
-      } else {
-        // Only the events this user attends (server-side), not the whole
-        // collection. attendees uses the canonical UID-string format.
-        const joinedQuery = query(
-          collection(db, "events"),
-          where("attendees", "array-contains", auth.currentUser.uid)
-        );
-        const snapshot = await getDocs(joinedQuery);
 
-        userEvents = snapshot.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .filter(
-            (event) =>
-              event.status !== "cancelled" &&
-              getEventCreatorId(event) !== auth.currentUser.uid
-          );
-
-        console.log("🎉 Joined events:", userEvents.length);
-      }
-
+      console.log("🎉 Joined events:", userEvents.length);
       setAllEvents(userEvents);
     } catch (error) {
       console.error("Error loading events:", error);
@@ -259,21 +255,11 @@ export default function MyEventsScreen({ navigation, route }) {
     }
   };
 
-  const canHost = currentUser?.role === "host" || currentUser?.role === "admin";
-  // Approved as host but hasn't chosen a type yet → send them to choose,
-  // not to re-apply via RequestHost.
-  const isApprovedPendingHostType = currentUser?.hostApproved && !canHost;
-  const hostActionRoute = canHost
-    ? "CreateEvent"
-    : isApprovedPendingHostType
-    ? "HostTypeSelection"
-    : "RequestHost";
-
   const styles = createStyles(colors);
 
   const EventCard = ({ event }) => {
     const isPast = isEventPast(event.date);
-    const showRateButton = activeTab === "joined" && isPast && !!checkedInEvents[event.id];
+    const showRateButton = isPast && !!checkedInEvents[event.id];
     const existingRating = ratedEvents[event.id];
 
     return (
@@ -492,86 +478,30 @@ export default function MyEventsScreen({ navigation, route }) {
         </View>
       )}
 
-      {/* Main Tabs (Joined/Hosting) */}
-      <View style={styles.tabsContainer}>
-        <TouchableOpacity
-          style={[styles.tab, !canHost && styles.tabFullWidth]}
-          onPress={() => {
-            setActiveTab("joined");
-            setTimeFilter("upcoming");
-          }}
-        >
-          <View
-            style={[
-              styles.tabGlass,
-              {
-                backgroundColor:
-                  activeTab === "joined"
-                    ? `${colors.primary}33`
-                    : colors.surfaceGlass,
-                borderColor:
-                  activeTab === "joined"
-                    ? `${colors.primary}66`
-                    : colors.border,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                {
-                  color:
-                    activeTab === "joined"
-                      ? colors.primary
-                      : colors.textSecondary,
-                },
-              ]}
-            >
-              {t("myEvents.joined")}
-            </Text>
-          </View>
-        </TouchableOpacity>
+      {/* T4a: fixed Discover bar → search (F1). */}
+      <TouchableOpacity
+        style={[styles.discoverBar, { backgroundColor: colors.primary }]}
+        onPress={() => navigation.navigate("SearchEvents")}
+        activeOpacity={0.9}
+        testID="discover-bar"
+      >
+        <Icon name="search" size={18} color={colors.onPrimary || "#fff"} />
+        <Text style={[styles.discoverText, { color: colors.onPrimary || "#fff" }]}>
+          {t("myEvents.discoverNearYou")}
+        </Text>
+        <Icon name="forward" size={18} color={colors.onPrimary || "#fff"} />
+      </TouchableOpacity>
 
-        {canHost && (
-          <TouchableOpacity
-            style={styles.tab}
-            onPress={() => {
-              setActiveTab("hosting");
-              setTimeFilter("upcoming");
-            }}
-          >
-            <View
-              style={[
-                styles.tabGlass,
-                {
-                  backgroundColor:
-                    activeTab === "hosting"
-                      ? `${colors.primary}33`
-                      : colors.surfaceGlass,
-                  borderColor:
-                    activeTab === "hosting"
-                      ? `${colors.primary}66`
-                      : colors.border,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  {
-                    color:
-                      activeTab === "hosting"
-                        ? colors.primary
-                        : colors.textSecondary,
-                  },
-                ]}
-              >
-                {t("myEvents.hosting")}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
-      </View>
+      {/* T4a: image-forward "Popular" carousel (F1). */}
+      {popularEvents.length > 0 && (
+        <View style={styles.popularSection}>
+          <Text style={[styles.popularLabel, { color: colors.text }]}>{t("myEvents.popular")}</Text>
+          <FeaturedCarousel
+            events={popularEvents}
+            onPressEvent={(ev) => navigation.navigate("EventDetail", { eventId: ev.id })}
+          />
+        </View>
+      )}
 
       {/* Time Filter Tabs (Upcoming/Past) */}
       <View style={styles.timeFiltersContainer}>
@@ -644,8 +574,7 @@ export default function MyEventsScreen({ navigation, route }) {
 
       {/* My Memberships — credits & passes the attendee holds (moved here from
           Profile so they live alongside the events they're used for). */}
-      {activeTab === "joined" && (
-        <TouchableOpacity
+      <TouchableOpacity
           style={[
             styles.membershipsEntry,
             { borderColor: colors.border, backgroundColor: colors.surfaceGlass },
@@ -669,7 +598,6 @@ export default function MyEventsScreen({ navigation, route }) {
           </View>
           <Icon name="forward" size={18} color={colors.textTertiary} />
         </TouchableOpacity>
-      )}
 
       {/* Content */}
       {loading ? (
@@ -679,60 +607,24 @@ export default function MyEventsScreen({ navigation, route }) {
       ) : displayedEvents.length === 0 ? (
         <View style={styles.emptyState}>
           <View style={styles.emptyArt}>
-            <Icon
-              name={
-                timeFilter === "past"
-                  ? "archive"
-                  : activeTab === "joined"
-                  ? "ticket"
-                  : "star"
-              }
-              size={36}
-              color={colors.primary}
-            />
+            <Icon name={timeFilter === "past" ? "archive" : "ticket"} size={36} color={colors.primary} />
           </View>
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            {timeFilter === "past"
-              ? t("myEvents.empty.noPast")
-              : activeTab === "joined"
-              ? t("myEvents.empty.noUpcomingJoined")
-              : t("myEvents.empty.noUpcomingHosted")}
+            {timeFilter === "past" ? t("myEvents.empty.noPast") : t("myEvents.empty.noUpcomingJoined")}
           </Text>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            {timeFilter === "past"
-              ? t("myEvents.empty.pastText")
-              : activeTab === "joined"
-              ? t("myEvents.empty.joinedText")
-              : t("myEvents.empty.hostedText")}
+            {timeFilter === "past" ? t("myEvents.empty.pastText") : t("myEvents.empty.joinedText")}
           </Text>
           {timeFilter === "upcoming" && (
-            <TouchableOpacity
-              style={styles.emptyButton}
-              onPress={() => {
-                if (activeTab === "joined") {
-                  navigation.navigate("SearchEvents");
-                } else {
-                  navigation.navigate(hostActionRoute);
-                }
-              }}
-            >
+            <TouchableOpacity style={styles.emptyButton} onPress={() => navigation.navigate("SearchEvents")}>
               <View
                 style={[
                   styles.emptyButtonGlass,
-                  {
-                    backgroundColor: `${colors.primary}33`,
-                    borderColor: `${colors.primary}66`,
-                  },
+                  { backgroundColor: `${colors.primary}33`, borderColor: `${colors.primary}66` },
                 ]}
               >
-                <Text
-                  style={[styles.emptyButtonText, { color: colors.primary }]}
-                >
-                  {activeTab === "joined"
-                    ? t("myEvents.empty.exploreEvents")
-                    : canHost
-                    ? t("myEvents.empty.createEvent")
-                    : t("myEvents.empty.requestHost")}
+                <Text style={[styles.emptyButtonText, { color: colors.primary }]}>
+                  {t("myEvents.empty.exploreEvents")}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -776,16 +668,19 @@ function createStyles(colors) {
       paddingBottom: 20,
     },
     headerTitle: { fontSize: 20, fontWeight: "700", letterSpacing: -0.3 },
-    tabsContainer: {
+    discoverBar: {
       flexDirection: "row",
-      paddingHorizontal: 24,
+      alignItems: "center",
+      gap: 10,
+      marginHorizontal: 24,
       marginBottom: 16,
-      gap: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderRadius: 14,
     },
-    tab: { flex: 1, borderRadius: 12, overflow: "hidden" },
-    tabFullWidth: { flex: 1 },
-    tabGlass: { borderWidth: 1, paddingVertical: 12, alignItems: "center" },
-    tabText: { fontSize: 15, fontWeight: "600" },
+    discoverText: { flex: 1, fontSize: 15, fontWeight: "700" },
+    popularSection: { marginBottom: 12 },
+    popularLabel: { fontSize: 15, fontWeight: "800", paddingHorizontal: 24, marginBottom: 10, letterSpacing: -0.2 },
     timeFiltersContainer: {
       flexDirection: "row",
       paddingHorizontal: 24,

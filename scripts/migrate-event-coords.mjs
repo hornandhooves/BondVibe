@@ -19,7 +19,6 @@
  * Idempotent: an event that already has locationCoords/approxCoords is skipped.
  */
 import { execSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 
 const arg = (name, dflt) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -27,10 +26,9 @@ const arg = (name, dflt) => {
 };
 const PROJECT = arg("project", "bondvibe-dev");
 const APPLY = process.argv.includes("--apply");
-const appJson = JSON.parse(readFileSync(new URL("../app.json", import.meta.url)));
-const GEOCODE_KEY = arg("key", appJson?.expo?.extra?.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY);
+const GEOCODE_KEY = arg("key", process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY);
 if (!GEOCODE_KEY) {
-  console.error("No Maps/Geocoding key — pass --key or set app.json extra.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY");
+  console.error("No Maps/Geocoding key — pass --key or set EXPO_PUBLIC_GOOGLE_PLACES_API_KEY in the environment");
   process.exit(1);
 }
 const token = execSync("gcloud auth print-access-token").toString().trim();

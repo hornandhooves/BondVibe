@@ -7,7 +7,8 @@
       "wall": "Wall",
       "events": "Events",
       "rentals": "Rentals",
-      "profile": "Profile"
+      "profile": "Profile",
+      "business": "Business"
     }
   },
   "common": {
@@ -263,6 +264,8 @@
     "headerTitle": "My Events",
     "joined": "Joined",
     "hosting": "Hosting",
+    "discoverNearYou": "Discover events near you",
+    "popular": "Popular",
     "upcoming": "Upcoming",
     "past": "Past",
     "memberships": {
@@ -332,6 +335,8 @@
     "viewList": "List",
     "viewMap": "Map",
     "notOnMap": "{{count}} not on map",
+    "mapUnavailableTitle": "Map unavailable",
+    "mapUnavailableText": "The map couldn't be loaded on this build. Switch to List to browse events.",
     "searchPlace": "Search a place",
     "filters": "Filters",
     "clearAll": "Clear all",
@@ -669,6 +674,12 @@
     "events": "Events",
     "rating": "Rating",
     "members": "Members",
+    "followers": "Followers",
+    "follows": "Follows",
+    "hosted": "Hosted",
+    "published": "Published",
+    "carpool": "Carpool",
+    "communities": "Communities",
     "followersCount_one": "{{count}} follower",
     "followersCount_other": "{{count}} followers",
     "kinloProTitle": "Kinlo Pro",
@@ -681,6 +692,7 @@
     "account": "ACCOUNT",
     "switchToHosting": "Switch to hosting",
     "switchToHostingSub": "Create your own experiences",
+    "modeSection": "Mode",
     "settings": "Settings",
     "settingsSub": "Appearance, AI, safety, account",
     "traits": {
@@ -1290,6 +1302,10 @@
   "manage": {
     "createEvent": "Create event",
     "createEventSub": "Draft with AI · Host Copilot",
+    "searchYourEvents": "Search your events…",
+    "capacity": "{{going}} / {{max}} guests",
+    "action": { "checkIn": "Check-in", "roster": "Roster", "edit": "Edit" },
+    "empty": { "noUpcoming": "No upcoming events", "noPast": "No past events", "text": "Create an event and it'll show up here." },
     "yourBusiness": "Your business",
     "thisEvent": "This event",
     "switchBusiness": "Switch business",

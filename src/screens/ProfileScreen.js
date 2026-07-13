@@ -24,13 +24,15 @@ import {
 import { auth, db } from "../services/firebase";
 import { resolveAvatarForSave } from "../services/storageService";
 import { useTheme } from "../contexts/ThemeContext";
+import { useMode } from "../contexts/ModeContext";
+import { useBusiness } from "../contexts/BusinessContext";
 import { useFocusEffect } from "@react-navigation/native";
 import AvatarPicker, { AvatarDisplay } from "../components/AvatarPicker";
 import GradientBackground from "../components/GradientBackground";
 import { AvatarFrame } from "../components/CategoryIcon";
 import { usePremium } from "../hooks/usePremium";
-import { getFollowers } from "../services/followService";
-import { getHostGroups } from "../services/hostGroupService";
+import { getFollowers, getFollowing } from "../services/followService";
+import { getMyFleet } from "../services/rentalService";
 import { BRAND } from "../constants/theme-tokens";
 
 const TRAIT_LABEL_KEYS = {
@@ -44,12 +46,16 @@ const TRAIT_LABEL_KEYS = {
 export default function ProfileScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
+  const { mode, setMode } = useMode();
+  const { businesses } = useBusiness();
   const { isPremium } = usePremium();
   const [profile, setProfile] = useState(null);
   const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
   const [eventsCount, setEventsCount] = useState(0);
-  // Community members = distinct people across the groups this host owns (BUG 23).
-  const [memberUids, setMemberUids] = useState([]);
+  // T5 stats grid: rental listings published + communities the user belongs to.
+  const [publishedCount, setPublishedCount] = useState(0);
+  const [communitiesCount, setCommunitiesCount] = useState(0);
   const [editing, setEditing] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -69,20 +75,25 @@ export default function ProfileScreen({ navigation }) {
   const loadProfile = async () => {
     try {
       const uid = auth.currentUser.uid;
-      const [userDoc, followerIds, evSnap, hostGroups] = await Promise.all([
+      const zeroCount = { data: () => ({ count: 0 }) };
+      const [userDoc, followerIds, followingIds, evSnap, fleet, commSnap] = await Promise.all([
         getDoc(doc(db, "users", uid)),
         getFollowers(uid),
+        getFollowing(uid),
         getCountFromServer(
           query(collection(db, "events"), where("creatorId", "==", uid))
-        ).catch(() => ({ data: () => ({ count: 0 }) })),
-        getHostGroups(uid).catch(() => []),
+        ).catch(() => zeroCount),
+        getMyFleet().catch(() => []),
+        // T5 "member-of": communities this user belongs to (rule-provable filter).
+        getCountFromServer(
+          query(collection(db, "hostGroups"), where("memberIds", "array-contains", uid))
+        ).catch(() => zeroCount),
       ]);
       setFollowersCount(followerIds.length);
+      setFollowingCount(followingIds.length);
       setEventsCount(evSnap.data().count || 0);
-      // Union of members across the groups this host owns, minus the host.
-      const members = new Set();
-      (hostGroups || []).forEach((g) => (g.memberIds || []).forEach((m) => m !== uid && members.add(m)));
-      setMemberUids([...members]);
+      setPublishedCount(Array.isArray(fleet) ? fleet.length : 0);
+      setCommunitiesCount(commSnap.data().count || 0);
       if (userDoc.exists()) {
         const data = userDoc.data();
         setProfile(data);
@@ -138,6 +149,9 @@ export default function ProfileScreen({ navigation }) {
   }
 
   const canManageStripe = profile.role === "host" || profile.role === "admin";
+  // T3: the mode toggle only makes sense for host-capable users (a pure attendee
+  // has no hosting view). Same signal as the header tag / EventsTabRoot.
+  const canHostView = canManageStripe || businesses.length > 0;
 
   const ratingValue = profile.hostStats?.averageRating
     ? profile.hostStats.averageRating.toFixed(1)
@@ -158,9 +172,16 @@ export default function ProfileScreen({ navigation }) {
         name={editForm.fullName}
       />
 
-      {/* ── Header — tab root: AppHeader shows the title; Edit is local ── */}
+      {/* ── Header — pushed screen (T1): own back + title; Edit is local ── */}
       <View style={s.header}>
-        <View style={{ width: 26 }} />
+        <View style={s.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} testID="profile-back">
+            <Icon name="back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[s.headerTitle, { color: colors.text }]} numberOfLines={1}>
+            {t("navigation.tabs.profile")}
+          </Text>
+        </View>
         {!editing ? (
           <TouchableOpacity
             onPress={() => setEditing(true)}
@@ -261,62 +282,65 @@ export default function ProfileScreen({ navigation }) {
               </View>
             )}
 
-            {/* ── Stats row (BUG 23: each deep-links to the right place) ── */}
-            <View style={[s.statsRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {/* ── T5: Followers · Follows · Rating ── */}
+            <View style={[s.metaRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <TouchableOpacity
-                style={s.stat}
-                onPress={() => navigation.navigate("MyEvents", { initialTab: "hosting" })}
+                style={s.metaCell}
+                onPress={() => navigation.navigate("FollowList", { userId: auth.currentUser.uid, type: "followers" })}
               >
-                <Text style={[s.statNumber, { color: colors.text }]}>{eventsCount}</Text>
-                <Text style={[s.statLabel, { color: colors.textSecondary }]}>{t("profile.events")}</Text>
+                <Text style={[s.metaNum, { color: colors.text }]}>{followersCount}</Text>
+                <Text style={[s.metaLabel, { color: colors.textSecondary }]}>{t("profile.followers")}</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity style={s.statCenter} onPress={() => navigation.navigate("RatingsOverview")}>
-                <LinearGradient colors={BRAND.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.statCenterGrad}>
-                  <View style={s.statCenterNumberRow}>
-                    <Text style={s.statCenterNumber}>{ratingValue}</Text>
-                    <Icon name="star" size={12} color={colors.onPrimary} fill={colors.onPrimary} />
-                  </View>
-                  <Text style={s.statCenterLabel}>{t("profile.rating")}</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
+              <View style={[s.metaDivider, { backgroundColor: colors.border }]} />
               <TouchableOpacity
-                style={s.stat}
-                onPress={() => navigation.navigate("FollowList", {
-                  userId: auth.currentUser.uid,
-                  type: "members",
-                  uids: memberUids,
-                  title: t("profile.members"),
-                })}
+                style={s.metaCell}
+                onPress={() => navigation.navigate("FollowList", { userId: auth.currentUser.uid, type: "following" })}
               >
-                <Text style={[s.statNumber, { color: colors.text }]}>{memberUids.length}</Text>
-                <Text style={[s.statLabel, { color: colors.textSecondary }]}>{t("profile.members")}</Text>
+                <Text style={[s.metaNum, { color: colors.text }]}>{followingCount}</Text>
+                <Text style={[s.metaLabel, { color: colors.textSecondary }]}>{t("profile.follows")}</Text>
+              </TouchableOpacity>
+              <View style={[s.metaDivider, { backgroundColor: colors.border }]} />
+              <TouchableOpacity style={s.metaCell} onPress={() => navigation.navigate("RatingsOverview")}>
+                <View style={s.metaNumRow}>
+                  <Text style={[s.metaNum, { color: colors.text }]}>{ratingValue}</Text>
+                  <Icon name="star" size={13} color={colors.primary} fill={colors.primary} />
+                </View>
+                <Text style={[s.metaLabel, { color: colors.textSecondary }]}>{t("profile.rating")}</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Carpool loyalty (BUG 28.2): lifetime completed-trip riders helped,
-                shown next to the rating. Only when > 0; reuses carpoolCard.hasHelped. */}
-            {(profile.carpoolStats?.seatsShared || 0) > 0 && (
-              <View style={[s.carpoolPill, { backgroundColor: colors.brandSoft }]}>
-                <Icon name="car" size={14} color={colors.primary} />
-                <Text style={[s.carpoolPillText, { color: colors.primary }]}>
-                  {t("carpoolCard.hasHelped", { count: profile.carpoolStats.seatsShared })}
-                </Text>
-              </View>
-            )}
-
-            {/* Followers — separate from community members (BUG 23) */}
-            <TouchableOpacity
-              style={[s.followersRow, { borderColor: colors.border }]}
-              onPress={() => navigation.navigate("FollowList", { userId: auth.currentUser.uid, type: "followers" })}
-            >
-              <Icon name="users" size={16} color={colors.textSecondary} />
-              <Text style={[s.followersText, { color: colors.textSecondary }]}>
-                {t("profile.followersCount", { count: followersCount })}
-              </Text>
-              <Icon name="forward" size={16} color={colors.textTertiary} />
-            </TouchableOpacity>
+            {/* ── T5: stats grid — Hosted · Published · Carpool · Communities.
+                Each cell hides itself when its data is absent (0). ── */}
+            {(() => {
+              const carpoolTrips = profile.carpoolStats?.seatsShared || 0;
+              const cells = [
+                { key: "hosted", value: eventsCount, icon: "calendar", label: t("profile.hosted"),
+                  onPress: () => { setMode("hosting"); navigation.navigate("MainTabs", { screen: "EventsTab" }); } },
+                { key: "published", value: publishedCount, icon: "bike", label: t("profile.published"),
+                  onPress: () => navigation.navigate("MyFleet") },
+                { key: "carpool", value: carpoolTrips, icon: "car", label: t("profile.carpool") },
+                { key: "communities", value: communitiesCount, icon: "community", label: t("profile.communities"),
+                  onPress: () => navigation.navigate("CommunityChats") },
+              ].filter((c) => c.value > 0);
+              if (cells.length === 0) return null;
+              return (
+                <View style={s.statsGrid}>
+                  {cells.map((c) => (
+                    <TouchableOpacity
+                      key={c.key}
+                      style={[s.gridCell, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                      activeOpacity={c.onPress ? 0.7 : 1}
+                      disabled={!c.onPress}
+                      onPress={c.onPress}
+                    >
+                      <Icon name={c.icon} size={17} color={colors.primary} />
+                      <Text style={[s.gridNum, { color: colors.text }]}>{c.value}</Text>
+                      <Text style={[s.gridLabel, { color: colors.textSecondary }]}>{c.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              );
+            })()}
 
             {/* ── Kinlo Pro banner ── */}
             {canManageStripe && (
@@ -429,6 +453,32 @@ export default function ProfileScreen({ navigation }) {
                 <Icon name="forward" size={16} color={colors.textTertiary} />
               </TouchableOpacity>
             </View>
+
+            {/* ── Mode (T3) — the single mode control, host-capable only ── */}
+            {canHostView && (
+              <>
+                <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>{t("profile.modeSection")}</Text>
+                <View style={[s.modeTrack, { backgroundColor: colors.sunken, borderColor: colors.border }]}>
+                  {["attending", "hosting"].map((m) => {
+                    const active = mode === m;
+                    const tint = m === "hosting" ? colors.primary : colors.success;
+                    return (
+                      <TouchableOpacity
+                        key={m}
+                        onPress={() => setMode(m)}
+                        style={[s.modeSeg, active && { backgroundColor: colors.surface }]}
+                        testID={`profile-mode-${m}`}
+                      >
+                        <View style={[s.modeDot, { backgroundColor: tint }]} />
+                        <Text style={[s.modeText, { color: active ? tint : colors.textTertiary }]}>
+                          {m === "attending" ? t("navigation.attending") : t("navigation.hosting")}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </>
+            )}
           </>
         )}
       </ScrollView>
@@ -446,9 +496,12 @@ function createStyles(colors, isDark) {
       alignItems: "center",
       justifyContent: "space-between",
       paddingHorizontal: 20,
-      paddingTop: 4,
+      // Pushed screen (no AppHeader): clear the status bar / notch — matches the
+      // other pushed business screens' header convention.
+      paddingTop: 60,
       paddingBottom: 16,
     },
+    headerLeft: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
     headerTitle: { fontSize: 20, fontWeight: "800", letterSpacing: -0.4 },
     editPill: {
       flexDirection: "row",
@@ -491,48 +544,39 @@ function createStyles(colors, isDark) {
     },
     identityText: { flex: 1, fontSize: 13, lineHeight: 19 },
 
-    // Stats row
-    statsRow: {
+    // T5: Followers · Follows · Rating meta row
+    metaRow: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
       borderWidth: 1,
       borderRadius: 20,
       marginBottom: 14,
       overflow: "hidden",
     },
-    stat: { flex: 1, alignItems: "center", paddingVertical: 18 },
-    statNumber: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5 },
-    statLabel: { fontSize: 12, marginTop: 3, fontWeight: "500" },
-    // Carpool loyalty pill (BUG 28.2) — slim, centered, non-tappable.
-    carpoolPill: {
+    metaCell: { flex: 1, alignItems: "center", paddingVertical: 16 },
+    metaNumRow: { flexDirection: "row", alignItems: "center", gap: 3 },
+    metaNum: { fontSize: 21, fontWeight: "800", letterSpacing: -0.5 },
+    metaLabel: { fontSize: 12, marginTop: 3, fontWeight: "500" },
+    metaDivider: { width: 1, height: 30, alignSelf: "center" },
+    // T5: stats grid (Hosted · Published · Carpool · Communities)
+    statsGrid: {
       flexDirection: "row",
-      alignItems: "center",
-      alignSelf: "center",
-      gap: 6,
-      paddingVertical: 7,
-      paddingHorizontal: 14,
-      borderRadius: 999,
-      marginTop: -2,
+      flexWrap: "wrap",
+      justifyContent: "space-between",
       marginBottom: 14,
     },
-    carpoolPillText: { fontSize: 12.5, fontWeight: "700" },
-    followersRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
+    gridCell: {
+      width: "48.5%",
       borderWidth: 1,
-      borderRadius: 14,
-      paddingVertical: 12,
+      borderRadius: 16,
+      paddingVertical: 16,
       paddingHorizontal: 14,
-      marginBottom: 14,
+      marginBottom: 10,
+      alignItems: "flex-start",
+      gap: 6,
     },
-    followersText: { flex: 1, fontSize: 13.5, fontWeight: "600" },
-    statCenter: { flex: 1.1 },
-    statCenterGrad: { alignItems: "center", paddingVertical: 18, borderRadius: 0 },
-    statCenterNumberRow: { flexDirection: "row", alignItems: "center", gap: 3 },
-    statCenterNumber: { fontSize: 22, fontWeight: "800", color: "#fff", letterSpacing: -0.5 },
-    statCenterLabel: { fontSize: 12, marginTop: 3, color: "rgba(255,255,255,0.8)", fontWeight: "500" },
+    gridNum: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5 },
+    gridLabel: { fontSize: 12.5, fontWeight: "600" },
 
     // Kinlo Pro banner
     proBanner: {
@@ -566,6 +610,19 @@ function createStyles(colors, isDark) {
       marginBottom: 10,
       marginTop: 4,
     },
+    // Mode toggle (T3)
+    modeTrack: { flexDirection: "row", borderRadius: 14, borderWidth: 1, padding: 4, gap: 4 },
+    modeSeg: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 7,
+      borderRadius: 11,
+      paddingVertical: 11,
+    },
+    modeDot: { width: 8, height: 8, borderRadius: 4 },
+    modeText: { fontSize: 14, fontWeight: "800" },
     sectionRow: {
       flexDirection: "row",
       justifyContent: "space-between",
