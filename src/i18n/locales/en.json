@@ -335,6 +335,8 @@
     "viewList": "List",
     "viewMap": "Map",
     "notOnMap": "{{count}} not on map",
+    "mapUnavailableTitle": "Map unavailable",
+    "mapUnavailableText": "The map couldn't be loaded on this build. Switch to List to browse events.",
     "searchPlace": "Search a place",
     "filters": "Filters",
     "clearAll": "Clear all",

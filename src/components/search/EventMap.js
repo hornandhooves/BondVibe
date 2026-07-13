@@ -8,8 +8,27 @@
  * "Search this area" (re-query the visible region), and distance on the callout.
  */
 import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Modal, ScrollView } from "react-native";
-import MapView, { Marker, Circle } from "react-native-maps";
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Modal, ScrollView, UIManager } from "react-native";
+
+// react-native-maps is a NATIVE module. On a build made before it was added
+// (stale pods), the JS shim still imports fine but the native view managers
+// aren't registered, so rendering <MapView>/<Marker> throws "View config not
+// found for AIRMapMarker" and takes down the whole Search screen. Load it
+// defensively and gate on the view-manager registry so we degrade to a friendly
+// message instead of crashing.
+let MapView, Marker, Circle;
+try {
+  const Maps = require("react-native-maps");
+  MapView = Maps.default;
+  Marker = Maps.Marker;
+  Circle = Maps.Circle;
+} catch (e) {
+  MapView = Marker = Circle = null;
+}
+const MAPS_AVAILABLE =
+  !!MapView &&
+  (!!UIManager.getViewManagerConfig?.("AIRMap") ||
+    !!UIManager.getViewManagerConfig?.("AIRGoogleMap"));
 import * as Location from "expo-location";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -23,7 +42,37 @@ import { haversineKm, formatDistanceKm } from "../../utils/geo";
 
 const FOCUS_DELTA = 0.08;
 
-export default function EventMap({ events, navigation, currentUid, activeFilterCount = 0, onOpenFilters }) {
+// Default export gates on native-module availability (MAPS_AVAILABLE above):
+// with maps linked it renders the real map; without, a friendly fallback so a
+// stale build degrades instead of crashing the Search screen. The List/Map
+// toggle lives above this in SearchEventsScreen, so the user can switch back.
+export default function EventMap(props) {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  if (!MAPS_AVAILABLE) return <MapUnavailable colors={colors} t={t} />;
+  return <EventMapView {...props} />;
+}
+
+function MapUnavailable({ colors, t }) {
+  return (
+    <View style={[unavailableStyles.wrap, { backgroundColor: colors.background }]} testID="map-unavailable">
+      <View style={[unavailableStyles.iconCircle, { backgroundColor: colors.brandSoft }]}>
+        <Icon name="location" size={30} color={colors.primary} type="ui" />
+      </View>
+      <Text style={[unavailableStyles.title, { color: colors.text }]}>{t("searchEvents.mapUnavailableTitle")}</Text>
+      <Text style={[unavailableStyles.text, { color: colors.textSecondary }]}>{t("searchEvents.mapUnavailableText")}</Text>
+    </View>
+  );
+}
+
+const unavailableStyles = StyleSheet.create({
+  wrap: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40, gap: 14 },
+  iconCircle: { width: 72, height: 72, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  title: { fontSize: 18, fontWeight: "800", letterSpacing: -0.3, textAlign: "center" },
+  text: { fontSize: 14, fontWeight: "500", textAlign: "center", lineHeight: 21 },
+});
+
+function EventMapView({ events, navigation, currentUid, activeFilterCount = 0, onOpenFilters }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const styles = createStyles(colors);

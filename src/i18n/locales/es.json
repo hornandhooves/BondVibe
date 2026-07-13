@@ -335,6 +335,8 @@
     "viewList": "Lista",
     "viewMap": "Mapa",
     "notOnMap": "{{count}} sin ubicación",
+    "mapUnavailableTitle": "Mapa no disponible",
+    "mapUnavailableText": "No se pudo cargar el mapa en esta versión. Usa la vista Lista para explorar eventos.",
     "searchPlace": "Buscar un lugar",
     "filters": "Filtros",
     "clearAll": "Limpiar todo",
