@@ -7,7 +7,9 @@
  */
 import Constants from "expo-constants";
 
-const KEY = Constants?.expoConfig?.extra?.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY;
+const KEY =
+  Constants?.expoConfig?.extra?.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY ||
+  process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY;
 
 /**
  * @param {string} address e.g. "Casa Azul, Tulum"

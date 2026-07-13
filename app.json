@@ -60,7 +60,6 @@
       "EXPO_PUBLIC_FIREBASE_APP_ID": "1:629419649601:web:4654e0378542001e18b4c0",
       "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "629419649601-qkgnj1g9gu2fssobs2d1p2bbmqn3imqc.apps.googleusercontent.com",
       "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "629419649601-ldjobevlvjvjmsi92dfe3cpua8u1m8fk.apps.googleusercontent.com",
-      "EXPO_PUBLIC_GOOGLE_PLACES_API_KEY": "AIzaSyDP2zxLDMAXu8XOevVCL3wAE6s3z_UT7Qc",
       "EXPO_PUBLIC_SPOTIFY_CLIENT_ID": "bca4488fca8d4a3ba7531f0fa5f47af9",
       "eas": {
         "projectId": "0cf2c3f2-26ad-4e9f-816f-b449085f9b10"
@@ -85,11 +84,6 @@
       "edgeToEdgeEnabled": true,
       "icon": "./assets/icon.png",
       "package": "com.bondvibe.app",
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyDP2zxLDMAXu8XOevVCL3wAE6s3z_UT7Qc"
-        }
-      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#7C3AED"
