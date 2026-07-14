@@ -31,6 +31,7 @@ const {cancelEventAttendance, hostCancelEvent} = require("./stripe/refunds");
 
 // @handle claiming/checking (server-enforced uniqueness).
 const {claimHandle, checkHandle, adminReassignHandle} = require("./handles");
+const {sendVerificationEmail, sendPasswordResetEmail} = require("./authEmails");
 
 // Import pricing logic
 const {
@@ -2421,6 +2422,8 @@ exports.hostCancelEvent = hostCancelEvent;
 exports.claimHandle = claimHandle;
 exports.checkHandle = checkHandle;
 exports.adminReassignHandle = adminReassignHandle;
+exports.sendVerificationEmail = sendVerificationEmail;
+exports.sendPasswordResetEmail = sendPasswordResetEmail;
 
 // Import Stripe Connect functions
 const {

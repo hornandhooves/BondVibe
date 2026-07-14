@@ -1,85 +1,124 @@
-/* BondVibe — Brand tokens for the public web pages
-   (public/verify-email.html, reset-password.html, 404.html, index.html, stripe/*)
-   Link once per page <head>:  <link rel="stylesheet" href="/brand.css">
-   Default = Aurora (dark). Add <html data-theme="warmth"> for the light/Day surface. */
+/* ============================================================
+   Kinlo · tokens de marca para las páginas web públicas
+   (verify-email, reset-password, 404, maintenance, pagos, index)
+
+   👉 PARA REAJUSTAR COLORES EN EL FUTURO:
+      edita SOLO los valores del bloque :root de abajo.
+      Todas las páginas leen de aquí — cambias un valor y
+      cambian todas a la vez. No hay colores sueltos en el HTML.
+
+   Tema por defecto: Warmth (claro/cálido).
+   ============================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
 
-:root,
-:root[data-theme="aurora"] {
-  --bg:            #0E1117;
-  --surface:       #171B26;
-  --surface-2:     #1C2130;
-  --text:          #EDEFF5;
-  --text-2:        #8B93A7;
-  --primary:       #FF3E9A;
-  --secondary:     #3DDCFF;
-  --success:       #3DE0A0;
-  --error:         #FF6B6B;
-  --border:        rgba(255,255,255,.12);
-  --border-strong: rgba(255,255,255,.16);
-  --hard-shadow:   #FF3E9A;
-  --ink:           #EDEFF5;
-  --on-ink:        #0E1117;
-  --on-primary:    #FFFFFF;
-}
+:root{
+  /* — Superficies — */
+  --bg:            #FBF6F1;   /* fondo de página */
+  --surface:       #FFFFFF;   /* tarjetas */
+  --surface-2:     #F3ECE4;   /* chips neutros / cajas suaves */
 
-:root[data-theme="warmth"] {
-  --bg:            #FBF6F1;
-  --surface:       #FFFFFF;
-  --surface-2:     #FFFFFF;
-  --text:          #2A2520;
-  --text-2:        #9A8D7E;
-  --primary:       #F0573D;
-  --secondary:     #1F8A6E;
-  --success:       #1F8A6E;
-  --error:         #E0413A;
+  /* — Texto — */
+  --text:          #2A2520;   /* principal (tinta) */
+  --text-2:        #9A8D7E;   /* secundario */
+  --text-3:        #B6A99B;   /* terciario / notas */
+
+  /* — Marca — */
+  --primary:       #F0573D;   /* coral · botones y acento */
+  --on-primary:    #FFFFFF;   /* texto sobre coral */
+  --primary-shadow:rgba(240,87,61,.28);
+  --secondary:     #1F8A6E;   /* teal */
+  --violet:        #7C3AED;   /* logo Kinlo — constante en cualquier tema */
+
+  /* — Estado — */
+  --success:       #1F8A6E;  --success-bg:#DBF0E9;
+  --error:         #E0413A;  --error-bg:  #FBE4E0;
+  --warning:       #E8A33D;  --warning-bg:#FBEFD9;
+  --info:          #7C3AED;  --info-bg:   #EDE7FB;
+
+  /* — Líneas y sombras — */
   --border:        rgba(42,37,32,.10);
-  --border-strong: #2A2520;
-  --hard-shadow:   #2A2520;
-  --ink:           #2A2520;
-  --on-ink:        #FFFFFF;
-  --on-primary:    #FFFFFF;
+  --shadow:        0 10px 34px rgba(80,60,40,.10);
+  --shadow-sm:     0 2px 8px  rgba(80,60,40,.10);
+
+  /* — Placeholder de ilustración (rayado) — */
+  --ph-a:          #F1E7DD;
+  --ph-b:          #F7EFE7;
+
+  /* — Degradado de marca (ícono / momentos premium) — */
+  --grad-brand:    linear-gradient(150deg,#6D28D9,#A21CAF,#E91E8C);
+
+  /* — Tipografía — */
+  --font-display:  'Space Grotesk', sans-serif;
+  --font-body:     'Plus Jakarta Sans', system-ui, sans-serif;
 }
 
-/* Brand signature — fixed in both themes (refined: no cold indigo) */
-:root { --grad-brand: linear-gradient(135deg, #7C3AED, #C026D3, #FF3E9A);
-        --grad-warm:  linear-gradient(135deg, #E91E8C, #F0573D); }
+/* ============================================================
+   Base + componentes compartidos (estructura; los colores
+   siempre salen de las variables de arriba).
+   ============================================================ */
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);-webkit-font-smoothing:antialiased}
 
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
-h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.02em; }
+a{color:var(--primary);text-decoration:none}
+a:hover{color:var(--primary)}
 
-/* Bold Pop primitives */
-.bv-card {
-  background: var(--surface);
-  border: 2px solid var(--border-strong);
-  border-radius: 20px;
-  box-shadow: 5px 5px 0 var(--hard-shadow);
-  padding: 24px;
-}
-.bv-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  background: var(--primary); color: var(--on-primary);
-  border: 2px solid var(--border-strong); border-radius: 30px;
-  padding: 13px 22px; font-weight: 700; font-size: 15px;
-  box-shadow: 3px 3px 0 var(--hard-shadow); cursor: pointer;
-  text-decoration: none;
-}
-.bv-btn--ghost { background: var(--surface); color: var(--text); box-shadow: none; }
-.bv-badge-verified {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: var(--secondary); color: var(--on-ink);
-  border: 2px solid var(--border-strong); border-radius: 30px;
-  padding: 5px 11px; font-weight: 800; font-size: 12px;
-}
-.bv-logo-tile {
-  width: 64px; height: 64px; border-radius: 18px;
-  background: var(--grad-brand);
-  display: flex; align-items: center; justify-content: center;
-}
+/* Shell centrado */
+.k-shell{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.k-wrap{width:100%;max-width:400px;display:flex;flex-direction:column;align-items:center}
+
+/* Selector de idioma */
+.k-lang{position:fixed;top:16px;right:16px;display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:3px;box-shadow:var(--shadow-sm);z-index:20}
+.k-lang button{border:0;background:transparent;font:600 12px/1 var(--font-body);letter-spacing:.5px;color:var(--text-2);padding:6px 10px;border-radius:999px;cursor:pointer}
+.k-lang button.on{background:var(--text);color:var(--surface)}
+
+/* Logo lockup */
+.k-logo{display:flex;align-items:center;gap:9px;margin-bottom:20px}
+.k-wm{font-family:var(--font-display);font-weight:700;font-size:22px;letter-spacing:-1px;color:var(--text)}
+
+/* Tarjeta */
+.k-card{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:24px;box-shadow:var(--shadow);overflow:hidden}
+.k-body{padding:0 32px 34px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.k-body[hidden]{display:none}
+.k-body.top{padding-top:32px}
+
+/* Placeholder de ilustración */
+.ph{background:repeating-linear-gradient(135deg,var(--ph-a) 0 11px,var(--ph-b) 11px 22px);position:relative}
+.ph::after{content:attr(data-label);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-3)}
+.k-banner{height:126px}
+
+/* Ficha de estado (chip) */
+.k-chip{width:60px;height:60px;border-radius:18px;display:flex;align-items:center;justify-content:center;margin-top:-30px;background:var(--surface-2);color:var(--text-2);border:4px solid var(--surface);box-shadow:var(--shadow-sm)}
+.k-chip svg{width:28px;height:28px;stroke-width:2.4;fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
+.k-chip.success{color:var(--success);background:var(--success-bg)}
+.k-chip.error{color:var(--error);background:var(--error-bg)}
+.k-chip.info{color:var(--info);background:var(--info-bg)}
+.k-chip.loading{color:var(--primary);background:var(--surface-2)}
+
+/* Tile de marca (degradado) para momentos premium/pago */
+.k-tile{width:68px;height:68px;border-radius:20px;background:var(--grad-brand);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm)}
+.k-tile svg{width:34px;height:34px;stroke:#fff;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.k-tile.check{font-size:32px;color:#fff}
+
+/* Texto */
+.k-eyebrow{font-family:var(--font-display);font-weight:600;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--text-3)}
+.k-title{font-family:var(--font-display);font-weight:700;font-size:23px;letter-spacing:-.4px;color:var(--text)}
+.k-msg{font-size:14.5px;line-height:1.6;color:var(--text-2);max-width:300px}
+.k-note{font-size:12.5px;line-height:1.55;color:var(--text-3);max-width:280px}
+
+/* Botón + enlace */
+.k-btn{display:inline-flex;align-items:center;justify-content:center;background:var(--primary);color:var(--on-primary);text-decoration:none;font-family:var(--font-body);font-weight:700;font-size:15px;padding:14px 26px;border:0;border-radius:14px;box-shadow:0 6px 18px var(--primary-shadow);cursor:pointer;transition:transform .15s,box-shadow .15s}
+.k-btn:hover{transform:translateY(-1px);box-shadow:0 9px 24px var(--primary-shadow);color:var(--on-primary)}
+.k-btn:active{transform:translateY(0)}
+.k-btn[disabled]{opacity:.5;cursor:not-allowed;box-shadow:none;transform:none}
+.k-btn-block{width:100%}
+.k-link{font-size:13px;font-weight:600;color:var(--text-2)}
+.k-link:hover{color:var(--text)}
+
+/* Spinner */
+.k-spin{width:26px;height:26px;border:3px solid var(--surface-2);border-top-color:var(--primary);border-radius:50%;animation:k-spin .9s linear infinite}
+@keyframes k-spin{to{transform:rotate(360deg)}}
+
+/* Rítmica vertical */
+.mt-6{margin-top:6px}.mt-9{margin-top:9px}.mt-14{margin-top:14px}.mt-18{margin-top:18px}.mt-22{margin-top:22px}

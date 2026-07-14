@@ -23,21 +23,23 @@
     </div>
 
     <div class="k-card">
-      <div class="k-body top">
-        <div class="k-tile">
-          <svg viewBox="0 0 24 24"><path d="M20 6 L9 17 L4 12"></path></svg>
+      <div class="k-banner ph" data-label="Ilustración de marca · 720×380"></div>
+      <div class="k-body">
+        <div class="k-chip" style="color:var(--warning);background:var(--warning-bg)">
+          <svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.3 2.3-2.1-.6-.6-2.1 2.0-2.6z"></path></svg>
         </div>
-        <h1 class="k-title mt-18" data-k="title"></h1>
+        <div class="k-eyebrow mt-18" data-k="eyebrow"></div>
+        <h1 class="k-title mt-6" data-k="title"></h1>
         <p class="k-msg mt-9" data-k="msg"></p>
-        <a class="k-btn k-btn-block mt-22" href="kinlo://" data-k="btn"></a>
+        <p class="k-note mt-22" data-k="note"></p>
       </div>
     </div>
   </div>
 
   <script>
     var DICT = {
-      es: { title: "Pago completado", msg: "Puedes cerrar esta ventana y volver a Kinlo. Tu lugar aparecerá en la app en unos segundos.", btn: "Volver a Kinlo" },
-      en: { title: "Payment complete", msg: "You can close this window and return to Kinlo. Your spot will appear in the app in a few seconds.", btn: "Return to Kinlo" }
+      es: { eyebrow: "Mantenimiento", title: "Volvemos enseguida", msg: "Estamos afinando algunas cosas en Kinlo para que todo funcione mejor. Vuelve a intentarlo en un rato.", note: "Gracias por tu paciencia — no tardamos." },
+      en: { eyebrow: "Maintenance", title: "Back in a moment", msg: "We're tuning a few things in Kinlo so everything runs smoother. Please check back in a little while.", note: "Thanks for your patience — we won't be long." }
     };
     var LANG = pickLang();
     function pickLang(){
