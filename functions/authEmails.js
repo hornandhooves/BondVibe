@@ -16,12 +16,15 @@
 const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
+const {FieldValue} = require("firebase-admin/firestore");
 const nodemailer = require("nodemailer");
+const crypto = require("crypto");
 
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
 
 const SENDER = "admin@kinlo.org"; // Workspace mailbox: SMTP login + From
 const PAGE_BASE = "https://app.kinlo.org"; // our hosted action pages
+const RESET_COOLDOWN_MS = 90 * 1000; // at most one reset email per address per 90s
 
 // A Firebase action link carries the oobCode; pull it out so we can point the
 // email at OUR page instead of Firebase's default handler.
@@ -32,6 +35,24 @@ const PAGE_BASE = "https://app.kinlo.org"; // our hosted action pages
  */
 function oobCodeFrom(link) {
   return new URL(link).searchParams.get("oobCode");
+}
+
+/**
+ * Per-key cooldown backed by Firestore (mailThrottle/{key}, server-only).
+ * @param {string} key throttle bucket (a hash — never raw PII).
+ * @param {number} windowMs cooldown length in ms.
+ * @return {Promise<boolean>} true if within the window (caller should skip).
+ */
+function throttled(key, windowMs) {
+  const ref = admin.firestore().doc(`mailThrottle/${key}`);
+  const now = Date.now();
+  return admin.firestore().runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const last = (snap.exists && snap.data().lastMs) || 0;
+    if (now - last < windowMs) return true;
+    tx.set(ref, {lastMs: now, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
+    return false;
+  });
 }
 
 /**
@@ -95,6 +116,13 @@ exports.sendVerificationEmail = onCall({secrets: [GMAIL_APP_PASSWORD]}, async (r
 exports.sendPasswordResetEmail = onCall({secrets: [GMAIL_APP_PASSWORD]}, async (request) => {
   const email = String((request.data && request.data.email) || "").trim().toLowerCase();
   if (!email) throw new HttpsError("invalid-argument", "Email is required.");
+  // Rate-limit: at most one reset email per address per RESET_COOLDOWN_MS — a
+  // blunt anti-bombing guard. (App Check would additionally restrict WHO can call.)
+  const key = "reset_" + crypto.createHash("sha256").update(email).digest("hex").slice(0, 40);
+  if (await throttled(key, RESET_COOLDOWN_MS)) {
+    console.log("sendPasswordResetEmail: throttled");
+    return {ok: true};
+  }
   try {
     const link = await admin.auth().generatePasswordResetLink(email, {url: PAGE_BASE});
     const url = `${PAGE_BASE}/?mode=resetPassword&oobCode=${encodeURIComponent(oobCodeFrom(link))}`;
@@ -104,9 +132,20 @@ exports.sendPasswordResetEmail = onCall({secrets: [GMAIL_APP_PASSWORD]}, async (
       subject: "Reset your password for Kinlo",
       html: shell("Reset your password", "Choose a new password for your Kinlo account. This link expires soon.", "Reset password", url),
     });
+    console.log("sendPasswordResetEmail: sent");
   } catch (e) {
-    // auth/user-not-found is expected and swallowed (no account enumeration).
-    if (e.code !== "auth/user-not-found") console.error("sendPasswordResetEmail:", e.message || e);
+    // No such account — swallow either way (never reveal whether it exists).
+    // The Admin SDK signals this as auth/user-not-found OR an internal assert
+    // "Unable to create the email action link". Log both benignly so this
+    // public endpoint's constant scanner probes don't spam error monitoring.
+    // These logs are server-side only (never returned to the caller).
+    const msg = (e && e.message) || String(e);
+    if (e && (e.code === "auth/user-not-found" ||
+        /unable to create the email action link/i.test(msg))) {
+      console.log("sendPasswordResetEmail: no account");
+    } else {
+      console.error("sendPasswordResetEmail:", msg);
+    }
   }
   return {ok: true};
 });
