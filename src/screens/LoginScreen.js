@@ -22,6 +22,7 @@ import {
   sendPasswordResetEmail,
 } from "firebase/auth";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { auth, db } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
@@ -191,11 +192,8 @@ export default function LoginScreen({ navigation }) {
     }
 
     try {
-      const actionCodeSettings = {
-        url: "https://kinlo-app-dev.web.app",
-        handleCodeInApp: false,
-      };
-      await sendPasswordResetEmail(auth, email.trim(), actionCodeSettings);
+      // Branded reset email via our Cloud Function (links to app.kinlo.org).
+      await httpsCallable(getFunctions(), "sendPasswordResetEmail")({ email: email.trim() });
       setErrorModal({
         visible: true,
         title: t("auth.login.errors.resetSentTitle"),

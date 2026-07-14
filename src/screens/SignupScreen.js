@@ -23,6 +23,7 @@ import {
   signOut,
 } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { auth, db } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
@@ -114,11 +115,8 @@ export default function SignupScreen({ navigation }) {
           user.uid,
           user.email,
         );
-        const actionCodeSettings = {
-          url: "https://kinlo-app-dev.web.app",
-          handleCodeInApp: false,
-        };
-        await sendEmailVerification(user, actionCodeSettings);
+        // Branded verification email via our Cloud Function (links to app.kinlo.org).
+        await httpsCallable(getFunctions(), "sendVerificationEmail")();
         console.log("✅ Verification email sent");
       } catch (emailError) {
         console.error("❌ sendEmailVerification FAILED:");
