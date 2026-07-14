@@ -1,56 +1,84 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kinlo Plus</title>
-  <style>
-    :root { color-scheme: dark; }
-    * { box-sizing: border-box; margin: 0; }
-    body {
-      min-height: 100vh; display: flex; align-items: center; justify-content: center;
-      background: #0b0710; color: #fff; text-align: center; padding: 24px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-    .card { max-width: 420px; }
-    .mark {
-      width: 72px; height: 72px; border-radius: 22px; margin: 0 auto 24px;
-      background: linear-gradient(135deg, #7C3AED, #C026D3, #FF3E9A);
-      display: flex; align-items: center; justify-content: center;
-    }
-    .mark svg { width: 38px; height: 38px; stroke: #fff; stroke-width: 2;
-      fill: none; stroke-linecap: round; stroke-linejoin: round; }
-    h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 12px; }
-    p { color: #b9b1c6; font-size: 16px; line-height: 1.5; }
-    .btn {
-      display: inline-block; margin-top: 32px; padding: 15px 40px;
-      border-radius: 16px; font-size: 17px; font-weight: 700; color: #fff;
-      text-decoration: none; background: linear-gradient(135deg, #7C3AED, #C026D3);
-    }
-    .btn:active { opacity: 0.85; }
-    .hint { margin-top: 24px; font-size: 14px; color: #8a8398; }
-  </style>
+  <link rel="stylesheet" href="brand.css" />
 </head>
-<body>
-  <div class="card">
-    <div class="mark">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 3l1.9 4.6L18.5 9l-4.6 1.4L12 15l-1.9-4.6L5.5 9l4.6-1.4L12 3z" />
-        <path d="M19 14l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z" />
-      </svg>
-    </div>
-    <h1 id="title">You're on Kinlo Plus</h1>
-    <p id="msg">Your Kinlo Plus subscription is active. Tap below to return to the app — your Plus features unlock automatically.</p>
-    <a id="cta" class="btn" href="kinlo://">Return to app</a>
-    <p class="hint">You can manage or cancel anytime from Kinlo Plus → Manage subscription.</p>
+<body class="k-shell">
+  <div class="k-lang" role="group" aria-label="Language">
+    <button type="button" data-lang="es">ES</button>
+    <button type="button" data-lang="en">EN</button>
   </div>
+
+  <div class="k-wrap">
+    <div class="k-logo">
+      <svg viewBox="0 0 48 48" width="26" height="26" fill="none" stroke="#7C3AED" stroke-width="2.8" stroke-linecap="round">
+        <path d="M18 13 A 13 13 0 0 0 18 35"></path>
+        <path d="M30 13 A 13 13 0 0 1 30 35"></path>
+        <circle cx="24" cy="24" r="3.2" fill="#7C3AED" stroke="none"></circle>
+      </svg>
+      <span class="k-wm">Kinlo</span>
+    </div>
+
+    <div class="k-card">
+      <div class="k-body top">
+        <div class="k-tile">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 3l1.9 4.6L18.5 9l-4.6 1.4L12 15l-1.9-4.6L5.5 9l4.6-1.4L12 3z"></path>
+            <path d="M19 14l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z"></path>
+          </svg>
+        </div>
+        <div class="k-eyebrow mt-18" id="eyebrow"></div>
+        <h1 class="k-title mt-6" id="title"></h1>
+        <p class="k-msg mt-9" id="msg"></p>
+        <a class="k-btn k-btn-block mt-22" href="kinlo://" id="btn"></a>
+        <p class="k-note mt-14" id="hint"></p>
+      </div>
+    </div>
+  </div>
+
   <script>
-    var status = new URLSearchParams(location.search).get("status");
-    if (status === "cancel") {
-      document.getElementById("title").textContent = "Checkout cancelled";
-      document.getElementById("msg").textContent =
-        "No charge was made. Return to the app and go Plus whenever you're ready.";
+    var DICT = {
+      es: {
+        eyebrow: "Kinlo Plus",
+        title: "Ya tienes Kinlo Plus", msg: "Tu suscripción a Kinlo Plus está activa. Vuelve a la app: tus funciones Plus se desbloquean automáticamente.",
+        btn: "Volver a la app", hint: "Puedes gestionar o cancelar cuando quieras desde Kinlo Plus → Gestionar suscripción.",
+        eyebrow_cancel: "Kinlo Plus",
+        title_cancel: "Compra cancelada", msg_cancel: "No se hizo ningún cargo. Vuelve a la app y hazte Plus cuando quieras.", hint_cancel: ""
+      },
+      en: {
+        eyebrow: "Kinlo Plus",
+        title: "You're on Kinlo Plus", msg: "Your Kinlo Plus subscription is active. Head back to the app: your Plus features unlock automatically.",
+        btn: "Return to app", hint: "You can manage or cancel anytime from Kinlo Plus → Manage subscription.",
+        eyebrow_cancel: "Kinlo Plus",
+        title_cancel: "Checkout cancelled", msg_cancel: "No charge was made. Return to the app and go Plus whenever you're ready.", hint_cancel: ""
+      }
+    };
+    var CANCEL = new URLSearchParams(location.search).get('status') === 'cancel';
+    var LANG = pickLang();
+    function pickLang(){
+      var q = new URLSearchParams(location.search).get('lang');
+      if (q === 'es' || q === 'en') return q;
+      var s = localStorage.getItem('kinlo_lang');
+      if (s === 'es' || s === 'en') return s;
+      return (navigator.language || 'en').toLowerCase().indexOf('es') === 0 ? 'es' : 'en';
     }
+    function t(k){ return (DICT[LANG] && DICT[LANG][k]) || DICT.en[k] || k; }
+    function render(){
+      var sfx = CANCEL ? '_cancel' : '';
+      document.getElementById('eyebrow').textContent = t('eyebrow' + sfx);
+      document.getElementById('title').textContent = t('title' + sfx);
+      document.getElementById('msg').textContent = t('msg' + sfx);
+      document.getElementById('btn').textContent = t('btn');
+      var hint = t('hint' + sfx);
+      var hintEl = document.getElementById('hint');
+      hintEl.textContent = hint; hintEl.style.display = hint ? 'block' : 'none';
+    }
+    function syncLang(){ document.querySelectorAll('.k-lang button').forEach(function(b){ b.classList.toggle('on', b.dataset.lang === LANG); }); document.documentElement.lang = LANG; }
+    document.querySelectorAll('.k-lang button').forEach(function(b){ b.addEventListener('click', function(){ LANG = b.dataset.lang; localStorage.setItem('kinlo_lang', LANG); render(); syncLang(); }); });
+    render(); syncLang();
   </script>
 </body>
 </html>
