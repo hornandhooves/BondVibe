@@ -25,6 +25,9 @@ const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
 const SENDER = "admin@kinlo.org"; // Workspace mailbox: SMTP login + From
 const PAGE_BASE = "https://app.kinlo.org"; // our hosted action pages
 const RESET_COOLDOWN_MS = 90 * 1000; // at most one reset email per address per 90s
+const HOUR_MS = 60 * 60 * 1000;
+const RESET_IP_MAX = 20; // max reset requests per client IP per hour
+const RESET_GLOBAL_MAX = 300; // global backstop per hour (caps IP-rotation blast radius)
 
 // A Firebase action link carries the oobCode; pull it out so we can point the
 // email at OUR page instead of Firebase's default handler.
@@ -51,6 +54,29 @@ function throttled(key, windowMs) {
     const last = (snap.exists && snap.data().lastMs) || 0;
     if (now - last < windowMs) return true;
     tx.set(ref, {lastMs: now, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
+    return false;
+  });
+}
+
+/**
+ * Fixed-window rate limiter backed by Firestore (rateLimit/{key}, server-only).
+ * @param {string} key bucket key (a hash, or a constant like "global_reset").
+ * @param {number} limit max hits allowed per window.
+ * @param {number} windowMs window length in ms.
+ * @return {Promise<boolean>} true if over the limit (caller should skip).
+ */
+function overLimit(key, limit, windowMs) {
+  const ref = admin.firestore().doc(`rateLimit/${key}`);
+  const now = Date.now();
+  return admin.firestore().runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const d = (snap.exists && snap.data()) || {};
+    if (now - (d.windowStart || 0) >= windowMs) { // window elapsed → reset
+      tx.set(ref, {windowStart: now, count: 1, updatedAt: FieldValue.serverTimestamp()});
+      return false;
+    }
+    if ((d.count || 0) >= limit) return true;
+    tx.set(ref, {count: (d.count || 0) + 1, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
     return false;
   });
 }
@@ -116,13 +142,31 @@ exports.sendVerificationEmail = onCall({secrets: [GMAIL_APP_PASSWORD]}, async (r
 exports.sendPasswordResetEmail = onCall({secrets: [GMAIL_APP_PASSWORD]}, async (request) => {
   const email = String((request.data && request.data.email) || "").trim().toLowerCase();
   if (!email) throw new HttpsError("invalid-argument", "Email is required.");
-  // Rate-limit: at most one reset email per address per RESET_COOLDOWN_MS — a
-  // blunt anti-bombing guard. (App Check would additionally restrict WHO can call.)
-  const key = "reset_" + crypto.createHash("sha256").update(email).digest("hex").slice(0, 40);
-  if (await throttled(key, RESET_COOLDOWN_MS)) {
-    console.log("sendPasswordResetEmail: throttled");
+
+  // This endpoint is public (no auth, no App Check yet — App Check needs a native
+  // client build). Three layers of rate-limiting stand in for that:
+  //   1. per-email cooldown  — one reset per address per RESET_COOLDOWN_MS
+  //   2. per-IP window       — caps how many addresses one client can bomb
+  //   3. global window       — backstop against IP rotation / botnets
+  const sha = (s) => crypto.createHash("sha256").update(String(s)).digest("hex");
+
+  if (await throttled("reset_" + sha(email).slice(0, 40), RESET_COOLDOWN_MS)) {
+    console.log("sendPasswordResetEmail: throttled (email)");
     return {ok: true};
   }
+
+  const req = request.rawRequest || {};
+  const fwd = (req.headers && req.headers["x-forwarded-for"]) || "";
+  const ip = String(fwd).split(",")[0].trim() || req.ip || "unknown";
+  if (await overLimit("ip_" + sha(ip).slice(0, 32), RESET_IP_MAX, HOUR_MS)) {
+    console.warn("sendPasswordResetEmail: rate-limited (ip)");
+    return {ok: true};
+  }
+  if (await overLimit("global_reset", RESET_GLOBAL_MAX, HOUR_MS)) {
+    console.warn("sendPasswordResetEmail: rate-limited (global backstop)");
+    return {ok: true};
+  }
+
   try {
     const link = await admin.auth().generatePasswordResetLink(email, {url: PAGE_BASE});
     const url = `${PAGE_BASE}/?mode=resetPassword&oobCode=${encodeURIComponent(oobCodeFrom(link))}`;
