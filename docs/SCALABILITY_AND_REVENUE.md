@@ -1,4 +1,4 @@
-# BondVibe — Scalability & Revenue Assessment
+# Kinlo — Scalability & Revenue Assessment
 
 _Last updated: 2026-06. Grounded in the current codebase (commit on `main`)._
 
@@ -138,7 +138,7 @@ placement. Sells against the discovery you'll build in §2. High margin (100%).
 - A modest tip fee (e.g., 5–10%) or "round-up" — tips are currently 0%.
 
 ### P1 — Attendee-side premium
-"BondVibe Plus" for attendees: no booking fees, early access to popular events,
+"Kinlo Plus" for attendees: no booking fees, early access to popular events,
 exclusive/members-only events, profile perks. Converts demand-side users.
 
 ### P2 — Sponsored / brand partnerships

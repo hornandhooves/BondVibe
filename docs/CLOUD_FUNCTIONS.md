@@ -1,6 +1,6 @@
-# 🔧 BondVibe Cloud Functions Documentation
+# 🔧 Kinlo Cloud Functions Documentation
 
-This document describes all Firebase Cloud Functions used in BondVibe.
+This document describes all Firebase Cloud Functions used in Kinlo.
 
 ## 📋 Table of Contents
 
@@ -444,7 +444,7 @@ const fee = calculateStripeFee(20000);  // $200 MXN
 
 ### `calculatePlatformFee(amount)`
 
-Calculates BondVibe platform fee (5%).
+Calculates Kinlo platform fee (5%).
 
 **Parameters**:
 - `amount`: Amount in centavos
@@ -584,4 +584,4 @@ firebase functions:log --only onEventAttendeesChanged
 
 ---
 
-Built with ❤️ for BondVibe
+Built with ❤️ for Kinlo

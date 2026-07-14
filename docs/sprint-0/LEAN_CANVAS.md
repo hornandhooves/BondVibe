@@ -1,4 +1,4 @@
-# BondVibe - Lean Canvas
+# Kinlo - Lean Canvas
 
 **Version**: 1.0  
 **Date**: November 12, 2025
@@ -35,7 +35,7 @@
 
 **High-Level**: "Personality-matched group experiences that turn strangers into friends"
 
-**Single Message**: *Stop swiping. Start bonding. BondVibe uses personality science to create group experiences where you actually click.*
+**Single Message**: *Stop swiping. Start bonding. Kinlo uses personality science to create group experiences where you actually click.*
 
 **Differentiation**:
 - ✅ Only app with Big Five personality matching for groups

@@ -1,4 +1,4 @@
-# 08 · App Bug Fixes — Round 4 (reviewed against DuarTchock/BondVibe@main)
+# 08 · App Bug Fixes — Round 4 (reviewed against DuarTchock/Kinlo@main)
 
 > App-wide QA pass after round-3. Each bug is mapped to the **real file/screen** in the repo. Build in the priority order below, **one commit per fix**, pausing after each block for review. English UI + comments. Use theme tokens (`src/contexts/ThemeContext` / `theme-tokens.js`) — no hardcoded colors. AI via existing `callClaude`. Pro-gating stays in `src/config/entitlements.js`. **After each fix run the app and confirm the specific screen in the screenshot behaves as described.**
 

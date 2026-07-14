@@ -1,6 +1,6 @@
 # 14 · BUG 25 — show the @handle on the Profile screen
 
-> The handle system is fully built (ChooseHandleScreen, `claimHandle`, `findUserByHandle`, mentions, search) and every user already has `handle` / `handleLower` on their user doc — it's just **never rendered on the Profile screen**. Add it under the name. Reviewed against `DuarTchock/BondVibe@main`, `src/screens/ProfileScreen.js`.
+> The handle system is fully built (ChooseHandleScreen, `claimHandle`, `findUserByHandle`, mentions, search) and every user already has `handle` / `handleLower` on their user doc — it's just **never rendered on the Profile screen**. Add it under the name. Reviewed against `DuarTchock/Kinlo@main`, `src/screens/ProfileScreen.js`.
 
 ## The fix (one screen, view mode)
 In `ProfileScreen.js`, VIEW MODE, the `userSection` block renders name → email with nothing between:

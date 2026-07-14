@@ -1,8 +1,8 @@
-# BondVibe 2025 - Design System
+# Kinlo 2025 - Design System
 
 ## 🎨 Design Philosophy
 
-BondVibe's 2025 design system combines **neumorphism** with **glassmorphism** to create an ultra-modern, sophisticated interface that feels both futuristic and approachable.
+Kinlo's 2025 design system combines **neumorphism** with **glassmorphism** to create an ultra-modern, sophisticated interface that feels both futuristic and approachable.
 
 ## Color Palette
 
@@ -188,4 +188,4 @@ See the following files for implementation examples:
 
 **Version**: 2.0.0  
 **Last Updated**: 2025  
-**Maintained by**: BondVibe Team
+**Maintained by**: Kinlo Team

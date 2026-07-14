@@ -1,4 +1,4 @@
-# BondVibe - User Stories (Sprint 1)
+# Kinlo - User Stories (Sprint 1)
 
 **Epic**: BV-0 - MVP1 Foundation  
 **Sprint**: Sprint 1 (Weeks 1-2)
@@ -14,7 +14,7 @@
 ### User Story
 **As a** new user  
 **I want** to create an account using email or social login  
-**So that** I can access BondVibe features
+**So that** I can access Kinlo features
 
 ### Acceptance Criteria
 1. ✅ User can register with email + password (8+ chars, ≥1 number)
@@ -69,7 +69,7 @@
 ### User Story
 **As a** new user  
 **I want** to take a quick personality test  
-**So that** BondVibe can match me with compatible people
+**So that** Kinlo can match me with compatible people
 
 ### Acceptance Criteria
 1. ✅ 10 questions in 4 languages (EN, ES, DE, FR)

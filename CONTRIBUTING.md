@@ -1,4 +1,4 @@
-# Contributing to BondVibe
+# Contributing to Kinlo
 
 ## Branch Strategy
 

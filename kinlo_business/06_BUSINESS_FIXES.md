@@ -1,6 +1,6 @@
 # 06 · Business — Round-2 Fixes (reviewed against the real repo)
 
-> Reviewed `DuarTchock/BondVibe@main`. These are corrections to what shipped, mapped to the **actual files/screens**. Build in order, pause after each for review. All UI copy + comments in English. Match theme tokens (`src/constants/theme-tokens.js`). AI via existing `callClaude`. Everything Pro-gated via `src/config/entitlements.js` (`business_erp`).
+> Reviewed `DuarTchock/Kinlo@main`. These are corrections to what shipped, mapped to the **actual files/screens**. Build in order, pause after each for review. All UI copy + comments in English. Match theme tokens (`src/constants/theme-tokens.js`). AI via existing `callClaude`. Everything Pro-gated via `src/config/entitlements.js` (`business_erp`).
 
 ---
 

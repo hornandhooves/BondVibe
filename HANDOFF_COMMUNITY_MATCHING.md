@@ -2,7 +2,7 @@
 
 > **App / producto: Kinlo.** (El repo puede seguir llamándose `bondvibe`; es el nombre interno. En UI y copys usa **Kinlo**.)
 > Pega este archivo en la **raíz del repo** y ábrelo con Claude Code.
-> Referencia visual: `BondVibe Community Matching v2.dc.html` (canvas con las 4 fases + estados de pago E1–E4).
+> Referencia visual: `Kinlo Community Matching v2.dc.html` (canvas con las 4 fases + estados de pago E1–E4).
 > Stack asumido: Expo / React Native + Firebase (Firestore, Auth, Cloud Functions) + Stripe.
 > **Regla de oro:** las pantallas nuevas DEBEN respetar el sistema de diseño de §7 (tema "Clean" de Kinlo). No inventes estilos nuevos.
 
@@ -234,4 +234,4 @@ users/{uid}
 - [ ] Analytics agregadas (D3) sin exponer pares.
 - [ ] Security rules (§4) + test: host no puede leer `likes`.
 - [ ] T&C y política (§9) integrados en onboarding.
-- [ ] QA visual contra `BondVibe Community Matching v2.dc.html` (§7).
+- [ ] QA visual contra `Kinlo Community Matching v2.dc.html` (§7).

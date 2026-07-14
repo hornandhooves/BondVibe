@@ -1,4 +1,4 @@
-# 13 · Bugs round-5 (reviewed against DuarTchock/BondVibe@d95f9df)
+# 13 · Bugs round-5 (reviewed against DuarTchock/Kinlo@d95f9df)
 
 > OTA d95f9df verified real: `useInboxBadges` ✓, `BusinessScopeContext` ✓, handles service ✓, chat-scroll ✓, badges spec-12 ✓. These 6 remain. Each is mapped to the real file + line. EN/ES parity, theme tokens, no hardcoded colors, jest green, one commit per bug, push to main after each block.
 

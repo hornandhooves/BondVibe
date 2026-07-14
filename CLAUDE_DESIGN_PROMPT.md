@@ -158,7 +158,7 @@ Opt-in, consent-gated, ranked by Big Five. Opens **after** the event.
 - **VehicleBookingsScreen** — owner reservation tracker.
 
 ### Subscriptions / paywalls
-- **BondVibeProScreen** — Kinlo Pro benefits (host).
+- **KinloProScreen** — Kinlo Pro benefits (host).
 - **ProUpsell / ProCheckout** — Pro upsell + checkout.
 - **PlusPaywall / PlusCheckout / PlusActivated** — Plus paywall + checkout + success.
 

@@ -1,7 +1,7 @@
 # Stripe Connect Implementation Plan
 
 ## Objetivo
-Permitir que cada host reciba pagos directamente en su cuenta de Stripe, en lugar de que todo caiga en la cuenta principal de BondVibe.
+Permitir que cada host reciba pagos directamente en su cuenta de Stripe, en lugar de que todo caiga en la cuenta principal de Kinlo.
 
 ## Arquitectura Actual vs. Nueva
 
@@ -11,9 +11,9 @@ Usuario paga ticket ($100 MXN)
     ↓
 Stripe procesa pago
     ↓
-Dinero va a cuenta de BondVibe (Carlos)
+Dinero va a cuenta de Kinlo (Carlos)
     ↓
-BondVibe toma 5% comisión
+Kinlo toma 5% comisión
     ↓
 ❌ Host NO recibe dinero automáticamente
 ```
@@ -26,23 +26,23 @@ Stripe procesa pago
     ↓
 Stripe automáticamente hace split:
   - 95% ($95 MXN) → Cuenta del Host
-  - 5% ($5 MXN) → Cuenta de BondVibe (platform fee)
+  - 5% ($5 MXN) → Cuenta de Kinlo (platform fee)
     ↓
 ✅ Host recibe su dinero INMEDIATAMENTE
-✅ BondVibe recibe comisión AUTOMÁTICAMENTE
+✅ Kinlo recibe comisión AUTOMÁTICAMENTE
 ```
 
 ## Stripe Connect - Tipos de Cuentas
 
 Stripe Connect ofrece 3 tipos de cuentas:
 
-### 1. Standard Accounts (✅ RECOMENDADO para BondVibe)
+### 1. Standard Accounts (✅ RECOMENDADO para Kinlo)
 **Ventajas**:
 - El host crea su propia cuenta de Stripe completa
 - Host tiene acceso total a su dashboard de Stripe
 - Host maneja sus propios refunds
 - Host ve todo el historial de transacciones
-- Menos responsabilidad legal para BondVibe
+- Menos responsabilidad legal para Kinlo
 
 **Desventajas**:
 - El host debe completar onboarding de Stripe
@@ -50,7 +50,7 @@ Stripe Connect ofrece 3 tipos de cuentas:
 
 **Flujo de pago**:
 ```
-Usuario → Stripe → [95% al Host] + [5% a BondVibe]
+Usuario → Stripe → [95% al Host] + [5% a Kinlo]
 ```
 
 ### 2. Express Accounts
@@ -60,19 +60,19 @@ Usuario → Stripe → [95% al Host] + [5% a BondVibe]
 
 **Desventajas**:
 - Menos control para el host
-- BondVibe tiene más responsabilidad
+- Kinlo tiene más responsabilidad
 
 ### 3. Custom Accounts
 **Ventajas**:
-- Control total desde BondVibe
+- Control total desde Kinlo
 
 **Desventajas**:
-- BondVibe es responsable de TODO (compliance, refunds, etc.)
+- Kinlo es responsable de TODO (compliance, refunds, etc.)
 - No recomendado para tu caso
 
 ## Recomendación: Standard Accounts
 
-**Por qué Standard es mejor para BondVibe**:
+**Por qué Standard es mejor para Kinlo**:
 1. El host maneja sus propios refunds (tú no tienes que intermediar)
 2. Menos riesgo legal para ti
 3. Host tiene transparencia total de sus ingresos
@@ -134,7 +134,7 @@ Usuario → Stripe → [95% al Host] + [5% a BondVibe]
 
 ## Flujo de Usuario (Host)
 
-### 1. Host aplica para ser host en BondVibe
+### 1. Host aplica para ser host en Kinlo
 ```
 Host completa aplicación → Admin aprueba → role = "host"
 ```
@@ -143,13 +143,13 @@ Host completa aplicación → Admin aprueba → role = "host"
 ```
 Host va a "Configuración" → "Conectar Stripe"
     ↓
-BondVibe llama createAccountLink()
+Kinlo llama createAccountLink()
     ↓
 Host es redirigido a Stripe Onboarding
     ↓
 Host completa verificación (ID, cuenta bancaria)
     ↓
-Stripe webhook → BondVibe actualiza status
+Stripe webhook → Kinlo actualiza status
     ↓
 ✅ Host puede crear eventos pagados
 ```
@@ -160,7 +160,7 @@ Usuario paga $100 MXN
     ↓
 Stripe automáticamente:
   - Deposita $95 MXN en cuenta del host
-  - Deposita $5 MXN en cuenta de BondVibe
+  - Deposita $5 MXN en cuenta de Kinlo
     ↓
 ✅ Host ve el dinero en su Stripe Dashboard
 ```
@@ -171,7 +171,7 @@ Host cancela evento
     ↓
 Host hace refund desde SU Stripe Dashboard
     ↓
-O BondVibe puede hacer refund programático
+O Kinlo puede hacer refund programático
 ```
 
 ## Precios y Fees
@@ -180,7 +180,7 @@ O BondVibe puede hacer refund programático
 - **Transacción estándar**: 3.6% + $3 MXN
 - **Stripe Connect**: Sin costo adicional
 
-### BondVibe Platform Fee
+### Kinlo Platform Fee
 - **Eventos**: 5% del precio del ticket
 - **Tips**: 0% (host recibe 100%)
 
@@ -188,10 +188,10 @@ O BondVibe puede hacer refund programático
 ```
 Ticket: $100 MXN
 Stripe fee: $6.6 MXN (3.6% + $3)
-BondVibe fee: $5 MXN (5%)
+Kinlo fee: $5 MXN (5%)
 
 Host recibe: $100 - $6.6 - $5 = $88.4 MXN
-BondVibe recibe: $5 MXN
+Kinlo recibe: $5 MXN
 ```
 
 ## Consideraciones de Seguridad
@@ -206,7 +206,7 @@ BondVibe recibe: $5 MXN
 
 3. **Refunds**
    - Solo el host puede hacer refund de sus eventos
-   - O BondVibe con permiso del host
+   - O Kinlo con permiso del host
 
 ## Recursos
 

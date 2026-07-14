@@ -1,6 +1,6 @@
 # 09 · Hotfix — host-cancel message + admin-check consistency
 
-> Two small, safe fixes on top of round-4. Reviewed against `DuarTchock/BondVibe@main`. One commit each. English + tokens. **Not urgent, not user-blocking** — batch into the next deploy.
+> Two small, safe fixes on top of round-4. Reviewed against `DuarTchock/Kinlo@main`. One commit each. English + tokens. **Not urgent, not user-blocking** — batch into the next deploy.
 
 > ⚠️ Context correction: the round-1 security audit's **C1 (self-grant admin) is already FIXED & live-verified (2026-07-06)** — `firestore.rules` blocks a user setting `role:'admin'`, and `isAdmin()` prefers the `admin` custom claim. So there is **no open critical hole here.** FIX 2 below is only a defense-in-depth *consistency* cleanup, not a vulnerability patch.
 
@@ -44,4 +44,4 @@ The audit's remediation added a claim-first helper **`isAdminUid()`** (checks `r
 - Jest still green; a host-cancel on a paid test event still refunds gross and notifies "in full, including all fees."
 
 ## ⚠️ Deploy-target reminder (not a code fix)
-Round-4's BUG 8 CF was deployed to **`bondvibe-dev`**. Confirm that is the SAME Firebase project your TestFlight build talks to. If a separate **prod** project exists, these functions (and BUG 8) are NOT live for real users until deployed there too.
+Round-4's BUG 8 CF was deployed to **`kinlo-app-dev`**. Confirm that is the SAME Firebase project your TestFlight build talks to. If a separate **prod** project exists, these functions (and BUG 8) are NOT live for real users until deployed there too.

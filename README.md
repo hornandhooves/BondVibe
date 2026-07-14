@@ -1,10 +1,10 @@
-# 🎯 BondVibe
+# 🎯 Kinlo
 
 **Personality-matched group experiences that turn strangers into friends**
 
 ## 📖 About
 
-BondVibe es una plataforma de conexión social que facilita reuniones grupales presenciales auténticas a través de:
+Kinlo es una plataforma de conexión social que facilita reuniones grupales presenciales auténticas a través de:
 
 - 🧠 **Big Five Personality Matching** - Crea dinámica de grupo armoniosa
 - 👨‍🍳 **Expert-Led Experiences** - Eventos curados con hosts verificados

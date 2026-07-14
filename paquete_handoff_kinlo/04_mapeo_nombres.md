@@ -1,6 +1,6 @@
-# Kinlo · Mapeo de nombres (rebrand BondVibe → Kinlo)
+# Kinlo · Mapeo de nombres (rebrand Kinlo → Kinlo)
 
-Marca / producto: **Kinlo**. Nombre interno anterior: **BondVibe**.
+Marca / producto: **Kinlo**. Nombre interno anterior: **Kinlo**.
 
 ## Importante para Claude Code
 - El **repositorio / proyecto** puede seguir llamándose `bondvibe` (nombre interno). **No es obligatorio** renombrarlo para que la feature funcione.
@@ -15,18 +15,18 @@ Marca / producto: **Kinlo**. Nombre interno anterior: **BondVibe**.
 ## Archivos de diseño renombrados (referencia)
 | Antes | Ahora |
 |---|---|
-| BondVibe Community Matching v2.dc.html | Kinlo Community Matching v2.dc.html |
-| BondVibe Community Matching.dc.html | Kinlo Community Matching.dc.html |
-| BondVibe Community Matching (EN).dc.html | Kinlo Community Matching (EN).dc.html |
-| BondVibe Muevete Rentas.dc.html | Kinlo Muevete Rentas.dc.html |
-| BondVibe Tema Clean.dc.html | Kinlo Tema Clean.dc.html |
-| BondVibe Identidad.dc.html | Kinlo Identidad.dc.html |
-| BondVibe Logo y Tipografia.dc.html | Kinlo Logo y Tipografia.dc.html |
-| BondVibe Propuestas.dc.html | Kinlo Propuestas.dc.html |
-| BondVibe Profile.dc.html | Kinlo Profile.dc.html |
-| BondVibe Bold Pop.dc.html | Kinlo Bold Pop.dc.html |
-| BondVibe Gradiente Decision.dc.html | Kinlo Gradiente Decision.dc.html |
-| BondVibe Guia Implementacion.dc.html | Kinlo Guia Implementacion.dc.html |
+| Kinlo Community Matching v2.dc.html | Kinlo Community Matching v2.dc.html |
+| Kinlo Community Matching.dc.html | Kinlo Community Matching.dc.html |
+| Kinlo Community Matching (EN).dc.html | Kinlo Community Matching (EN).dc.html |
+| Kinlo Muevete Rentas.dc.html | Kinlo Muevete Rentas.dc.html |
+| Kinlo Tema Clean.dc.html | Kinlo Tema Clean.dc.html |
+| Kinlo Identidad.dc.html | Kinlo Identidad.dc.html |
+| Kinlo Logo y Tipografia.dc.html | Kinlo Logo y Tipografia.dc.html |
+| Kinlo Propuestas.dc.html | Kinlo Propuestas.dc.html |
+| Kinlo Profile.dc.html | Kinlo Profile.dc.html |
+| Kinlo Bold Pop.dc.html | Kinlo Bold Pop.dc.html |
+| Kinlo Gradiente Decision.dc.html | Kinlo Gradiente Decision.dc.html |
+| Kinlo Guia Implementacion.dc.html | Kinlo Guia Implementacion.dc.html |
 
 ## Documentos de handoff (raíz del repo)
 - `03_feature_community_matching.md` — spec completa de la feature Community Matching.

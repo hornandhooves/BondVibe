@@ -1,8 +1,8 @@
-# 🎉 BondVibe
+# 🎉 Kinlo
 
 > **Personality-matched group experiences that turn strangers into friends**
 
-BondVibe es una plataforma de conexión social que facilita reuniones grupales presenciales auténticas a través de matching basado en personalidad Big Five.
+Kinlo es una plataforma de conexión social que facilita reuniones grupales presenciales auténticas a través de matching basado en personalidad Big Five.
 
 [![React Native](https://img.shields.io/badge/React%20Native-0.81.5-blue.svg)](https://reactnative.dev/)
 [![Expo SDK](https://img.shields.io/badge/Expo-54-black.svg)](https://expo.dev/)
@@ -13,7 +13,7 @@ BondVibe es una plataforma de conexión social que facilita reuniones grupales p
 
 ## 📖 About
 
-BondVibe combate la soledad urbana conectando personas a través de:
+Kinlo combate la soledad urbana conectando personas a través de:
 
 - 🧠 **Big Five Personality Matching** - Algoritmo propietario para grupos armoniosos
 - 👨‍🍳 **Expert-Led Experiences** - Eventos curados con hosts verificados
@@ -204,7 +204,7 @@ firebase --version # Latest
 
 ```bash
 # 1. Clone repo
-git clone https://github.com/DuarTchock/BondVibe.git
+git clone https://github.com/DuarTchock/Kinlo.git
 cd bondvibe
 
 # 2. Install dependencies
@@ -321,7 +321,7 @@ Private & Proprietary
 
 **Carlos Duarte**
 - GitHub: [@DuarTchock](https://github.com/DuarTchock)
-- Building BondVibe to combat urban loneliness
+- Building Kinlo to combat urban loneliness
 
 ---
 

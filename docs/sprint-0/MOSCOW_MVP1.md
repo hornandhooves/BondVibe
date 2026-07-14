@@ -1,4 +1,4 @@
-# BondVibe - MoSCoW Prioritization (MVP1)
+# Kinlo - MoSCoW Prioritization (MVP1)
 
 **Sprint Scope**: MVP1 (Weeks 1-12)  
 **Goal**: Launch pilot in Guadalajara with 50 events

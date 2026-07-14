@@ -1,13 +1,13 @@
 # 💳 Stripe Connect Setup Guide
 
-Complete guide for setting up Stripe Connect integration in BondVibe.
+Complete guide for setting up Stripe Connect integration in Kinlo.
 
 ## 📋 Prerequisites
 
 - Stripe account (https://stripe.com)
 - Firebase project with Blaze plan
 - Firebase CLI installed
-- BondVibe app deployed
+- Kinlo app deployed
 
 ---
 
@@ -31,7 +31,7 @@ Complete guide for setting up Stripe Connect integration in BondVibe.
 
 1. Go to **Connect → Settings**
 2. Enable **Express** account type
-3. Set **Platform name**: BondVibe
+3. Set **Platform name**: Kinlo
 4. Set **Brand color**: Your brand color
 5. Upload **Brand icon** (optional)
 
@@ -83,7 +83,7 @@ firebase deploy --only functions:createConnectAccount,functions:createAccountLin
    ```
    https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/stripeConnectWebhook
    ```
-4. Select **Description**: BondVibe Connect Updates
+4. Select **Description**: Kinlo Connect Updates
 5. Select **Events to send**: Choose `account.updated`
 6. Click **Add endpoint**
 
@@ -416,10 +416,10 @@ In Stripe Connect → Settings (Live mode):
 - Cloud Functions: https://firebase.google.com/docs/functions
 - Secrets: https://firebase.google.com/docs/functions/config-env
 
-### BondVibe Support
-- GitHub Issues: https://github.com/DuarTchock/BondVibe/issues
+### Kinlo Support
+- GitHub Issues: https://github.com/DuarTchock/Kinlo/issues
 - Email: your-email@example.com
 
 ---
 
-Built with ❤️ for BondVibe
+Built with ❤️ for Kinlo

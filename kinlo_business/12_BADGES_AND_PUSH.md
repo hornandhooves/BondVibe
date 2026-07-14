@@ -1,6 +1,6 @@
 # 12 · Unread badges (in-Inbox + native app icon) + push confirmation
 
-> From the 07-13 screen recording: the header ✉ shows a combined unread badge, but **inside the Inbox no row shows where the unread is** (Event chats / Match chats / Community chats / Notifications / DMs), and the **native app-icon badge never appears** on the device home screen. Plus: confirm push works for hosts AND attendees. Reviewed against `DuarTchock/BondVibe@main`.
+> From the 07-13 screen recording: the header ✉ shows a combined unread badge, but **inside the Inbox no row shows where the unread is** (Event chats / Match chats / Community chats / Notifications / DMs), and the **native app-icon badge never appears** on the device home screen. Plus: confirm push works for hosts AND attendees. Reviewed against `DuarTchock/Kinlo@main`.
 
 ## What's actually broken vs. fine
 - ✅ **Push pipeline is correctly wired for host AND attendee.** `registerPushToken(uid)` (`utils/messageService.js`) is called for every signed-in user (`AppNavigator.js:384/397`, not role-gated), requests permission, gets the Expo token via the EAS projectId, clears stale tokens on other accounts on the same device, and writes `pushToken` on the user doc. Multiple CFs send to both sides via `functions/notifications/pushService.js` (event messages → attendees+host, matches, follows/posts, business, join/digest). Round-4 BUG 13 already closed the attendee-token gap.

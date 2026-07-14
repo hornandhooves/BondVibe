@@ -1,7 +1,7 @@
 # Kinlo — Security Audit & Pentest (Round 1)
 
 > ## ✅ Remediation status (2026-07-06)
-> **All CRITICAL + HIGH findings fixed and live-verified against bondvibe-dev.**
+> **All CRITICAL + HIGH findings fixed and live-verified against kinlo-app-dev.**
 > | Finding | Status |
 > |---|---|
 > | C1 self-grant admin | **FIXED** — `role` owner-writable only to user/host; `role:'admin'` → 403 (verified) |
@@ -26,7 +26,7 @@
 
 
 
-**Target:** `bondvibe-dev` (Firebase project) · Expo/React Native client + Firestore + Storage + Cloud Functions
+**Target:** `kinlo-app-dev` (Firebase project) · Expo/React Native client + Firestore + Storage + Cloud Functions
 **Date:** 2026-07-06 · **Scope:** dev only (never prod) · **Method:** static rule/function analysis (multi-agent, adversarially verified) + non-destructive live probing with a test account's ID token.
 **Threat model:** an attacker with a *valid Firebase account* (mints their own ID token, calls Firestore/Storage/Functions REST directly, bypassing the app UI). This is the realistic model — the app's rules & functions are the only real boundary.
 
@@ -34,7 +34,7 @@
 
 ---
 
-## Confirmed LIVE (executed non-destructively against bondvibe-dev)
+## Confirmed LIVE (executed non-destructively against kinlo-app-dev)
 
 | # | Severity | Finding | Live evidence |
 |---|----------|---------|---------------|
@@ -102,7 +102,7 @@ Attendee core journey driven on the iOS simulator (Maestro): login → 5-tab she
 
 ## "Anything else we should fix?" — follow-ups (all addressed 2026-07-06)
 
-The 7 defense-in-depth recommendations were all implemented, deployed to bondvibe-dev, and (where a runtime surface exists) live-verified.
+The 7 defense-in-depth recommendations were all implemented, deployed to kinlo-app-dev, and (where a runtime surface exists) live-verified.
 
 1. **Admin authority → Firebase Auth custom claim** — **DONE.** `isAdmin()` in rules now reads `request.auth.token.admin == true` first (forgery-proof, no doc read), with the write-restricted `role=='admin'` doc kept only as a safe fallback. New `promoteToAdmin`/`revokeAdmin` callables set the claim + keep `role` in sync (admin-gated; self-revoke blocked). `isAdminUid()` (functions) checks the Auth claim first. Existing admins bootstrapped by `scripts/migrate-admin-claims.mjs` (1 admin migrated). **Live-verified:** `promoteToAdmin` as non-admin → 403.
 2. **Firebase App Check** — **DOCUMENTED (operator action, needs native + console).** Enforcement can't be enabled from code alone without the attestation providers registered, or every real client is locked out. Setup checklist: (a) register App Check in the Firebase console with **App Attest** (iOS) and **Play Integrity** (Android); (b) add `expo-firebase-app-check` / native config and call `initializeAppCheck` at startup; (c) turn on **enforcement** for Firestore, Storage, and Functions *after* clients ship the SDK. Rules + function auth remain the real boundary; App Check raises the edge bar. **Not enabled** to avoid breaking the current dev clients.
@@ -113,6 +113,6 @@ The 7 defense-in-depth recommendations were all implemented, deployed to bondvib
 7. **Storage rate/size caps (L5) + recap check-in gating (L3)** — **PARTIALLY DONE.** Size caps are enforced (5–10 MB per path) and content-types are whitelisted (L4). The Firestore `recapPhotos` doc is already check-in-gated; the raw Storage object isn't (low impact — the object is inert unless a gated Firestore doc references it). Per-user upload *rate* limiting has no Storage-rules primitive and remains an App-Check/Cloud-Function concern (see #2).
 
 ## Deploy state
-All fixes deployed to **bondvibe-dev** (Firestore rules, Storage rules, Cloud Functions: `createNotification`, `promoteToAdmin`, `revokeAdmin`, `createEventPaymentIntent`, `createMembershipPaymentIntent`, `reserveVehicle`, `adminListUserEmails`). Admin custom-claim migration run (1 admin). Places key API-restricted in Google Cloud. 119 user docs migrated (PII). 243/243 jest green. Not deployed to prod (you manage releases).
+All fixes deployed to **kinlo-app-dev** (Firestore rules, Storage rules, Cloud Functions: `createNotification`, `promoteToAdmin`, `revokeAdmin`, `createEventPaymentIntent`, `createMembershipPaymentIntent`, `reserveVehicle`, `adminListUserEmails`). Admin custom-claim migration run (1 admin). Places key API-restricted in Google Cloud. 119 user docs migrated (PII). 243/243 jest green. Not deployed to prod (you manage releases).
 
 **Operator TODO (not code):** enable App Check enforcement (#2) and set the Places daily quota (#6) from the Firebase/Cloud consoles.

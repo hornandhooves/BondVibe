@@ -2,19 +2,19 @@
 
 ## Host Types Overview
 
-BondVibe tendrá dos tipos de hosts:
+Kinlo tendrá dos tipos de hosts:
 
 ### 1. Free Host (Host Gratuito)
 - ✅ Puede crear eventos **sin costo** solamente
 - ✅ No necesita conectar Stripe
-- ✅ No paga comisión a BondVibe (eventos gratis)
+- ✅ No paga comisión a Kinlo (eventos gratis)
 - ✅ Puede **actualizar a Paid Host** cuando quiera
 
 ### 2. Paid Host (Host Pagado)
 - ✅ Puede crear eventos **con costo**
 - ✅ También puede crear eventos gratis si quiere
 - ✅ **Debe** conectar cuenta de Stripe
-- ✅ BondVibe cobra 5% de comisión en eventos pagados
+- ✅ Kinlo cobra 5% de comisión en eventos pagados
 - ✅ Recibe pagos directamente en su cuenta
 
 ---
@@ -172,7 +172,7 @@ const canCreatePaidEvent = (host, eventPrice) => {
 1. [ ] Ir a Stripe Dashboard → Settings → Connect
 2. [ ] Activar Stripe Connect
 3. [ ] Configurar aplicación:
-   - Brand name: "BondVibe"
+   - Brand name: "Kinlo"
    - Brand logo
    - Support email
 4. [ ] Obtener `client_id` de Connect (empieza con `ca_`)
@@ -434,7 +434,7 @@ exports.createEventPaymentIntent = onRequest(
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amount,
       currency: 'mxn',
-      application_fee_amount: split.platformFee,  // 5% goes to BondVibe
+      application_fee_amount: split.platformFee,  // 5% goes to Kinlo
       transfer_data: {
         destination: stripeAccountId,  // 95% goes to host
       },
@@ -688,7 +688,7 @@ const StripeStatusScreen = () => {
 3. **Payment Flow**
    - [ ] Usuario compra ticket de evento pagado
    - [ ] Host recibe 95% en su Stripe
-   - [ ] BondVibe recibe 5% platform fee
+   - [ ] Kinlo recibe 5% platform fee
    - [ ] Payment Intent tiene `transfer_data`
 
 4. **Edge Cases**

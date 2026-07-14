@@ -146,7 +146,7 @@ Native wiring is regenerated automatically on `expo run:*` and `eas build`
 
 ## Notes / gotchas
 
-- **Firebase is on `bondvibe-dev`.** The app config (`app.json → extra`) points
+- **Firebase is on `kinlo-app-dev`.** The app config (`app.json → extra`) points
   to dev; backend deploys done via `firebase deploy` (rules/functions/hosting)
   are independent of builds and OTA.
 - **First OTA‑enabled build:** OTA only reaches builds created **after** this

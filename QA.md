@@ -1,4 +1,4 @@
-# BondVibe — Pre-production QA checklist
+# Kinlo — Pre-production QA checklist
 
 Goal: the **next EAS build is production-ready** (no crashes, no obvious bugs).
 EAS builds are scarce — catch everything here first. You do **not** need an EAS

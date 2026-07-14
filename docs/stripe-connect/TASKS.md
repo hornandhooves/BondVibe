@@ -37,4 +37,4 @@
 ## Notes
 - Usar Standard Accounts para máxima transparencia
 - Host maneja sus propios refunds
-- BondVibe cobra 5% platform fee automáticamente
+- Kinlo cobra 5% platform fee automáticamente

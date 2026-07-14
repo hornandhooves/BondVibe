@@ -1,4 +1,4 @@
-# BondVibe — Notas de trabajo
+# Kinlo — Notas de trabajo
 
 ## `joinEvent` — Deploy 1 HECHO ✅ · Deploy 2 (regla) PENDIENTE
 

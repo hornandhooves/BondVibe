@@ -1,11 +1,11 @@
-# BondVibe - Project Charter
+# Kinlo - Project Charter
 
 **Version**: 1.0  
 **Date**: November 12, 2025
 
 ## 1. Project Vision
 
-BondVibe es una plataforma de conexión social que facilita reuniones grupales presenciales auténticas mediante matching basado en personalidad.
+Kinlo es una plataforma de conexión social que facilita reuniones grupales presenciales auténticas mediante matching basado en personalidad.
 
 **Mission**: Transformar la soledad urbana en conexiones significativas.
 

@@ -3,7 +3,7 @@
 ## ✅ Already Done
 
 Your repository is live at:
-https://github.com/DuarTchock/BondVibe
+https://github.com/DuarTchock/Kinlo
 
 ## Daily Workflow
 
@@ -43,4 +43,4 @@ git branch -a
 
 ---
 
-**All set! Focus on building BondVibe 🚀**
+**All set! Focus on building Kinlo 🚀**

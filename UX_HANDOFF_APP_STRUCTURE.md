@@ -177,7 +177,7 @@ Post-event, opt-in, consent-gated attendee matching, ranked by Big Five.
 ### 4.10 Subscriptions / paywalls
 | Screen | Contains |
 |--------|----------|
-| `BondVibeProScreen` | Kinlo Pro marketing/benefits (host) |
+| `KinloProScreen` | Kinlo Pro marketing/benefits (host) |
 | `ProUpsellScreen` / `ProCheckoutScreen` | Pro upsell + Stripe checkout |
 | `PlusPaywallScreen` / `PlusCheckoutScreen` / `PlusActivatedScreen` | Plus paywall + checkout + success (attendee) |
 

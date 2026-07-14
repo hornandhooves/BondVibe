@@ -1,4 +1,4 @@
-# 10 · Unique @handles — spec (reviewed against DuarTchock/BondVibe@main)
+# 10 · Unique @handles — spec (reviewed against DuarTchock/Kinlo@main)
 
 > App-wide feature: a **unique, permanent, case-insensitive @handle per user** (Instagram-style) used to **find** people and to power DMs, follows, group-add, community invites, CRM add, and @mentions/tags. English UI + EN/ES parity. Theme tokens. Uniqueness is **server-enforced** — never trust the client.
 

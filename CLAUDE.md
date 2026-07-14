@@ -1,4 +1,4 @@
-# CLAUDE.md — Kinlo (BondVibe) working agreement
+# CLAUDE.md — Kinlo (Kinlo) working agreement
 
 Read this before working. It captures the conventions and gotchas of THIS repo so
 every Claude (and every dev) behaves consistently. Keep it updated when a rule
@@ -7,7 +7,7 @@ changes.
 **Project:** Kinlo — an Expo / React Native app (Expo SDK 54) with a Firebase
 backend. Two sides in one app: the attendee/social app, and **"Kinlo for
 Business"** (a host CRM/ERP: members, packages, attendance/check-in, finance,
-dashboard). App scheme is `kinlo://`; the git repo is `BondVibe`.
+dashboard). App scheme is `kinlo://`; the git repo is still `hornandhooves/BondVibe`.
 
 ---
 
@@ -47,7 +47,7 @@ dashboard). App scheme is `kinlo://`; the git repo is `BondVibe`.
 ---
 
 ## 2. Shared infrastructure — coordinate, git does NOT isolate these
-- **Firebase project: `bondvibe-dev` only** (no prod project). `bizId === ownerUid`
+- **Firebase project: `kinlo-app-dev` only** (no prod project). `bizId === ownerUid`
   (v1). Deploying rules (`firebase deploy --only firestore:rules` / `--only
   storage`) is **global — the last deploy wins, regardless of branch.** Deploy
   rules **only from merged `main`**, and tell your teammate.
