@@ -25,6 +25,20 @@ service cloud.firestore {
               get(/databases/$(database)/documents/users/$(request.auth.uid))
                 .data.role == 'admin');
     }
+
+    // Approved host: the admin-granted `hostApproved` flag OR the legacy
+    // role=='host'. This is the ONE unified gate — the same account that may
+    // create events may publish a rental vehicle AND expose a public
+    // marketplace listing (publicListing==true). get() is request-cached, so
+    // the two reads below bill as one. Missing fields default to not-approved.
+    function isApprovedHost() {
+      return isSignedIn() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid))
+          .data.get('hostApproved', false) == true ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid))
+          .data.get('role', 'user') == 'host'
+      );
+    }
     
     function isEventParticipant(eventId) {
       let eventData = get(/databases/$(database)/documents/events/$(eventId)).data;
@@ -572,7 +586,9 @@ service cloud.firestore {
     // the reservation transaction is the source of truth against double-booking.
     match /vehicles/{vehicleId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() &&
+      // P0 unified-host gate: only an approved host may list a vehicle. This
+      // closes the model-A hole where any signed-in user could create a vehicle.
+      allow create: if isSignedIn() && isApprovedHost() &&
                        request.resource.data.ownerId == request.auth.uid;
       allow update: if isSignedIn() &&
                        (resource.data.ownerId == request.auth.uid || isAdmin());
@@ -831,7 +847,13 @@ service cloud.firestore {
       // the requestBusinessSession Cloud Function (Admin SDK).
       match /sessionTypes/{id} {
         allow read: if isSignedIn();
-        allow write: if isBizStaff(bizId) || isBizOwnerUid(bizId);
+        // Exposing a service to the public marketplace (publicListing==true) is
+        // gated by the SAME unified host approval as rentals. Private
+        // (staff-only) session types stay editable by any staff/owner.
+        allow create, update: if (isBizStaff(bizId) || isBizOwnerUid(bizId)) &&
+                                 (request.resource.data.get('publicListing', false) != true ||
+                                  isApprovedHost());
+        allow delete: if isBizStaff(bizId) || isBizOwnerUid(bizId);
       }
       match /availability/{id} {
         allow read: if isSignedIn();

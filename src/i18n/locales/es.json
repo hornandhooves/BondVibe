@@ -1175,7 +1175,22 @@
       "emptyTitle": "Aún no hay vehículos",
       "emptyText": "Publica tu primer vehículo para empezar a ganar.",
       "noPhoto": "Sin foto"
+    },
+    "host": {
+      "becomeTitle": "Publica tu vehículo en Kinlo",
+      "becomeBody": "Publicar vehículos y crear eventos usan una sola cuenta de host aprobado. Solo una solicitud rápida.",
+      "becomeCta": "Conviértete en host",
+      "alreadyHost": "¿Ya organizas eventos? Ya estás aprobado — empieza a publicar."
     }
+  },
+  "hostGate": {
+    "title": "Conviértete en host de Kinlo",
+    "body": "Una sola cuenta de host aprobado desbloquea eventos, rentas y anuncios del marketplace — una sola solicitud rápida.",
+    "cta": "Conviértete en host",
+    "benefitEvents": "Crea y vende boletos para eventos",
+    "benefitRentals": "Publica vehículos en renta",
+    "benefitOne": "Una aprobación — todas las capacidades de host",
+    "alreadyHost": "¿Ya estás aprobado para eventos? Listo — solo continúa."
   },
   "adminDashboard": {
     "unknown": "Desconocido",

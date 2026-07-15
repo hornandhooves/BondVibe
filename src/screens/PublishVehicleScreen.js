@@ -35,6 +35,9 @@ import {
   ensureProvider,
 } from "../services/rentalService";
 import { uploadVehiclePhotos } from "../services/storageService";
+import useUserRole from "../hooks/useUserRole";
+import { isApprovedHost } from "../utils/hostGate";
+import BecomeHostGate from "../components/BecomeHostGate";
 
 // Module-scope so the TextInput isn't remounted (and focus lost) on each render.
 function Field({ label, c, st, ...props }) {
@@ -55,6 +58,7 @@ const toPesos = (centavos) => (centavos ? String(centavos / 100) : "");
 export default function PublishVehicleScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
+  const { role, hostApproved, loading: roleLoading } = useUserRole();
   // BUG 32.7: stamp the payout owner only when acting as staff of a business.
   const { businesses, activeBizId } = useBusiness();
   const { isHosting } = useMode();
@@ -180,13 +184,30 @@ export default function PublishVehicleScreen({ route, navigation }) {
 
   const styles = createStyles(colors, isDark);
 
-  if (loading) {
+  if (loading || roleLoading) {
     return (
       <GradientBackground>
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </GradientBackground>
+    );
+  }
+
+  // P0 unified-host gate (defense in depth behind MyFleet + firestore.rules).
+  if (!isApprovedHost({ role, hostApproved })) {
+    return (
+      <>
+        <StatusBar style={isDark ? "light" : "dark"} />
+        <BecomeHostGate
+          navigation={navigation}
+          onBack={() => navigation.goBack()}
+          title={t("rentals.host.becomeTitle")}
+          body={t("rentals.host.becomeBody")}
+          ctaLabel={t("rentals.host.becomeCta")}
+          note={t("rentals.host.alreadyHost")}
+        />
+      </>
     );
   }
 

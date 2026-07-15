@@ -18,10 +18,15 @@ import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import { getMyFleet } from "../services/rentalService";
 import { formatCentavos } from "../utils/pricing";
+import useUserRole from "../hooks/useUserRole";
+import { isApprovedHost } from "../utils/hostGate";
+import BecomeHostGate from "../components/BecomeHostGate";
 
 export default function MyFleetScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
+  const { role, hostApproved, loading: roleLoading } = useUserRole();
+  const approved = isApprovedHost({ role, hostApproved });
   const STATUS_META = {
     available: { label: t("rentals.status.available"), color: "#34C759" },
     rented: { label: t("rentals.status.rented"), color: "#B45309" },
@@ -50,6 +55,25 @@ export default function MyFleetScreen({ navigation }) {
 
   const styles = createStyles(colors, isDark);
 
+  // P0 unified-host gate: publishing/managing a fleet requires an approved host.
+  // An event-approved host passes straight through (isApprovedHost). The server
+  // firestore.rules enforce the same on vehicle create — this is the UX layer.
+  if (!roleLoading && !approved) {
+    return (
+      <>
+        <StatusBar style={isDark ? "light" : "dark"} />
+        <BecomeHostGate
+          navigation={navigation}
+          onBack={() => navigation.goBack()}
+          title={t("rentals.host.becomeTitle")}
+          body={t("rentals.host.becomeBody")}
+          ctaLabel={t("rentals.host.becomeCta")}
+          note={t("rentals.host.alreadyHost")}
+        />
+      </>
+    );
+  }
+
   return (
     <GradientBackground>
       <StatusBar style={isDark ? "light" : "dark"} />
@@ -61,7 +85,7 @@ export default function MyFleetScreen({ navigation }) {
         <View style={{ width: 28 }} />
       </View>
 
-      {loading ? (
+      {loading || roleLoading ? (
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>

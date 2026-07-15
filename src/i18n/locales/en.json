@@ -1175,7 +1175,22 @@
       "emptyTitle": "No vehicles yet",
       "emptyText": "Publish your first vehicle to start earning.",
       "noPhoto": "No photo"
+    },
+    "host": {
+      "becomeTitle": "List your vehicle on Kinlo",
+      "becomeBody": "Publishing vehicles and creating events use one approved host account. Just one quick request.",
+      "becomeCta": "Become a host",
+      "alreadyHost": "Already host events? You're approved — start listing."
     }
+  },
+  "hostGate": {
+    "title": "Become a Kinlo host",
+    "body": "One approved host account unlocks events, rentals, and marketplace listings — a single quick request.",
+    "cta": "Become a host",
+    "benefitEvents": "Create and sell tickets to events",
+    "benefitRentals": "List vehicles for rent",
+    "benefitOne": "One approval — every host capability",
+    "alreadyHost": "Already approved for events? You're all set — just continue."
   },
   "adminDashboard": {
     "unknown": "Unknown",
