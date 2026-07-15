@@ -19,7 +19,8 @@ import {
   doc,
   getDoc,
 } from "firebase/firestore";
-import { db } from "./firebase";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { db, auth } from "./firebase";
 import { shapeListing, SERVICE_VERTICALS, MARKETPLACE_VERTICALS } from "../utils/marketplaceShape";
 
 // Re-export the pure taxonomy/shaping so callers keep a single import surface.
@@ -61,4 +62,26 @@ export async function getListingBusiness(bizId) {
   if (!bizId) return null;
   const snap = await getDoc(doc(db, "businesses", bizId));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+/**
+ * Reserve + pay a slot on a public service (Marketplace P1 · M4). Calls the
+ * reserveServiceBooking Cloud Function — the SERVER validates price + capacity
+ * atomically; the client never sends an amount. Returns
+ * { success, bookingId, clientSecret } or { success:false, error } where error
+ * is a server reason code (slot_full / host_payouts_not_ready / not_public / …).
+ */
+export async function reserveServiceBooking({ bizId, sessionTypeId, startAt, buyerName }) {
+  try {
+    const fn = httpsCallable(getFunctions(), "reserveServiceBooking");
+    const res = await fn({
+      bizId,
+      sessionTypeId,
+      startAt,
+      buyerName: buyerName || auth.currentUser?.displayName || "",
+    });
+    return { success: true, ...(res.data || {}) };
+  } catch (e) {
+    return { success: false, error: (e && e.message) || "error" };
+  }
 }

@@ -193,6 +193,10 @@ async function handlePaymentSuccess(paymentIntent) {
     return handleRentalPayment(paymentIntent);
   }
 
+  if (type === "service_booking") {
+    return handleServiceBookingPayment(paymentIntent);
+  }
+
   if (type !== "event_ticket") {
     console.log("⏭️ Skipping unhandled payment type:", type);
     return;
@@ -364,6 +368,77 @@ async function handleRentalPayment(paymentIntent) {
   }
 
   console.log("✅ Rental payment processing complete");
+}
+
+/**
+ * Handle a successful marketplace service-booking payment (Marketplace P1 · M4).
+ * Idempotent: confirms the reserved booking (businesses/{bizId}/bookings) and
+ * writes a payments/{paymentIntentId} record with the applied fee %.
+ * @param {Object} paymentIntent - Stripe PaymentIntent object
+ * @return {Promise<void>}
+ */
+async function handleServiceBookingPayment(paymentIntent) {
+  const {id: paymentIntentId, amount, currency, metadata} = paymentIntent;
+  const {bizId, bookingId, buyerId} = metadata;
+  console.log("📅 Processing service booking payment:", paymentIntentId);
+  if (!bizId || !bookingId) {
+    throw new Error("Missing bizId/bookingId in service booking payment intent");
+  }
+
+  // Idempotency
+  const existing = await db.collection("payments").doc(paymentIntentId).get();
+  if (existing.exists) {
+    console.log("⏭️ Service booking payment already processed, skipping");
+    return;
+  }
+
+  const bRef = db.collection("businesses").doc(bizId).collection("bookings").doc(bookingId);
+  const bSnap = await bRef.get();
+  if (!bSnap.exists) {
+    console.warn("⚠️ Service booking not found for payment:", bookingId);
+    return;
+  }
+  const b = bSnap.data();
+
+  // 1. Payment record (freezes the applied fee %, not just the amount).
+  await db.collection("payments").doc(paymentIntentId).set({
+    paymentIntentId,
+    userId: buyerId || b.buyerUid || null,
+    hostId: b.ownerUid || null,
+    bizId,
+    bookingId,
+    sessionTypeId: b.sessionTypeId || null,
+    type: "service_booking",
+    amount,
+    currency,
+    status: "succeeded",
+    platformFeePercentApplied: b.platformFeePercentApplied != null ? b.platformFeePercentApplied : null,
+    createdAt: FieldValue.serverTimestamp(),
+    metadata,
+  });
+
+  // 2. Confirm the reservation (reserved → confirmed; now shows in the agenda).
+  await bRef.update({
+    status: "confirmed",
+    paidAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+
+  // 3. Notify the host.
+  if (b.ownerUid) {
+    await db.collection("notifications").add({
+      userId: b.ownerUid,
+      type: "service_booked",
+      title: "New booking",
+      message: `${b.sessionTypeName || "A service"} was just booked.`,
+      icon: "📅",
+      read: false,
+      createdAt: FieldValue.serverTimestamp(),
+      metadata: {bizId, bookingId, sessionTypeId: b.sessionTypeId || null},
+    });
+  }
+
+  console.log("✅ Service booking payment processing complete");
 }
 
 /**

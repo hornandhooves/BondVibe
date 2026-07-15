@@ -899,6 +899,14 @@ service cloud.firestore {
       allow read: if isSignedIn() && resource.data.get('publicListing', false) == true;
     }
 
+    // Marketplace buyers read their OWN service bookings across businesses
+    // (Marketplace P1 · M4). A collectionGroup('bookings') query needs this
+    // recursive-wildcard rule; the nested businesses/{bizId}/bookings rule is
+    // staff/owner-only. Scoped to buyerUid == uid. Writes stay CF-only (money).
+    match /{path=**}/bookings/{id} {
+      allow read: if isSignedIn() && resource.data.get('buyerUid', null) == request.auth.uid;
+    }
+
     // ============================================
     // DEFAULT DENY ALL
     // ============================================

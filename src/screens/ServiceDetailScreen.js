@@ -68,13 +68,16 @@ export default function ServiceDetailScreen({ route, navigation }) {
   const isQuote = listing.bookingMode === "quote" || !listing.priceCents;
 
   const onBook = () => {
-    // P1: both slot and quote route into the existing attendee request flow
-    // (BusinessRequestSession → requestBusinessSession CF → host confirms).
-    // Paid transactional slot checkout (M4) is the deferred server piece.
-    navigation.navigate("BusinessRequestSession", {
-      bizId,
-      businessName: business?.name || listing.name,
-    });
+    // Quote / free → the existing on-demand request flow (host confirms).
+    // Paid slot → the transactional reserve-and-pay checkout (M4).
+    if (isQuote) {
+      navigation.navigate("BusinessRequestSession", {
+        bizId,
+        businessName: business?.name || listing.name,
+      });
+    } else {
+      navigation.navigate("ServiceCheckout", { bizId, listingId: listing.id });
+    }
   };
 
   return (

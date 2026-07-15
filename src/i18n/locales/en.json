@@ -1229,10 +1229,25 @@
     },
     "checkout": {
       "title": "Confirm booking",
+      "pickDate": "Pick a date",
+      "pickTime": "Pick a time",
+      "service": "Service",
       "kinloFee": "Kinlo fee",
+      "processingFee": "Processing fee",
       "total": "Total",
+      "cardDetails": "Card details",
       "pay": "Confirm & pay {{amount}}",
-      "secure": "Secure · price validated on server"
+      "secure": "Secure · price validated on server",
+      "needTime": "Pick a date and time first.",
+      "incompleteCard": "Please enter complete card details.",
+      "slotFull": "That time was just taken. Pick another.",
+      "payoutsNotReady": "This host hasn't finished payout setup yet.",
+      "quoteOnly": "This service is quote-only.",
+      "paymentFailed": "Payment failed",
+      "failedTitle": "Couldn't book",
+      "failed": "There was a problem. Please try again.",
+      "booked": "Booked!",
+      "bookedMsg": "Your booking is confirmed. The host has been notified."
     },
     "host": {
       "publishRow": "Publish to marketplace",

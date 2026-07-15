@@ -1229,10 +1229,25 @@
     },
     "checkout": {
       "title": "Confirmar reserva",
+      "pickDate": "Elige una fecha",
+      "pickTime": "Elige un horario",
+      "service": "Servicio",
       "kinloFee": "Cargo Kinlo",
+      "processingFee": "Cargo por procesamiento",
       "total": "Total",
+      "cardDetails": "Datos de la tarjeta",
       "pay": "Confirmar y pagar {{amount}}",
-      "secure": "Seguro · precio validado en servidor"
+      "secure": "Seguro · precio validado en servidor",
+      "needTime": "Elige primero una fecha y un horario.",
+      "incompleteCard": "Ingresa los datos completos de la tarjeta.",
+      "slotFull": "Ese horario se acaba de ocupar. Elige otro.",
+      "payoutsNotReady": "Este anfitrión aún no termina la configuración de pagos.",
+      "quoteOnly": "Este servicio es solo por cotización.",
+      "paymentFailed": "Pago fallido",
+      "failedTitle": "No se pudo reservar",
+      "failed": "Hubo un problema. Inténtalo de nuevo.",
+      "booked": "¡Reservado!",
+      "bookedMsg": "Tu reserva está confirmada. El anfitrión fue notificado."
     },
     "host": {
       "publishRow": "Publicar al marketplace",

@@ -124,6 +124,7 @@ import RentalHubScreen from "../screens/RentalHubScreen";
 import VehicleDetailScreen from "../screens/VehicleDetailScreen";
 import MarketplaceExploreScreen from "../screens/MarketplaceExploreScreen";
 import ServiceDetailScreen from "../screens/ServiceDetailScreen";
+import ServiceCheckoutScreen from "../screens/ServiceCheckoutScreen";
 import RentalCheckoutScreen from "../screens/RentalCheckoutScreen";
 import ActiveRentalScreen from "../screens/ActiveRentalScreen";
 import MyRentalsScreen from "../screens/MyRentalsScreen";
@@ -804,6 +805,7 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="VehicleDetail" component={VehicleDetailScreen} />
           <Stack.Screen name="Marketplace" component={MarketplaceExploreScreen} />
           <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen} />
+          <Stack.Screen name="ServiceCheckout" component={ServiceCheckoutScreen} />
           <Stack.Screen name="RentalCheckout" component={RentalCheckoutScreen} />
           <Stack.Screen name="ActiveRental" component={ActiveRentalScreen} />
           <Stack.Screen name="MyRentals" component={MyRentalsScreen} />

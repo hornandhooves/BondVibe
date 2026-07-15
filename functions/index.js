@@ -3218,6 +3218,216 @@ exports.expireVehicleReservations = onSchedule(
   },
 );
 
+// ── Marketplace — paid service bookings (Marketplace P1 · M4) ────────────────
+// A "service" is a public SessionType. A paid slot booking mirrors reserveVehicle
+// exactly: SERVER is the price source of truth, an atomic transaction is the
+// guard against over-booking (capacityMax + overlap), a failed/abandoned payment
+// leaves NO confirmed booking (reserved holds expire), and the applied fee % is
+// snapshotted on the order so a later config change never rewrites history.
+const SERVICE_RESERVE_TTL_MS = 20 * 60 * 1000; // unpaid holds expire after 20 min
+
+/**
+ * Remove a booking's slot from a sessionType's bookedSlots (frees capacity).
+ * @param {string} bizId - business owning the sessionType
+ * @param {string} sessionTypeId - the sessionType to update
+ * @param {string} bookingId - the booking whose slot should be released
+ * @return {Promise<void>}
+ */
+async function releaseServiceSlot(bizId, sessionTypeId, bookingId) {
+  if (!bizId || !sessionTypeId) return;
+  const stRef = db.collection("businesses").doc(bizId)
+    .collection("sessionTypes").doc(sessionTypeId);
+  try {
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(stRef);
+      if (!snap.exists) return;
+      const slots = Array.isArray(snap.data().bookedSlots) ? snap.data().bookedSlots : [];
+      tx.update(stRef, {bookedSlots: slots.filter((r) => r.bookingId !== bookingId)});
+    });
+  } catch (e) {
+    console.warn("releaseServiceSlot:", e.message);
+  }
+}
+
+/**
+ * Atomically reserve a slot on a public service (SessionType) and open payment.
+ * data: { bizId, sessionTypeId, startAt (ISO), buyerName? }
+ * Returns { bookingId, clientSecret } (or { free:true } for zero-price services).
+ */
+exports.reserveServiceBooking = onCall({secrets: [stripeSecretKey]}, async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const {bizId, sessionTypeId, startAt, buyerName} = request.data || {};
+  if (!bizId || !sessionTypeId || !startAt) {
+    throw new HttpsError("invalid-argument", "Missing booking details.");
+  }
+  if (isNaN(new Date(startAt).getTime())) {
+    throw new HttpsError("invalid-argument", "Invalid start time.");
+  }
+
+  // Pre-read the service — the SERVER owns price/duration/capacity. The client
+  // never sends an amount (fix H2). Only a public, slot-mode service is bookable.
+  const stRef = db.collection("businesses").doc(bizId)
+    .collection("sessionTypes").doc(sessionTypeId);
+  const preSnap = await stRef.get();
+  if (!preSnap.exists) throw new HttpsError("not-found", "Service not found.");
+  const pre = preSnap.data();
+  if (pre.publicListing !== true) throw new HttpsError("failed-precondition", "not_public");
+  if (pre.bookingMode === "quote") throw new HttpsError("failed-precondition", "quote_only");
+  const durationMin = parseInt(pre.durationMin, 10) || 60;
+  const capacityMax = Math.max(1, parseInt(pre.capacityMax, 10) || 1);
+  const price = Math.max(0, parseInt(pre.priceCents, 10) || 0);
+  const endAt = new Date(new Date(startAt).getTime() + durationMin * 60000).toISOString();
+  const isFree = price === 0;
+
+  // Resolve the payout account — the business owner's Stripe Connect (survives an
+  // ownership transfer via businesses/{bizId}.ownerUid; falls back to bizId).
+  const bizSnap = await db.collection("businesses").doc(bizId).get();
+  const ownerUid = (bizSnap.exists && bizSnap.data().ownerUid) || bizId;
+  let hostAccount = null;
+  if (!isFree) {
+    const ownerSnap = await db.collection("users").doc(ownerUid).get();
+    const sc = ownerSnap.exists ? ownerSnap.data().stripeConnect : null;
+    hostAccount = sc && sc.accountId ? sc.accountId : null;
+    if (!hostAccount) throw new HttpsError("failed-precondition", "host_payouts_not_ready");
+    // The Firestore chargesEnabled flag is client-forgeable — ask Stripe.
+    if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+    const {assertCanCharge} = require("./stripe/verify");
+    try {
+      await assertCanCharge(stripe, hostAccount);
+    } catch (e) {
+      throw new HttpsError("failed-precondition", "host_payouts_not_ready");
+    }
+  }
+
+  // Fee math — services reuse the memberships/event Kinlo fee (admin-configurable
+  // eventPlatformFeePercent). USER_PAYS_FEES: buyer pays price + platform + Stripe;
+  // host receives 100% of the price they set.
+  const {calculateCheckoutAmount, getPricingConfig} = require("./stripe/pricing");
+  const cfg = isFree ? null : await getPricingConfig(db);
+  const feePct = cfg ? cfg.eventPlatformFeePercent : 0;
+  const pricing = isFree ? null : calculateCheckoutAmount(price, "stripe", {
+    platformFeePercent: feePct,
+    processorPercent: cfg.stripeFeePercent,
+    processorFixed: cfg.stripeFixedCentavos,
+  });
+
+  // 1) Atomic slot guard — the transaction is the source of truth against
+  //    over-booking. The sessionType keeps a bookedSlots list; reject once the
+  //    overlapping active bookings reach capacityMax.
+  const reserved = await db.runTransaction(async (tx) => {
+    const sSnap = await tx.get(stRef);
+    if (!sSnap.exists) throw new HttpsError("not-found", "Service not found.");
+    const s = sSnap.data();
+    const slots = Array.isArray(s.bookedSlots) ? s.bookedSlots : [];
+    const overlapping = slots.filter((r) => rentalRangesOverlap(startAt, endAt, r.start, r.end));
+    if (overlapping.length >= capacityMax) {
+      throw new HttpsError("failed-precondition", "slot_full");
+    }
+    const bookingRef = db.collection("businesses").doc(bizId).collection("bookings").doc();
+    tx.update(stRef, {bookedSlots: [...slots, {start: startAt, end: endAt, bookingId: bookingRef.id}]});
+    tx.set(bookingRef, {
+      // Rendered by the existing agenda (members[].name). buyerUid keys the
+      // buyer's own reads; ownerUid/instructorUid land it on the host's agenda.
+      members: [{memberId: null, name: String(buyerName || "").slice(0, 80) || "Guest", linkedUid: uid}],
+      buyerUid: uid,
+      ownerUid,
+      instructorUid: ownerUid,
+      sessionTypeId,
+      sessionTypeName: s.name || "",
+      vertical: s.vertical || null,
+      locationMode: s.locationMode || "at_business",
+      start: startAt,
+      end: endAt,
+      durationMin,
+      capacityMax,
+      location: null,
+      status: isFree ? "confirmed" : "reserved",
+      paidWith: "stripe",
+      priceCents: price,
+      currency: "mxn",
+      source: "marketplace",
+      ...(pricing ? {
+        platformFeeCentavos: pricing.platformFee,
+        stripeFeeCentavos: pricing.stripeFee,
+        totalCentavos: pricing.totalAmount,
+        hostReceivesCentavos: pricing.hostReceives,
+        // The applied % snapshot (not just the amount) — history-proof audit.
+        platformFeePercentApplied: feePct,
+      } : {}),
+      reservedAt: FieldValue.serverTimestamp(),
+      ...(isFree ? {paidAt: FieldValue.serverTimestamp()} : {}),
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    return {bookingId: bookingRef.id};
+  });
+
+  // Free service — confirmed server-side, no PaymentIntent.
+  if (isFree) return {success: true, bookingId: reserved.bookingId, free: true};
+
+  // 2) PaymentIntent — destination charge to the host (100% of price), Kinlo keeps
+  //    platform + Stripe fee via application_fee; on_behalf_of = host is MoR.
+  if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+  const pi = await stripe.paymentIntents.create({
+    amount: pricing.totalAmount,
+    currency: "mxn",
+    on_behalf_of: hostAccount,
+    application_fee_amount: pricing.platformFee + pricing.stripeFee,
+    transfer_data: {destination: hostAccount},
+    metadata: {
+      type: "service_booking",
+      bizId,
+      bookingId: reserved.bookingId,
+      sessionTypeId,
+      buyerId: uid,
+      platformFeePercentApplied: String(feePct),
+    },
+  });
+
+  await db.collection("businesses").doc(bizId).collection("bookings")
+    .doc(reserved.bookingId).update({
+      stripePaymentIntentId: pi.id,
+      stripeAccountId: hostAccount,
+    });
+
+  return {success: true, bookingId: reserved.bookingId, clientSecret: pi.client_secret};
+});
+
+/**
+ * Release service slots whose reservation was never paid within the TTL.
+ * Mirrors expireVehicleReservations; runs every 15 minutes.
+ */
+exports.expireServiceReservations = onSchedule(
+  {schedule: "every 15 minutes", secrets: [stripeSecretKey]},
+  async () => {
+    const cutoff = Date.now() - SERVICE_RESERVE_TTL_MS;
+    // Reuses the bookings.status collection-group index (fieldOverride).
+    const snap = await db.collectionGroup("bookings")
+      .where("status", "==", "reserved").get();
+    let expired = 0;
+    for (const docSnap of snap.docs) {
+      const b = docSnap.data();
+      if (b.source !== "marketplace") continue;
+      const ms = b.reservedAt && b.reservedAt.toMillis ? b.reservedAt.toMillis() : 0;
+      if (!ms || ms > cutoff) continue;
+      if (b.stripePaymentIntentId) {
+        if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+        try {
+          await stripe.paymentIntents.cancel(b.stripePaymentIntentId);
+        } catch (e) {
+          // already captured/cancelled — ignore
+        }
+      }
+      await docSnap.ref.update({status: "cancelled", cancelledAt: FieldValue.serverTimestamp()});
+      const bizIdFromPath = docSnap.ref.parent.parent && docSnap.ref.parent.parent.id;
+      await releaseServiceSlot(bizIdFromPath, b.sessionTypeId, docSnap.id);
+      expired++;
+    }
+    console.log(`📅 Expired ${expired} unpaid service reservations`);
+  },
+);
+
 // ── Kinlo for Business — Automations (kinlo_business/04) ─────────────────────
 // Send-now broadcast, the reminders scheduler, and the Twilio STOP webhook.
 // SMS/email are inert until credentials are configured (see business/
