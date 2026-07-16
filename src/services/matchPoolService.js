@@ -23,6 +23,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db, auth } from "./firebase";
+import { arr, stripUndefined } from "../utils/firestoreClean";
 
 const uid = () => auth.currentUser?.uid || null;
 
@@ -65,23 +66,24 @@ export const syncMatchPool = async () => {
 
     await setDoc(
       doc(db, "matchPool", me),
-      {
+      stripUndefined({
         userId: me,
         enabled: active,
         // Display (real photo + name — no emoji, context-first cards).
         displayName: u.fullName ?? u.name ?? "Guest",
         photoUrl: u.avatar ?? null,
-        // Matching signals (mirror of the canonical matchProfile).
-        interests: mp.interests ?? [],
-        funnyTags: mp.funnyTags ?? [],
-        lookingFor: mp.lookingFor ?? [],
+        // Matching signals (mirror of the canonical matchProfile). Arrays are
+        // coerced so a partial matchProfile can never write undefined.
+        interests: arr(mp.interests),
+        funnyTags: arr(mp.funnyTags),
+        lookingFor: arr(mp.lookingFor),
         energy: mp.energy ?? null,
         groupPref: mp.groupPref ?? null,
         pro: mp.pro ?? null,
         personality: mp.personality ?? u.personality ?? null,
-        communities,
+        communities: arr(communities),
         updatedAt: serverTimestamp(),
-      },
+      }),
       { merge: true }
     );
     return { success: true, enabled: active, communities: communities.length };

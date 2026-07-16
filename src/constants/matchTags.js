@@ -7,6 +7,7 @@
  * a system icon or emoji). Each funny tag maps to its own illustrated glyph +
  * a match-type accent colour.
  */
+import { isBigFive } from "../utils/personalityScoring";
 
 // Funny tags — fixed catalog. `icon` is a registered Icon.js name; `type` picks
 // the accent from MATCH_TYPE_COLORS (friend/professional/romantic/brand).
@@ -57,10 +58,11 @@ export const GROUP_PREFS = ["one_on_one", "small_group", "group"];
 
 /**
  * Is a match profile "complete" enough to participate in v2 (the gate)? Requires
- * the core structured signals — not just the legacy bio/lookingFor. Pure +
- * testable; the SAME rule is mirrored server-side (rules) via the matchmaking
- * state the client writes.
- * @param {object} [p] a match profile
+ * the core structured signals — energy, interests, funny tags, group pref,
+ * looking-for AND the Big Five personality (the quiz is now part of the unified
+ * match profile). Pure + testable; the SAME rule is mirrored server-side (rules)
+ * via the matchmaking state the client writes.
+ * @param {object} [p] a match profile (incl. `personality` Big Five scores)
  * @returns {boolean}
  */
 export function isProfileComplete(p) {
@@ -76,7 +78,8 @@ export function isProfileComplete(p) {
       arr(p.interests).length >= 3 &&
       arr(p.funnyTags).length >= 1 &&
       energyOk &&
-      GROUP_PREFS.includes(p.groupPref)
+      GROUP_PREFS.includes(p.groupPref) &&
+      isBigFive(p.personality)
   );
 }
 

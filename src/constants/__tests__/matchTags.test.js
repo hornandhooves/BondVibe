@@ -29,15 +29,21 @@ describe("matchTags catalog", () => {
 });
 
 describe("isProfileComplete (the v2 gate)", () => {
+  const BF = { OPENNESS: 50, CONSCIENTIOUSNESS: 50, EXTRAVERSION: 50, AGREEABLENESS: 50, NEUROTICISM: 50 };
   const full = {
     lookingFor: ["friend"],
     interests: ["music", "travel", "food"],
     funnyTags: ["coffee_addict"],
     energy: { ...DEFAULT_ENERGY },
     groupPref: "small_group",
+    personality: BF,
   };
   it("accepts a fully-filled profile", () => {
     expect(isProfileComplete(full)).toBe(true);
+  });
+  it("requires the Big Five personality (now part of the unified profile)", () => {
+    expect(isProfileComplete({ ...full, personality: null })).toBe(false);
+    expect(isProfileComplete({ ...full, personality: undefined })).toBe(false);
   });
   it("rejects null / empty", () => {
     expect(isProfileComplete()).toBe(false);

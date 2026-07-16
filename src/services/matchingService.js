@@ -34,6 +34,7 @@ import { db, auth } from "./firebase";
 import { isBigFive } from "../utils/personalityScoring";
 import { computeAffinity } from "../utils/computeAffinity";
 import { syncMatchPool, removeFromMatchPool } from "./matchPoolService";
+import { arr, stripUndefined } from "../utils/firestoreClean";
 import {
   isProfileComplete,
   sanitizeIds,
@@ -164,65 +165,67 @@ export const saveMatchProfile = async (eventId, profile) => {
   try {
     const userSnap = await getDoc(doc(db, "users", me));
     const u = userSnap.exists() ? userSnap.data() : {};
+    // FIX: every array field is coerced to [] up front so a missing one can
+    // never reach Firestore as `undefined` (the root of the save crash). All
+    // writes below are additionally run through stripUndefined.
+    const interests = arr(profile.interests);
+    const lookingFor = arr(profile.lookingFor);
+    const funnyTags = sanitizeIds(profile.funnyTags, FUNNY_TAG_IDS);
+    const languages = sanitizeIds(profile.languages, LANGUAGES);
+    const learning = sanitizeIds(profile.learning, LEARNING);
+    const energy = sanitizeEnergy(profile.energy);
+    const groupPref = GROUP_PREFS.includes(profile.groupPref) ? profile.groupPref : null;
+    const pro = sanitizePro(profile.pro);
+    const personality = isBigFive(u.personality) ? u.personality : null;
+
     await setDoc(
       profileRef(eventId, me),
-      {
+      stripUndefined({
         userId: me,
         photoUrl: profile.photoUrl ?? u.avatar ?? null,
         displayName: profile.displayName ?? u.fullName ?? u.name ?? "Guest",
         age: profile.age ?? null,
         bio: profile.bio ?? "",
-        interests: profile.interests ?? [], // catalog ids (new picker) or legacy free text
+        interests, // catalog ids (new picker) or legacy free text
         profession: profile.profession ?? u.profession ?? "",
-        languages: sanitizeIds(profile.languages, LANGUAGES),
-        lookingFor: profile.lookingFor ?? [],
+        languages,
+        lookingFor,
         icebreaker: profile.icebreaker ?? "",
         available: profile.available ?? true,
         visibility: profile.visibility ?? "everyone",
         gender: profile.gender ?? u.gender ?? null,
         // v2 expanded profile (P0) — structured tags, no free text / no emoji.
-        energy: sanitizeEnergy(profile.energy),
-        groupPref: GROUP_PREFS.includes(profile.groupPref) ? profile.groupPref : null,
-        funnyTags: sanitizeIds(profile.funnyTags, FUNNY_TAG_IDS),
-        learning: sanitizeIds(profile.learning, LEARNING),
-        pro: sanitizePro(profile.pro),
+        energy,
+        groupPref,
+        funnyTags,
+        learning,
+        pro,
         // Denormalized personality snapshot for compatibility ranking.
-        personality: isBigFive(u.personality) ? u.personality : null,
+        personality,
         consentAt: profile.consentAt ?? serverTimestamp(),
         updatedAt: serverTimestamp(),
-      },
+      }),
       { merge: true }
     );
     // Mirror the gate state onto the user doc (v2): consent + whether the profile
     // is complete enough to participate. Server rules read users/{uid}.matchmaking.
+    // Big Five is part of "complete" — see isProfileComplete.
     const complete = isProfileComplete({
-      lookingFor: profile.lookingFor,
-      interests: profile.interests,
-      funnyTags: profile.funnyTags,
-      energy: profile.energy,
-      groupPref: profile.groupPref,
+      lookingFor, interests, funnyTags, energy, groupPref, personality,
     });
     // Canonical, user-level matchmaking profile (P3) — the cross-community pool
     // and the curated generator read this, not the event-scoped copy.
-    const canonicalProfile = {
-      interests: profile.interests ?? [],
-      funnyTags: sanitizeIds(profile.funnyTags, FUNNY_TAG_IDS),
-      lookingFor: profile.lookingFor ?? [],
-      energy: sanitizeEnergy(profile.energy),
-      groupPref: GROUP_PREFS.includes(profile.groupPref) ? profile.groupPref : null,
-      pro: sanitizePro(profile.pro),
-      personality: isBigFive(u.personality) ? u.personality : null,
-    };
+    const canonicalProfile = { interests, funnyTags, lookingFor, energy, groupPref, pro, personality };
     await setDoc(
       doc(db, "users", me),
-      {
+      stripUndefined({
         matchmaking: {
           consentAt: u.matchmaking?.consentAt ?? profile.consentAt ?? serverTimestamp(),
           profileComplete: complete,
           enabled: u.matchmaking?.enabled ?? true,
         },
         matchProfile: canonicalProfile,
-      },
+      }),
       { merge: true }
     );
     // Refresh the cross-community pool doc (best-effort; the set generator reads
