@@ -93,6 +93,18 @@ async function generateForUser(me, nowMs) {
     return {status: "inactive", weekOf: isoWeek(new Date(nowMs)), members: [], count: 0};
   }
 
+  // Freemium (P4): the trial start is stamped HERE, server-side, the first time
+  // we ever build a set for this user — so the client can't grant itself a
+  // longer free week. The real unlock is plan === "kinlo_plus", which only the
+  // Stripe webhook can set.
+  if (mm.freeTrialEndsAt == null) {
+    const trialEndsMs = nowMs + 7 * 86400000;
+    mm.freeTrialEndsAt = admin.firestore.Timestamp.fromMillis(trialEndsMs);
+    await db.collection("users").doc(me).set(
+      {matchmaking: {freeTrialEndsAt: mm.freeTrialEndsAt}}, {merge: true},
+    );
+  }
+
   const mine = meUser.matchProfile || null; // denormalized user-level profile (P3)
   const [poolSnap, exclSnap] = await Promise.all([
     db.collection("matchPool").where("enabled", "==", true).limit(400).get(),

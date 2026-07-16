@@ -23,6 +23,7 @@ import {
   documentId,
   serverTimestamp,
   arrayUnion,
+  arrayRemove,
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
@@ -117,4 +118,51 @@ export const requestIntro = async (toUid) => {
   const fn = httpsCallable(getFunctions(), "requestMatchIntro");
   const res = await fn({ toUid });
   return res.data;
+};
+
+/** The uids the current user has "stopped suggesting" (settings · P4). */
+export const getExclusions = async () => {
+  const me = uid();
+  if (!me) return [];
+  try {
+    const s = await getDoc(doc(db, "matchExclusions", me));
+    return (s.exists() && s.data().excluded) || [];
+  } catch (e) {
+    console.error("❌ getExclusions:", e);
+    return [];
+  }
+};
+
+/** Undo a single "dejar de sugerir" — they can be suggested again. */
+export const removeExclusion = async (otherUid) => {
+  const me = uid();
+  if (!me || !otherUid) return { success: false };
+  try {
+    await setDoc(
+      doc(db, "matchExclusions", me),
+      { ownerId: me, excluded: arrayRemove(otherUid), updatedAt: serverTimestamp() },
+      { merge: true }
+    );
+    return { success: true };
+  } catch (e) {
+    console.error("❌ removeExclusion:", e);
+    return { success: false, error: e.message };
+  }
+};
+
+/** Clear the whole "stopped suggesting" list. */
+export const clearExclusions = async () => {
+  const me = uid();
+  if (!me) return { success: false };
+  try {
+    await setDoc(
+      doc(db, "matchExclusions", me),
+      { ownerId: me, excluded: [], updatedAt: serverTimestamp() },
+      { merge: true }
+    );
+    return { success: true };
+  } catch (e) {
+    console.error("❌ clearExclusions:", e);
+    return { success: false, error: e.message };
+  }
 };

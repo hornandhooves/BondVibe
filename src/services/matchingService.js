@@ -33,7 +33,7 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
 import { isBigFive } from "../utils/personalityScoring";
 import { computeAffinity } from "../utils/computeAffinity";
-import { syncMatchPool } from "./matchPoolService";
+import { syncMatchPool, removeFromMatchPool } from "./matchPoolService";
 import {
   isProfileComplete,
   sanitizeIds,
@@ -308,6 +308,48 @@ export const updateMatchmaking = async (patch) => {
     return { success: true };
   } catch (e) {
     console.error("❌ updateMatchmaking:", e);
+    return { success: false, error: e.message };
+  }
+};
+
+// ---- v2 settings (P4) — participate / pause / cross-community / disable ------
+
+/** Master switch. Off = paused (profile kept, stops appearing); on = active.
+ *  Keeps the pool doc's `enabled` flag in sync so the user really (dis)appears. */
+export const setMatchmakingEnabled = async (enabled) => {
+  const res = await updateMatchmaking({ enabled: !!enabled });
+  if (res.success) {
+    try {
+      await syncMatchPool();
+    } catch (e) {
+      /* non-fatal — the weekly batch reconciles */
+    }
+  }
+  return res;
+};
+
+/** Opt into cross-community discovery (default off = only shared communities). */
+export const setCrossCommunity = async (on) => updateMatchmaking({ crossCommunity: !!on });
+
+/**
+ * Disable matchmaking (destructive): delete the cross-community pool profile so
+ * the user is removed from every future set/pool, and revoke consent so the
+ * server gates treat them as a non-participant. Reversible only by opting in
+ * again (which re-consents + rebuilds the profile).
+ */
+export const leaveMatchmaking = async () => {
+  const me = uid();
+  if (!me) return { success: false };
+  try {
+    await removeFromMatchPool();
+    await setDoc(
+      doc(db, "users", me),
+      { matchmaking: { enabled: false, consentAt: null, profileComplete: false } },
+      { merge: true }
+    );
+    return { success: true };
+  } catch (e) {
+    console.error("❌ leaveMatchmaking:", e);
     return { success: false, error: e.message };
   }
 };
