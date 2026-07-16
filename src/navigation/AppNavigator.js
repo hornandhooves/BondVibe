@@ -148,6 +148,7 @@ import MatchGridScreen from "../screens/matching/MatchGridScreen";
 import MatchPersonScreen from "../screens/matching/MatchPersonScreen";
 import MatchChatScreen from "../screens/matching/MatchChatScreen";
 import PlusPaywallScreen from "../screens/matching/PlusPaywallScreen";
+import CuratedSetScreen from "../screens/matching/CuratedSetScreen";
 import PeopleYouMetScreen from "../screens/matching/PeopleYouMetScreen";
 import HostMatchingControlsScreen from "../screens/matching/HostMatchingControlsScreen";
 import HostMatchAnalyticsScreen from "../screens/matching/HostMatchAnalyticsScreen";
@@ -829,6 +830,7 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="MatchPerson" component={MatchPersonScreen} />
           <Stack.Screen name="MatchChat" component={MatchChatScreen} />
           <Stack.Screen name="PlusPaywall" component={PlusPaywallScreen} />
+          <Stack.Screen name="CuratedSet" component={CuratedSetScreen} />
           <Stack.Screen name="PeopleYouMet" component={PeopleYouMetScreen} />
           <Stack.Screen name="HostMatchingControls" component={HostMatchingControlsScreen} />
           <Stack.Screen name="HostMatchAnalytics" component={HostMatchAnalyticsScreen} />

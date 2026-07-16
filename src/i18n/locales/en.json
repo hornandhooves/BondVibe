@@ -910,6 +910,23 @@
       "building": "Building",
       "signal": { "interests": "Shared interests", "intention": "Same intention", "bigfive": "Personality", "context": "Shared context", "format": "How you meet", "industry": "Industry", "complement": "Complementary" }
     },
+    "curated": {
+      "title": "Your week on Kinlo",
+      "intro": "We handpicked {{count}} people we think you'll click with.",
+      "sharedCommunities_one": "In {{count}} community with you",
+      "sharedCommunities_other": "In {{count}} communities with you",
+      "becauseAffinity": "Because you have a lot in common",
+      "connect": "Connect",
+      "dontSuggest": "Stop suggesting",
+      "inactiveTitle": "Turn on matchmaking",
+      "inactiveBody": "Opt in and complete your profile to get a weekly, curated set of people.",
+      "setUp": "Set up",
+      "lockedTitle": "Your free week is over",
+      "lockedBody": "We found {{count}} people for you this week. Unlock them with Kinlo Plus.",
+      "unlockPlus": "Unlock with Kinlo Plus",
+      "emptyTitle": "Nobody to suggest yet",
+      "emptyBody": "As more people in your communities opt in, your weekly set will fill up — we never invent matches."
+    },
     "type": { "friend": "Friends", "professional": "Professional", "romantic": "Romantic", "brand": "New" },
     "groupPref": { "one_on_one": "One-on-one", "small_group": "Small group", "group": "Big group" },
     "interest": { "music": "Music", "travel": "Travel", "fitness": "Fitness", "food": "Food", "art": "Art", "gaming": "Gaming", "reading": "Reading", "movies": "Movies", "photography": "Photography", "hiking": "Hiking", "yoga": "Yoga", "tech": "Tech", "fashion": "Fashion", "cooking": "Cooking", "sports": "Sports", "dancing": "Dancing", "coffee": "Coffee", "nature": "Nature", "volunteering": "Volunteering", "startups": "Startups" },
@@ -2154,6 +2171,10 @@
         "title": "You have a new match 💜",
         "body": "Someone you liked liked you back."
       }
+    },
+    "matchIntro": {
+      "title": "You connected 💜",
+      "body": "You both wanted an intro — say hi."
     },
     "social": {
       "newFollower": {

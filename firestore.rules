@@ -754,6 +754,53 @@ service cloud.firestore {
     }
 
     // ============================================
+    // MATCHMAKING V2 (user-level, cross-community) — P2/P3
+    // ============================================
+    // The weekly curated set is BUILT and GATED on the server. The owner reads
+    // their own set; nobody writes it from the client (a locked set already has
+    // its members withheld server-side, so a leaked read still can't unlock).
+    match /curatedSets/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if false; // server-only (requestCuratedSet / weekly batch)
+    }
+
+    // "Dejar de sugerir" — the owner's private exclusion list. NOT a block (a
+    // block lives in the safety layer); it only removes people from future sets.
+    match /matchExclusions/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create, update: if isSignedIn() &&
+                               request.auth.uid == userId &&
+                               request.resource.data.ownerId == request.auth.uid;
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Intro edges are PRIVATE like likes — server-only, so expressing interest
+    // never leaks. The reciprocal request (also server-side) forms the mutual
+    // follow + DM thread. The parent doc's connected state is pair-readable.
+    match /matchIntros/{introId} {
+      allow read: if isSignedIn() &&
+                     resource.data.users != null &&
+                     request.auth.uid in resource.data.users;
+      allow write: if false;
+      match /edges/{edgeUid} {
+        allow read, write: if false; // requestMatchIntro only (Admin SDK)
+      }
+    }
+
+    // User-level match pool (P3): a denormalized, opt-in display profile used to
+    // build curated sets cross-community. Owner writes own; readable by any
+    // active matchmaking participant (the set generator reads via Admin SDK; the
+    // client hydrates only the uids the server already curated FOR it).
+    match /matchPool/{userId} {
+      allow read: if matchmakingActive(request.auth.uid);
+      allow create, update: if isSignedIn() &&
+                               request.auth.uid == userId &&
+                               request.resource.data.userId == request.auth.uid &&
+                               matchmakingConsented(request.auth.uid);
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ============================================
     // APP CONFIG (pricing knobs) — admin-writable, world-readable so clients
     // can show accurate fee estimates that match what the server charges.
     // ============================================

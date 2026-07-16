@@ -910,6 +910,23 @@
       "building": "En construcción",
       "signal": { "interests": "Intereses en común", "intention": "Misma intención", "bigfive": "Personalidad", "context": "Contexto en común", "format": "Cómo conocen", "industry": "Industria", "complement": "Complementarios" }
     },
+    "curated": {
+      "title": "Tu semana en Kinlo",
+      "intro": "Elegimos a {{count}} personas con las que creemos que vas a conectar.",
+      "sharedCommunities_one": "En {{count}} comunidad contigo",
+      "sharedCommunities_other": "En {{count}} comunidades contigo",
+      "becauseAffinity": "Porque tienen mucho en común",
+      "connect": "Conectar",
+      "dontSuggest": "Dejar de sugerir",
+      "inactiveTitle": "Activa el matchmaking",
+      "inactiveBody": "Únete y completa tu perfil para recibir cada semana un grupo curado de personas.",
+      "setUp": "Configurar",
+      "lockedTitle": "Tu semana gratis terminó",
+      "lockedBody": "Encontramos a {{count}} personas para ti esta semana. Desbloquéalas con Kinlo Plus.",
+      "unlockPlus": "Desbloquear con Kinlo Plus",
+      "emptyTitle": "Aún no hay a quién sugerir",
+      "emptyBody": "A medida que más gente de tus comunidades se una, tu grupo semanal se irá llenando — nunca inventamos matches."
+    },
     "type": { "friend": "Amigos", "professional": "Profesional", "romantic": "Romántico", "brand": "Nuevo" },
     "groupPref": { "one_on_one": "Uno a uno", "small_group": "Grupo pequeño", "group": "Grupo grande" },
     "interest": { "music": "Música", "travel": "Viajes", "fitness": "Fitness", "food": "Comida", "art": "Arte", "gaming": "Videojuegos", "reading": "Lectura", "movies": "Cine", "photography": "Fotografía", "hiking": "Senderismo", "yoga": "Yoga", "tech": "Tecnología", "fashion": "Moda", "cooking": "Cocina", "sports": "Deportes", "dancing": "Baile", "coffee": "Café", "nature": "Naturaleza", "volunteering": "Voluntariado", "startups": "Startups" },
@@ -2154,6 +2171,10 @@
         "title": "Tienes un nuevo match 💜",
         "body": "Alguien que te gustó también te dio like."
       }
+    },
+    "matchIntro": {
+      "title": "Conectaron 💜",
+      "body": "Ambos quisieron conocerse — salúdense."
     },
     "social": {
       "newFollower": {
