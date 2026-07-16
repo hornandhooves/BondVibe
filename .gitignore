@@ -42,11 +42,13 @@ functions/firebase-debug.log
 firebase-debug.log
 firestore-debug.log
 .firebase/
-kinlo-app-dev-firebase-adminsdk-*.json
+# Google service-account keys — private keys, never commit. Patterns cover both
+# Firebase's download name (*-firebase-adminsdk-<hash>.json) and the older one
+# without the hash, plus the name we keep the FCM V1 key under.
 *-firebase-adminsdk-*.json
-kinlo-app-dev-firebase-adminsdk-*.json
-*-firebase-adminsdk-*.json
-bondvibe-app-firebase-adminsdk.json
+*-firebase-adminsdk.json
+*-fcm-sa.json
+google-service-account*.json
 cleanup-firebase.js
 *.swp
 
