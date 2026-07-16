@@ -26,7 +26,7 @@ import WhyPill from "../components/WhyPill";
 import { AvatarDisplay } from "../components/AvatarPicker";
 import { useTheme } from "../contexts/ThemeContext";
 import { getFeed } from "../services/postService";
-import { followUser, unfollowUser } from "../services/followService";
+import { followUser, unfollowUser, getFollowing } from "../services/followService";
 import useClaude from "../hooks/useClaude";
 import useAiOptIn from "../hooks/useAiOptIn";
 import { toggleInterested } from "../services/signalsService";
@@ -214,11 +214,16 @@ export default function FeedScreen({ navigation }) {
   const loadSuggestions = useCallback(async () => {
     try {
       const me = auth.currentUser?.uid;
-      const snap = await getDocs(
-        query(collection(db, "users"), limit(20))
-      );
+      // Never suggest someone you already follow: the list used to hardcode
+      // following:false, so an already-followed user got a "Follow" button and
+      // tapping it re-wrote an existing follow doc (a denied write).
+      const [snap, alreadyFollowing] = await Promise.all([
+        getDocs(query(collection(db, "users"), limit(20))),
+        getFollowing(),
+      ]);
+      const following = new Set(alreadyFollowing);
       const candidates = snap.docs
-        .filter((d) => d.id !== me)
+        .filter((d) => d.id !== me && !following.has(d.id))
         .slice(0, 5)
         .map((d) => {
           const data = d.data();
