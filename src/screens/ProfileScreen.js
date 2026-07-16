@@ -362,7 +362,7 @@ export default function ProfileScreen({ navigation }) {
             <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>{t("profile.matchmaking")}</Text>
             <TouchableOpacity
               style={[s.personalityPrompt, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              onPress={() => navigation.navigate("MatchProfile")}
+              onPress={() => navigation.navigate("MatchProfileView")}
               testID="profile-match-profile"
             >
               <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>

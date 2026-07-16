@@ -145,6 +145,7 @@ import FollowListScreen from "../screens/FollowListScreen";
 import MatchOptInScreen from "../screens/matching/MatchOptInScreen";
 import MatchConsentScreen from "../screens/matching/MatchConsentScreen";
 import MatchProfileScreen from "../screens/matching/MatchProfileScreen";
+import MatchProfileViewScreen from "../screens/matching/MatchProfileViewScreen";
 import MatchingLockedScreen from "../screens/matching/MatchingLockedScreen";
 import MatchGridScreen from "../screens/matching/MatchGridScreen";
 import MatchPersonScreen from "../screens/matching/MatchPersonScreen";
@@ -832,6 +833,7 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="MatchOptIn" component={MatchOptInScreen} />
           <Stack.Screen name="MatchConsent" component={MatchConsentScreen} />
           <Stack.Screen name="MatchProfile" component={MatchProfileScreen} />
+          <Stack.Screen name="MatchProfileView" component={MatchProfileViewScreen} />
           <Stack.Screen name="MatchingLocked" component={MatchingLockedScreen} />
           <Stack.Screen name="MatchGrid" component={MatchGridScreen} />
           <Stack.Screen name="MatchPerson" component={MatchPersonScreen} />

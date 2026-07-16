@@ -29,6 +29,7 @@ import { db, auth } from "../../services/firebase";
 import { useTheme } from "../../contexts/ThemeContext";
 import { isBigFive } from "../../utils/personalityScoring";
 import Icon from "../../components/Icon";
+import BigFiveBars from "../../components/matching/BigFiveBars";
 import { MatchHeader, PrimaryButton, Chip } from "./matchUi";
 import {
   saveMatchProfile,
@@ -373,13 +374,7 @@ function BigFiveSection({ s, colors, t, personality, onStart }) {
       </TouchableOpacity>
     );
   }
-  // Show three representative traits (matches the mock: Openness/Extraversion/
-  // Agreeableness). Values are 0–100 from personalityScoring.
-  const bars = [
-    { key: "openness", value: personality.OPENNESS },
-    { key: "extraversion", value: personality.EXTRAVERSION },
-    { key: "agreeableness", value: personality.AGREEABLENESS },
-  ];
+  // ALL five dimensions — BigFiveBars iterates PERSONALITY_DIMENSIONS.
   return (
     <View style={[s.bigFiveCard, { borderColor: colors.border }]}>
       <View style={s.bigFiveHead}>
@@ -391,16 +386,7 @@ function BigFiveSection({ s, colors, t, personality, onStart }) {
           <Text style={[s.bigFiveRedo, { color: "#7C3AED" }]}>{t("matching.profile.personalityRedo")}</Text>
         </TouchableOpacity>
       </View>
-      {bars.map((b) => (
-        <View key={b.key} style={s.bigFiveRow}>
-          <Text style={[s.bigFiveLabel, { color: colors.textSecondary }]}>
-            {t(`matchmaking.bigfive.${b.key}`)}
-          </Text>
-          <View style={[s.bigFiveTrack, { backgroundColor: "#EDE9F6" }]}>
-            <View style={[s.bigFiveFill, { width: `${Math.max(0, Math.min(100, b.value || 0))}%` }]} />
-          </View>
-        </View>
-      ))}
+      <BigFiveBars personality={personality} />
     </View>
   );
 }
@@ -494,10 +480,6 @@ function createStyles(colors) {
     bigFiveDone: { flexDirection: "row", alignItems: "center", gap: 5 },
     bigFiveDoneText: { fontSize: 12.5, fontWeight: "700", color: "#1F8A6E" },
     bigFiveRedo: { fontSize: 13, fontWeight: "700" },
-    bigFiveRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 10 },
-    bigFiveLabel: { flex: 0.4, fontSize: 12.5, fontWeight: "600" },
-    bigFiveTrack: { flex: 0.6, height: 7, borderRadius: 4, overflow: "hidden" },
-    bigFiveFill: { height: 7, borderRadius: 4, backgroundColor: "#7C3AED" },
     footer: { paddingHorizontal: 24, paddingBottom: 28, paddingTop: 8 },
   });
 }
