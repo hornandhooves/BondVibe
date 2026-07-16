@@ -1,5 +1,15 @@
-// Auto-generated from assets/legal/*.md
-// DO NOT EDIT - Edit the .md files instead
+// The legal texts the app renders (LegalScreen). THIS FILE IS THE SOURCE OF TRUTH —
+// edit it directly.
+//
+// It used to claim it was generated from assets/legal/*.md and that those were the
+// place to edit. That stopped being true: this file was edited by hand and the .md
+// files were left behind, so they had silently lost whole clauses (§4.5 vehicle
+// rentals, the photos-of-minors rule) that only exist here. Regenerating from them
+// would have deleted live legal copy. The .md files are gone; don't reintroduce a
+// second copy.
+//
+// Editing these changes what users legally agree to — bump "Last Updated" and get
+// the change reviewed by whoever owns the terms.
 
 export const TERMS_OF_SERVICE = `# Terms of Service
 
