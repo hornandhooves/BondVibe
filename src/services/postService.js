@@ -18,6 +18,7 @@ import {
   limit as qLimit,
   serverTimestamp,
 } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
 import { getFollowing } from "./followService";
 import { getBlockedIds } from "./blockService";
@@ -61,6 +62,12 @@ export const createPost = async ({
     const funnyTag =
       authorFunnyTag ?? (u.matchProfile?.funnyTags?.[0] ?? null);
     const resolvedMediaType = media.length > 1 ? "carousel" : mediaType;
+    // Denormalize the community name for the card's context line (P2).
+    let communityName = null;
+    if (communityId) {
+      const cSnap = await getDoc(doc(db, "hostGroups", communityId));
+      communityName = cSnap.exists() ? cSnap.data().name || null : null;
+    }
     const ref = await addDoc(
       collection(db, "posts"),
       stripUndefined({
@@ -72,6 +79,7 @@ export const createPost = async ({
         mediaUrls: media, // v2 canonical
         mediaType: resolvedMediaType,
         communityId,
+        communityName,
         authorFunnyTag: funnyTag,
         isHostPost: !!isHostPost,
         cta: cta || null,
@@ -157,6 +165,46 @@ export const getUserPosts = async (userId, max = 50) => {
 export const getPost = async (postId) => {
   const s = await getDoc(doc(db, "posts", postId));
   return s.exists() ? { id: s.id, ...s.data() } : null;
+};
+
+/** A community's wall — posts tagged with that communityId, newest first (P2). */
+export const getCommunityPosts = async (communityId, max = 50) => {
+  if (!communityId) return [];
+  try {
+    const snap = await getDocs(
+      query(
+        collection(db, "posts"),
+        where("communityId", "==", communityId),
+        orderBy("createdAt", "desc"),
+        qLimit(max)
+      )
+    );
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.error("❌ getCommunityPosts:", e);
+    return [];
+  }
+};
+
+/** Record a post impression / CTA tap (Wall v2 · P2). Server maintains the
+ *  counters; best-effort, never blocks the UI. */
+export const recordPostEvent = async (postId, type) => {
+  try {
+    const fn = httpsCallable(getFunctions(), "recordPostEvent");
+    await fn({ postId, type });
+  } catch {
+    // best-effort — stats are non-critical
+  }
+};
+
+/** Read a post's reach stats (owner only, per rules). Returns null if denied. */
+export const getPostStats = async (postId) => {
+  try {
+    const s = await getDoc(doc(db, "postStats", postId));
+    return s.exists() ? s.data() : { views: 0, ctaClicks: 0 };
+  } catch {
+    return null;
+  }
 };
 
 export const deletePost = async (postId) => {

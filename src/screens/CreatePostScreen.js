@@ -25,11 +25,15 @@ import { uploadPostImage } from "../services/storageService";
 
 const MAX_PHOTOS = 4;
 
-export default function CreatePostScreen({ navigation }) {
+export default function CreatePostScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
+  // Wall v2 (P2): posting to a community (only members reach here; the host can
+  // opt to post AS the community).
+  const { communityId = null, communityName, canHostPost = false } = route?.params || {};
   const [text, setText] = useState("");
   const [images, setImages] = useState([]); // local uris
+  const [asHost, setAsHost] = useState(false);
   const [posting, setPosting] = useState(false);
 
   const pick = async () => {
@@ -55,7 +59,12 @@ export default function CreatePostScreen({ navigation }) {
       const uid = auth.currentUser.uid;
       const urls = [];
       for (const uri of images) urls.push(await uploadPostImage(uid, uri));
-      const r = await createPost({ text, images: urls });
+      const r = await createPost({
+        text,
+        images: urls,
+        communityId,
+        isHostPost: canHostPost && asHost,
+      });
       if (!r.success) throw new Error(r.error || t("createPost.failed"));
       navigation.goBack();
     } catch (e) {
@@ -89,6 +98,26 @@ export default function CreatePostScreen({ navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {!!communityId && (
+          <View style={[styles.ctxBanner, { backgroundColor: colors.brandSoft }]}>
+            <Icon name="community" size={15} color={colors.primary} />
+            <Text style={[styles.ctxText, { color: colors.primary }]} numberOfLines={1}>
+              {t("wall.compose.postTo", { name: communityName || "" })}
+            </Text>
+          </View>
+        )}
+        {canHostPost && (
+          <TouchableOpacity
+            style={[styles.hostToggle, { borderColor: asHost ? "#7C3AED" : colors.border }]}
+            onPress={() => setAsHost((v) => !v)}
+            activeOpacity={0.8}
+          >
+            <Icon name={asHost ? "check" : "add"} size={16} color={asHost ? "#7C3AED" : colors.textTertiary} />
+            <Text style={[styles.hostToggleText, { color: asHost ? "#7C3AED" : colors.textSecondary }]}>
+              {t("wall.compose.asHost")}
+            </Text>
+          </TouchableOpacity>
+        )}
         <TextInput
           style={[styles.input, { color: colors.text }]}
           placeholder={t("createPost.textPlaceholder")}
@@ -144,6 +173,10 @@ function createStyles(colors) {
     postBtn: { borderRadius: 20, paddingHorizontal: 18, paddingVertical: 8, minWidth: 64, alignItems: "center" },
     postTxt: { color: "#fff", fontSize: 15, fontWeight: "700" },
     content: { paddingHorizontal: 20, paddingBottom: 40 },
+    ctxBanner: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12 },
+    ctxText: { fontSize: 13.5, fontWeight: "700", flexShrink: 1 },
+    hostToggle: { flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", borderWidth: 1.5, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8, marginBottom: 14 },
+    hostToggleText: { fontSize: 13, fontWeight: "700" },
     input: { fontSize: 18, lineHeight: 25, minHeight: 120, textAlignVertical: "top" },
     thumbs: { marginTop: 12 },
     thumbWrap: { marginRight: 10 },

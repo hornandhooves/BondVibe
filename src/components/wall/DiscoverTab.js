@@ -124,7 +124,12 @@ export default function DiscoverTab({ navigation }) {
           <Text style={[s.section, { color: colors.text, marginTop: 22 }]}>{t("wall.discover.communities")}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hRow}>
             {communities.map((c) => (
-              <View key={c.id} style={[s.commCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <TouchableOpacity
+                key={c.id}
+                style={[s.commCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={() => navigation.navigate("CommunityWall", { communityId: c.id })}
+                activeOpacity={0.85}
+              >
                 <View style={s.commIcon}>
                   <Icon name="community" size={20} color="#1F8A6E" />
                 </View>
@@ -132,7 +137,7 @@ export default function DiscoverTab({ navigation }) {
                 <Text style={[s.commMeta, { color: colors.textSecondary }]}>
                   {t("wall.discover.memberCount", { count: (c.memberIds || []).length })}
                 </Text>
-              </View>
+              </TouchableOpacity>
             ))}
           </ScrollView>
         </>

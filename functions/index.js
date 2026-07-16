@@ -79,6 +79,10 @@ exports.joinMatchGroup = matchGroups.joinMatchGroup;
 const wallDiscover = require("./wall/discover");
 exports.discoverForYou = wallDiscover.discoverForYou;
 
+// Wall v2 — post reach stats (P2, Pro): server-side impression/CTA counters.
+const wallPostStats = require("./wall/postStats");
+exports.recordPostEvent = wallPostStats.recordPostEvent;
+
 // Social layer — server-maintained post counts.
 const social = require("./social/social");
 exports.onPostLikeWritten = social.onPostLikeWritten;

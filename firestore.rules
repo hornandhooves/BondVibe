@@ -630,12 +630,33 @@ service cloud.firestore {
     // Posts: readable by any signed-in user; authored as yourself. likeCount /
     // commentCount are aggregates maintained by Cloud Functions (Admin SDK), so
     // they can't be created/edited by clients.
+    // Wall v2 (P2): posting to a community requires membership; an isHostPost
+    // requires being that community's host. Personal posts (no communityId) are
+    // unchanged and can never be host posts.
+    function communityOf(cid) {
+      return get(/databases/$(database)/documents/hostGroups/$(cid)).data;
+    }
+    function isCommunityMember(cid) {
+      let g = communityOf(cid);
+      return g.hostId == request.auth.uid ||
+             (g.memberIds != null && request.auth.uid in g.memberIds);
+    }
+    function canCreatePost() {
+      let cid = request.resource.data.get('communityId', null);
+      let hostPost = request.resource.data.get('isHostPost', false) == true;
+      return cid == null ?
+        hostPost == false :
+        (isCommunityMember(cid) &&
+         (hostPost == false || communityOf(cid).hostId == request.auth.uid));
+    }
+
     match /posts/{postId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() &&
                        request.resource.data.authorId == request.auth.uid &&
                        request.resource.data.get('likeCount', 0) == 0 &&
-                       request.resource.data.get('commentCount', 0) == 0;
+                       request.resource.data.get('commentCount', 0) == 0 &&
+                       canCreatePost();
       // Author edits only their own text/images (not the aggregate counts).
       allow update: if isSignedIn() &&
                        resource.data.authorId == request.auth.uid &&
@@ -663,6 +684,14 @@ service cloud.firestore {
                           get(/databases/$(database)/documents/posts/$(postId)).data.authorId == request.auth.uid ||
                           isAdmin());
       }
+    }
+
+    // Post reach stats (Wall v2 · P2, Kinlo Pro). Server-maintained impressions /
+    // CTA taps; readable ONLY by the post's author (the Pro UI gates the display).
+    match /postStats/{postId} {
+      allow read: if isSignedIn() &&
+                     get(/databases/$(database)/documents/posts/$(postId)).data.authorId == request.auth.uid;
+      allow write: if false; // recordPostEvent (Admin SDK) only
     }
 
     // Direct messages — thread id is the sorted uid pair; only the two

@@ -285,6 +285,29 @@
       "morePeople_other": "+{{count}} más con tu vibra",
       "unlockPlus": "Desbloquea a todos con Kinlo Plus"
     },
+    "community": {
+      "title": "Comunidad",
+      "wall": "Muro",
+      "events": "Eventos",
+      "members": "Miembros",
+      "joined": "Unido",
+      "emptyWall": "Aún no hay publicaciones — sé el primero en compartir algo aquí.",
+      "eventsSoon": "Los eventos de esta comunidad aparecerán aquí.",
+      "membersSoon": "La lista de miembros aparecerá aquí."
+    },
+    "hostPost": {
+      "badge": "HOST",
+      "reserve": "Reservar",
+      "ctaTitle": { "event": "Ver el evento", "service": "Ver el servicio", "community": "Abrir la comunidad" }
+    },
+    "pro": { "badge": "PRO", "views": "Vistas", "taps": "Toques", "ctr": "CTR" },
+    "compose": {
+      "postTo": "Publicando en {{name}}",
+      "asHost": "Publicar como host",
+      "carousel": "Carrusel",
+      "video": "Video",
+      "asMoment": "Compartir como Moment (24h)"
+    },
     "empty": {
       "text": "Sigue a otras personas y comparte tu primera publicación para llenar tu muro.",
       "cta": "Crear publicación",

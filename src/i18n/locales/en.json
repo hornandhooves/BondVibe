@@ -285,6 +285,29 @@
       "morePeople_other": "+{{count}} more with your vibe",
       "unlockPlus": "Unlock everyone with Kinlo Plus"
     },
+    "community": {
+      "title": "Community",
+      "wall": "Wall",
+      "events": "Events",
+      "members": "Members",
+      "joined": "Joined",
+      "emptyWall": "No posts yet — be the first to share something here.",
+      "eventsSoon": "This community's events will show up here.",
+      "membersSoon": "The member list will show up here."
+    },
+    "hostPost": {
+      "badge": "HOST",
+      "reserve": "Reserve",
+      "ctaTitle": { "event": "View the event", "service": "View the service", "community": "Open the community" }
+    },
+    "pro": { "badge": "PRO", "views": "Views", "taps": "Taps", "ctr": "CTR" },
+    "compose": {
+      "postTo": "Posting to {{name}}",
+      "asHost": "Post as host",
+      "carousel": "Carousel",
+      "video": "Video",
+      "asMoment": "Share as a Moment (24h)"
+    },
     "empty": {
       "text": "Follow people and share your first post to fill your feed.",
       "cta": "Create a post",
