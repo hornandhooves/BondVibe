@@ -20,9 +20,20 @@ const BLOCK = [
   `  ${MARKER}`,
   `  pod 'GoogleUtilities', :modular_headers => true`,
   `  pod 'RecaptchaInterop', :modular_headers => true`,
-  `  pod 'AppCheckCore', :modular_headers => true`,
+  `  # NOTE: AppCheckCore is deliberately NOT modular here. It used to be, but
+  #  only GoogleUtilities/RecaptchaInterop actually need it — they're the
+  #  non-modular deps that the Swift pod (AppCheckCore) couldn't link against.
+  #  Marking AppCheckCore itself modular moves its generated Swift header into
+  #  a "Swift Compatibility Header" dir that FirebaseAppCheck can't find, so
+  #  FIRRecaptchaProvider.m fails every branch of its #if __has_include and
+  #  errors with "unknown receiver 'GACRecaptchaProvider'" (firebase-ios-sdk
+  #  #12611). Keep it non-modular so both google-signin and FirebaseAppCheck
+  #  build.`,
   `  # <<< google-signin modular headers`,
 ].join("\n");
+
+const END_MARKER = "# <<< google-signin modular headers";
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 module.exports = function withGoogleSigninModularHeaders(config) {
   return withDangerousMod(config, [
@@ -33,13 +44,25 @@ module.exports = function withGoogleSigninModularHeaders(config) {
         "Podfile"
       );
       let contents = fs.readFileSync(podfile, "utf8");
-      if (contents.includes(MARKER)) return cfg; // already patched
 
-      // Insert right after `use_expo_modules!` inside the app target.
-      contents = contents.replace(
-        /(\n\s*use_expo_modules!.*\n)/,
-        `$1${BLOCK}\n`
+      // REPLACE an existing block rather than skipping it. The old version
+      // bailed out whenever the marker was present, which made the plugin
+      // unable to ever change its own pods: editing BLOCK silently did nothing
+      // on an existing ios/ (you'd need `prebuild --clean` and no error told
+      // you). Replacing keeps it idempotent AND updatable.
+      const existing = new RegExp(
+        `[ \\t]*${escapeRe(MARKER)}[\\s\\S]*?${escapeRe(END_MARKER)}`,
+        "m"
       );
+      if (existing.test(contents)) {
+        contents = contents.replace(existing, BLOCK);
+      } else {
+        // Insert right after `use_expo_modules!` inside the app target.
+        contents = contents.replace(
+          /(\n\s*use_expo_modules!.*\n)/,
+          `$1${BLOCK}\n`
+        );
+      }
       fs.writeFileSync(podfile, contents);
       return cfg;
     },

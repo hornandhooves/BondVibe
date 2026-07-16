@@ -49,6 +49,7 @@
         }
       ],
       "./plugins/withGoogleSigninModularHeaders",
+      "./plugins/withFirebaseAppCheckSwiftHeader",
       "expo-localization",
       "@react-native-firebase/app",
       "@react-native-firebase/app-check"
