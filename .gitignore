@@ -19,7 +19,11 @@ dist/
 .env.*
 !.env.example
 firebase-config.json
-GoogleService-Info.plist
+# GoogleService-Info.plist is NOT ignored: it's the iOS client config that
+# @react-native-firebase/app needs at prebuild (and EAS never uploads ignored
+# files). It's not a secret — public identifiers + a client API key that's
+# restricted by bundle id — and its Android twin (google-services.json) has
+# always been committed. Real secrets stay ignored above.
 
 # IDE
 .vscode/
