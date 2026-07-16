@@ -470,11 +470,16 @@ service cloud.firestore {
     // Doc id = "{followerId}_{followeeId}". You manage only your own follows.
     match /follows/{followId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() &&
-                       request.resource.data.followerId == request.auth.uid;
+      // Following is IDEMPOTENT: followUser does setDoc() on the deterministic id
+      // "{follower}_{followee}", which is an UPDATE (not a create) whenever the
+      // doc already exists — so create and update must share one guard, or
+      // re-following your own follow gets denied. The id must match the payload,
+      // so followeeId can never drift from the document it's keyed by.
+      allow create, update: if isSignedIn() &&
+                               request.resource.data.followerId == request.auth.uid &&
+                               followId == request.auth.uid + "_" + request.resource.data.followeeId;
       allow delete: if isSignedIn() &&
                        resource.data.followerId == request.auth.uid;
-      allow update: if false;
     }
 
     // Moderation reports (off-platform payment attempts, host user blocks).
