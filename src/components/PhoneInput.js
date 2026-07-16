@@ -3,7 +3,7 @@
  * (flag + dial code, searchable, default +52 Mexico). Pure JS — no native dep.
  * Emits an E.164-ish string ("+52551234567") via onChangeText, or "" when empty.
  */
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -12,10 +12,16 @@ import {
   Modal,
   FlatList,
   StyleSheet,
+  Keyboard,
+  Platform,
+  Dimensions,
 } from "react-native";
+import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import { COUNTRIES, flagEmoji, parsePhone } from "../utils/countries";
+
+const WIN_H = Dimensions.get("window").height;
 
 export default function PhoneInput({
   value,
@@ -31,6 +37,28 @@ export default function PhoneInput({
   const [number, setNumber] = useState(initial.number);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [kbHeight, setKbHeight] = useState(0);
+  // Raw context (not the useSafeAreaInsets hook) so it returns null — not throws —
+  // outside a SafeAreaProvider (e.g. in tests). Default to 0.
+  const insets = useContext(SafeAreaInsetsContext);
+
+  // Keyboard-aware picker (BUG 39): lift the sheet above the keyboard so the last
+  // country results aren't hidden. iOS + Android; resets on close and respects
+  // the safe-area bottom inset when the keyboard is down.
+  useEffect(() => {
+    if (!pickerOpen) {
+      setKbHeight(0);
+      return undefined;
+    }
+    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const s1 = Keyboard.addListener(showEvt, (e) => setKbHeight(e?.endCoordinates?.height || 0));
+    const s2 = Keyboard.addListener(hideEvt, () => setKbHeight(0));
+    return () => {
+      s1.remove();
+      s2.remove();
+    };
+  }, [pickerOpen]);
 
   const emit = (c, n) => {
     const digits = n.replace(/[^0-9]/g, "");
@@ -86,8 +114,16 @@ export default function PhoneInput({
         animationType="slide"
         onRequestClose={() => setPickerOpen(false)}
       >
-        <View style={styles.backdrop}>
-          <View style={styles.sheet}>
+        <View style={[styles.backdrop, { paddingBottom: kbHeight }]}>
+          <View
+            style={[
+              styles.sheet,
+              {
+                paddingBottom: kbHeight > 0 ? 12 : Math.max(insets?.bottom ?? 0, 20),
+                maxHeight: (kbHeight > 0 ? WIN_H - kbHeight : WIN_H * 0.85) - ((insets?.top ?? 0) + 24),
+              },
+            ]}
+          >
             <View style={styles.sheetHeader}>
               <Text style={[styles.sheetTitle, { color: colors.text }]}>{t("phoneInput.country")}</Text>
               <TouchableOpacity onPress={() => setPickerOpen(false)}>
@@ -165,8 +201,7 @@ function createStyles(colors, isDark) {
       borderTopRightRadius: 20,
       paddingHorizontal: 20,
       paddingTop: 16,
-      paddingBottom: 20,
-      maxHeight: "80%",
+      // paddingBottom + maxHeight are set dynamically (keyboard-aware, BUG 39).
     },
     sheetHeader: {
       flexDirection: "row",
