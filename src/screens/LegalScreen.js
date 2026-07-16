@@ -26,7 +26,6 @@ import {
 const LEGAL_VERSION = "2026-07-07";
 import LegalDocumentModal from "../components/LegalDocumentModal";
 
-// Legal documents are imported from assets/legal/
 
 export default function LegalScreen({ navigation }) {
   const { colors, isDark } = useTheme();
