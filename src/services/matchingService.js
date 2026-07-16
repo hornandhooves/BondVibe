@@ -32,6 +32,15 @@ import {
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
 import { calculateCompatibility, isBigFive } from "../utils/personalityScoring";
+import {
+  isProfileComplete,
+  sanitizeIds,
+  FUNNY_TAG_IDS,
+  LANGUAGES,
+  LEARNING,
+  GROUP_PREFS,
+  INDUSTRIES,
+} from "../constants/matchTags";
 
 // ---- Enums (mirror §4 of the handoff) -------------------------------------
 export const MATCH_TYPES = ["friend", "professional", "romantic"];
@@ -52,6 +61,28 @@ export const MATCH_TYPE_COLORS = {
   friend: { fg: "#1F8A6E", bg: "#E1F5EC" },
   professional: { fg: "#4F5BD5", bg: "#E6EAFB" },
   romantic: { fg: "#E91E8C", bg: "#FBE4F1" },
+  brand: { fg: "#7C3AED", bg: "#EDE4FC" }, // v2 "IA / nuevo" accent
+};
+
+// ---- v2 profile sanitizers (P0) — structured, clamped, no free text ---------
+const sanitizeEnergy = (e) => {
+  if (!e || typeof e !== "object") return null;
+  const a = Number(e.adventure);
+  const s = Number(e.social);
+  if (!Number.isFinite(a) || !Number.isFinite(s)) return null;
+  const clamp = (n) => Math.max(0, Math.min(100, Math.round(n)));
+  return { adventure: clamp(a), social: clamp(s) };
+};
+const sanitizePro = (p) => {
+  if (!p || typeof p !== "object") return null;
+  const str = (v) => (typeof v === "string" ? v.trim().slice(0, 120) : "");
+  const out = {
+    role: str(p.role),
+    industry: INDUSTRIES.includes(p.industry) ? p.industry : null,
+    offer: str(p.offer),
+    seek: str(p.seek),
+  };
+  return out.role || out.industry || out.offer || out.seek ? out : null;
 };
 
 // ---- Helpers ---------------------------------------------------------------
@@ -139,14 +170,20 @@ export const saveMatchProfile = async (eventId, profile) => {
         displayName: profile.displayName ?? u.fullName ?? u.name ?? "Guest",
         age: profile.age ?? null,
         bio: profile.bio ?? "",
-        interests: profile.interests ?? [],
+        interests: profile.interests ?? [], // catalog ids (new picker) or legacy free text
         profession: profile.profession ?? u.profession ?? "",
-        languages: profile.languages ?? [],
+        languages: sanitizeIds(profile.languages, LANGUAGES),
         lookingFor: profile.lookingFor ?? [],
         icebreaker: profile.icebreaker ?? "",
         available: profile.available ?? true,
         visibility: profile.visibility ?? "everyone",
         gender: profile.gender ?? u.gender ?? null,
+        // v2 expanded profile (P0) — structured tags, no free text / no emoji.
+        energy: sanitizeEnergy(profile.energy),
+        groupPref: GROUP_PREFS.includes(profile.groupPref) ? profile.groupPref : null,
+        funnyTags: sanitizeIds(profile.funnyTags, FUNNY_TAG_IDS),
+        learning: sanitizeIds(profile.learning, LEARNING),
+        pro: sanitizePro(profile.pro),
         // Denormalized personality snapshot for compatibility ranking.
         personality: isBigFive(u.personality) ? u.personality : null,
         consentAt: profile.consentAt ?? serverTimestamp(),
@@ -154,7 +191,27 @@ export const saveMatchProfile = async (eventId, profile) => {
       },
       { merge: true }
     );
-    return { success: true };
+    // Mirror the gate state onto the user doc (v2): consent + whether the profile
+    // is complete enough to participate. Server rules read users/{uid}.matchmaking.
+    const complete = isProfileComplete({
+      lookingFor: profile.lookingFor,
+      interests: profile.interests,
+      funnyTags: profile.funnyTags,
+      energy: profile.energy,
+      groupPref: profile.groupPref,
+    });
+    await setDoc(
+      doc(db, "users", me),
+      {
+        matchmaking: {
+          consentAt: u.matchmaking?.consentAt ?? profile.consentAt ?? serverTimestamp(),
+          profileComplete: complete,
+          enabled: u.matchmaking?.enabled ?? true,
+        },
+      },
+      { merge: true }
+    );
+    return { success: true, profileComplete: complete };
   } catch (e) {
     console.error("❌ saveMatchProfile:", e);
     return { success: false, error: e.message };
@@ -183,6 +240,51 @@ export const leaveMatching = async (eventId) => {
     return { success: true };
   } catch (e) {
     console.error("❌ leaveMatching:", e);
+    return { success: false, error: e.message };
+  }
+};
+
+// ---- Matchmaking state (v2 user-level gate) --------------------------------
+// users/{uid}.matchmaking = { consentAt, profileComplete, enabled, freeTrialEndsAt?, plan? }.
+// consent + profileComplete are the mandatory gate; server rules read this.
+
+/** The current user's matchmaking state, or null. */
+export const getMatchmaking = async () => {
+  const me = uid();
+  if (!me) return null;
+  const s = await getDoc(doc(db, "users", me));
+  return (s.exists() && s.data().matchmaking) || null;
+};
+
+/** Record consent (the mandatory first gate step). Idempotent — never clears a
+ *  prior consentAt; sets enabled. */
+export const setMatchmakingConsent = async () => {
+  const me = uid();
+  if (!me) return { success: false };
+  try {
+    const s = await getDoc(doc(db, "users", me));
+    const mm = (s.exists() && s.data().matchmaking) || {};
+    await setDoc(
+      doc(db, "users", me),
+      { matchmaking: { ...mm, consentAt: mm.consentAt ?? serverTimestamp(), enabled: true } },
+      { merge: true }
+    );
+    return { success: true };
+  } catch (e) {
+    console.error("❌ setMatchmakingConsent:", e);
+    return { success: false, error: e.message };
+  }
+};
+
+/** Patch matchmaking settings (enabled / paused / crossCommunity …). */
+export const updateMatchmaking = async (patch) => {
+  const me = uid();
+  if (!me) return { success: false };
+  try {
+    await setDoc(doc(db, "users", me), { matchmaking: patch || {} }, { merge: true });
+    return { success: true };
+  } catch (e) {
+    console.error("❌ updateMatchmaking:", e);
     return { success: false, error: e.message };
   }
 };

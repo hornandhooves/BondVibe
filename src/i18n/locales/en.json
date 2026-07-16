@@ -902,6 +902,15 @@
       "couldntCreate": "Couldn't create poll"
     }
   },
+  "matchmaking": {
+    "type": { "friend": "Friends", "professional": "Professional", "romantic": "Romantic", "brand": "New" },
+    "groupPref": { "one_on_one": "One-on-one", "small_group": "Small group", "group": "Big group" },
+    "interest": { "music": "Music", "travel": "Travel", "fitness": "Fitness", "food": "Food", "art": "Art", "gaming": "Gaming", "reading": "Reading", "movies": "Movies", "photography": "Photography", "hiking": "Hiking", "yoga": "Yoga", "tech": "Tech", "fashion": "Fashion", "cooking": "Cooking", "sports": "Sports", "dancing": "Dancing", "coffee": "Coffee", "nature": "Nature", "volunteering": "Volunteering", "startups": "Startups" },
+    "funnyTag": { "trouble_junky": "Trouble junky", "wild_runner": "Wild runner", "infinite_meditator": "Infinite meditator", "coffee_addict": "Coffee addict", "night_owl": "Night owl", "book_worm": "Book worm", "taco_hunter": "Taco hunter", "dance_floor_regular": "Dance floor regular", "cliff_chaser": "Cliff chaser", "dog_person": "Dog person" },
+    "language": { "es": "Spanish", "en": "English", "pt": "Portuguese", "fr": "French", "de": "German", "it": "Italian", "zh": "Chinese", "ja": "Japanese", "ko": "Korean" },
+    "learning": { "language": "A language", "instrument": "An instrument", "coding": "Coding", "cooking": "Cooking", "art": "Art", "sport": "A sport", "business": "Business", "mindfulness": "Mindfulness" },
+    "industry": { "tech": "Tech", "design": "Design", "finance": "Finance", "health": "Health", "education": "Education", "marketing": "Marketing", "hospitality": "Hospitality", "arts": "Arts", "legal": "Legal", "realestate": "Real estate", "nonprofit": "Nonprofit", "other": "Other" }
+  },
   "matching": {
     "plusActivated": {
       "title": "You're Kinlo Plus!",
@@ -1016,6 +1025,20 @@
       "icebreakerPlaceholder": "Ask me about…",
       "whoCanSee": "Who can see you?",
       "saveAndSee": "Save & see who was here",
+      "energyLabel": "Your energy",
+      "energyChill": "Chill",
+      "energyAdventurous": "Adventurous",
+      "energyIntrovert": "Introvert",
+      "energyExtrovert": "Extrovert",
+      "groupPrefLabel": "How you like to meet",
+      "interestsLabel": "Interests",
+      "funnyTagsLabel": "Funny tags",
+      "languagesLabel": "Languages",
+      "learningLabel": "Learning",
+      "proLabel": "Professional (optional)",
+      "proRolePlaceholder": "Your role (e.g. Product designer)",
+      "incompleteTitle": "Complete your profile",
+      "incompleteMsg": "Pick what you're looking for, at least 3 interests, a funny tag, your energy and how you like to meet.",
       "couldntSaveTitle": "Couldn't save",
       "tryAgain": "Please try again.",
       "pickLookingForTitle": "Pick what you're looking for",

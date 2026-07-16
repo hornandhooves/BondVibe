@@ -9,6 +9,7 @@ import { View, Text, ScrollView, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../contexts/ThemeContext";
 import { MatchHeader, PrimaryButton, SecondaryButton } from "./matchUi";
+import { setMatchmakingConsent } from "../../services/matchingService";
 
 export default function MatchConsentScreen({ route, navigation }) {
   const { colors } = useTheme();
@@ -48,9 +49,12 @@ export default function MatchConsentScreen({ route, navigation }) {
       <View style={styles.actions}>
         <PrimaryButton
           label={t("matching.consent.agree")}
-          onPress={() =>
-            navigation.replace("MatchProfile", { eventId, eventTitle })
-          }
+          onPress={async () => {
+            // v2 gate: record consent (users/{uid}.matchmaking.consentAt) BEFORE
+            // the profile — the rules require it to create a match profile.
+            await setMatchmakingConsent();
+            navigation.replace("MatchProfile", { eventId, eventTitle });
+          }}
         />
         <SecondaryButton label={t("matching.consent.notNow")} onPress={() => navigation.goBack()} />
       </View>

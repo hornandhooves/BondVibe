@@ -59,6 +59,21 @@ service cloud.firestore {
              exists(/databases/$(database)/documents/events/$(eventId)/checkins/$(request.auth.uid));
     }
 
+    // Matchmaking v2 gate (P0). A user's matchmaking state lives at
+    // users/{uid}.matchmaking = { consentAt, profileComplete, enabled }.
+    // Consent is the minimum to opt in; consent + a complete profile + enabled is
+    // the full gate for v2 surfaces (curated sets, cross-community — later phases).
+    function matchmakingConsented(u) {
+      return isSignedIn() &&
+             get(/databases/$(database)/documents/users/$(u)).data
+               .get('matchmaking', {}).get('consentAt', null) != null;
+    }
+    function matchmakingActive(u) {
+      let mm = get(/databases/$(database)/documents/users/$(u)).data.get('matchmaking', {});
+      return isSignedIn() && mm.get('consentAt', null) != null &&
+             mm.get('profileComplete', false) == true && mm.get('enabled', true) == true;
+    }
+
     // An attendee who is NOT the creator — only these users may rate an event.
     function isEventAttendeeNotCreator(eventId) {
       let eventData = get(/databases/$(database)/documents/events/$(eventId)).data;
@@ -689,9 +704,16 @@ service cloud.firestore {
                       (isCheckedIn(eventId) &&
                        resource.data.available == true &&
                        resource.data.visibility != 'hidden'));
-      allow create, update: if isSignedIn() &&
-                               request.auth.uid == userId &&
-                               request.resource.data.userId == request.auth.uid;
+      // v2 gate: opting in (creating a profile) requires prior consent
+      // (users/{uid}.matchmaking.consentAt, written by MatchConsent). Updates to
+      // an existing profile stay ungated so legacy profiles keep working.
+      allow create: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       request.resource.data.userId == request.auth.uid &&
+                       matchmakingConsented(request.auth.uid);
+      allow update: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       request.resource.data.userId == request.auth.uid;
       allow delete: if isSignedIn() && request.auth.uid == userId;
     }
 
