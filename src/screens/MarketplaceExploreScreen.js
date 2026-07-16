@@ -115,12 +115,22 @@ export default function MarketplaceExploreScreen({ navigation }) {
                 <View
                   style={[
                     s.tile,
-                    { backgroundColor: meta.bg, borderColor: active ? meta.fg : "transparent" },
+                    // Selected chip: brand-purple 1.5px border (not the vertical's
+                    // own colour), for all verticals. Exact brand hue per spec.
+                    { backgroundColor: meta.bg, borderColor: active ? "#7C3AED" : "transparent" },
                   ]}
                 >
                   <Icon name={meta.icon} size={22} color={meta.fg} />
                 </View>
-                <Text style={[s.tileLabel, { color: active ? colors.text : colors.textSecondary }]}>
+                <Text
+                  style={[
+                    s.tileLabel,
+                    {
+                      color: active ? colors.text : colors.textSecondary,
+                      fontFamily: active ? FONTS.bodyBold : FONTS.bodySemibold,
+                    },
+                  ]}
+                >
                   {t(`marketplace.vertical.${v}`)}
                 </Text>
               </TouchableOpacity>
