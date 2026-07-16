@@ -694,11 +694,16 @@ service cloud.firestore {
       allow write: if false; // recordPostEvent (Admin SDK) only
     }
 
-    // Moments (Wall v2 · P3) — ephemeral 24h media. Owner writes only their own
-    // items (with the required expiresAt); any signed-in user reads (the feed
-    // filters to followed authors + non-expired). Expiry is enforced server-side
-    // by purgeExpiredMoments; owner (or server) may delete early.
-    match /moments/{ownerId}/items/{itemId} {
+    // Moments (Wall v2 · P3) — ephemeral 24h media at
+    // moments/{ownerId}/momentItems/{itemId}. Owner writes only their own items
+    // (with the required expiresAt); any signed-in user reads (the feed filters
+    // to followed authors + non-expired). Expiry is enforced server-side by
+    // purgeExpiredMoments; owner (or server) may delete early.
+    //
+    // The subcollection is named `momentItems`, NOT `items`: the name is the
+    // collection-group key, so a generic one would (a) let this rule leak to any
+    // other `items` collection and (b) let the purge sweep it.
+    match /moments/{ownerId}/momentItems/{itemId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() &&
                        request.auth.uid == ownerId &&
@@ -706,6 +711,13 @@ service cloud.firestore {
                        request.resource.data.expiresAt is timestamp;
       allow update: if false;
       allow delete: if isSignedIn() && request.auth.uid == ownerId;
+    }
+    // The Moments row queries ACROSS users with collectionGroup("momentItems").
+    // A collection-group read is NOT covered by the nested match above — it needs
+    // this recursive wildcard (CLAUDE.md §4). Read-only; every write still goes
+    // through the owner-scoped rule.
+    match /{path=**}/momentItems/{itemId} {
+      allow read: if isSignedIn();
     }
 
     // Direct messages — thread id is the sorted uid pair; only the two

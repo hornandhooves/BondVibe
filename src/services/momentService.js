@@ -1,6 +1,6 @@
 /**
  * Moments — ephemeral 24h media (Wall v2 · P3). Reuses the post-image upload
- * pipeline. Each item lives at moments/{uid}/items/{id} with an `expiresAt`
+ * pipeline. Each item lives at moments/{uid}/momentItems/{id} with an `expiresAt`
  * 24h out; a scheduled Cloud Function (purgeExpiredMoments) deletes expired
  * items server-side, and clients also filter by expiresAt so nothing stale
  * shows even between purges. Never a client-only TTL.
@@ -36,7 +36,7 @@ export const addMoment = async (localUri, mediaType = "photo") => {
     const url = await uploadPostImage(me, localUri);
     const uSnap = await getDoc(doc(db, "users", me));
     const u = uSnap.exists() ? uSnap.data() : {};
-    await addDoc(collection(db, "moments", me, "items"), {
+    await addDoc(collection(db, "moments", me, "momentItems"), {
       authorId: me,
       authorName: u.fullName || u.name || "Someone",
       authorAvatar: u.avatar ?? null,
@@ -66,7 +66,7 @@ export const getMomentsFeed = async () => {
     const allowed = new Set([me, ...following].filter((id) => !blocked.includes(id)));
     const snap = await getDocs(
       query(
-        collectionGroup(db, "items"),
+        collectionGroup(db, "momentItems"),
         where("expiresAt", ">", Timestamp.now()),
         orderBy("expiresAt", "asc"),
         qLimit(200)
@@ -100,7 +100,7 @@ export const deleteMoment = async (momentId) => {
   const me = uid();
   if (!me || !momentId) return { success: false };
   try {
-    await deleteDoc(doc(db, "moments", me, "items", momentId));
+    await deleteDoc(doc(db, "moments", me, "momentItems", momentId));
     return { success: true };
   } catch (e) {
     console.error("❌ deleteMoment:", e);

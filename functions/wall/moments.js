@@ -1,6 +1,6 @@
 /**
  * Wall v2 · Moments purge (P3). Ephemeral 24h media is deleted SERVER-SIDE — not
- * merely hidden by the client. Runs hourly over the `items` collection group and
+ * merely hidden by the client. Runs hourly over the `momentItems` collection group and
  * removes anything past its expiresAt. (A native Firestore TTL policy on
  * items.expiresAt can replace this later; the scheduled purge guarantees
  * deletion regardless.)
@@ -15,7 +15,7 @@ const purgeExpiredMoments = onSchedule(
   async () => {
     const now = admin.firestore.Timestamp.now();
     const snap = await db
-      .collectionGroup("items")
+      .collectionGroup("momentItems")
       .where("expiresAt", "<", now)
       .limit(400)
       .get();

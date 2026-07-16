@@ -346,7 +346,7 @@
       ]
     },
     {
-      "collectionGroup": "items",
+      "collectionGroup": "momentItems",
       "fieldPath": "expiresAt",
       "indexes": [
         { "queryScope": "COLLECTION_GROUP", "order": "ASCENDING" },
