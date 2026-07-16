@@ -67,19 +67,21 @@ sistema** (SF Symbols/Material) en la UI. Avatares = fotos reales.
 5. Sin `BlurView` como sistema (existe `surfaceGlass` para casos puntuales, no como estética global).
 6. Temas: `const colors = isDark ? AURORA : WARMTH` (vía `ThemeContext`).
 
-## Deuda de diseño
-`src/components/modern/` (`ModernButton.js`, `GlassCard.js`) **fue eliminado** — era código
-muerto de la estética vieja, sin importar por ninguna pantalla. Las pantallas
-`ModernLoginScreen` / `ModernHomeScreen` / `ModernEventFeed` que citaba el doc viejo nunca
-existieron. Si alguien crea equivalentes, deben nacer con este sistema (Warmth/Aurora ·
-Bold-Pop).
+## Deuda de diseño — saldada
+El sistema viejo ya no existe en el código. Se eliminaron:
+- `src/components/modern/` (`ModernButton.js`, `GlassCard.js`) — código muerto de la
+  estética retirada, sin importar por ninguna pantalla.
+- `src/constants/DesignSystem.js` — el módulo de tokens paralelo. Sus `Colors` derivaban de
+  `theme-tokens`, pero su `Spacing` era rejilla 8pt, sus `Radius` no eran los `RADII` y su
+  `Typography` fijaba `fontWeight` **sin `fontFamily`** (fuente del sistema). Sus únicos
+  consumidores eran los dos componentes de arriba.
 
-**Huérfano restante:** `src/constants/DesignSystem.js` — ya no lo importa nadie (sus únicos
-consumidores eran los dos componentes borrados). Sus `Colors` sí derivan de `theme-tokens`,
-pero su `Spacing` es rejilla 8pt (no la de 4pt), sus `Radius` no son los `RADII`, y su
-`Typography` usa solo `fontWeight` **sin `fontFamily`** → fuente del sistema, justo lo que
-este doc prohíbe. **No lo importes**: usa `theme-tokens` (`TYPE`, `SPACING`, `RADII`).
-Candidato a borrado.
+Las pantallas `ModernLoginScreen` / `ModernHomeScreen` / `ModernEventFeed` que citaba el doc
+viejo nunca existieron.
+
+**Única fuente de tokens: `src/constants/theme-tokens.js`** (`WARMTH`, `AURORA`, `BRAND`,
+`FONTS`, `TYPE`, `SPACING`, `RADII`, `ELEVATION`, `AI`, `MATCH_COLORS`). No hay paletas ni
+escalas duplicadas — si creas un componente, sale de ahí.
 
 ---
 **Versión real:** Warmth/Aurora · Bold-Pop. Fuente: `src/constants/theme-tokens.js`. Si un doc dice neumorfismo/glass/indigo/System-font, está desactualizado.
