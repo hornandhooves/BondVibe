@@ -75,6 +75,10 @@ const matchGroups = require("./matching/groups");
 exports.formMatchGroups = matchGroups.formMatchGroups;
 exports.joinMatchGroup = matchGroups.joinMatchGroup;
 
+// Wall v2 — Descubre: affinity people discovery + server-side freemium gate (P1).
+const wallDiscover = require("./wall/discover");
+exports.discoverForYou = wallDiscover.discoverForYou;
+
 // Social layer — server-maintained post counts.
 const social = require("./social/social");
 exports.onPostLikeWritten = social.onPostLikeWritten;

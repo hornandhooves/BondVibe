@@ -270,7 +270,20 @@
     "tabs": { "forYou": "Para ti", "following": "Siguiendo", "discover": "Descubre" },
     "discover": {
       "soonTitle": "Descubrir está en camino",
-      "soonBody": "Únete al matchmaking y te sugeriremos personas, comunidades y eventos por afinidad real — nunca un directorio global."
+      "soonBody": "Únete al matchmaking y te sugeriremos personas, comunidades y eventos por afinidad real — nunca un directorio global.",
+      "people": "Personas con tu vibra",
+      "communities": "Comunidades que te quedan",
+      "events": "Eventos para ti",
+      "noPeople": "Aún no hay matches — a medida que más gente de tus comunidades se una, aparecerán aquí.",
+      "memberCount_one": "{{count}} miembro",
+      "memberCount_other": "{{count}} miembros",
+      "optInTitle": "Activa Descubre",
+      "optInBody": "Únete al matchmaking para conocer gente por afinidad real — la que sí verás en persona."
+    },
+    "upsell": {
+      "morePeople_one": "+{{count}} más con tu vibra",
+      "morePeople_other": "+{{count}} más con tu vibra",
+      "unlockPlus": "Desbloquea a todos con Kinlo Plus"
     },
     "empty": {
       "text": "Sigue a otras personas y comparte tu primera publicación para llenar tu muro.",

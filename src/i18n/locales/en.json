@@ -270,7 +270,20 @@
     "tabs": { "forYou": "For you", "following": "Following", "discover": "Discover" },
     "discover": {
       "soonTitle": "Discovery is on its way",
-      "soonBody": "Opt into matchmaking and we'll suggest people, communities and events by real affinity — never a global directory."
+      "soonBody": "Opt into matchmaking and we'll suggest people, communities and events by real affinity — never a global directory.",
+      "people": "People with your vibe",
+      "communities": "Communities you might like",
+      "events": "Events for you",
+      "noPeople": "No matches yet — as more people in your communities opt in, they'll show up here.",
+      "memberCount_one": "{{count}} member",
+      "memberCount_other": "{{count}} members",
+      "optInTitle": "Turn on Discover",
+      "optInBody": "Opt into matchmaking to meet people by real affinity — the ones you'll actually see in person."
+    },
+    "upsell": {
+      "morePeople_one": "+{{count}} more with your vibe",
+      "morePeople_other": "+{{count}} more with your vibe",
+      "unlockPlus": "Unlock everyone with Kinlo Plus"
     },
     "empty": {
       "text": "Follow people and share your first post to fill your feed.",
