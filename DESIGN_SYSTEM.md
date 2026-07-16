@@ -1,191 +1,82 @@
-# Kinlo 2025 - Design System
+# Kinlo — Design System (fuente de verdad: `src/constants/theme-tokens.js`)
 
-## 🎨 Design Philosophy
+> Este documento refleja lo que la app **realmente** usa. Reemplaza cualquier
+> "Kinlo 2025 Design System" con neumorfismo/glassmorphism/indigo — eso NO es congruente
+> con el código. Sistema real: **Bold-Pop / Clean**, plano, cálido, con firma morada→magenta.
+>
+> Verificado token por token contra `theme-tokens.js` (WARMTH, AURORA, BRAND, TYPE,
+> SPACING, RADII, AI, MATCH_COLORS, ELEVATION). Si algo aquí y el código difieren,
+> **gana el código** — actualiza este doc.
 
-Kinlo's 2025 design system combines **neumorphism** with **glassmorphism** to create an ultra-modern, sophisticated interface that feels both futuristic and approachable.
+## Filosofía
+Plano y con carácter ("Bold-Pop"), no neumorfismo ni glassmorphism. Tarjetas planas con
+**borde fino** y sombra mínima; el color y la tipografía cargan la personalidad. Dos temas
+del mismo sistema: **Warmth (light, primario)** y **Aurora (dark)**.
 
-## Color Palette
+## Tipografía (NO System/Inter)
+- **Space Grotesk** — display, wordmark, números, headers. Pesos: `700Bold`, `600SemiBold` (máx 700).
+- **Plus Jakarta Sans** — UI/body. Pesos: 400/500/600/700/800.
+- Ramp (`TYPE`): displayLg 40 · display 28 · titleLg 20 · title 18 · body 14.5 · label 13 ·
+  eyebrow 11 (uppercase, tracking .8, en Space Grotesk) · caption 11.5.
+- Montos/números: Space Grotesk con `letterSpacing -0.5`.
 
-### Dark Mode (Primary)
-- **Background**: `#0A0E27` - Deep space blue
-- **Surface**: `#131829` - Elevated dark blue
-- **Primary**: `#6366F1` - Electric indigo
-- **Secondary**: `#EC4899` - Vibrant pink
-- **Accent**: `#06B6D4` - Neon cyan
+## Color — Warmth (light, primario)
+- background `#F1F0F4` · surface `#FFFFFF` · sunken `#F7F5FB` · frame `#DDDAE4`
+- text `#1a1d29` · textSecondary `#5b6072` · textTertiary `#8a8f9c`
+- **primary/brand `#7C3AED`** (light `#9461f7`, dark `#6320c4`) · brandSoft `#F1E9FE`
+- secondary/success `#1F8A6E` · successBg `#E1F5EC` · warning `#B45309` · error `#c25b5b`
+- border `#EEEDF2` · borderStrong `#DDDAE4` · dark surface puntual `#160F22` · lilac `#C792EA`
 
-### Gradients
-- **Primary Gradient**: `#667EEA → #764BA2`
-- **Accent Gradient**: `#06B6D4 → #3B82F6`
-- **Success**: `#10B981 → #059669`
+## Color — Aurora (dark)
+- background `#160F22` · surface `#1E1438` · surfaceElevated `#261A48` · sunken `#12092E`
+- text `#F0EEFB` · primary `#9461f7` · secondary `#1F8A6E` · success `#3DE0A0`
+- border `rgba(255,255,255,.08)` · warning `#FFB23D` · error `#FF6B6B`
 
-## Typography
+## Gradiente de marca (mismo en ambos temas)
+`#7C3AED → #C026D3 → #FF3E9A` (135°). Cálido opcional: `#E91E8C → #F0573D`.
+Úsalo en CTAs primarios y momentos hero — **no** el `#667EEA→#764BA2` del doc viejo.
 
-### Font Stack
-- Primary: System Default (San Francisco on iOS, Roboto on Android)
-- Fallback: Inter, Satoshi, General Sans
+## Superficies IA (firma "esto es Claude", oscuras en ambos temas)
+`AI.bg #160F22` · panel gradiente `#2A1E3D → #42265C` · accent `#C792EA` · texto `#e6ddf2` · lima `#C3E88D`.
 
-### Scale
-- **H1**: 32px, weight 800, -0.5 tracking
-- **H2**: 28px, weight 700, -0.3 tracking
-- **H3**: 24px, weight 700, -0.2 tracking
-- **H4**: 20px, weight 600
-- **Body**: 16px, weight 400
-- **Caption**: 14px, weight 400
-- **Small**: 12px, weight 500
+## Colores por tipo de match
+friend `#1F8A6E`/`#E1F5EC` · professional `#4F5BD5`/`#E6EAFB` · romantic `#E91E8C`/`#FBE4F1`.
+Avatar pastels: `#ECE6FB #FBE4F1 #E6EAFB #E1F5EC #FBEDE4`.
 
-## Spacing System
+## Espaciado (4pt base, NO 8pt)
+`SPACING`: xs 4 · sm 8 · md 12 · lg 16 · xl 20 · xxl 24 · xxxl 32 · **screen 20** · **card 16**.
+Usa los tokens, nunca números ad-hoc.
 
-8pt Grid System:
-- **XS**: 4px
-- **SM**: 8px
-- **MD**: 16px
-- **LG**: 24px
-- **XL**: 32px
-- **XXL**: 48px
+## Radios
+`RADII`: tile 12 · card 18 · cardLg 22 · button 27 · sheet 28 · pill 999.
 
-## Border Radius
+## Elevación (sombra mínima, cross-platform)
+`ELEVATION.card` = sombra muy sutil (`#000` y1 r3 opacity .06 / Android elevation 2) — **el default de tarjetas casi no tiene sombra; en su lugar borde `#EEEDF2`**.
+`floatingBrand` (CTA morado, y9 r22 opacity .28 / Android 8) y `floatingNeutral` (y10 r30 opacity .14 / Android 10) solo en flotantes/CTA.
+No hay "glow por todos lados" ni glassmorphism como sistema.
 
-- **XS**: 8px
-- **SM**: 12px
-- **MD**: 16px
-- **LG**: 20px
-- **XL**: 24px
-- **Full**: 9999px (circular)
+## Iconografía
+Set de íconos **a medida de Kinlo** (`src/components/Icon.js`, SVG). **Sin emoji ni íconos de
+sistema** (SF Symbols/Material) en la UI. Avatares = fotos reales.
 
-## Shadows & Elevation
+## Reglas prácticas
+1. `import { WARMTH, AURORA, FONTS, TYPE, SPACING, RADII, ELEVATION, AI, MATCH_COLORS } from '../constants/theme-tokens'` — nunca hardcodear.
+2. Tarjeta = surface + `border 1px` (`colors.border`), radio `RADII.card`, sin sombra (o `ELEVATION.card`).
+3. CTA primario = gradiente de marca (`BRAND.gradient`) + `ELEVATION.floatingBrand`.
+4. Texto siempre con `TYPE.*` + color del tema (`colors.text` / `colors.textSecondary`).
+5. Sin `BlurView` como sistema (existe `surfaceGlass` para casos puntuales, no como estética global).
+6. Temas: `const colors = isDark ? AURORA : WARMTH` (vía `ThemeContext`).
 
-### Shadow Levels
-- **SM**: Subtle lift (4px blur)
-- **MD**: Standard cards (8px blur)
-- **LG**: Modals (16px blur)
-- **XL**: Floating elements (24px blur)
-- **Glow**: Primary color glow effect
+## Deuda de diseño (estética vieja — alinear en el futuro, NO usar como referencia)
+Componentes que aún reflejan el sistema viejo (glassmorphism/indigo/System-font). **No
+importados por ninguna pantalla hoy** (código muerto); listados para alineación o borrado —
+no se tocan en este cambio de solo-documentación:
+- `src/components/modern/ModernButton.js`
+- `src/components/modern/GlassCard.js`
 
-## Components
-
-### Buttons
-- **Primary**: Gradient background with glow
-- **Secondary**: Solid color
-- **Ghost**: Transparent with border
-- **States**: Scale animation on press (0.95)
-
-### Cards
-- **Glass Effect**: Blur + semi-transparent background
-- **Border**: 1px subtle border
-- **Shadow**: Elevated with depth
-
-### Input Fields
-- **Background**: Surface color
-- **Border**: 1px border
-- **Focus**: Primary color border + glow
-- **Icons**: 20px, left-aligned
-
-### Badges & Pills
-- **Shape**: Fully rounded (pill)
-- **Background**: Semi-transparent with blur
-- **Border**: Optional glow for active state
-
-## Animations
-
-### Timing
-- **Fast**: 150ms
-- **Normal**: 250ms
-- **Slow**: 350ms
-- **Very Slow**: 500ms
-
-### Easing
-- Spring animations for touch interactions
-- Smooth transitions for state changes
-
-## Navigation
-
-### Bottom Tab Bar
-- **Position**: Floating, 20px from bottom
-- **Background**: Glassmorphism with blur
-- **Active State**: Gradient pill
-- **Icons**: 24px for inactive, 20px for active
-
-### Screen Transitions
-- **Default**: Slide from right
-- **Modal**: Fade + scale
-
-## Micro-interactions
-
-### Hover/Press States
-- Scale: 0.95 on press
-- Ripple effect on touch
-- Smooth color transitions
-
-### Loading States
-- Skeleton screens with shimmer
-- Spinner with primary color
-- Progress bars with gradient
-
-## Accessibility
-
-- Minimum touch target: 44x44px
-- Contrast ratio: WCAG AAA compliant
-- Text size: Scales with system settings
-- VoiceOver/TalkBack support
-
-## Responsive Behavior
-
-### Mobile First
-- Optimized for 375px - 428px width
-- Touch-friendly spacing
-- Bottom navigation for thumb reach
-
-### Tablet
-- Expanded layouts
-- Side navigation option
-- Multi-column grids
-
-## Best Practices
-
-1. **Always use the design system constants**
-```javascript
-   import { Colors, Typography, Spacing, Radius } from '../constants/DesignSystem';
-```
-
-2. **Prefer gradients for primary actions**
-```javascript
-   <LinearGradient colors={['#667EEA', '#764BA2']} />
-```
-
-3. **Use BlurView for glassmorphism**
-```javascript
-   <BlurView intensity={20} tint="dark" />
-```
-
-4. **Implement micro-animations**
-```javascript
-   Animated.spring(scaleAnim, { toValue: 0.95 })
-```
-
-5. **Maintain consistent spacing**
-```javascript
-   marginBottom: Spacing.lg // instead of marginBottom: 24
-```
-
-## Component Examples
-
-See the following files for implementation examples:
-- `ModernButton.js` - Button variations
-- `GlassCard.js` - Card components
-- `ModernLoginScreen.js` - Full screen example
-- `ModernHomeScreen.js` - Bento grid layout
-- `ModernEventFeed.js` - List with glassmorphism
-
-## Future Enhancements
-
-- [ ] Dark/Light mode toggle
-- [ ] Custom theme engine
-- [ ] Animation presets library
-- [ ] Component storybook
-- [ ] Design tokens export for Figma
+Las pantallas `ModernLoginScreen` / `ModernHomeScreen` / `ModernEventFeed` que citaba el doc
+viejo **no existen** en el código. Si alguien las crea, deben nacer con este sistema
+(Warmth/Aurora · Bold-Pop), no con el viejo.
 
 ---
-
-**Version**: 2.0.0  
-**Last Updated**: 2025  
-**Maintained by**: Kinlo Team
+**Versión real:** Warmth/Aurora · Bold-Pop. Fuente: `src/constants/theme-tokens.js`. Si un doc dice neumorfismo/glass/indigo/System-font, está desactualizado.

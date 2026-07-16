@@ -69,7 +69,7 @@ Kinlo combate la soledad urbana conectando personas a través de:
 - **State Management**: React Context + Hooks
 - **Payments**: @stripe/stripe-react-native
 - **Notifications**: expo-notifications + Expo Push API
-- **Design System**: Custom glassmorphism components
+- **Design System**: Kinlo Bold-Pop (Warmth/Aurora) — see `DESIGN_SYSTEM.md`
 
 ### Backend
 - **Database**: Firebase Firestore
