@@ -903,6 +903,13 @@
     }
   },
   "matchmaking": {
+    "affinity": {
+      "title": "Why we're showing you this",
+      "underConstructionTitle": "Affinity under construction",
+      "underConstructionBody": "Fill in your profiles to see a real affinity — we never show a made-up number.",
+      "building": "Building",
+      "signal": { "interests": "Shared interests", "intention": "Same intention", "bigfive": "Personality", "context": "Shared context", "format": "How you meet", "industry": "Industry", "complement": "Complementary" }
+    },
     "type": { "friend": "Friends", "professional": "Professional", "romantic": "Romantic", "brand": "New" },
     "groupPref": { "one_on_one": "One-on-one", "small_group": "Small group", "group": "Big group" },
     "interest": { "music": "Music", "travel": "Travel", "fitness": "Fitness", "food": "Food", "art": "Art", "gaming": "Gaming", "reading": "Reading", "movies": "Movies", "photography": "Photography", "hiking": "Hiking", "yoga": "Yoga", "tech": "Tech", "fashion": "Fashion", "cooking": "Cooking", "sports": "Sports", "dancing": "Dancing", "coffee": "Coffee", "nature": "Nature", "volunteering": "Volunteering", "startups": "Startups" },

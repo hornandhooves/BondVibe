@@ -31,7 +31,8 @@ import {
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
-import { calculateCompatibility, isBigFive } from "../utils/personalityScoring";
+import { isBigFive } from "../utils/personalityScoring";
+import { computeAffinity } from "../utils/computeAffinity";
 import {
   isProfileComplete,
   sanitizeIds,
@@ -309,19 +310,21 @@ export const getMatchGrid = async (eventId) => {
     );
     const myProfile = await getMyMatchProfile(eventId);
     const myGender = myProfile?.gender ?? null;
-    const myPersonality = myProfile?.personality ?? null;
 
     return snap.docs
       .map((d) => ({ id: d.id, ...d.data() }))
       .filter((p) => p.userId !== me && p.visibility !== "hidden")
       .filter((p) => passesGenderVisibility(p, myGender))
-      .map((p) => ({
-        ...p,
-        compatibility:
-          isBigFive(myPersonality) && isBigFive(p.personality)
-            ? calculateCompatibility(myPersonality, p.personality)
-            : null,
-      }))
+      .map((p) => {
+        // v2: deterministic multi-signal affinity (P1). The score is computed
+        // here — the AI never produces it. Insufficient signal → under_construction.
+        const affinity = computeAffinity(myProfile, p, "social");
+        return {
+          ...p,
+          affinity,
+          compatibility: affinity.status === "ok" ? affinity.score : null,
+        };
+      })
       .sort((a, b) => (b.compatibility ?? -1) - (a.compatibility ?? -1));
   } catch (e) {
     console.error("❌ getMatchGrid:", e);
