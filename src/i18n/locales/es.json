@@ -2641,19 +2641,24 @@
     "helpText": "Sé honesto/a - no hay respuestas correctas o incorrectas. Tus respuestas nos ayudan a emparejarte con grupos compatibles.",
     "dimensions": {
       "OPENNESS": {
-        "title": "Apertura a la experiencia"
+        "title": "Apertura a la experiencia",
+        "short": "Apertura"
       },
       "CONSCIENTIOUSNESS": {
-        "title": "Responsabilidad"
+        "title": "Responsabilidad",
+        "short": "Responsabilidad"
       },
       "EXTRAVERSION": {
-        "title": "Extraversión"
+        "title": "Extraversión",
+        "short": "Extraversión"
       },
       "AGREEABLENESS": {
-        "title": "Amabilidad"
+        "title": "Amabilidad",
+        "short": "Amabilidad"
       },
       "NEUROTICISM": {
-        "title": "Sensibilidad emocional"
+        "title": "Sensibilidad emocional",
+        "short": "Sensibilidad emocional"
       }
     },
     "band": { "low": "Baja", "mid": "Equilibrada", "high": "Alta" },

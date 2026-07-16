@@ -54,6 +54,11 @@ describe("interpretBigFive — always the five dimensions", () => {
     expect(missing.score).toBe(0);
   });
 
+  it("exposes a SHORT label key for the compact bar row", () => {
+    const r = interpretBigFive(FULL);
+    expect(r[0].shortLabelKey).toBe("personalityQuiz.dimensions.OPENNESS.short");
+  });
+
   it("maps each dimension to its band + i18n keys", () => {
     const r = interpretBigFive(FULL);
     const byKey = Object.fromEntries(r.map((x) => [x.key, x]));
@@ -85,6 +90,15 @@ describe("isInterpretable — a partial quiz is not a reading", () => {
 
 describe("i18n — every (dimension × band) phrase exists in EN and ES", () => {
   const get = (obj, path) => path.split(".").reduce((o, k) => (o == null ? o : o[k]), obj);
+
+  // The bar row renders `short`; a missing one would render the raw key.
+  it.each(BIG_FIVE_KEYS)("%s has a short name in both locales", (dim) => {
+    const path = `personalityQuiz.dimensions.${dim}.short`;
+    expect(typeof get(en, path)).toBe("string");
+    expect(typeof get(es, path)).toBe("string");
+    expect(get(en, path).length).toBeGreaterThan(0);
+    expect(get(es, path).length).toBeGreaterThan(0);
+  });
 
   it.each(BIG_FIVE_KEYS)("%s has low/mid/high copy in both locales", (dim) => {
     for (const band of ["low", "mid", "high"]) {

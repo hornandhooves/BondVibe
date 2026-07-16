@@ -49,7 +49,10 @@ export function interpretBigFive(personality) {
       key,
       score: clampScore(raw),
       band,
+      // Full title for the reading ("Openness to Experience"); short name for the
+      // compact bar row, where the full one would truncate.
       labelKey: `personalityQuiz.dimensions.${key}.title`,
+      shortLabelKey: `personalityQuiz.dimensions.${key}.short`,
       textKey: band ? `personalityQuiz.interpret.${key}.${band}` : null,
       bandLabelKey: band ? `personalityQuiz.band.${band}` : null,
     };

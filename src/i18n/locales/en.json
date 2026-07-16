@@ -2641,19 +2641,24 @@
     "helpText": "Be honest - there are no right or wrong answers. Your responses help us match you with compatible groups.",
     "dimensions": {
       "OPENNESS": {
-        "title": "Openness to Experience"
+        "title": "Openness to Experience",
+        "short": "Openness"
       },
       "CONSCIENTIOUSNESS": {
-        "title": "Conscientiousness"
+        "title": "Conscientiousness",
+        "short": "Conscientiousness"
       },
       "EXTRAVERSION": {
-        "title": "Extraversion"
+        "title": "Extraversion",
+        "short": "Extraversion"
       },
       "AGREEABLENESS": {
-        "title": "Agreeableness"
+        "title": "Agreeableness",
+        "short": "Agreeableness"
       },
       "NEUROTICISM": {
-        "title": "Emotional Sensitivity"
+        "title": "Emotional Sensitivity",
+        "short": "Emotional Sensitivity"
       }
     },
     "band": { "low": "Low", "mid": "Balanced", "high": "High" },

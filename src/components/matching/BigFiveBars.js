@@ -23,8 +23,11 @@ export default function BigFiveBars({ personality, compact = false }) {
     <View style={compact ? null : s.wrap}>
       {rows.map((r) => (
         <View key={r.key} style={s.row}>
-          <Text style={[s.label, { color: colors.textSecondary }]} numberOfLines={1}>
-            {t(r.labelKey)}
+          {/* Short name here — the full title would truncate in this compact row
+              (it lives in the "What this means" reading instead). Two lines are
+              allowed so a longer translation wraps rather than getting cut. */}
+          <Text style={[s.label, { color: colors.textSecondary }]} numberOfLines={2}>
+            {t(r.shortLabelKey)}
           </Text>
           <View style={[s.track, { backgroundColor: colors.sunken }]}>
             <View style={[s.fill, { width: `${r.score}%` }]} />
@@ -40,8 +43,8 @@ function createStyles(colors) {
   return StyleSheet.create({
     wrap: { gap: 2 },
     row: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
-    label: { flex: 0.42, fontFamily: FONTS.bodySemibold, fontSize: 12.5 },
-    track: { flex: 0.48, height: 7, borderRadius: 4, overflow: "hidden" },
+    label: { flex: 0.44, fontFamily: FONTS.bodySemibold, fontSize: 12.5, lineHeight: 16 },
+    track: { flex: 0.46, height: 7, borderRadius: 4, overflow: "hidden" },
     fill: { height: 7, borderRadius: 4, backgroundColor: "#7C3AED" },
     // Numbers = Space Grotesk (design system).
     score: {
