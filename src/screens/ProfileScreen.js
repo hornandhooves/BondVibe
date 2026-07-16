@@ -9,7 +9,6 @@ import {
   TextInput,
   Alert,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import {
@@ -33,15 +32,6 @@ import { AvatarFrame } from "../components/CategoryIcon";
 import { usePremium } from "../hooks/usePremium";
 import { getFollowers, getFollowing } from "../services/followService";
 import { getMyFleet } from "../services/rentalService";
-import { BRAND } from "../constants/theme-tokens";
-
-const TRAIT_LABEL_KEYS = {
-  CONSCIENTIOUSNESS: "conscientiousness",
-  AGREEABLENESS: "agreeableness",
-  EXTRAVERSION: "extraversion",
-  NEUROTICISM: "neuroticism",
-  OPENNESS: "openness",
-};
 
 export default function ProfileScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -156,8 +146,6 @@ export default function ProfileScreen({ navigation }) {
   const ratingValue = profile.hostStats?.averageRating
     ? profile.hostStats.averageRating.toFixed(1)
     : "–";
-  const hasPersonality =
-    profile.personality && Object.keys(profile.personality).length > 0;
 
   return (
     <GradientBackground>
@@ -368,58 +356,24 @@ export default function ProfileScreen({ navigation }) {
               </TouchableOpacity>
             )}
 
-            {/* ── Personalidad ── */}
-            {hasPersonality && (
-              <>
-                <View style={s.sectionRow}>
-                  <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>{t("profile.personality")}</Text>
-                  <TouchableOpacity onPress={() => navigation.navigate("PersonalityQuiz")}>
-                    <Text style={[s.sectionAction, { color: colors.primary }]}>{t("profile.retake")}</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={[s.personalityCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  {Object.entries(profile.personality).map(([trait, score]) => (
-                    <View key={trait} style={s.traitRow}>
-                      <View style={s.traitHeader}>
-                        <Text style={[s.traitName, { color: colors.text }]}>
-                          {TRAIT_LABEL_KEYS[trait.toUpperCase()]
-                            ? t(`profile.traits.${TRAIT_LABEL_KEYS[trait.toUpperCase()]}`)
-                            : (trait.charAt(0).toUpperCase() + trait.slice(1).toLowerCase())}
-                        </Text>
-                        <Text style={[s.traitScore, { color: colors.primary }]}>{score}</Text>
-                      </View>
-                      <View style={[s.traitBar, { backgroundColor: colors.sunken }]}>
-                        <LinearGradient
-                          colors={BRAND.gradient}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={[s.traitFill, { width: `${score}%` }]}
-                        />
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              </>
-            )}
-
-            {!hasPersonality && (
-              <>
-                <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>{t("profile.personality")}</Text>
-                <TouchableOpacity
-                  style={[s.personalityPrompt, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                  onPress={() => navigation.navigate("PersonalityQuiz")}
-                >
-                  <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
-                    <Icon name="brain" size={20} color={colors.primary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.toolTitle, { color: colors.text }]}>{t("profile.discoverPersonality")}</Text>
-                    <Text style={[s.toolSub, { color: colors.textTertiary }]}>{t("profile.bigFiveQuiz")}</Text>
-                  </View>
-                  <Icon name="forward" size={18} color={colors.textTertiary} />
-                </TouchableOpacity>
-              </>
-            )}
+            {/* ── Matchmaking ── One unified editor: interests, vibe AND Big Five
+                 live inside MatchProfile (canonical mode = no eventId). The quiz
+                 is no longer a separate entry point. */}
+            <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>{t("profile.matchmaking")}</Text>
+            <TouchableOpacity
+              style={[s.personalityPrompt, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={() => navigation.navigate("MatchProfile")}
+              testID="profile-match-profile"
+            >
+              <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
+                <Icon name="brain" size={20} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.toolTitle, { color: colors.text }]}>{t("profile.matchProfile")}</Text>
+                <Text style={[s.toolSub, { color: colors.textTertiary }]}>{t("profile.matchProfileSub")}</Text>
+              </View>
+              <Icon name="forward" size={18} color={colors.textTertiary} />
+            </TouchableOpacity>
 
             {/* ── Account ── */}
             <Text style={[s.sectionLabel, { color: colors.textTertiary }]}>{t("profile.account")}</Text>
@@ -639,16 +593,6 @@ function createStyles(colors, isDark) {
     },
     modeDot: { width: 8, height: 8, borderRadius: 4 },
     modeText: { fontSize: 14, fontWeight: "800" },
-    sectionRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 10,
-      marginTop: 4,
-    },
-    sectionAction: { fontSize: 13, fontWeight: "600" },
-
-
     // Tool grid
     toolGrid: {
       flexDirection: "row",
@@ -673,20 +617,7 @@ function createStyles(colors, isDark) {
     activeDot: { marginTop: 4 },
     activeDotText: { fontSize: 11, fontWeight: "700", color: "#1F8A6E" },
 
-    // Personality
-    personalityCard: {
-      borderWidth: 1,
-      borderRadius: 18,
-      padding: 16,
-      marginBottom: 20,
-      gap: 14,
-    },
-    traitRow: { gap: 5 },
-    traitHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-    traitName: { fontSize: 12, fontWeight: "600", letterSpacing: 0.2 },
-    traitBar: { height: 7, borderRadius: 4, overflow: "hidden" },
-    traitFill: { height: "100%", borderRadius: 4 },
-    traitScore: { fontSize: 13, fontWeight: "700" },
+    // Matchmaking entry (row card)
     personalityPrompt: {
       flexDirection: "row",
       alignItems: "center",

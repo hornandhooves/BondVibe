@@ -1,10 +1,17 @@
 /**
- * A3 + A4 — Match profile (Matchmaking v2). Prefilled from the account; the
- * attendee sets the expanded, STRUCTURED profile — energy, group preference,
- * interests, funny tags (fixed catalog, each with its own Kinlo icon), languages,
- * learning, a short bio + intent + icebreaker + visibility — then saves an opt-in
- * profile. No free-text tags, no emoji: every tag is a catalog id rendered via
- * i18n + Icon.js.
+ * A3 + A4 — Match profile (Matchmaking v2). The ONE unified editor: energy,
+ * group preference, interests, funny tags (fixed catalog, each with its own
+ * Kinlo icon), languages, learning, bio + intent + icebreaker + visibility, and
+ * the Big Five (embedded — the quiz is not a separate entry point). No free-text
+ * tags, no emoji: every tag is a catalog id rendered via i18n + Icon.js.
+ *
+ * Two modes, same form:
+ *  • CANONICAL (no eventId) — opened from Profile. Reads/writes
+ *    users/{me}.matchProfile directly (what matchPool + the curated generator +
+ *    postService.authorFunnyTag consume). Saving never fabricates consent.
+ *  • EVENT-SCOPED (eventId) — the consent → MatchProfile(eventId) flow. Writes
+ *    matchProfiles/{eventId}/attendees/{me} AND merges into the canonical
+ *    profile, then goes to the grid. Unchanged.
  */
 import React, { useState, useEffect } from "react";
 import {
@@ -25,7 +32,10 @@ import Icon from "../../components/Icon";
 import { MatchHeader, PrimaryButton, Chip } from "./matchUi";
 import {
   saveMatchProfile,
+  saveCanonicalMatchProfile,
   getMyMatchProfile,
+  getCanonicalMatchProfile,
+  MATCH_TYPES,
   MATCH_TYPE_COLORS,
   VISIBILITY_OPTIONS,
 } from "../../services/matchingService";
@@ -46,6 +56,8 @@ export default function MatchProfileScreen({ route, navigation }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const { eventId, eventTitle } = route.params || {};
+  // No eventId → canonical (user-level) mode, opened from Profile.
+  const canonical = !eventId;
 
   const [types, setTypes] = useState([]);
   const [bio, setBio] = useState("");
@@ -75,11 +87,17 @@ export default function MatchProfileScreen({ route, navigation }) {
 
   useEffect(() => {
     (async () => {
-      const [eSnap, existing] = await Promise.all([
-        getDoc(doc(db, "events", eventId)),
-        getMyMatchProfile(eventId),
-      ]);
-      const evTypes = eSnap.exists() ? eSnap.data()?.matching?.types || [] : [];
+      // Canonical mode has no event: the intent chips offer every match type and
+      // the values come straight from users/{me}.matchProfile.
+      const [existing, evTypes] = canonical
+        ? [await getCanonicalMatchProfile(), MATCH_TYPES]
+        : await (async () => {
+            const [eSnap, attendee] = await Promise.all([
+              getDoc(doc(db, "events", eventId)),
+              getMyMatchProfile(eventId),
+            ]);
+            return [attendee, eSnap.exists() ? eSnap.data()?.matching?.types || [] : []];
+          })();
       setTypes(evTypes);
       await loadPersonality();
       if (existing) {
@@ -95,11 +113,11 @@ export default function MatchProfileScreen({ route, navigation }) {
         setLookingFor(existing.lookingFor?.length ? existing.lookingFor : evTypes);
         setIcebreaker(existing.icebreaker || "");
         setVisibility(existing.visibility || "everyone");
-      } else {
+      } else if (!canonical) {
         setLookingFor(evTypes);
       }
     })();
-  }, [eventId]);
+  }, [eventId, canonical, loadPersonality]);
 
   const toggleIn = (setter) => (id) =>
     setter((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
@@ -116,7 +134,7 @@ export default function MatchProfileScreen({ route, navigation }) {
       return;
     }
     setSaving(true);
-    const res = await saveMatchProfile(eventId, {
+    const payload = {
       bio: bio.trim(),
       profession: profession.trim(),
       interests,
@@ -135,13 +153,19 @@ export default function MatchProfileScreen({ route, navigation }) {
       icebreaker: icebreaker.trim(),
       visibility,
       available: true,
-    });
+    };
+    // Same form, two destinations: canonical writes users/{me}.matchProfile;
+    // the event flow writes the attendee doc AND merges into the canonical one.
+    const res = canonical
+      ? await saveCanonicalMatchProfile(payload)
+      : await saveMatchProfile(eventId, payload);
     setSaving(false);
     if (!res.success) {
       Alert.alert(t("matching.profile.couldntSaveTitle"), res.error || t("matching.profile.tryAgain"));
       return;
     }
-    navigation.replace("MatchGrid", { eventId, eventTitle });
+    if (canonical) navigation.goBack();
+    else navigation.replace("MatchGrid", { eventId, eventTitle });
   };
 
   const s = createStyles(colors);
@@ -318,7 +342,11 @@ export default function MatchProfileScreen({ route, navigation }) {
         </View>
       </ScrollView>
       <View style={s.footer}>
-        <PrimaryButton label={t("matching.profile.saveAndSee")} onPress={onSave} loading={saving} />
+        <PrimaryButton
+          label={canonical ? t("matching.profile.save") : t("matching.profile.saveAndSee")}
+          onPress={onSave}
+          loading={saving}
+        />
       </View>
     </View>
   );

@@ -152,9 +152,127 @@ export const getMyMatchProfile = async (eventId) => {
   return s.exists() ? { id: s.id, ...s.data() } : null;
 };
 
+/** The current user's CANONICAL (user-level) match profile, or null. This is the
+ *  profile the Profile-tab editor reads and the one matchPool / the curated
+ *  generator / postService.authorFunnyTag consume. */
+export const getCanonicalMatchProfile = async () => {
+  const me = uid();
+  if (!me) return null;
+  try {
+    const s = await getDoc(doc(db, "users", me));
+    if (!s.exists()) return null;
+    const u = s.data();
+    if (!u.matchProfile) return null;
+    // Personality lives at users/{uid}.personality (the quiz writes it there).
+    return { ...u.matchProfile, personality: u.personality ?? u.matchProfile.personality ?? null };
+  } catch (e) {
+    console.error("❌ getCanonicalMatchProfile:", e);
+    return null;
+  }
+};
+
 /**
- * Create/update the current user's opt-in match profile. Denormalizes the
- * user's Big Five snapshot so the grid can rank compatibility without N reads.
+ * Sanitize the raw form into the canonical field bundle. Every array coerces to
+ * [] so a missing one can never reach Firestore as `undefined` (the root of the
+ * old save crash); every write also goes through stripUndefined.
+ * @param {object} profile raw form values
+ * @param {object} u the user doc
+ * @return {object} sanitized fields
+ */
+function sanitizeProfileFields(profile, u) {
+  return {
+    interests: arr(profile.interests),
+    lookingFor: arr(profile.lookingFor),
+    funnyTags: sanitizeIds(profile.funnyTags, FUNNY_TAG_IDS),
+    languages: sanitizeIds(profile.languages, LANGUAGES),
+    learning: sanitizeIds(profile.learning, LEARNING),
+    energy: sanitizeEnergy(profile.energy),
+    groupPref: GROUP_PREFS.includes(profile.groupPref) ? profile.groupPref : null,
+    pro: sanitizePro(profile.pro),
+    // Big Five snapshot, denormalized for ranking without N reads.
+    personality: isBigFive(u.personality) ? u.personality : null,
+    bio: typeof profile.bio === "string" ? profile.bio : "",
+    icebreaker: typeof profile.icebreaker === "string" ? profile.icebreaker : "",
+  };
+}
+
+/**
+ * Write the canonical profile + the gate mirror on users/{me}, then refresh the
+ * cross-community pool. Shared by both modes.
+ * @param {string} me uid
+ * @param {object} u the user doc
+ * @param {object} f sanitized fields (from sanitizeProfileFields)
+ * @param {object} [opts] { consentFallback } — the event flow passes a fallback
+ *   because it came through MatchConsent; the canonical editor passes none, so
+ *   editing your profile NEVER fabricates consent (privacy-first gate).
+ * @return {Promise<boolean>} whether the profile is complete
+ */
+async function writeCanonicalProfile(me, u, f, opts = {}) {
+  const complete = isProfileComplete(f);
+  const consentAt = u.matchmaking?.consentAt ?? opts.consentFallback ?? null;
+  await setDoc(
+    doc(db, "users", me),
+    stripUndefined({
+      matchmaking: {
+        consentAt,
+        profileComplete: complete,
+        enabled: u.matchmaking?.enabled ?? true,
+      },
+      matchProfile: {
+        interests: f.interests,
+        funnyTags: f.funnyTags,
+        lookingFor: f.lookingFor,
+        energy: f.energy,
+        groupPref: f.groupPref,
+        pro: f.pro,
+        personality: f.personality,
+        bio: f.bio,
+        languages: f.languages,
+        learning: f.learning,
+        icebreaker: f.icebreaker,
+      },
+    }),
+    { merge: true }
+  );
+  // The pool write requires consent (rules) — skip it when not consented, or
+  // we'd fire a guaranteed permission error.
+  if (complete && consentAt != null) {
+    try {
+      await syncMatchPool();
+    } catch (e) {
+      /* non-fatal — the weekly batch reconciles */
+    }
+  }
+  return complete;
+}
+
+/**
+ * Save the CANONICAL (user-level) match profile — the Profile-tab editor, no
+ * event. Fills users/{me}.matchProfile (what matchPool and
+ * postService.authorFunnyTag read). Consent is preserved, never fabricated:
+ * you can curate your profile without opting into matchmaking.
+ * @param {object} profile the same form shape as the event-scoped save
+ * @return {Promise<{success:boolean, profileComplete?:boolean}>}
+ */
+export const saveCanonicalMatchProfile = async (profile) => {
+  const me = uid();
+  if (!me) return { success: false, error: "Not signed in" };
+  try {
+    const userSnap = await getDoc(doc(db, "users", me));
+    const u = userSnap.exists() ? userSnap.data() : {};
+    const f = sanitizeProfileFields(profile, u);
+    const complete = await writeCanonicalProfile(me, u, f);
+    return { success: true, profileComplete: complete };
+  } catch (e) {
+    console.error("❌ saveCanonicalMatchProfile:", e);
+    return { success: false, error: e.message };
+  }
+};
+
+/**
+ * Create/update the current user's opt-in match profile FOR AN EVENT. Writes the
+ * event-scoped attendee doc AND merges the same values into the canonical
+ * user-level profile.
  * @param {string} eventId event id
  * @param {object} profile { photoUrl, displayName, age?, bio, interests[],
  *   profession, languages[], lookingFor[], icebreaker, available, visibility }
@@ -165,18 +283,8 @@ export const saveMatchProfile = async (eventId, profile) => {
   try {
     const userSnap = await getDoc(doc(db, "users", me));
     const u = userSnap.exists() ? userSnap.data() : {};
-    // FIX: every array field is coerced to [] up front so a missing one can
-    // never reach Firestore as `undefined` (the root of the save crash). All
-    // writes below are additionally run through stripUndefined.
-    const interests = arr(profile.interests);
-    const lookingFor = arr(profile.lookingFor);
-    const funnyTags = sanitizeIds(profile.funnyTags, FUNNY_TAG_IDS);
-    const languages = sanitizeIds(profile.languages, LANGUAGES);
-    const learning = sanitizeIds(profile.learning, LEARNING);
-    const energy = sanitizeEnergy(profile.energy);
-    const groupPref = GROUP_PREFS.includes(profile.groupPref) ? profile.groupPref : null;
-    const pro = sanitizePro(profile.pro);
-    const personality = isBigFive(u.personality) ? u.personality : null;
+    const f = sanitizeProfileFields(profile, u);
+    const { interests, lookingFor, funnyTags, languages, learning, energy, groupPref, pro, personality } = f;
 
     await setDoc(
       profileRef(eventId, me),
@@ -207,36 +315,11 @@ export const saveMatchProfile = async (eventId, profile) => {
       }),
       { merge: true }
     );
-    // Mirror the gate state onto the user doc (v2): consent + whether the profile
-    // is complete enough to participate. Server rules read users/{uid}.matchmaking.
-    // Big Five is part of "complete" — see isProfileComplete.
-    const complete = isProfileComplete({
-      lookingFor, interests, funnyTags, energy, groupPref, personality,
+    // Mirror the same values into the canonical user-level profile + the gate.
+    // The event flow came through MatchConsent, so it may stamp consent.
+    const complete = await writeCanonicalProfile(me, u, f, {
+      consentFallback: profile.consentAt ?? serverTimestamp(),
     });
-    // Canonical, user-level matchmaking profile (P3) — the cross-community pool
-    // and the curated generator read this, not the event-scoped copy.
-    const canonicalProfile = { interests, funnyTags, lookingFor, energy, groupPref, pro, personality };
-    await setDoc(
-      doc(db, "users", me),
-      stripUndefined({
-        matchmaking: {
-          consentAt: u.matchmaking?.consentAt ?? profile.consentAt ?? serverTimestamp(),
-          profileComplete: complete,
-          enabled: u.matchmaking?.enabled ?? true,
-        },
-        matchProfile: canonicalProfile,
-      }),
-      { merge: true }
-    );
-    // Refresh the cross-community pool doc (best-effort; the set generator reads
-    // it). Only surfaces the user once their profile is complete + enabled.
-    if (complete) {
-      try {
-        await syncMatchPool();
-      } catch (e) {
-        /* non-fatal — the weekly batch will pick it up */
-      }
-    }
     return { success: true, profileComplete: complete };
   } catch (e) {
     console.error("❌ saveMatchProfile:", e);
