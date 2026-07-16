@@ -21,6 +21,7 @@ import {
 import { db, auth } from "./firebase";
 import { getFollowing } from "./followService";
 import { getBlockedIds } from "./blockService";
+import { stripUndefined } from "../utils/firestoreClean";
 
 const uid = () => auth.currentUser?.uid || null;
 
@@ -31,23 +32,54 @@ const chunk = (arr, n) => {
 };
 
 /** Create a post authored by the current user. */
-export const createPost = async ({ text, images = [] }) => {
+/**
+ * Create a post. Wall v2 (P0) enriches it — but stays backward compatible: old
+ * posts without communityId/authorFunnyTag/mediaType still render fine, and the
+ * legacy `images` array is preserved alongside the new `mediaUrls`.
+ * @param {object} p { text, images?, mediaUrls?, mediaType?, communityId?,
+ *   authorFunnyTag?, cta?, isHostPost? }
+ */
+export const createPost = async ({
+  text,
+  images = [],
+  mediaUrls,
+  mediaType = "photo",
+  communityId = null,
+  authorFunnyTag,
+  cta = null,
+  isHostPost = false,
+}) => {
   const me = uid();
   const body = (text || "").trim();
-  if (!me || (!body && images.length === 0)) return { success: false };
+  const media = Array.isArray(mediaUrls) && mediaUrls.length ? mediaUrls : images;
+  if (!me || (!body && media.length === 0)) return { success: false };
   try {
     const userSnap = await getDoc(doc(db, "users", me));
     const u = userSnap.exists() ? userSnap.data() : {};
-    const ref = await addDoc(collection(db, "posts"), {
-      authorId: me,
-      authorName: u.fullName || u.name || "Someone",
-      authorAvatar: u.avatar ?? null,
-      text: body,
-      images,
-      likeCount: 0,
-      commentCount: 0,
-      createdAt: serverTimestamp(),
-    });
+    // Denormalize the author's headline funny tag (from their match profile) so
+    // the card can show context without an extra read. Explicit arg wins.
+    const funnyTag =
+      authorFunnyTag ?? (u.matchProfile?.funnyTags?.[0] ?? null);
+    const resolvedMediaType = media.length > 1 ? "carousel" : mediaType;
+    const ref = await addDoc(
+      collection(db, "posts"),
+      stripUndefined({
+        authorId: me,
+        authorName: u.fullName || u.name || "Someone",
+        authorAvatar: u.avatar ?? null,
+        text: body,
+        images: media, // legacy field kept for backcompat
+        mediaUrls: media, // v2 canonical
+        mediaType: resolvedMediaType,
+        communityId,
+        authorFunnyTag: funnyTag,
+        isHostPost: !!isHostPost,
+        cta: cta || null,
+        likeCount: 0,
+        commentCount: 0,
+        createdAt: serverTimestamp(),
+      })
+    );
     return { success: true, id: ref.id };
   } catch (e) {
     console.error("❌ createPost:", e);

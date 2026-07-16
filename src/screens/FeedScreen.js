@@ -30,6 +30,8 @@ import { followUser, unfollowUser } from "../services/followService";
 import useClaude from "../hooks/useClaude";
 import useAiOptIn from "../hooks/useAiOptIn";
 import { toggleInterested } from "../services/signalsService";
+import WallTabs from "../components/wall/WallTabs";
+import DiscoverTab from "../components/wall/DiscoverTab";
 import { TYPE, SPACING, RADII, ELEVATION } from "../constants/theme-tokens";
 
 const normAvatar = (a) =>
@@ -200,6 +202,13 @@ export default function FeedScreen({ navigation }) {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [suggestions, setSuggestions] = useState([]);
+  // Wall v2 (P0): 0 = Para ti · 1 = Siguiendo · 2 = Descubre.
+  const [tab, setTab] = useState(0);
+  const WALL_TABS = [
+    { key: "forYou", label: t("wall.tabs.forYou"), accent: colors.primary },
+    { key: "following", label: t("wall.tabs.following"), accent: "#1F8A6E" },
+    { key: "discover", label: t("wall.tabs.discover"), accent: colors.primary },
+  ];
 
   const loadSuggestions = useCallback(async () => {
     try {
@@ -267,18 +276,26 @@ export default function FeedScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={posts}
-        keyExtractor={(p) => p.id}
-        renderItem={({ item }) => (
-          <PostCard post={item} navigation={navigation} onChanged={load} />
-        )}
-        ListHeaderComponent={<SmartWallHeader navigation={navigation} />}
-        contentContainerStyle={styles.list}
-        refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={load} tintColor={colors.primary} />
-        }
-        ListEmptyComponent={
+      <WallTabs tabs={WALL_TABS} active={tab} onChange={setTab} />
+
+      {tab === 2 ? (
+        // Descubre — affinity discovery (P1 fills this; P0 shows the honest stub).
+        <DiscoverTab navigation={navigation} />
+      ) : (
+        <FlatList
+          data={posts}
+          keyExtractor={(p) => p.id}
+          renderItem={({ item }) => (
+            <PostCard post={item} navigation={navigation} onChanged={load} />
+          )}
+          // "Para ti" gets the Smart Wall header; "Siguiendo" is the plain
+          // chronological feed (getFeed) — identical to today, no AI chrome.
+          ListHeaderComponent={tab === 0 ? <SmartWallHeader navigation={navigation} /> : null}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl refreshing={loading} onRefresh={load} tintColor={colors.primary} />
+          }
+          ListEmptyComponent={
           !loading ? (
             <View style={styles.empty}>
               <Icon name="community" size={40} color={colors.textTertiary} />
@@ -349,8 +366,9 @@ export default function FeedScreen({ navigation }) {
               )}
             </View>
           ) : null
-        }
-      />
+          }
+        />
+      )}
     </GradientBackground>
   );
 }

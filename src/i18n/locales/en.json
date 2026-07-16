@@ -267,6 +267,11 @@
     "curatedForYou": "Curated for you by Kinlo AI",
     "imIn": "I'm in",
     "interested": "Interested",
+    "tabs": { "forYou": "For you", "following": "Following", "discover": "Discover" },
+    "discover": {
+      "soonTitle": "Discovery is on its way",
+      "soonBody": "Opt into matchmaking and we'll suggest people, communities and events by real affinity — never a global directory."
+    },
     "empty": {
       "text": "Follow people and share your first post to fill your feed.",
       "cta": "Create a post",

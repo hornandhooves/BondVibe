@@ -19,6 +19,8 @@ import { useTheme } from "../contexts/ThemeContext";
 import { auth } from "../services/firebase";
 import { hasLiked, likePost, unlikePost, deletePost } from "../services/postService";
 import { blockUser } from "../services/blockService";
+import { funnyTag } from "../constants/matchTags";
+import { MATCH_TYPE_COLORS } from "../services/matchingService";
 
 const normAvatar = (a) =>
   !a ? null : typeof a === "string" ? { type: "emoji", value: a } : a;
@@ -32,6 +34,35 @@ function timeAgo(ts) {
   if (s < 86400) return `${Math.floor(s / 3600)}h`;
   return `${Math.floor(s / 86400)}d`;
 }
+
+/** Author's headline funny tag (Wall v2) — Kinlo icon + label in its category
+ *  color. Renders nothing for legacy posts without a tag (backcompat). */
+function FunnyTagChip({ tagId, t }) {
+  const tag = tagId ? funnyTag(tagId) : null;
+  if (!tag) return null;
+  const c = MATCH_TYPE_COLORS[tag.type] || MATCH_TYPE_COLORS.brand || { fg: "#7C3AED", bg: "#EDE4FC" };
+  return (
+    <View style={[chipStyles.chip, { backgroundColor: c.bg }]}>
+      <Icon name={tag.icon} size={11} color={c.fg} />
+      <Text style={[chipStyles.text, { color: c.fg }]} numberOfLines={1}>
+        {t(`matchmaking.funnyTag.${tag.id}`)}
+      </Text>
+    </View>
+  );
+}
+
+const chipStyles = StyleSheet.create({
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    maxWidth: 150,
+  },
+  text: { fontSize: 10, fontWeight: "700" },
+});
 
 export default function PostCard({ post, navigation, onChanged }) {
   const { colors } = useTheme();
@@ -105,8 +136,15 @@ export default function PostCard({ post, navigation, onChanged }) {
           }
           activeOpacity={0.8}
         >
-          <Text style={[styles.author, { color: colors.text }]}>{post.authorName}</Text>
+          <View style={styles.nameRow}>
+            <Text style={[styles.author, { color: colors.text }]} numberOfLines={1}>
+              {post.authorName}
+            </Text>
+            <FunnyTagChip tagId={post.authorFunnyTag} t={t} />
+          </View>
           <Text style={[styles.time, { color: colors.textTertiary }]}>
+            {/* Community context (Wall v2) — where this was posted, if any. */}
+            {post.communityName ? `${post.communityName} · ` : ""}
             {timeAgo(post.createdAt)}
           </Text>
         </TouchableOpacity>
@@ -132,9 +170,7 @@ export default function PostCard({ post, navigation, onChanged }) {
       {!!post.text && (
         <MentionText text={post.text} style={[styles.text, { color: colors.text }]} navigation={navigation} />
       )}
-      {Array.isArray(post.images) && post.images.length > 0 && (
-        <Image source={{ uri: post.images[0] }} style={styles.image} />
-      )}
+      <PostMedia post={post} styles={styles} />
 
       <View style={styles.actions}>
         <TouchableOpacity style={styles.action} onPress={toggleLike} hitSlop={hit}>
@@ -161,6 +197,25 @@ export default function PostCard({ post, navigation, onChanged }) {
       </View>
     </View>
   );
+}
+
+/** Post media (Wall v2): reads mediaUrls with a fallback to the legacy images
+ *  array. A carousel (2+) shows the first two side by side (FIDELITY §5). Video
+ *  poster shows its thumbnail here; the player lands in P3. */
+function PostMedia({ post, styles }) {
+  const media = Array.isArray(post.mediaUrls) && post.mediaUrls.length
+    ? post.mediaUrls
+    : (Array.isArray(post.images) ? post.images : []);
+  if (media.length === 0) return null;
+  if (media.length >= 2 && post.mediaType !== "video") {
+    return (
+      <View style={styles.carousel}>
+        <Image source={{ uri: media[0] }} style={styles.carouselItem} />
+        <Image source={{ uri: media[1] }} style={styles.carouselItem} />
+      </View>
+    );
+  }
+  return <Image source={{ uri: media[0] }} style={styles.image} />;
 }
 
 const hit = { top: 8, bottom: 8, left: 8, right: 8 };
@@ -191,10 +246,13 @@ function createStyles(colors) {
       elevation: 2,
     },
     header: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
-    author: { fontSize: 15, fontWeight: "700" },
+    nameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    author: { fontSize: 15, fontWeight: "700", flexShrink: 1 },
     time: { fontSize: 12, marginTop: 1 },
     text: { fontSize: 15, lineHeight: 21, marginBottom: 10 },
     image: { width: "100%", height: 240, borderRadius: 12, marginBottom: 10 },
+    carousel: { flexDirection: "row", gap: 6, marginBottom: 10 },
+    carouselItem: { flex: 1, height: 200, borderRadius: 12 },
     actions: { flexDirection: "row", gap: 22, marginTop: 2 },
     action: { flexDirection: "row", alignItems: "center", gap: 6 },
     actionText: { fontSize: 14, fontWeight: "600" },
