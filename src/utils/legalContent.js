@@ -160,7 +160,7 @@ You expressly acknowledge and agree that:
 
 ### 5.4 Disputes
 
-- Contact support@bondvibe.com for payment disputes
+- Contact support@kinlo.org for payment disputes
 - We will review and respond within 7 business days
 - Chargebacks may result in account suspension
 
@@ -255,7 +255,7 @@ You agree to indemnify and hold harmless Kinlo, its officers, directors, employe
 
 ### 13.1 Informal Resolution
 
-Before filing a legal claim, contact us at support@bondvibe.com. We'll try to resolve disputes informally within 30 days.
+Before filing a legal claim, contact us at support@kinlo.org. We'll try to resolve disputes informally within 30 days.
 
 ### 13.2 Governing Law
 
@@ -316,7 +316,7 @@ You may not assign your rights under these Terms. We may assign our rights at an
 
 **For questions about these Terms:**
 
-- **Email:** support@bondvibe.com
+- **Email:** support@kinlo.org
 - **In-App:** Settings → Help & Support
 
 ---
@@ -397,7 +397,7 @@ You have the right to:
 - **Access:** View your personal data in Profile settings
 - **Correct:** Update your information anytime
 - **Delete:** Delete your account (Settings → Delete Account). This removes your data within 30 days.
-- **Export:** Request a copy of your data via support@bondvibe.com
+- **Export:** Request a copy of your data via support@kinlo.org
 - **Opt-Out:** Disable push notifications in your device settings
 - **Withdraw Consent:** Stop using the app at any time
 
@@ -510,7 +510,7 @@ For users in Mexico, processing is governed by the **Ley Federal de Protección 
 
 **For privacy questions, data requests, or concerns:**
 
-- **Email:** privacy@bondvibe.com
+- **Email:** privacy@kinlo.org
 - **ARCO / Mexico:** [ARCO EMAIL]
 - **In-App:** Settings → Help & Support
 - **Response Time:** Within 30 days

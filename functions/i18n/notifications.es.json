@@ -20,7 +20,7 @@
   "notifications.carpool.approved.title": "Viaje confirmado 🚗",
   "notifications.carpool.approved.body": "¡Tienes un lugar en el auto de {{driver}}!",
   "notifications.group.messageBlocked.title": "Mensaje bloqueado 🚫",
-  "notifications.group.messageBlocked.body": "Compartir datos de pago fuera de la plataforma no está permitido en BondVibe.",
+  "notifications.group.messageBlocked.body": "Compartir datos de pago fuera de la plataforma no está permitido en Kinlo.",
 
   "notifications.match.open.title": "El Match de la comunidad está abierto 🎉",
   "notifications.match.open.body": "Mira quién estuvo en \"{{event}}\".",

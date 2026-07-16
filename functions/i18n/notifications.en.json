@@ -20,7 +20,7 @@
   "notifications.carpool.approved.title": "Ride confirmed 🚗",
   "notifications.carpool.approved.body": "You've got a seat in {{driver}}'s car pool!",
   "notifications.group.messageBlocked.title": "Message blocked 🚫",
-  "notifications.group.messageBlocked.body": "Sharing off-platform payment details isn't allowed on BondVibe.",
+  "notifications.group.messageBlocked.body": "Sharing off-platform payment details isn't allowed on Kinlo.",
 
   "notifications.match.open.title": "Community Matching is open 🎉",
   "notifications.match.open.body": "See who was at \"{{event}}\".",

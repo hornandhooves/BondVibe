@@ -83,7 +83,7 @@ export default function SafetyCenterScreen({ navigation }) {
           <View style={[s.divider, { backgroundColor: colors.border }]} />
           <TouchableOpacity
             style={s.actionRow}
-            onPress={() => Linking.openURL("mailto:safety@kinlo.app")}
+            onPress={() => Linking.openURL("mailto:safety@kinlo.org")}
           >
             <View style={[s.actionIcon, { backgroundColor: colors.brandSoft }]}>
               <Icon name="message" size={18} color={colors.primary} />

@@ -2,7 +2,7 @@
 
 **Last Updated: January 4, 2026**
 
-BondVibe ("we," "us," or "our") operates the BondVibe mobile application. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our app.
+Kinlo ("we," "us," or "our") operates the Kinlo mobile application. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our app.
 
 ## 1. Information We Collect
 
@@ -69,7 +69,7 @@ You have the right to:
 - **Access:** View your personal data in Profile settings
 - **Correct:** Update your information anytime
 - **Delete:** Delete your account (Settings → Delete Account). This removes your data within 30 days.
-- **Export:** Request a copy of your data via support@bondvibe.com
+- **Export:** Request a copy of your data via support@kinlo.org
 - **Opt-Out:** Disable push notifications in your device settings
 - **Withdraw Consent:** Stop using the app at any time
 
@@ -107,7 +107,7 @@ However, no method of transmission over the Internet is 100% secure.
 
 ## 8. Children's Privacy
 
-BondVibe is strictly for users 18 years and older. We do not knowingly collect information from anyone under 18. If we discover we have collected data from a minor, we will delete it immediately.
+Kinlo is strictly for users 18 years and older. We do not knowingly collect information from anyone under 18. If we discover we have collected data from a minor, we will delete it immediately.
 
 ## 9. Location Information
 
@@ -157,12 +157,12 @@ Continued use after changes constitutes acceptance.
 
 **For privacy questions, data requests, or concerns:**
 
-- **Email:** privacy@bondvibe.com
+- **Email:** privacy@kinlo.org
 - **In-App:** Settings → Help & Support
 - **Response Time:** Within 30 days
 
 ---
 
-**BondVibe is committed to protecting your privacy and being transparent about our data practices.**
+**Kinlo is committed to protecting your privacy and being transparent about our data practices.**
 
-© 2026 BondVibe. All rights reserved.
+© 2026 Kinlo. All rights reserved.
