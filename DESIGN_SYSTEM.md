@@ -67,16 +67,19 @@ sistema** (SF Symbols/Material) en la UI. Avatares = fotos reales.
 5. Sin `BlurView` como sistema (existe `surfaceGlass` para casos puntuales, no como estética global).
 6. Temas: `const colors = isDark ? AURORA : WARMTH` (vía `ThemeContext`).
 
-## Deuda de diseño (estética vieja — alinear en el futuro, NO usar como referencia)
-Componentes que aún reflejan el sistema viejo (glassmorphism/indigo/System-font). **No
-importados por ninguna pantalla hoy** (código muerto); listados para alineación o borrado —
-no se tocan en este cambio de solo-documentación:
-- `src/components/modern/ModernButton.js`
-- `src/components/modern/GlassCard.js`
+## Deuda de diseño
+`src/components/modern/` (`ModernButton.js`, `GlassCard.js`) **fue eliminado** — era código
+muerto de la estética vieja, sin importar por ninguna pantalla. Las pantallas
+`ModernLoginScreen` / `ModernHomeScreen` / `ModernEventFeed` que citaba el doc viejo nunca
+existieron. Si alguien crea equivalentes, deben nacer con este sistema (Warmth/Aurora ·
+Bold-Pop).
 
-Las pantallas `ModernLoginScreen` / `ModernHomeScreen` / `ModernEventFeed` que citaba el doc
-viejo **no existen** en el código. Si alguien las crea, deben nacer con este sistema
-(Warmth/Aurora · Bold-Pop), no con el viejo.
+**Huérfano restante:** `src/constants/DesignSystem.js` — ya no lo importa nadie (sus únicos
+consumidores eran los dos componentes borrados). Sus `Colors` sí derivan de `theme-tokens`,
+pero su `Spacing` es rejilla 8pt (no la de 4pt), sus `Radius` no son los `RADII`, y su
+`Typography` usa solo `fontWeight` **sin `fontFamily`** → fuente del sistema, justo lo que
+este doc prohíbe. **No lo importes**: usa `theme-tokens` (`TYPE`, `SPACING`, `RADII`).
+Candidato a borrado.
 
 ---
 **Versión real:** Warmth/Aurora · Bold-Pop. Fuente: `src/constants/theme-tokens.js`. Si un doc dice neumorfismo/glass/indigo/System-font, está desactualizado.
