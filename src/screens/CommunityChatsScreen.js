@@ -22,12 +22,16 @@ import Icon from "../components/Icon";
 import { useTheme } from "../contexts/ThemeContext";
 import { subscribeUserGroups, createGroup, joinGroupByCode } from "../services/hostGroupService";
 import { TYPE, SPACING, RADII, ELEVATION } from "../constants/theme-tokens";
+import useUserRole from "../hooks/useUserRole";
+import { isApprovedHost } from "../utils/hostGate";
 
 const hit = { top: 10, bottom: 10, left: 10, right: 10 };
 
 export default function CommunityChatsScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
+  const { role, hostApproved } = useUserRole();
+  const approved = isApprovedHost({ role, hostApproved });
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   // Create a community + join-by-code, both reachable here (BUG 22).
@@ -37,6 +41,19 @@ export default function CommunityChatsScreen({ navigation }) {
   const [description, setDescription] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Creating a community requires an approved host (unified gate — same as
+  // marketplace/rentals). Joining by code stays open to everyone. (BUG 42)
+  const onCreatePress = () => {
+    if (approved) {
+      setCreateOpen(true);
+      return;
+    }
+    Alert.alert(t("hostGate.title"), t("hostGate.body"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("hostGate.cta"), onPress: () => navigation.navigate("RequestHost") },
+    ]);
+  };
 
   const handleCreate = async () => {
     if (!name.trim() || busy) return;
@@ -97,7 +114,7 @@ export default function CommunityChatsScreen({ navigation }) {
           <TouchableOpacity onPress={() => setJoinOpen(true)} hitSlop={hit} testID="community-join">
             <Icon name="ticket" size={22} color={colors.text} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setCreateOpen(true)} hitSlop={hit} testID="community-create">
+          <TouchableOpacity onPress={onCreatePress} hitSlop={hit} testID="community-create">
             <Icon name="add" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>

@@ -490,7 +490,10 @@ service cloud.firestore {
                      (resource.data.hostId == request.auth.uid ||
                       (resource.data.memberIds != null &&
                        request.auth.uid in resource.data.memberIds));
-      allow create: if isSignedIn() &&
+      // BUG 42: creating a community requires an approved host — the same unified
+      // gate as vehicles + marketplace listings. Joining by code goes through a
+      // Cloud Function (Admin SDK), so it stays open to everyone.
+      allow create: if isSignedIn() && isApprovedHost() &&
                        request.resource.data.hostId == request.auth.uid;
       // Only the host can rename / change members / delete.
       allow update, delete: if isSignedIn() &&
