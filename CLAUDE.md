@@ -47,10 +47,28 @@ dashboard). App scheme is `kinlo://`; the git repo is still `hornandhooves/BondV
 ---
 
 ## 2. Shared infrastructure — coordinate, git does NOT isolate these
-- **Firebase project: `kinlo-app-dev` only** (no prod project). `bizId === ownerUid`
-  (v1). Deploying rules (`firebase deploy --only firestore:rules` / `--only
-  storage`) is **global — the last deploy wins, regardless of branch.** Deploy
-  rules **only from merged `main`**, and tell your teammate.
+- **Firebase project: `kinlo-app-dev` only** — the only project with data, and there
+  is still **no prod project**. It lives under `hornandhoovesdev@gmail.com`; that's
+  the account `gcloud` must be on. `bizId === ownerUid` (v1). Deploying rules
+  (`firebase deploy --only firestore:rules` / `--only storage`) is **global — the
+  last deploy wins, regardless of branch.** Deploy rules **only from merged `main`**,
+  and tell your teammate.
+- **Old-brand projects — dead, don't resurrect them.** Both were BondVibe-era and sit
+  under `jcpuntoduarte@gmail.com`, so they don't even appear when `gcloud` is on the
+  right account. If you go looking for them:
+  - `bondvibe-dev` — abandoned 2026-07-13 when we migrated to `kinlo-app-dev`. Still
+    ACTIVE, but both user-managed service-account keys were **revoked** 2026-07-16
+    (only the Google-managed one remains). Any `bondvibe-*-adminsdk.json` you find on
+    disk is a dead credential — delete it, don't try to use it. Note the FCM V1
+    upload picker auto-detects service-account JSONs in the repo root and will
+    happily default to the wrong one.
+  - `bondvibe-prod` — **deleted 2026-07-16** (`DELETE_REQUESTED`; Google purges after
+    ~30 days). It was never a real prod environment: no Firestore database, Auth never
+    initialised, 0 storage buckets, 0 registered apps, billing off, and no activity
+    after 2026-01-04. The name promised a user base that never existed.
+  - Firebase enables `firestore` / `identitytoolkit` / `storage` APIs on **every** new
+    project, so "API enabled" proves nothing. Check for actual data before believing a
+    project matters.
 - **OTA updates:** client-only changes reach TestFlight via
   `eas update --branch production --platform ios` (runtimeVersion `1.0.0`). The
   **last update on `production` wins** for all users — publish OTA **only from
