@@ -21,6 +21,7 @@ const DEFAULTS = {
   member_intel: {maxTokens: 700},
   ai_analytics: {maxTokens: 800},
   match_intel: {maxTokens: 600},
+  personality_summary: {maxTokens: 300},
   weekly_digest: {maxTokens: 700, freePerMonth: 1},
   content_translation: {maxTokens: 1500, freePerMonth: 1},
   business_dashboard: {maxTokens: 700},
@@ -278,6 +279,47 @@ async function loadAutomationCopy(db, uid, cfg, input) {
   };
 }
 
+// Band thresholds — MUST mirror src/utils/personalityInterpret.js (low <40 ·
+// mid 40-60 · high >60). The AI only synthesizes what these bands already say.
+const BIG_FIVE_KEYS = ["OPENNESS", "CONSCIENTIOUSNESS", "EXTRAVERSION",
+  "AGREEABLENESS", "NEUROTICISM"];
+
+/**
+ * @param {number} score 0-100
+ * @return {string} the band label
+ */
+function bandOf(score) {
+  if (score < 40) return "low";
+  if (score <= 60) return "mid";
+  return "high";
+}
+
+/**
+ * Context for the optional Big Five summary: the caller's OWN five scores.
+ * Throws when the quiz is incomplete so callClaude returns fallback — the client
+ * then shows the deterministic descriptors alone, never an invented summary.
+ * @param {object} db firestore
+ * @param {string} uid caller
+ * @return {Promise<object>} { scores: [{dimension, score, band}] }
+ */
+async function loadPersonalitySummary(db, uid) {
+  const snap = await db.collection("users").doc(uid).get();
+  const p = (snap.exists && snap.data().personality) || null;
+  if (!p || !BIG_FIVE_KEYS.every((k) => typeof p[k] === "number")) {
+    throw new Error("personality quiz not complete");
+  }
+  return {
+    scores: BIG_FIVE_KEYS.map((k) => ({
+      dimension: k,
+      score: Math.round(p[k]),
+      band: bandOf(p[k]),
+    })),
+    // Direction note so the model can't invert the meaning: this score is
+    // neuroticism (high = more emotionally reactive), NOT stability.
+    note: "NEUROTICISM: higher = more emotionally reactive/sensitive, not more stable.",
+  };
+}
+
 /**
  * Match Intelligence: both OPT-IN match profiles for one event.
  * @param {FirebaseFirestore.Firestore} db handle
@@ -452,6 +494,16 @@ const PROMPTS = {
       "(last visit, expiring credits). Never invent facts not in the context.",
     user: JSON.stringify(ctx),
   }),
+  personality_summary: (ctx) => ({
+    system: SYSTEM_BASE +
+      " Schema: {\"summary\":string}" +
+      " summary = 1-2 plain-language sentences addressed to the user (\"you\") " +
+      "that synthesize ALL five Big Five scores in the context into one " +
+      "coherent picture. Ground every claim in the given scores/bands — never " +
+      "invent traits, never give advice, never mention the numbers or the " +
+      "dimension names verbatim. Respect the direction note exactly.",
+    user: JSON.stringify(ctx),
+  }),
   match_intel: (ctx) => ({
     system: SYSTEM_BASE +
       " Schema: {\"rationale\":string,\"icebreakers\":[string]}" +
@@ -542,6 +594,12 @@ const VALIDATORS = {
       return "priority invalid";
     }
     if (typeof d.message !== "string" || !d.message) return "message missing";
+    return null;
+  },
+  personality_summary: (d) => {
+    if (!d || typeof d.summary !== "string" || !d.summary.trim()) {
+      return "summary missing";
+    }
     return null;
   },
   match_intel: (d) => {
@@ -651,6 +709,7 @@ module.exports = {
     member_intel: loadMemberIntel,
     ai_analytics: loadAiAnalytics,
     match_intel: loadMatchIntel,
+    personality_summary: loadPersonalitySummary,
     weekly_digest: loadWeeklyDigest,
     content_translation: loadContentTranslation,
     business_dashboard: loadBusinessDashboard,

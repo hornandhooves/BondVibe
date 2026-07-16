@@ -950,7 +950,6 @@
       "building": "En construcción",
       "signal": { "interests": "Intereses en común", "intention": "Misma intención", "bigfive": "Personalidad", "context": "Contexto en común", "format": "Cómo conocen", "industry": "Industria", "complement": "Complementarios" }
     },
-    "bigfive": { "openness": "Apertura", "extraversion": "Extraversión", "agreeableness": "Amabilidad" },
     "curated": {
       "title": "Tu semana en Kinlo",
       "intro": "Elegimos a {{count}} personas con las que creemos que vas a conectar.",
@@ -1111,6 +1110,13 @@
       "title": "Quién estuvo aquí",
       "banner": "El evento terminó · el matching está abierto",
       "empty": "Aún nadie más se ha unido. Vuelve pronto."
+    },
+    "profileView": {
+      "title": "Tu perfil de match",
+      "edit": "Editar",
+      "emptyTitle": "Completa tu perfil para conocer a tu gente",
+      "emptyBody": "Tus intereses, tu vibra y tu personalidad son con lo que hacemos match. Toma unos minutos.",
+      "emptyCta": "Completar perfil"
     },
     "profile": {
       "title": "Tu perfil de matching",
@@ -2647,7 +2653,38 @@
         "title": "Amabilidad"
       },
       "NEUROTICISM": {
-        "title": "Estabilidad emocional"
+        "title": "Sensibilidad emocional"
+      }
+    },
+    "band": { "low": "Baja", "mid": "Equilibrada", "high": "Alta" },
+    "summaryEyebrow": "Kinlo AI leyó tus resultados",
+    "interpretTitle": "Qué significa",
+    "interpretNote": "Lecturas fijas para tus puntajes — dos personas con el mismo puntaje leen lo mismo.",
+    "interpret": {
+      "OPENNESS": {
+        "low": "Te gusta lo que funciona. Prefieres profundizar en lo conocido antes que buscar novedad por la novedad.",
+        "mid": "Eres curioso pero con los pies en la tierra: abierto a lo nuevo cuando vale la pena, cómodo con lo de siempre.",
+        "high": "Te atraen las ideas, lugares y personas nuevas. La novedad te da energía más que la rutina."
+      },
+      "CONSCIENTIOUSNESS": {
+        "low": "Te dejas llevar. Los planes te suenan a sugerencia y prefieres improvisar antes que agendar.",
+        "mid": "Planeas lo justo para no perder el hilo, pero no necesitas tenerlo todo cuadrado.",
+        "high": "Eres organizado y confiable. Te gusta el plan y cumples lo que te comprometes."
+      },
+      "EXTRAVERSION": {
+        "low": "Recargas a solas o en dosis pequeñas. Un uno a uno profundo te sabe mejor que una sala llena.",
+        "mid": "Disfrutas la gente y disfrutas el silencio — depende del día y de la compañía.",
+        "high": "La gente te da energía. Las salas llenas, las caras nuevas y salir te suman en vez de cansarte."
+      },
+      "AGREEABLENESS": {
+        "low": "Eres directo y difícil de mover. Dices lo que piensas, aunque no sea lo que quieren oír.",
+        "mid": "Cooperas sin dejarte pasar por encima: cedes a medias, pero sostienes tu postura.",
+        "high": "Eres cálido y cooperativo. Lees el ambiente, buscas puntos en común y evitas la fricción."
+      },
+      "NEUROTICISM": {
+        "low": "Te mantienes estable bajo presión. El estrés te resbala y tu ánimo es bastante parejo.",
+        "mid": "Sientes las cosas, pero las manejas. El estrés llega, y se te pasa.",
+        "high": "Sientes con intensidad. Estás emocionalmente afinado, lo que trae empatía — y también estrés."
       }
     },
     "questions": {

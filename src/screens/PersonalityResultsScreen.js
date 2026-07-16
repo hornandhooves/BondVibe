@@ -14,6 +14,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import GradientBackground from "../components/GradientBackground";
 import { DIMENSION_INFO } from '../utils/personalityQuiz';
 import { getPersonalityInsights } from '../utils/personalityScoring';
+import BigFiveInterpretation from '../components/matching/BigFiveInterpretation';
 
 const { width } = Dimensions.get('window');
 const RADAR_SIZE = width - 80;
@@ -223,6 +224,12 @@ export default function PersonalityResultsScreen({ route, navigation }) {
         >
           <Text style={styles.actionButtonText}>{t("personalityResults.findEventsButton")}</Text>
         </TouchableOpacity>
+
+        {/* What this means — deterministic bands (+ the optional AI synthesis,
+            which simply doesn't render when unavailable). */}
+        <View style={{ marginBottom: 16 }}>
+          <BigFiveInterpretation personality={scores} />
+        </View>
 
         {/* Info Footer */}
         <View style={styles.infoFooter}>

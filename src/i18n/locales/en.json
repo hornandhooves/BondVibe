@@ -950,7 +950,6 @@
       "building": "Building",
       "signal": { "interests": "Shared interests", "intention": "Same intention", "bigfive": "Personality", "context": "Shared context", "format": "How you meet", "industry": "Industry", "complement": "Complementary" }
     },
-    "bigfive": { "openness": "Openness", "extraversion": "Extraversion", "agreeableness": "Agreeableness" },
     "curated": {
       "title": "Your week on Kinlo",
       "intro": "We handpicked {{count}} people we think you'll click with.",
@@ -1111,6 +1110,13 @@
       "title": "Who was here",
       "banner": "The event ended · matching is open",
       "empty": "No one else has opted in yet. Check back soon."
+    },
+    "profileView": {
+      "title": "Your match profile",
+      "edit": "Edit",
+      "emptyTitle": "Complete your profile to meet your people",
+      "emptyBody": "Your interests, vibe and personality are what we match on. It takes a few minutes.",
+      "emptyCta": "Complete profile"
     },
     "profile": {
       "title": "Your match profile",
@@ -2647,7 +2653,38 @@
         "title": "Agreeableness"
       },
       "NEUROTICISM": {
-        "title": "Emotional Stability"
+        "title": "Emotional Sensitivity"
+      }
+    },
+    "band": { "low": "Low", "mid": "Balanced", "high": "High" },
+    "summaryEyebrow": "Kinlo AI read your results",
+    "interpretTitle": "What this means",
+    "interpretNote": "Fixed readings for your scores — no two people with the same score get different text.",
+    "interpret": {
+      "OPENNESS": {
+        "low": "You like what works. You'd rather go deep on the familiar than chase novelty for its own sake.",
+        "mid": "You're curious but grounded — open to new things when they earn it, happy with the tried and true otherwise.",
+        "high": "You're drawn to new ideas, places and people. Novelty energises you more than routine."
+      },
+      "CONSCIENTIOUSNESS": {
+        "low": "You go with the flow. Plans feel like suggestions, and you'd rather improvise than schedule.",
+        "mid": "You plan enough to stay on track, but you don't need everything mapped out.",
+        "high": "You're organised and dependable. You like a plan, and you follow through on what you commit to."
+      },
+      "EXTRAVERSION": {
+        "low": "You recharge alone or in small doses. Deep one-on-ones beat a crowded room.",
+        "mid": "You enjoy people and you enjoy quiet — it depends on the day and the company.",
+        "high": "You get energy from people. Big rooms, new faces and going out feel like fuel, not effort."
+      },
+      "AGREEABLENESS": {
+        "low": "You're direct and hard to sway. You say what you think, even when it's not what people want to hear.",
+        "mid": "You're cooperative without being a pushover — you'll meet halfway, but you hold your ground.",
+        "high": "You're warm and cooperative. You read the room, look for common ground and avoid friction."
+      },
+      "NEUROTICISM": {
+        "low": "You stay steady under pressure. Stress rolls off you and your mood is fairly even.",
+        "mid": "You feel things, but you handle them. Stress lands, and then it passes.",
+        "high": "You feel things intensely. You're emotionally tuned in, which brings empathy — and can bring stress."
       }
     },
     "questions": {
