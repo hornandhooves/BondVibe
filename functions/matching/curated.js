@@ -35,7 +35,11 @@ const SET_MAX = 10;
 
 // ---- helpers ---------------------------------------------------------------
 
-/** ISO year-week string ("2026-W29") — the set is keyed/refreshed weekly. */
+/**
+ * ISO year-week string ("2026-W29") — the set is keyed/refreshed weekly.
+ * @param {Date} date any date in the week
+ * @return {string} ISO year-week
+ */
 function isoWeek(date) {
   const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   const day = d.getUTCDay() || 7; // Mon=1..Sun=7
@@ -45,6 +49,11 @@ function isoWeek(date) {
   return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
+/**
+ * Firestore Timestamp | ISO | ms → epoch ms (or null).
+ * @param {*} v a timestamp-like value
+ * @return {(number|null)} epoch ms
+ */
 function toMillis(v) {
   if (!v) return null;
   if (typeof v === "number") return v;
@@ -56,9 +65,12 @@ function toMillis(v) {
 }
 
 /**
- * Freemium gate. Returns { unlocked, tier }.
- *   free_trial → within the trial week; plus → Kinlo Plus; locked → neither.
- * MUST match src/utils/curatedGate.js (the client mirror, unit-tested).
+ * Freemium gate — free_trial (within the trial week) · plus (Kinlo Plus) ·
+ * locked (neither). MUST match src/utils/curatedGate.js (the client mirror).
+ * @param {object} matchmaking users/{uid}.matchmaking
+ * @param {string} plan users/{uid}.plan
+ * @param {number} nowMs epoch ms
+ * @return {{unlocked: boolean, tier: string}} gate result
  */
 function gateFor(matchmaking, plan, nowMs) {
   const trialEndsMs = toMillis(matchmaking && matchmaking.freeTrialEndsAt);
@@ -67,7 +79,11 @@ function gateFor(matchmaking, plan, nowMs) {
   return {unlocked: false, tier: "locked"};
 }
 
-/** The signal keys that actually contributed (value ≥ 0.5) — the "why". */
+/**
+ * The signal keys that actually contributed (value ≥ 0.5) — the "why".
+ * @param {object} affinity a computeAffinity result
+ * @return {Array<string>} contributing signal keys, strongest first
+ */
 function reasonsFrom(affinity) {
   return (affinity.signals || [])
     .filter((s) => s.value != null && s.value >= 0.5)

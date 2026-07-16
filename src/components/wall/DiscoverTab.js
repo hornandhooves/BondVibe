@@ -24,11 +24,7 @@ import { FONTS } from "../../constants/theme-tokens";
 import Icon from "../Icon";
 import { funnyTag } from "../../constants/matchTags";
 import { MATCH_TYPE_COLORS } from "../../services/matchingService";
-import {
-  getDiscoverPeople,
-  getSuggestedCommunities,
-  getSuggestedEvents,
-} from "../../services/discoverService";
+import { getDiscoverPeople, getSuggestedEvents } from "../../services/discoverService";
 
 export default function DiscoverTab({ navigation }) {
   const { colors } = useTheme();
@@ -40,13 +36,11 @@ export default function DiscoverTab({ navigation }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [people, comms, evs] = await Promise.all([
-      getDiscoverPeople(),
-      getSuggestedCommunities(),
-      getSuggestedEvents(),
-    ]);
+    // People + communities come from ONE server call (communities are computed
+    // server-side — the client can't list communities it hasn't joined).
+    const [people, evs] = await Promise.all([getDiscoverPeople(), getSuggestedEvents()]);
     setData(people);
-    setCommunities(comms);
+    setCommunities(people.communities || []);
     setEvents(evs);
     setLoading(false);
   }, []);
@@ -62,22 +56,7 @@ export default function DiscoverTab({ navigation }) {
     return <ActivityIndicator style={{ marginTop: 48 }} color="#7C3AED" />;
   }
 
-  // Not participating → honest opt-in (never a global directory).
-  if (data && data.participating === false) {
-    return (
-      <View style={s.centered}>
-        <View style={s.centerIcon}>
-          <Icon name="community" size={30} color="#7C3AED" />
-        </View>
-        <Text style={[s.centerTitle, { color: colors.text }]}>{t("wall.discover.optInTitle")}</Text>
-        <Text style={[s.centerBody, { color: colors.textSecondary }]}>{t("wall.discover.optInBody")}</Text>
-        <TouchableOpacity style={s.centerCta} onPress={() => navigation.navigate("MatchConsent", {})}>
-          <Text style={s.centerCtaText}>{t("matchmaking.curated.setUp")}</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
+  const participating = data?.participating !== false;
   const people = data?.people || [];
   const lockedCount = data?.lockedCount || 0;
 
@@ -85,10 +64,22 @@ export default function DiscoverTab({ navigation }) {
     <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
       {/* PEOPLE — the affinity differentiator */}
       <Text style={[s.section, { color: colors.text }]}>{t("wall.discover.people")}</Text>
-      {people.length === 0 ? (
+      {!participating ? (
+        // Opt-in inline (never a global directory) — communities/events below.
+        <View style={[s.optIn, { borderColor: colors.border }]}>
+          <View style={s.centerIcon}>
+            <Icon name="community" size={26} color="#7C3AED" />
+          </View>
+          <Text style={[s.centerTitle, { color: colors.text }]}>{t("wall.discover.optInTitle")}</Text>
+          <Text style={[s.centerBody, { color: colors.textSecondary }]}>{t("wall.discover.optInBody")}</Text>
+          <TouchableOpacity style={s.centerCta} onPress={() => navigation.navigate("MatchConsent", {})}>
+            <Text style={s.centerCtaText}>{t("matchmaking.curated.setUp")}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : people.filter((p) => !p.locked).length === 0 ? (
         <Text style={[s.emptyRow, { color: colors.textSecondary }]}>{t("wall.discover.noPeople")}</Text>
       ) : (
-        people.map((p, i) =>
+        people.map((p) =>
           p.locked ? null : (
             <PersonCard key={p.uid} person={p} colors={colors} t={t} s={s}
               onOpen={() => navigation.navigate("UserProfile", { userId: p.uid })} />
@@ -220,6 +211,7 @@ function createStyles(colors) {
     section: { fontFamily: FONTS.display, fontSize: 16, marginBottom: 12 },
     emptyRow: { fontFamily: FONTS.bodyMedium, fontSize: 13.5, marginBottom: 8 },
     centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40, gap: 12 },
+    optIn: { alignItems: "center", gap: 10, borderWidth: 1, borderRadius: 18, padding: 22, marginBottom: 8 },
     centerIcon: { width: 68, height: 68, borderRadius: 22, backgroundColor: "#EDE4FC", alignItems: "center", justifyContent: "center", marginBottom: 4 },
     centerTitle: { fontFamily: FONTS.display, fontSize: 19, textAlign: "center" },
     centerBody: { fontFamily: FONTS.bodyMedium, fontSize: 13.5, lineHeight: 20, textAlign: "center" },

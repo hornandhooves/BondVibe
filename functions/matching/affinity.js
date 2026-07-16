@@ -21,11 +21,20 @@ const clamp01 = (n) => Math.max(0, Math.min(1, n));
 
 const BIG_FIVE = ["OPENNESS", "CONSCIENTIOUSNESS", "EXTRAVERSION", "AGREEABLENESS", "NEUROTICISM"];
 
+/**
+ * @param {object} p personality scores
+ * @return {boolean} whether p has usable Big Five numeric scores
+ */
 function isBigFive(p) {
   return !!p && typeof p === "object" && BIG_FIVE.some((d) => typeof p[d] === "number");
 }
 
-// Big Five compatibility (mirror of personalityScoring.calculateCompatibility).
+/**
+ * Big Five compatibility (mirror of personalityScoring.calculateCompatibility).
+ * @param {object} p1 personality A
+ * @param {object} p2 personality B
+ * @return {number} 0-100 compatibility
+ */
 function calculateCompatibility(p1, p2) {
   if (!p1 || !p2) return 0;
   const weights = {EXTRAVERSION: 0.30, AGREEABLENESS: 0.25, OPENNESS: 0.20, CONSCIENTIOUSNESS: 0.15, NEUROTICISM: 0.10};
@@ -40,7 +49,12 @@ function calculateCompatibility(p1, p2) {
   return Math.round(Math.max(0, Math.min(100, total)));
 }
 
-/** Jaccard overlap of two id lists → 0..1, or null when neither side has data. */
+/**
+ * Jaccard overlap of two id lists.
+ * @param {Array} a list A
+ * @param {Array} b list B
+ * @return {(number|null)} 0..1, or null when neither side has data
+ */
 function jaccard(a, b) {
   const A = new Set(arr(a));
   const B = new Set(arr(b));
@@ -50,6 +64,12 @@ function jaccard(a, b) {
   return union === 0 ? null : inter / union;
 }
 
+/**
+ * Format fit: group-preference match + energy proximity.
+ * @param {object} a profile A
+ * @param {object} b profile B
+ * @return {(number|null)} 0..1, or null when neither has format data
+ */
 function formatValue(a, b) {
   const parts = [];
   if (a.groupPref && b.groupPref) parts.push(a.groupPref === b.groupPref ? 1 : 0.4);
@@ -61,12 +81,23 @@ function formatValue(a, b) {
   return parts.length ? parts.reduce((s, x) => s + x, 0) / parts.length : null;
 }
 
+/**
+ * Shared context (events + communities).
+ * @param {object} ctx { sharedEvents, sharedCommunities }
+ * @return {(number|null)} 0..1, or null when unknown
+ */
 function contextValue(ctx) {
   if (!ctx || (ctx.sharedEvents == null && ctx.sharedCommunities == null)) return null;
   const shared = (ctx.sharedEvents || 0) + (ctx.sharedCommunities || 0);
   return clamp01(shared / 3);
 }
 
+/**
+ * Professional complementarity — can they help each other (offer↔seek)?
+ * @param {object} a profile A
+ * @param {object} b profile B
+ * @return {(number|null)} 0..1, or null when neither has a pro profile
+ */
 function complementValue(a, b) {
   const oa = !!(a.pro && a.pro.offer);
   const sa = !!(a.pro && a.pro.seek);
@@ -77,6 +108,12 @@ function complementValue(a, b) {
   return canHelp || (oa || sa || ob || sb ? 0.2 : null);
 }
 
+/**
+ * Industry fit — a DIFFERENT industry scores higher (complementarity).
+ * @param {object} a profile A
+ * @param {object} b profile B
+ * @return {(number|null)} 1 different · 0.5 same · null unknown
+ */
 function industryValue(a, b) {
   const ia = a.pro && a.pro.industry;
   const ib = b.pro && b.pro.industry;

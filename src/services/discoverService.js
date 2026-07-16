@@ -16,7 +16,6 @@ import {
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
-import { getMyCommunities } from "./matchPoolService";
 import { getBlockedIds } from "./blockService";
 
 const uid = () => auth.currentUser?.uid || null;
@@ -36,23 +35,9 @@ export const getDiscoverPeople = async () => {
   }
 };
 
-/** Communities the user hasn't joined yet (light suggestion — ungated). */
-export const getSuggestedCommunities = async (max = 6) => {
-  const me = uid();
-  if (!me) return [];
-  try {
-    const mine = new Set(await getMyCommunities(me));
-    const snap = await getDocs(query(collection(db, "hostGroups"), qLimit(40)));
-    return snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((g) => !mine.has(g.id) && !(g.blockedIds || []).includes(me))
-      .sort((a, b) => (b.memberIds?.length || 0) - (a.memberIds?.length || 0))
-      .slice(0, max);
-  } catch (e) {
-    console.error("❌ getSuggestedCommunities:", e);
-    return [];
-  }
-};
+// Suggested communities come from the discoverForYou payload (computed
+// server-side — a client can't list communities it hasn't joined under the
+// per-member hostGroups read rule).
 
 /** Upcoming events the user might like (light suggestion — ungated). */
 export const getSuggestedEvents = async (max = 6) => {

@@ -30,10 +30,15 @@ const discoverForYou = onCall(async (request) => {
   const mm = meUser.matchmaking || {};
   const isPlus = meUser.plan === "kinlo_plus";
 
+  // Suggested communities (server-side — the hostGroups read rule is per-member,
+  // so a client can't list communities it hasn't joined; the Admin SDK can).
+  // Returns public-safe fields only, excluding communities the user is in.
+  const communities = await suggestCommunities(me);
+
   // Discovery is matchmaking-gated: no consent / incomplete / disabled → the
-  // client shows the opt-in CTA (honest, not an empty directory).
+  // client shows the opt-in CTA (honest), but communities still surface.
   if (mm.consentAt == null || mm.profileComplete !== true || mm.enabled === false) {
-    return {participating: false, isPlus, people: [], lockedCount: 0};
+    return {participating: false, isPlus, people: [], lockedCount: 0, communities};
   }
 
   const mine = meUser.matchProfile || null;
@@ -87,7 +92,31 @@ const discoverForYou = onCall(async (request) => {
     isPlus,
     people,
     lockedCount: isPlus ? 0 : Math.max(0, ranked.length - quota),
+    communities,
   };
 });
+
+/**
+ * Communities the user hasn't joined yet, most-active first (server-side so it
+ * bypasses the per-member hostGroups read rule). Public-safe fields only.
+ * @param {string} me uid
+ * @return {Promise<Array<{id, name, memberCount}>>}
+ */
+async function suggestCommunities(me) {
+  try {
+    const snap = await db.collection("hostGroups").limit(60).get();
+    return snap.docs
+      .map((d) => ({id: d.id, ...d.data()}))
+      .filter((g) => g.hostId !== me &&
+                     !((g.memberIds || []).includes(me)) &&
+                     !((g.blockedIds || []).includes(me)))
+      .sort((a, b) => (b.memberIds ? b.memberIds.length : 0) - (a.memberIds ? a.memberIds.length : 0))
+      .slice(0, 6)
+      .map((g) => ({id: g.id, name: g.name || "", memberCount: (g.memberIds || []).length}));
+  } catch (e) {
+    console.error("suggestCommunities:", e.message);
+    return [];
+  }
+}
 
 module.exports = {discoverForYou};
