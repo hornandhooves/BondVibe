@@ -29,6 +29,7 @@ import { isUserAttending } from "../../utils/eventHelpers";
 import { estimateCheckout } from "../../utils/pricing";
 import { getPricingConfig } from "../../services/configService";
 import { startMercadoPagoCheckout } from "../../services/mercadoPagoService";
+import { MERCADOPAGO_ENABLED } from "../../config/featureFlags";
 
 /**
  * Wait until the webhook adds the user to the event's attendees array.
@@ -96,7 +97,15 @@ export default function CheckoutScreen({ route, navigation }) {
   } = estimateCheckout(amount, processor, feeOverrides);
 
   // Detect the host's payout processor (Stripe vs Mercado Pago).
+  //
+  // The flag check is not belt-and-braces: hosts whose hostConfig was written
+  // before the flag still carry payoutProcessor "mercadopago" in Firestore, and
+  // that value alone would route their attendees into a Mercado Pago checkout
+  // that isn't integrated yet. While the flag is off we don't honour it and stay
+  // on Stripe. The stored data is left untouched, so flipping the flag back on
+  // restores those hosts without a migration.
   useEffect(() => {
+    if (!MERCADOPAGO_ENABLED) return;
     (async () => {
       try {
         const evSnap = await getDoc(doc(db, "events", eventId));

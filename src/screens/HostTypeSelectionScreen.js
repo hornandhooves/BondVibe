@@ -21,6 +21,7 @@ import {
   getAccountLink,
   checkAccountStatus,
 } from "../services/stripeConnectService";
+import { MERCADOPAGO_ENABLED } from "../config/featureFlags";
 
 // Deep link the Stripe return page redirects to (intercepted by
 // openAuthSessionAsync to auto-close the browser).
@@ -94,7 +95,14 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
 
         console.log("✅ User set as Free Host");
         goAfterSelection();
-      } else if (selectedType === "paid" && payoutProcessor === "mercadopago") {
+      } else if (
+        selectedType === "paid" &&
+        payoutProcessor === "mercadopago" &&
+        MERCADOPAGO_ENABLED
+      ) {
+        // Unreachable while the flag is off (the option isn't rendered and the
+        // default is stripe) — the guard is here so a stale state can't write a
+        // payoutProcessor the rest of the app now refuses to honour.
         // Mercado Pago payout (for hosts without an RFC). The MP account
         // connection is wired separately; for now we record the preference and
         // activate the paid host. canCreatePaidEvents stays false until the MP
@@ -397,11 +405,18 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
                 title: t("hostTypeSelection.stripeTitle"),
                 subtitle: t("hostTypeSelection.stripeSubtitle"),
               },
-              {
-                id: "mercadopago",
-                title: t("hostTypeSelection.mercadoPagoTitle"),
-                subtitle: t("hostTypeSelection.mercadoPagoSubtitle"),
-              },
+              // Hidden, not removed, until the Mercado Pago integration lands —
+              // flipping MERCADOPAGO_ENABLED restores it verbatim. The list is a
+              // vertical stack, so Stripe alone renders full-width and correct.
+              ...(MERCADOPAGO_ENABLED
+                ? [
+                    {
+                      id: "mercadopago",
+                      title: t("hostTypeSelection.mercadoPagoTitle"),
+                      subtitle: t("hostTypeSelection.mercadoPagoSubtitle"),
+                    },
+                  ]
+                : []),
             ].map((opt) => (
               <TouchableOpacity
                 key={opt.id}
