@@ -17,8 +17,53 @@
  * step 3/4 of the doc. Registering a provider is safe on its own: an unverified
  * token simply isn't enforced yet.
  */
+import * as Updates from "expo-updates";
 import { getApp as getWebApp } from "firebase/app";
 import { CustomProvider, initializeAppCheck as initWebAppCheck } from "firebase/app-check";
+
+/**
+ * Channels whose Android builds are actually installed FROM Google Play.
+ *
+ * This is the whole reason we don't key off `__DEV__`: Play Integrity attests
+ * "this app came from Play". Our `preview` profile is an internally-distributed
+ * APK — sideloaded, so Play reports UNRECOGNIZED_VERSION and the token never
+ * verifies. Harmless while enforcement is off, but the day it's on, every
+ * preview build would break. So Play Integrity runs ONLY where Play actually
+ * distributes the app (eas.json: `production` = distribution "store"); every
+ * other Android build uses the debug provider.
+ *
+ * If you ever ship `preview` through Play's internal testing track, add it here.
+ */
+export const PLAY_DISTRIBUTED_CHANNELS = ["production"];
+
+/**
+ * Which attestation provider each platform should use. Pure + exported so the
+ * rule is unit-tested rather than buried in an init closure — picking wrong here
+ * means either broken builds (Play Integrity on a sideloaded APK) or a weaker
+ * guarantee (debug where real attestation was possible).
+ *
+ * @param {object} env { isDev: boolean, channel: string|null|undefined }
+ * @returns {{apple: {provider: string}, android: {provider: string}}}
+ */
+export function pickProviders({ isDev, channel }) {
+  const playDistributed = !isDev && PLAY_DISTRIBUTED_CHANNELS.includes(channel);
+  return {
+    // iOS attests on any real device signed by our team (dev, ad-hoc,
+    // TestFlight). Only the Simulator can't — hence the isDev split.
+    apple: { provider: isDev ? "debug" : "appAttestWithDeviceCheckFallback" },
+    // Android only attests where Play actually distributes the app.
+    android: { provider: playDistributed ? "playIntegrity" : "debug" },
+  };
+}
+
+/** @returns {string|null} the EAS channel, or null when unavailable */
+function currentChannel() {
+  try {
+    return Updates.channel || null; // '' in a local dev run
+  } catch {
+    return null;
+  }
+}
 
 let nativeReady = null; // Promise<AppCheck> — the native instance, started lazily
 let registered = false;
@@ -34,14 +79,11 @@ function ensureNative() {
     const { initializeAppCheck } = require("@react-native-firebase/app-check");
 
     const provider = appCheckNs().newReactNativeFirebaseAppCheckProvider();
-    provider.configure({
-      // Debug providers in dev: App Attest can't attest on a Simulator and Play
-      // Integrity needs a Play-installed build, so a debug token (registered in
-      // the Firebase console) is the only way dev builds get a token.
-      apple: { provider: __DEV__ ? "debug" : "appAttestWithDeviceCheckFallback" },
-      android: { provider: __DEV__ ? "debug" : "playIntegrity" },
-      isTokenAutoRefreshEnabled: true,
+    const { apple, android } = pickProviders({
+      isDev: __DEV__,
+      channel: currentChannel(),
     });
+    provider.configure({ apple, android, isTokenAutoRefreshEnabled: true });
     return initializeAppCheck(getApp(), { provider, isTokenAutoRefreshEnabled: true });
   })().catch((e) => {
     // Never let attestation break the app: with enforcement off, a missing token
