@@ -68,7 +68,8 @@ export default function PersonalityResultsScreen({ route, navigation }) {
           <Icon name="back" size={26} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.text }]}>{t("personalityResults.headerTitle")}</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+        {/* 'Home' is not a route — the home screen is the HomeTab in MainTabs. */}
+        <TouchableOpacity onPress={() => navigation.navigate('MainTabs', { screen: 'HomeTab' })}>
           <Text style={[styles.doneButton, { color: colors.primary }]}>
             {t("personalityResults.done")}
           </Text>

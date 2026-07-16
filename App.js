@@ -11,10 +11,17 @@ import AppNavigator from "./src/navigation/AppNavigator";
 import KeyboardAccessory from "./src/components/KeyboardAccessory";
 import ErrorBoundary from "./src/components/ErrorBoundary";
 import { installCrashLogger } from "./src/services/crashLogger";
+import { initAppCheck } from "./src/services/appCheck";
 import * as Notifications from "expo-notifications";
 
 // Capture unhandled JS errors into Firestore as early as possible.
 installCrashLogger();
+
+// Register App Check on the web SDK before anything issues an httpsCallable, so
+// every call carries an attestation token. Native attestation (App Attest /
+// Play Integrity) is bridged in; see src/services/appCheck.js. Safe to fail —
+// server-side enforcement stays OFF until tokens are confirmed flowing.
+initAppCheck();
 
 // Dev-only: disable LogBox toast/overlay UI. Simulators/emulators emit
 // unavoidable noise (push-token registration, expo-notifications keychain,

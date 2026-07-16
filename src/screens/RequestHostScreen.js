@@ -107,9 +107,9 @@ export default function RequestHostScreen({ navigation }) {
   };
 
   const handleModalClose = () => {
-    console.log('👋 Closing modal and navigating to Home');
     setModalConfig({ ...modalConfig, visible: false });
-    navigation.navigate('Home');
+    // 'Home' is not a route — the home screen is the HomeTab inside MainTabs.
+    navigation.navigate('MainTabs', { screen: 'HomeTab' });
   };
 
   const styles = createStyles(colors);

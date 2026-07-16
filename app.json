@@ -49,7 +49,10 @@
         }
       ],
       "./plugins/withGoogleSigninModularHeaders",
-      "expo-localization"
+      "./plugins/withFirebaseAppCheckSwiftHeader",
+      "expo-localization",
+      "@react-native-firebase/app",
+      "@react-native-firebase/app-check"
     ],
     "extra": {
       "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDB6h3zbFS5tMBIgVXhAP_a2MrYtjuNixA",
@@ -77,7 +80,8 @@
         "NSPhotoLibraryUsageDescription": "Kinlo needs photo library access to let you choose profile pictures and share event photos.",
         "NSPhotoLibraryAddUsageDescription": "Kinlo needs permission to save photos to your library.",
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "googleServicesFile": "./google-services.json",
