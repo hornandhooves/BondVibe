@@ -308,6 +308,13 @@
       "video": "Video",
       "asMoment": "Compartir como Moment (24h)"
     },
+    "moments": {
+      "yours": "Tu moment",
+      "add": "Añadir",
+      "consent": "Los Moments desaparecen tras 24 horas. Quien te sigue puede verlos hasta entonces.",
+      "gone": "Este moment ya expiró",
+      "videoNote": "Vista previa de video — reproducción pronto"
+    },
     "empty": {
       "text": "Sigue a otras personas y comparte tu primera publicación para llenar tu muro.",
       "cta": "Crear publicación",

@@ -83,6 +83,10 @@ exports.discoverForYou = wallDiscover.discoverForYou;
 const wallPostStats = require("./wall/postStats");
 exports.recordPostEvent = wallPostStats.recordPostEvent;
 
+// Wall v2 — Moments 24h TTL: hourly server-side purge of expired items (P3).
+const wallMoments = require("./wall/moments");
+exports.purgeExpiredMoments = wallMoments.purgeExpiredMoments;
+
 // Social layer — server-maintained post counts.
 const social = require("./social/social");
 exports.onPostLikeWritten = social.onPostLikeWritten;

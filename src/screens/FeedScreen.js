@@ -32,6 +32,7 @@ import useAiOptIn from "../hooks/useAiOptIn";
 import { toggleInterested } from "../services/signalsService";
 import WallTabs from "../components/wall/WallTabs";
 import DiscoverTab from "../components/wall/DiscoverTab";
+import MomentsRow from "../components/wall/MomentsRow";
 import { TYPE, SPACING, RADII, ELEVATION } from "../constants/theme-tokens";
 
 const normAvatar = (a) =>
@@ -288,9 +289,16 @@ export default function FeedScreen({ navigation }) {
           renderItem={({ item }) => (
             <PostCard post={item} navigation={navigation} onChanged={load} />
           )}
-          // "Para ti" gets the Smart Wall header; "Siguiendo" is the plain
-          // chronological feed (getFeed) — identical to today, no AI chrome.
-          ListHeaderComponent={tab === 0 ? <SmartWallHeader navigation={navigation} /> : null}
+          // "Para ti" gets the Moments row + Smart Wall header; "Siguiendo" is
+          // the plain chronological feed (getFeed) — identical to today.
+          ListHeaderComponent={
+            tab === 0 ? (
+              <>
+                <MomentsRow navigation={navigation} />
+                <SmartWallHeader navigation={navigation} />
+              </>
+            ) : null
+          }
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={load} tintColor={colors.primary} />

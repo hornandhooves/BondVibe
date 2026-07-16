@@ -308,6 +308,13 @@
       "video": "Video",
       "asMoment": "Share as a Moment (24h)"
     },
+    "moments": {
+      "yours": "Your moment",
+      "add": "Add",
+      "consent": "Moments disappear after 24 hours. Anyone who follows you can see them until then.",
+      "gone": "This moment has expired",
+      "videoNote": "Video preview — playback coming soon"
+    },
     "empty": {
       "text": "Follow people and share your first post to fill your feed.",
       "cta": "Create a post",
