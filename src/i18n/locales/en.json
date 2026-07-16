@@ -902,6 +902,75 @@
       "couldntCreate": "Couldn't create poll"
     }
   },
+  "matchmaking": {
+    "affinity": {
+      "title": "Why we're showing you this",
+      "underConstructionTitle": "Affinity under construction",
+      "underConstructionBody": "Fill in your profiles to see a real affinity — we never show a made-up number.",
+      "building": "Building",
+      "signal": { "interests": "Shared interests", "intention": "Same intention", "bigfive": "Personality", "context": "Shared context", "format": "How you meet", "industry": "Industry", "complement": "Complementary" }
+    },
+    "bigfive": { "openness": "Openness", "extraversion": "Extraversion", "agreeableness": "Agreeableness" },
+    "curated": {
+      "title": "Your week on Kinlo",
+      "intro": "We handpicked {{count}} people we think you'll click with.",
+      "sharedCommunities_one": "In {{count}} community with you",
+      "sharedCommunities_other": "In {{count}} communities with you",
+      "becauseAffinity": "Because you have a lot in common",
+      "connect": "Connect",
+      "dontSuggest": "Stop suggesting",
+      "inactiveTitle": "Turn on matchmaking",
+      "inactiveBody": "Opt in and complete your profile to get a weekly, curated set of people.",
+      "setUp": "Set up",
+      "lockedTitle": "Your free week is over",
+      "lockedBody": "We found {{count}} people for you this week. Unlock them with Kinlo Plus.",
+      "unlockPlus": "Unlock with Kinlo Plus",
+      "emptyTitle": "Nobody to suggest yet",
+      "emptyBody": "As more people in your communities opt in, your weekly set will fill up — we never invent matches."
+    },
+    "groups": {
+      "title": "Groups for you",
+      "cardTitle": "Group of {{count}}",
+      "join": "Join",
+      "joinedCount": "{{count}} joined — the chat opens at 3",
+      "active": "{{count}} in the chat",
+      "waiting": "You're in — waiting for the group to fill",
+      "openChat": "Open chat",
+      "chatEmpty": "Say hi to your group",
+      "emptyTitle": "No groups yet",
+      "emptyBody": "When enough people in your communities opt in, we'll suggest small groups of 4-6 — never made up."
+    },
+    "settings": {
+      "title": "Matchmaking",
+      "participate": "Participate in matchmaking",
+      "participateOn": "You're in — you can appear in sets and groups.",
+      "participateOff": "Paused — you won't appear until you turn this back on.",
+      "crossCommunity": "Cross-community discovery",
+      "crossCommunitySub": "Also meet people outside your shared communities.",
+      "membership": "Membership",
+      "plusActive": "Kinlo Plus is active",
+      "trialLeft_one": "Free week — {{count}} day left",
+      "trialLeft_other": "Free week — {{count}} days left",
+      "trialOver": "Your free week is over — unlock with Kinlo Plus",
+      "excluded": "Stopped suggesting",
+      "excludedCount_one": "{{count}} person",
+      "excludedCount_other": "{{count}} people",
+      "clear": "Clear",
+      "disable": "Turn off matchmaking",
+      "disableTitle": "Turn off matchmaking?",
+      "disableMsg": "This deletes your match profile and removes you from all sets and groups. You can opt in again anytime.",
+      "disableConfirm": "Turn off",
+      "notInTitle": "You're not in matchmaking",
+      "notInBody": "Opt in to get a weekly, curated set of people and small groups."
+    },
+    "type": { "friend": "Friends", "professional": "Professional", "romantic": "Romantic", "brand": "New" },
+    "groupPref": { "one_on_one": "One-on-one", "small_group": "Small group", "group": "Big group" },
+    "interest": { "music": "Music", "travel": "Travel", "fitness": "Fitness", "food": "Food", "art": "Art", "gaming": "Gaming", "reading": "Reading", "movies": "Movies", "photography": "Photography", "hiking": "Hiking", "yoga": "Yoga", "tech": "Tech", "fashion": "Fashion", "cooking": "Cooking", "sports": "Sports", "dancing": "Dancing", "coffee": "Coffee", "nature": "Nature", "volunteering": "Volunteering", "startups": "Startups" },
+    "funnyTag": { "trouble_junky": "Trouble junky", "wild_runner": "Wild runner", "infinite_meditator": "Infinite meditator", "coffee_addict": "Coffee addict", "night_owl": "Night owl", "book_worm": "Book worm", "taco_hunter": "Taco hunter", "dance_floor_regular": "Dance floor regular", "cliff_chaser": "Cliff chaser", "dog_person": "Dog person" },
+    "language": { "es": "Spanish", "en": "English", "pt": "Portuguese", "fr": "French", "de": "German", "it": "Italian", "zh": "Chinese", "ja": "Japanese", "ko": "Korean" },
+    "learning": { "language": "A language", "instrument": "An instrument", "coding": "Coding", "cooking": "Cooking", "art": "Art", "sport": "A sport", "business": "Business", "mindfulness": "Mindfulness" },
+    "industry": { "tech": "Tech", "design": "Design", "finance": "Finance", "health": "Health", "education": "Education", "marketing": "Marketing", "hospitality": "Hospitality", "arts": "Arts", "legal": "Legal", "realestate": "Real estate", "nonprofit": "Nonprofit", "other": "Other" }
+  },
   "matching": {
     "plusActivated": {
       "title": "You're Kinlo Plus!",
@@ -1016,6 +1085,26 @@
       "icebreakerPlaceholder": "Ask me about…",
       "whoCanSee": "Who can see you?",
       "saveAndSee": "Save & see who was here",
+      "energyLabel": "Your energy",
+      "energyChill": "Chill",
+      "energyAdventurous": "Adventurous",
+      "energyIntrovert": "Introvert",
+      "energyExtrovert": "Extrovert",
+      "groupPrefLabel": "How you like to meet",
+      "interestsLabel": "Interests",
+      "funnyTagsLabel": "Funny tags",
+      "languagesLabel": "Languages",
+      "learningLabel": "Learning",
+      "proLabel": "Professional (optional)",
+      "proRolePlaceholder": "Your role (e.g. Product designer)",
+      "incompleteTitle": "Complete your profile",
+      "incompleteMsg": "Pick what you're looking for, at least 3 interests, a funny tag, your energy and how you like to meet.",
+      "personalityLabel": "Personality (Big Five)",
+      "personalityCta": "Take the personality test",
+      "personalityCtaSub": "5 minutes — it powers your best matches.",
+      "personalityDone": "Personality complete",
+      "personalityRedo": "Redo",
+      "bigFiveRequired": "Take the quick personality test to finish your profile.",
       "couldntSaveTitle": "Couldn't save",
       "tryAgain": "Please try again.",
       "pickLookingForTitle": "Pick what you're looking for",
@@ -2124,6 +2213,10 @@
         "title": "You have a new match 💜",
         "body": "Someone you liked liked you back."
       }
+    },
+    "matchIntro": {
+      "title": "You connected 💜",
+      "body": "You both wanted an intro — say hi."
     },
     "social": {
       "newFollower": {

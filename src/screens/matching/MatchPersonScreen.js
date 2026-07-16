@@ -18,6 +18,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../contexts/ThemeContext";
 import MatchIntelCard from "../../components/ai/MatchIntelCard";
+import SignalBreakdown from "../../components/matching/SignalBreakdown";
 import { likeAttendee, MATCH_TYPE_COLORS } from "../../services/matchingService";
 
 export default function MatchPersonScreen({ route, navigation }) {
@@ -141,6 +142,8 @@ export default function MatchPersonScreen({ route, navigation }) {
             </View>
           )}
         </View>
+        {/* Deterministic affinity breakdown (P1) — the score is NOT from the AI. */}
+        <SignalBreakdown affinity={profile.affinity} />
         {/* Match Intelligence (ai_features/15): rationale free, icebreakers Plus */}
         <MatchIntelCard
           eventId={eventId}

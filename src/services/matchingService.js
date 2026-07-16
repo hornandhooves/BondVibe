@@ -31,7 +31,19 @@ import {
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
-import { calculateCompatibility, isBigFive } from "../utils/personalityScoring";
+import { isBigFive } from "../utils/personalityScoring";
+import { computeAffinity } from "../utils/computeAffinity";
+import { syncMatchPool, removeFromMatchPool } from "./matchPoolService";
+import { arr, stripUndefined } from "../utils/firestoreClean";
+import {
+  isProfileComplete,
+  sanitizeIds,
+  FUNNY_TAG_IDS,
+  LANGUAGES,
+  LEARNING,
+  GROUP_PREFS,
+  INDUSTRIES,
+} from "../constants/matchTags";
 
 // ---- Enums (mirror §4 of the handoff) -------------------------------------
 export const MATCH_TYPES = ["friend", "professional", "romantic"];
@@ -52,6 +64,28 @@ export const MATCH_TYPE_COLORS = {
   friend: { fg: "#1F8A6E", bg: "#E1F5EC" },
   professional: { fg: "#4F5BD5", bg: "#E6EAFB" },
   romantic: { fg: "#E91E8C", bg: "#FBE4F1" },
+  brand: { fg: "#7C3AED", bg: "#EDE4FC" }, // v2 "IA / nuevo" accent
+};
+
+// ---- v2 profile sanitizers (P0) — structured, clamped, no free text ---------
+const sanitizeEnergy = (e) => {
+  if (!e || typeof e !== "object") return null;
+  const a = Number(e.adventure);
+  const s = Number(e.social);
+  if (!Number.isFinite(a) || !Number.isFinite(s)) return null;
+  const clamp = (n) => Math.max(0, Math.min(100, Math.round(n)));
+  return { adventure: clamp(a), social: clamp(s) };
+};
+const sanitizePro = (p) => {
+  if (!p || typeof p !== "object") return null;
+  const str = (v) => (typeof v === "string" ? v.trim().slice(0, 120) : "");
+  const out = {
+    role: str(p.role),
+    industry: INDUSTRIES.includes(p.industry) ? p.industry : null,
+    offer: str(p.offer),
+    seek: str(p.seek),
+  };
+  return out.role || out.industry || out.offer || out.seek ? out : null;
 };
 
 // ---- Helpers ---------------------------------------------------------------
@@ -131,30 +165,79 @@ export const saveMatchProfile = async (eventId, profile) => {
   try {
     const userSnap = await getDoc(doc(db, "users", me));
     const u = userSnap.exists() ? userSnap.data() : {};
+    // FIX: every array field is coerced to [] up front so a missing one can
+    // never reach Firestore as `undefined` (the root of the save crash). All
+    // writes below are additionally run through stripUndefined.
+    const interests = arr(profile.interests);
+    const lookingFor = arr(profile.lookingFor);
+    const funnyTags = sanitizeIds(profile.funnyTags, FUNNY_TAG_IDS);
+    const languages = sanitizeIds(profile.languages, LANGUAGES);
+    const learning = sanitizeIds(profile.learning, LEARNING);
+    const energy = sanitizeEnergy(profile.energy);
+    const groupPref = GROUP_PREFS.includes(profile.groupPref) ? profile.groupPref : null;
+    const pro = sanitizePro(profile.pro);
+    const personality = isBigFive(u.personality) ? u.personality : null;
+
     await setDoc(
       profileRef(eventId, me),
-      {
+      stripUndefined({
         userId: me,
         photoUrl: profile.photoUrl ?? u.avatar ?? null,
         displayName: profile.displayName ?? u.fullName ?? u.name ?? "Guest",
         age: profile.age ?? null,
         bio: profile.bio ?? "",
-        interests: profile.interests ?? [],
+        interests, // catalog ids (new picker) or legacy free text
         profession: profile.profession ?? u.profession ?? "",
-        languages: profile.languages ?? [],
-        lookingFor: profile.lookingFor ?? [],
+        languages,
+        lookingFor,
         icebreaker: profile.icebreaker ?? "",
         available: profile.available ?? true,
         visibility: profile.visibility ?? "everyone",
         gender: profile.gender ?? u.gender ?? null,
+        // v2 expanded profile (P0) — structured tags, no free text / no emoji.
+        energy,
+        groupPref,
+        funnyTags,
+        learning,
+        pro,
         // Denormalized personality snapshot for compatibility ranking.
-        personality: isBigFive(u.personality) ? u.personality : null,
+        personality,
         consentAt: profile.consentAt ?? serverTimestamp(),
         updatedAt: serverTimestamp(),
-      },
+      }),
       { merge: true }
     );
-    return { success: true };
+    // Mirror the gate state onto the user doc (v2): consent + whether the profile
+    // is complete enough to participate. Server rules read users/{uid}.matchmaking.
+    // Big Five is part of "complete" — see isProfileComplete.
+    const complete = isProfileComplete({
+      lookingFor, interests, funnyTags, energy, groupPref, personality,
+    });
+    // Canonical, user-level matchmaking profile (P3) — the cross-community pool
+    // and the curated generator read this, not the event-scoped copy.
+    const canonicalProfile = { interests, funnyTags, lookingFor, energy, groupPref, pro, personality };
+    await setDoc(
+      doc(db, "users", me),
+      stripUndefined({
+        matchmaking: {
+          consentAt: u.matchmaking?.consentAt ?? profile.consentAt ?? serverTimestamp(),
+          profileComplete: complete,
+          enabled: u.matchmaking?.enabled ?? true,
+        },
+        matchProfile: canonicalProfile,
+      }),
+      { merge: true }
+    );
+    // Refresh the cross-community pool doc (best-effort; the set generator reads
+    // it). Only surfaces the user once their profile is complete + enabled.
+    if (complete) {
+      try {
+        await syncMatchPool();
+      } catch (e) {
+        /* non-fatal — the weekly batch will pick it up */
+      }
+    }
+    return { success: true, profileComplete: complete };
   } catch (e) {
     console.error("❌ saveMatchProfile:", e);
     return { success: false, error: e.message };
@@ -187,6 +270,93 @@ export const leaveMatching = async (eventId) => {
   }
 };
 
+// ---- Matchmaking state (v2 user-level gate) --------------------------------
+// users/{uid}.matchmaking = { consentAt, profileComplete, enabled, freeTrialEndsAt?, plan? }.
+// consent + profileComplete are the mandatory gate; server rules read this.
+
+/** The current user's matchmaking state, or null. */
+export const getMatchmaking = async () => {
+  const me = uid();
+  if (!me) return null;
+  const s = await getDoc(doc(db, "users", me));
+  return (s.exists() && s.data().matchmaking) || null;
+};
+
+/** Record consent (the mandatory first gate step). Idempotent — never clears a
+ *  prior consentAt; sets enabled. */
+export const setMatchmakingConsent = async () => {
+  const me = uid();
+  if (!me) return { success: false };
+  try {
+    const s = await getDoc(doc(db, "users", me));
+    const mm = (s.exists() && s.data().matchmaking) || {};
+    await setDoc(
+      doc(db, "users", me),
+      { matchmaking: { ...mm, consentAt: mm.consentAt ?? serverTimestamp(), enabled: true } },
+      { merge: true }
+    );
+    return { success: true };
+  } catch (e) {
+    console.error("❌ setMatchmakingConsent:", e);
+    return { success: false, error: e.message };
+  }
+};
+
+/** Patch matchmaking settings (enabled / paused / crossCommunity …). */
+export const updateMatchmaking = async (patch) => {
+  const me = uid();
+  if (!me) return { success: false };
+  try {
+    await setDoc(doc(db, "users", me), { matchmaking: patch || {} }, { merge: true });
+    return { success: true };
+  } catch (e) {
+    console.error("❌ updateMatchmaking:", e);
+    return { success: false, error: e.message };
+  }
+};
+
+// ---- v2 settings (P4) — participate / pause / cross-community / disable ------
+
+/** Master switch. Off = paused (profile kept, stops appearing); on = active.
+ *  Keeps the pool doc's `enabled` flag in sync so the user really (dis)appears. */
+export const setMatchmakingEnabled = async (enabled) => {
+  const res = await updateMatchmaking({ enabled: !!enabled });
+  if (res.success) {
+    try {
+      await syncMatchPool();
+    } catch (e) {
+      /* non-fatal — the weekly batch reconciles */
+    }
+  }
+  return res;
+};
+
+/** Opt into cross-community discovery (default off = only shared communities). */
+export const setCrossCommunity = async (on) => updateMatchmaking({ crossCommunity: !!on });
+
+/**
+ * Disable matchmaking (destructive): delete the cross-community pool profile so
+ * the user is removed from every future set/pool, and revoke consent so the
+ * server gates treat them as a non-participant. Reversible only by opting in
+ * again (which re-consents + rebuilds the profile).
+ */
+export const leaveMatchmaking = async () => {
+  const me = uid();
+  if (!me) return { success: false };
+  try {
+    await removeFromMatchPool();
+    await setDoc(
+      doc(db, "users", me),
+      { matchmaking: { enabled: false, consentAt: null, profileComplete: false } },
+      { merge: true }
+    );
+    return { success: true };
+  } catch (e) {
+    console.error("❌ leaveMatchmaking:", e);
+    return { success: false, error: e.message };
+  }
+};
+
 // ---- Grid ("who was here") -------------------------------------------------
 /**
  * Attendee profiles for the post-event grid, ranked by compatibility with me.
@@ -207,19 +377,21 @@ export const getMatchGrid = async (eventId) => {
     );
     const myProfile = await getMyMatchProfile(eventId);
     const myGender = myProfile?.gender ?? null;
-    const myPersonality = myProfile?.personality ?? null;
 
     return snap.docs
       .map((d) => ({ id: d.id, ...d.data() }))
       .filter((p) => p.userId !== me && p.visibility !== "hidden")
       .filter((p) => passesGenderVisibility(p, myGender))
-      .map((p) => ({
-        ...p,
-        compatibility:
-          isBigFive(myPersonality) && isBigFive(p.personality)
-            ? calculateCompatibility(myPersonality, p.personality)
-            : null,
-      }))
+      .map((p) => {
+        // v2: deterministic multi-signal affinity (P1). The score is computed
+        // here — the AI never produces it. Insufficient signal → under_construction.
+        const affinity = computeAffinity(myProfile, p, "social");
+        return {
+          ...p,
+          affinity,
+          compatibility: affinity.status === "ok" ? affinity.score : null,
+        };
+      })
       .sort((a, b) => (b.compatibility ?? -1) - (a.compatibility ?? -1));
   } catch (e) {
     console.error("❌ getMatchGrid:", e);

@@ -62,11 +62,17 @@ export default function MatchGridScreen({ route, navigation }) {
             </Text>
           </View>
         )}
-        {typeof item.compatibility === "number" && (
+        {typeof item.compatibility === "number" ? (
           <View style={[styles.compat, { backgroundColor: colors.primary }]}>
             <Text style={styles.compatText}>{item.compatibility}%</Text>
           </View>
-        )}
+        ) : item.affinity?.status === "under_construction" ? (
+          <View style={[styles.compat, { backgroundColor: "#EDE4FC" }]}>
+            <Text style={[styles.compatText, { color: "#7C3AED" }]}>
+              {t("matchmaking.affinity.building")}
+            </Text>
+          </View>
+        ) : null}
       </View>
       <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
         {item.displayName}

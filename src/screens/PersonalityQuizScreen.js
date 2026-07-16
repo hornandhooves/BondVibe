@@ -25,7 +25,10 @@ import {
   isQuizComplete,
 } from "../utils/personalityScoring";
 
-export default function PersonalityQuizScreen({ navigation }) {
+export default function PersonalityQuizScreen({ navigation, route }) {
+  // returnTo lets the unified match profile launch the quiz and get control back
+  // (Big Five is part of "Your match profile" now). Default: back to Profile.
+  const { returnTo, ...returnParams } = route?.params || {};
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const [answers, setAnswers] = useState({});
@@ -97,8 +100,9 @@ export default function PersonalityQuizScreen({ navigation }) {
 
   const handleSuccessClose = () => {
     setShowSuccessModal(false);
-    // Navigate back to Profile screen
-    navigation.navigate("Profile");
+    // Back to wherever launched the quiz (the match profile passes returnTo).
+    if (returnTo) navigation.navigate(returnTo, returnParams);
+    else navigation.navigate("Profile");
   };
 
   const getCurrentAnswer = () => answers[currentQuestion.id];

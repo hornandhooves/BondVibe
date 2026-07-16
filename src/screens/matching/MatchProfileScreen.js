@@ -1,7 +1,10 @@
 /**
- * A3 + A4 — Match profile. Prefilled from the user's account; the attendee sets
- * bio, interests, what they're looking for (contextual to the event's match
- * types), an icebreaker and visibility, then saves an opt-in profile.
+ * A3 + A4 — Match profile (Matchmaking v2). Prefilled from the account; the
+ * attendee sets the expanded, STRUCTURED profile — energy, group preference,
+ * interests, funny tags (fixed catalog, each with its own Kinlo icon), languages,
+ * learning, a short bio + intent + icebreaker + visibility — then saves an opt-in
+ * profile. No free-text tags, no emoji: every tag is a catalog id rendered via
+ * i18n + Icon.js.
  */
 import React, { useState, useEffect } from "react";
 import {
@@ -10,12 +13,15 @@ import {
   TextInput,
   ScrollView,
   StyleSheet,
+  TouchableOpacity,
   Alert,
 } from "react-native";
 import { doc, getDoc } from "firebase/firestore";
 import { useTranslation } from "react-i18next";
-import { db } from "../../services/firebase";
+import { db, auth } from "../../services/firebase";
 import { useTheme } from "../../contexts/ThemeContext";
+import { isBigFive } from "../../utils/personalityScoring";
+import Icon from "../../components/Icon";
 import { MatchHeader, PrimaryButton, Chip } from "./matchUi";
 import {
   saveMatchProfile,
@@ -23,69 +29,108 @@ import {
   MATCH_TYPE_COLORS,
   VISIBILITY_OPTIONS,
 } from "../../services/matchingService";
+import {
+  INTERESTS,
+  FUNNY_TAGS,
+  LANGUAGES,
+  LEARNING,
+  INDUSTRIES,
+  GROUP_PREFS,
+  DEFAULT_ENERGY,
+  isProfileComplete,
+} from "../../constants/matchTags";
+
+const ENERGY_STEPS = [0, 25, 50, 75, 100];
 
 export default function MatchProfileScreen({ route, navigation }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const { eventId, eventTitle } = route.params || {};
-  const VIS_LABELS = {
-    everyone: t("matching.profile.visEveryone"),
-    same_gender: t("matching.profile.visSameGender"),
-    opposite_gender: t("matching.profile.visOppositeGender"),
-    organizer: t("matching.profile.visOrganizer"),
-    hidden: t("matching.profile.visHiddenForNow"),
-  };
 
   const [types, setTypes] = useState([]);
   const [bio, setBio] = useState("");
   const [profession, setProfession] = useState("");
-  const [interests, setInterests] = useState("");
+  const [interests, setInterests] = useState([]); // catalog ids
+  const [funnyTags, setFunnyTags] = useState([]);
+  const [languages, setLanguages] = useState([]);
+  const [learning, setLearning] = useState([]);
+  const [energy, setEnergy] = useState({ ...DEFAULT_ENERGY });
+  const [groupPref, setGroupPref] = useState(null);
+  const [pro, setPro] = useState({ role: "", industry: null, offer: "", seek: "" });
   const [lookingFor, setLookingFor] = useState([]);
   const [icebreaker, setIcebreaker] = useState("");
   const [visibility, setVisibility] = useState("everyone");
+  const [personality, setPersonality] = useState(null); // Big Five (unified here)
   const [saving, setSaving] = useState(false);
+
+  // Big Five now lives INSIDE the match profile. Re-read on focus so it updates
+  // right after the user finishes the quiz and returns here.
+  const loadPersonality = React.useCallback(async () => {
+    const me = auth.currentUser?.uid;
+    if (!me) return;
+    const uSnap = await getDoc(doc(db, "users", me));
+    setPersonality(uSnap.exists() ? uSnap.data().personality || null : null);
+  }, []);
+  useEffect(() => navigation.addListener("focus", loadPersonality), [navigation, loadPersonality]);
 
   useEffect(() => {
     (async () => {
-      // Event match types drive the "looking for" chips; existing profile prefills.
       const [eSnap, existing] = await Promise.all([
         getDoc(doc(db, "events", eventId)),
         getMyMatchProfile(eventId),
       ]);
-      const t = eSnap.exists() ? eSnap.data()?.matching?.types || [] : [];
-      setTypes(t);
+      const evTypes = eSnap.exists() ? eSnap.data()?.matching?.types || [] : [];
+      setTypes(evTypes);
+      await loadPersonality();
       if (existing) {
         setBio(existing.bio || "");
         setProfession(existing.profession || "");
-        setInterests((existing.interests || []).join(", "));
-        setLookingFor(existing.lookingFor?.length ? existing.lookingFor : t);
+        setInterests(Array.isArray(existing.interests) ? existing.interests : []);
+        setFunnyTags(existing.funnyTags || []);
+        setLanguages(existing.languages || []);
+        setLearning(existing.learning || []);
+        setEnergy(existing.energy || { ...DEFAULT_ENERGY });
+        setGroupPref(existing.groupPref || null);
+        setPro({ role: "", industry: null, offer: "", seek: "", ...(existing.pro || {}) });
+        setLookingFor(existing.lookingFor?.length ? existing.lookingFor : evTypes);
         setIcebreaker(existing.icebreaker || "");
         setVisibility(existing.visibility || "everyone");
       } else {
-        setLookingFor(t);
+        setLookingFor(evTypes);
       }
     })();
   }, [eventId]);
 
-  const toggleLookingFor = (t) =>
-    setLookingFor((cur) =>
-      cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]
-    );
+  const toggleIn = (setter) => (id) =>
+    setter((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
 
   const onSave = async () => {
-    // BUG 11: a match profile must say what you're looking for.
-    if (lookingFor.length === 0) {
-      Alert.alert(t("matching.profile.pickLookingForTitle"), t("matching.profile.pickLookingForMsg"));
+    const draft = { lookingFor, interests, funnyTags, energy, groupPref, personality };
+    if (!isProfileComplete(draft)) {
+      // Big Five is part of "complete" now — point them at the quiz if it's the
+      // only thing missing.
+      const msg = !isBigFive(personality)
+        ? t("matching.profile.bigFiveRequired")
+        : t("matching.profile.incompleteMsg");
+      Alert.alert(t("matching.profile.incompleteTitle"), msg);
       return;
     }
     setSaving(true);
     const res = await saveMatchProfile(eventId, {
       bio: bio.trim(),
       profession: profession.trim(),
-      interests: interests
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
+      interests,
+      funnyTags,
+      languages,
+      learning,
+      energy,
+      groupPref,
+      pro: {
+        role: pro.role.trim(),
+        industry: pro.industry,
+        offer: pro.offer.trim(),
+        seek: pro.seek.trim(),
+      },
       lookingFor,
       icebreaker: icebreaker.trim(),
       visibility,
@@ -99,46 +144,128 @@ export default function MatchProfileScreen({ route, navigation }) {
     navigation.replace("MatchGrid", { eventId, eventTitle });
   };
 
-  const styles = createStyles(colors);
-  const field = (label, value, setter, opts = {}) => (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        style={[styles.input, opts.multiline && styles.textarea]}
-        value={value}
-        onChangeText={setter}
-        placeholder={opts.placeholder}
-        placeholderTextColor={colors.textTertiary}
-        multiline={opts.multiline}
-      />
+  const s = createStyles(colors);
+  const label = (txt) => <Text style={s.label}>{txt}</Text>;
+
+  const catalogChips = (ids, catalog, labelPrefix, onToggle) => (
+    <View style={s.chips}>
+      {catalog.map((id) => (
+        <Chip
+          key={id}
+          label={t(`matchmaking.${labelPrefix}.${id}`)}
+          selected={ids.includes(id)}
+          onPress={() => onToggle(id)}
+        />
+      ))}
     </View>
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[s.container, { backgroundColor: colors.background }]}>
       <MatchHeader title={t("matching.profile.title")} onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {field(t("matching.profile.shortBio"), bio, setBio, {
-          placeholder: t("matching.profile.bioPlaceholder"),
-          multiline: true,
-        })}
-        {field(t("matching.profile.profession"), profession, setProfession, {
-          placeholder: t("matching.profile.professionPlaceholder"),
-        })}
-        {field(t("matching.profile.interests"), interests, setInterests, {
-          placeholder: t("matching.profile.interestsPlaceholder"),
-        })}
+      <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+        <View style={s.field}>
+          {label(t("matching.profile.shortBio"))}
+          <TextInput
+            style={[s.input, s.textarea]}
+            value={bio}
+            onChangeText={setBio}
+            placeholder={t("matching.profile.bioPlaceholder")}
+            placeholderTextColor={colors.textTertiary}
+            multiline
+          />
+        </View>
 
-        <Text style={styles.label}>{t("matching.profile.lookingForLabel")}</Text>
-        <View style={styles.chips}>
-          {(types.length ? types : ["friend", "professional", "romantic"]).map((t) => {
-            const c = MATCH_TYPE_COLORS[t] || {};
+        {/* Energy — two axes (P0). Segmented 0–100 (pure JS, no native slider). */}
+        {label(t("matching.profile.energyLabel"))}
+        <EnergyAxis
+          s={s}
+          colors={colors}
+          low={t("matching.profile.energyChill")}
+          high={t("matching.profile.energyAdventurous")}
+          value={energy.adventure}
+          onChange={(v) => setEnergy((e) => ({ ...e, adventure: v }))}
+        />
+        <EnergyAxis
+          s={s}
+          colors={colors}
+          low={t("matching.profile.energyIntrovert")}
+          high={t("matching.profile.energyExtrovert")}
+          value={energy.social}
+          onChange={(v) => setEnergy((e) => ({ ...e, social: v }))}
+        />
+
+        {label(t("matching.profile.groupPrefLabel"))}
+        <View style={s.chips}>
+          {GROUP_PREFS.map((g) => (
+            <Chip key={g} label={t(`matchmaking.groupPref.${g}`)} selected={groupPref === g} onPress={() => setGroupPref(g)} />
+          ))}
+        </View>
+
+        {label(t("matching.profile.interestsLabel"))}
+        {catalogChips(interests, INTERESTS, "interest", toggleIn(setInterests))}
+
+        {/* Funny tags — fixed catalog, each with its own Kinlo icon + type accent. */}
+        {label(t("matching.profile.funnyTagsLabel"))}
+        <View style={s.chips}>
+          {FUNNY_TAGS.map((tag) => {
+            const active = funnyTags.includes(tag.id);
+            const c = MATCH_TYPE_COLORS[tag.type] || MATCH_TYPE_COLORS.friend;
+            return (
+              <TouchableOpacity
+                key={tag.id}
+                onPress={() => toggleIn(setFunnyTags)(tag.id)}
+                activeOpacity={0.8}
+                style={[
+                  s.tagChip,
+                  {
+                    backgroundColor: active ? c.bg : colors.surfaceGlass,
+                    borderColor: active ? c.fg : colors.border,
+                  },
+                ]}
+              >
+                <Icon name={tag.icon} size={15} color={active ? c.fg : colors.textSecondary} />
+                <Text style={[s.tagChipText, { color: active ? c.fg : colors.textSecondary }]}>
+                  {t(`matchmaking.funnyTag.${tag.id}`)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {label(t("matching.profile.languagesLabel"))}
+        {catalogChips(languages, LANGUAGES, "language", toggleIn(setLanguages))}
+
+        {label(t("matching.profile.learningLabel"))}
+        {catalogChips(learning, LEARNING, "learning", toggleIn(setLearning))}
+
+        {/* Personality (Big Five) — unified INTO the match profile. Reuses the
+            existing quiz + scoring; shows status + mini-bars, or a CTA. */}
+        {label(t("matching.profile.personalityLabel"))}
+        <BigFiveSection
+          s={s}
+          colors={colors}
+          t={t}
+          personality={personality}
+          onStart={() =>
+            navigation.navigate("PersonalityQuiz", {
+              returnTo: "MatchProfile",
+              eventId,
+              eventTitle,
+            })
+          }
+        />
+
+        <Text style={[s.label, { marginTop: 6 }]}>{t("matching.profile.lookingForLabel")}</Text>
+        <View style={s.chips}>
+          {(types.length ? types : ["friend", "professional", "romantic"]).map((ty) => {
+            const c = MATCH_TYPE_COLORS[ty] || {};
             return (
               <Chip
-                key={t}
-                label={t[0].toUpperCase() + t.slice(1)}
-                selected={lookingFor.includes(t)}
-                onPress={() => toggleLookingFor(t)}
+                key={ty}
+                label={t(`matchmaking.type.${ty}`)}
+                selected={lookingFor.includes(ty)}
+                onPress={() => toggleIn(setLookingFor)(ty)}
                 fg={c.fg}
                 bg={c.bg}
               />
@@ -146,25 +273,136 @@ export default function MatchProfileScreen({ route, navigation }) {
           })}
         </View>
 
-        {field(t("matching.profile.icebreaker"), icebreaker, setIcebreaker, {
-          placeholder: t("matching.profile.icebreakerPlaceholder"),
-          multiline: true,
-        })}
+        {/* Professional details (optional — powers professional-mode affinity). */}
+        {label(t("matching.profile.proLabel"))}
+        <TextInput
+          style={s.input}
+          value={pro.role}
+          onChangeText={(v) => setPro((p) => ({ ...p, role: v }))}
+          placeholder={t("matching.profile.proRolePlaceholder")}
+          placeholderTextColor={colors.textTertiary}
+        />
+        <View style={[s.chips, { marginTop: 10 }]}>
+          {INDUSTRIES.map((id) => (
+            <Chip
+              key={id}
+              label={t(`matchmaking.industry.${id}`)}
+              selected={pro.industry === id}
+              onPress={() => setPro((p) => ({ ...p, industry: p.industry === id ? null : id }))}
+            />
+          ))}
+        </View>
 
-        <Text style={styles.label}>{t("matching.profile.whoCanSee")}</Text>
-        <View style={styles.chips}>
+        <View style={[s.field, { marginTop: 14 }]}>
+          {label(t("matching.profile.icebreaker"))}
+          <TextInput
+            style={[s.input, s.textarea]}
+            value={icebreaker}
+            onChangeText={setIcebreaker}
+            placeholder={t("matching.profile.icebreakerPlaceholder")}
+            placeholderTextColor={colors.textTertiary}
+            multiline
+          />
+        </View>
+
+        {label(t("matching.profile.whoCanSee"))}
+        <View style={s.chips}>
           {VISIBILITY_OPTIONS.map((v) => (
             <Chip
               key={v}
-              label={VIS_LABELS[v]}
+              label={t(`matching.profile.vis${v === "everyone" ? "Everyone" : v === "same_gender" ? "SameGender" : "OppositeGender"}`)}
               selected={visibility === v}
               onPress={() => setVisibility(v)}
             />
           ))}
         </View>
       </ScrollView>
-      <View style={styles.footer}>
+      <View style={s.footer}>
         <PrimaryButton label={t("matching.profile.saveAndSee")} onPress={onSave} loading={saving} />
+      </View>
+    </View>
+  );
+}
+
+/** Big Five section — completed state (mini-bars + redo) or a start-quiz CTA. */
+function BigFiveSection({ s, colors, t, personality, onStart }) {
+  const done = isBigFive(personality);
+  if (!done) {
+    return (
+      <TouchableOpacity style={s.bigFiveCta} onPress={onStart} activeOpacity={0.85}>
+        <View style={s.bigFiveCtaIcon}>
+          <Icon name="ai" size={20} color="#7C3AED" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[s.bigFiveCtaTitle, { color: colors.text }]}>
+            {t("matching.profile.personalityCta")}
+          </Text>
+          <Text style={[s.bigFiveCtaSub, { color: colors.textSecondary }]}>
+            {t("matching.profile.personalityCtaSub")}
+          </Text>
+        </View>
+        <Icon name="forward" size={20} color={colors.textTertiary} />
+      </TouchableOpacity>
+    );
+  }
+  // Show three representative traits (matches the mock: Openness/Extraversion/
+  // Agreeableness). Values are 0–100 from personalityScoring.
+  const bars = [
+    { key: "openness", value: personality.OPENNESS },
+    { key: "extraversion", value: personality.EXTRAVERSION },
+    { key: "agreeableness", value: personality.AGREEABLENESS },
+  ];
+  return (
+    <View style={[s.bigFiveCard, { borderColor: colors.border }]}>
+      <View style={s.bigFiveHead}>
+        <View style={s.bigFiveDone}>
+          <Icon name="check" size={13} color="#1F8A6E" />
+          <Text style={s.bigFiveDoneText}>{t("matching.profile.personalityDone")}</Text>
+        </View>
+        <TouchableOpacity onPress={onStart} hitSlop={8}>
+          <Text style={[s.bigFiveRedo, { color: "#7C3AED" }]}>{t("matching.profile.personalityRedo")}</Text>
+        </TouchableOpacity>
+      </View>
+      {bars.map((b) => (
+        <View key={b.key} style={s.bigFiveRow}>
+          <Text style={[s.bigFiveLabel, { color: colors.textSecondary }]}>
+            {t(`matchmaking.bigfive.${b.key}`)}
+          </Text>
+          <View style={[s.bigFiveTrack, { backgroundColor: "#EDE9F6" }]}>
+            <View style={[s.bigFiveFill, { width: `${Math.max(0, Math.min(100, b.value || 0))}%` }]} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Segmented energy axis (0–100 in 5 steps). Pure JS — no native slider module. */
+function EnergyAxis({ s, colors, low, high, value, onChange }) {
+  return (
+    <View style={s.energyAxis}>
+      <View style={s.energyDots}>
+        {ENERGY_STEPS.map((step) => {
+          const active = value === step;
+          return (
+            <TouchableOpacity
+              key={step}
+              onPress={() => onChange(step)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={[
+                s.energyDot,
+                {
+                  backgroundColor: active ? colors.primary : "transparent",
+                  borderColor: active ? colors.primary : colors.border,
+                },
+              ]}
+            />
+          );
+        })}
+      </View>
+      <View style={s.energyLabels}>
+        <Text style={[s.energyLabel, { color: colors.textSecondary }]}>{low}</Text>
+        <Text style={[s.energyLabel, { color: colors.textSecondary }]}>{high}</Text>
       </View>
     </View>
   );
@@ -175,12 +413,7 @@ function createStyles(colors) {
     container: { flex: 1 },
     content: { paddingHorizontal: 24, paddingBottom: 24 },
     field: { marginBottom: 18 },
-    label: {
-      fontSize: 15,
-      fontWeight: "700",
-      color: colors.text,
-      marginBottom: 10,
-    },
+    label: { fontSize: 15, fontWeight: "700", color: colors.text, marginBottom: 10 },
     input: {
       borderWidth: 1,
       borderColor: colors.border,
@@ -193,6 +426,50 @@ function createStyles(colors) {
     },
     textarea: { minHeight: 72, textAlignVertical: "top" },
     chips: { flexDirection: "row", flexWrap: "wrap", marginBottom: 10 },
+    tagChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      borderWidth: 1.5,
+      borderRadius: 20,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      marginRight: 8,
+      marginBottom: 8,
+    },
+    tagChipText: { fontSize: 13, fontWeight: "700" },
+    energyAxis: { marginBottom: 16 },
+    energyDots: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 4 },
+    energyDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5 },
+    energyLabels: { flexDirection: "row", justifyContent: "space-between", marginTop: 6 },
+    energyLabel: { fontSize: 12, fontWeight: "600" },
+    // Big Five (unified into the match profile)
+    bigFiveCta: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceGlass,
+      borderRadius: 16,
+      padding: 14,
+      marginBottom: 16,
+    },
+    bigFiveCtaIcon: {
+      width: 40, height: 40, borderRadius: 12, backgroundColor: "#EDE4FC",
+      alignItems: "center", justifyContent: "center",
+    },
+    bigFiveCtaTitle: { fontSize: 14.5, fontWeight: "700", color: colors.text },
+    bigFiveCtaSub: { fontSize: 12.5, marginTop: 2, color: colors.textSecondary },
+    bigFiveCard: { borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 16 },
+    bigFiveHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+    bigFiveDone: { flexDirection: "row", alignItems: "center", gap: 5 },
+    bigFiveDoneText: { fontSize: 12.5, fontWeight: "700", color: "#1F8A6E" },
+    bigFiveRedo: { fontSize: 13, fontWeight: "700" },
+    bigFiveRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 10 },
+    bigFiveLabel: { flex: 0.4, fontSize: 12.5, fontWeight: "600" },
+    bigFiveTrack: { flex: 0.6, height: 7, borderRadius: 4, overflow: "hidden" },
+    bigFiveFill: { height: 7, borderRadius: 4, backgroundColor: "#7C3AED" },
     footer: { paddingHorizontal: 24, paddingBottom: 28, paddingTop: 8 },
   });
 }

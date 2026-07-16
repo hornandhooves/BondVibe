@@ -59,6 +59,21 @@ service cloud.firestore {
              exists(/databases/$(database)/documents/events/$(eventId)/checkins/$(request.auth.uid));
     }
 
+    // Matchmaking v2 gate (P0). A user's matchmaking state lives at
+    // users/{uid}.matchmaking = { consentAt, profileComplete, enabled }.
+    // Consent is the minimum to opt in; consent + a complete profile + enabled is
+    // the full gate for v2 surfaces (curated sets, cross-community — later phases).
+    function matchmakingConsented(u) {
+      return isSignedIn() &&
+             get(/databases/$(database)/documents/users/$(u)).data
+               .get('matchmaking', {}).get('consentAt', null) != null;
+    }
+    function matchmakingActive(u) {
+      let mm = get(/databases/$(database)/documents/users/$(u)).data.get('matchmaking', {});
+      return isSignedIn() && mm.get('consentAt', null) != null &&
+             mm.get('profileComplete', false) == true && mm.get('enabled', true) == true;
+    }
+
     // An attendee who is NOT the creator — only these users may rate an event.
     function isEventAttendeeNotCreator(eventId) {
       let eventData = get(/databases/$(database)/documents/events/$(eventId)).data;
@@ -689,9 +704,16 @@ service cloud.firestore {
                       (isCheckedIn(eventId) &&
                        resource.data.available == true &&
                        resource.data.visibility != 'hidden'));
-      allow create, update: if isSignedIn() &&
-                               request.auth.uid == userId &&
-                               request.resource.data.userId == request.auth.uid;
+      // v2 gate: opting in (creating a profile) requires prior consent
+      // (users/{uid}.matchmaking.consentAt, written by MatchConsent). Updates to
+      // an existing profile stay ungated so legacy profiles keep working.
+      allow create: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       request.resource.data.userId == request.auth.uid &&
+                       matchmakingConsented(request.auth.uid);
+      allow update: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       request.resource.data.userId == request.auth.uid;
       allow delete: if isSignedIn() && request.auth.uid == userId;
     }
 
@@ -726,6 +748,79 @@ service cloud.firestore {
         allow create: if isSignedIn() &&
                          request.auth.uid in chat().users &&
                          chat().get('allowMessaging', false) == true &&
+                         request.resource.data.senderId == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
+    // ============================================
+    // MATCHMAKING V2 (user-level, cross-community) — P2/P3
+    // ============================================
+    // The weekly curated set is BUILT and GATED on the server. The owner reads
+    // their own set; nobody writes it from the client (a locked set already has
+    // its members withheld server-side, so a leaked read still can't unlock).
+    match /curatedSets/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if false; // server-only (requestCuratedSet / weekly batch)
+    }
+
+    // "Dejar de sugerir" — the owner's private exclusion list. NOT a block (a
+    // block lives in the safety layer); it only removes people from future sets.
+    match /matchExclusions/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create, update: if isSignedIn() &&
+                               request.auth.uid == userId &&
+                               request.resource.data.ownerId == request.auth.uid;
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Intro edges are PRIVATE like likes — server-only, so expressing interest
+    // never leaks. The reciprocal request (also server-side) forms the mutual
+    // follow + DM thread. The parent doc's connected state is pair-readable.
+    match /matchIntros/{introId} {
+      allow read: if isSignedIn() &&
+                     resource.data.users != null &&
+                     request.auth.uid in resource.data.users;
+      allow write: if false;
+      match /edges/{edgeUid} {
+        allow read, write: if false; // requestMatchIntro only (Admin SDK)
+      }
+    }
+
+    // User-level match pool (P3): a denormalized, opt-in display profile used to
+    // build curated sets cross-community. Owner writes own; readable by any
+    // active matchmaking participant (the set generator reads via Admin SDK; the
+    // client hydrates only the uids the server already curated FOR it).
+    match /matchPool/{userId} {
+      allow read: if matchmakingActive(request.auth.uid);
+      allow create, update: if isSignedIn() &&
+                               request.auth.uid == userId &&
+                               request.resource.data.userId == request.auth.uid &&
+                               matchmakingConsented(request.auth.uid);
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Match groups (P3): server-formed clusters of 4-6. A candidate can see the
+    // suggestion; joining is server-only (joinMatchGroup transaction caps size +
+    // flips the chat on at 3+). A joined member may only touch lastMessage.
+    match /matchGroups/{groupId} {
+      allow read: if isSignedIn() &&
+                     (request.auth.uid in resource.data.get('candidates', []) ||
+                      request.auth.uid in resource.data.get('joined', []));
+      allow create, delete: if false; // formMatchGroups (Admin SDK) only
+      allow update: if isSignedIn() &&
+                       request.auth.uid in resource.data.get('joined', []) &&
+                       request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['lastMessage', 'updatedAt']);
+
+      match /messages/{messageId} {
+        function group() {
+          return get(/databases/$(database)/documents/matchGroups/$(groupId)).data;
+        }
+        allow read: if isSignedIn() && request.auth.uid in group().get('joined', []);
+        allow create: if isSignedIn() &&
+                         request.auth.uid in group().get('joined', []) &&
+                         group().get('chatActive', false) == true &&
                          request.resource.data.senderId == request.auth.uid;
         allow update, delete: if false;
       }

@@ -206,6 +206,13 @@ export default function SettingsScreen({ navigation }) {
             }
           />
           <ListRow
+            icon="heart"
+            title={t("matchmaking.settings.title")}
+            subtitle={t("matchmaking.curated.title")}
+            onPress={() => navigation.navigate("MatchmakingSettings")}
+            right={<Icon name="forward" size={18} color={colors.textTertiary} />}
+          />
+          <ListRow
             icon={isDark ? "moon" : "sun"}
             title={t("settings.appearance")}
             subtitle={isDark ? t("settings.auroraTheme") : t("settings.cleanTheme")}

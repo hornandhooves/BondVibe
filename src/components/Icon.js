@@ -111,6 +111,11 @@ import {
   Meh,
   Smile,
   PartyPopper as Party,
+  Flame,
+  Footprints,
+  Flower2,
+  Dog,
+  Disc3,
 } from "lucide-react-native";
 import { useTheme } from "../contexts/ThemeContext";
 
@@ -230,6 +235,12 @@ const NAME_TO_COMPONENT = {
   infinity: InfinityIcon,
   logout: LogOut,
   moon: Moon,
+  // Matchmaking v2 funny-tag glyphs (Kinlo icon set — no emoji, no system icons).
+  flame: Flame,
+  footprints: Footprints,
+  flower: Flower2,
+  dog: Dog,
+  dance: Disc3,
   music2: Music2,
   playlist: Music2,
   refresh: RefreshCw,

@@ -63,6 +63,18 @@ exports.advanceMatchingWindows = matching.advanceMatchingWindows;
 exports.createLikeAndMaybeMatch = matching.createLikeAndMaybeMatch;
 exports.getHostMatchAnalytics = matching.getHostMatchAnalytics;
 
+// Matchmaking v2 — weekly curated sets + double opt-in intros (P2). Server-truth
+// affinity + server-side freemium gate (locked sets never leave the server).
+const curated = require("./matching/curated");
+exports.requestCuratedSet = curated.requestCuratedSet;
+exports.generateWeeklyCuratedSets = curated.generateWeeklyCuratedSets;
+exports.requestMatchIntro = curated.requestMatchIntro;
+
+// Matchmaking v2 — community-scoped groups of 4-6 (P3). Chat activates at 3+.
+const matchGroups = require("./matching/groups");
+exports.formMatchGroups = matchGroups.formMatchGroups;
+exports.joinMatchGroup = matchGroups.joinMatchGroup;
+
 // Social layer — server-maintained post counts.
 const social = require("./social/social");
 exports.onPostLikeWritten = social.onPostLikeWritten;
