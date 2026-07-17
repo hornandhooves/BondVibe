@@ -1342,13 +1342,13 @@
     "benefitInsights": "Insights & revenue tools",
     "pendingNote": "We've got your community details — just pick how you want to host.",
     "ctaResume": "Finish setting up",
-    "title": "Become a Kinlo host",
-    "body": "One approved host account unlocks events, rentals, and marketplace listings — a single quick request.",
-    "cta": "Become a host",
+    "title": "Start your community on Kinlo",
+    "body": "Gather your people, run events, and grow — all from one place. One host account unlocks everything.",
+    "cta": "Start now, it's free",
     "benefitEvents": "Create and sell tickets to events",
     "benefitRentals": "List vehicles for rent",
     "benefitOne": "One approval — every host capability",
-    "alreadyHost": "Already approved for events? You're all set — just continue."
+    "alreadyHost": "Already hosting events? You're all set — this unlocks rentals."
   },
   "marketplace": {
     "tab": "Marketplace",

@@ -1342,13 +1342,13 @@
     "benefitInsights": "Métricas y herramientas de ingresos",
     "pendingNote": "Ya tenemos los datos de tu comunidad — solo elige cómo quieres organizar.",
     "ctaResume": "Terminar configuración",
-    "title": "Conviértete en host de Kinlo",
-    "body": "Una sola cuenta de host aprobado desbloquea eventos, rentas y anuncios del marketplace — una sola solicitud rápida.",
-    "cta": "Conviértete en host",
+    "title": "Empieza tu comunidad en Kinlo",
+    "body": "Reúne a tu gente, organiza eventos y crece — todo desde un mismo lugar. Una cuenta de host lo desbloquea todo.",
+    "cta": "Empieza ya, es gratis",
     "benefitEvents": "Crea y vende boletos para eventos",
     "benefitRentals": "Publica vehículos en renta",
     "benefitOne": "Una aprobación — todas las capacidades de host",
-    "alreadyHost": "¿Ya estás aprobado para eventos? Listo — solo continúa."
+    "alreadyHost": "¿Ya organizas eventos? Ya está todo listo — esto desbloquea las rentas."
   },
   "marketplace": {
     "tab": "Marketplace",
