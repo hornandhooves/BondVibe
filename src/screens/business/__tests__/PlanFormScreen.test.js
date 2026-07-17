@@ -94,13 +94,28 @@ describe("PlanFormScreen", () => {
   });
 
   describe("manual assignment is Kinlo Pro", () => {
-    it("a non-Pro host cannot switch it on", () => {
+    it("a non-Pro host sees it locked off on a new plan", () => {
       usePremium.mockReturnValue({ isPremium: false, loading: false });
       const utils = setup();
-      fireEvent(utils.getByTestId("toggle-manual"), "valueChange", false);
-      // Try to turn it back on — the gate must hold.
+      expect(utils.getByTestId("toggle-manual").props.value).toBe(false);
+      expect(utils.getByTestId("toggle-manual").props.disabled).toBe(true);
+      // The gate must hold even if something fires the handler directly.
       fireEvent(utils.getByTestId("toggle-manual"), "valueChange", true);
       expect(utils.getByTestId("toggle-manual").props.value).toBe(false);
+    });
+
+    it("a Pro host can turn it off and back on — the value must not lock the switch", () => {
+      // The bug: `isPremium || assignManually` let the switch gate itself, so
+      // turning it off collapsed the expression to false and latched it grey.
+      const utils = setup();
+      expect(utils.getByTestId("toggle-manual").props.disabled).toBe(false);
+
+      fireEvent(utils.getByTestId("toggle-manual"), "valueChange", false);
+      expect(utils.getByTestId("toggle-manual").props.value).toBe(false);
+      expect(utils.getByTestId("toggle-manual").props.disabled).toBe(false);
+
+      fireEvent(utils.getByTestId("toggle-manual"), "valueChange", true);
+      expect(utils.getByTestId("toggle-manual").props.value).toBe(true);
     });
 
     it("does not silently strip it from a plan that already has it", async () => {
@@ -112,8 +127,9 @@ describe("PlanFormScreen", () => {
         validityDays: 60, priceCents: 120000, paymentModes: ["manual"],
       });
       const utils = setup({ planId: "p1" });
+      // Locked, but showing the stored truth — so the save writes what's shown.
       await waitFor(() => expect(utils.getByTestId("toggle-manual").props.value).toBe(true));
-      expect(utils.getByTestId("toggle-manual").props.disabled).toBe(false);
+      expect(utils.getByTestId("toggle-manual").props.disabled).toBe(true);
     });
 
     it("always says why the switch is there", () => {

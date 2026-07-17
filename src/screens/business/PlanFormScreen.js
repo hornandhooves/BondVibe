@@ -93,15 +93,26 @@ export default function PlanFormScreen({ route, navigation }) {
     })();
   }, [planId]);
 
-  /**
-   * Manual assignment is Kinlo Pro. A non-Pro host editing a plan that already
-   * has it on (migrated packages all do) must not have it silently stripped on
-   * save — so only block TURNING it on.
-   */
-  const canToggleManual = isPremium || assignManually;
+  // A NEW plan defaults to manual, the common case for a Pro host. A non-Pro
+  // can't use manual at all, so once the entitlement resolves a new plan drops
+  // it — otherwise they'd create a plan locked on to a mode they can't act on.
+  // An EXISTING plan keeps whatever it stored: every migrated package is manual,
+  // and quietly stripping it on save is the regression we're avoiding. The
+  // switch shows that stored truth, locked; the save reads the same state, so
+  // what's displayed and what's written can't disagree.
+  useEffect(() => {
+    if (!editing && !isPremium) setAssignManually(false);
+  }, [editing, isPremium]);
+
+  // Interactivity depends on the ENTITLEMENT, and nothing else. The previous
+  // `isPremium || assignManually` let the switch's own value gate itself: turn it
+  // off and the expression collapsed to false, latching it grey and unturnable —
+  // including for a Pro host caught in the window before usePremium resolves
+  // (isPremium starts false). A control must not be able to lock itself.
+  const manualLocked = !isPremium;
 
   const toggleManual = (next) => {
-    if (next && !isPremium) return; // the PRO badge explains why
+    if (manualLocked) return; // the PRO badge + note explain why
     setAssignManually(next);
   };
 
@@ -338,7 +349,7 @@ export default function PlanFormScreen({ route, navigation }) {
               <Switch
                 value={assignManually}
                 onValueChange={toggleManual}
-                disabled={!canToggleManual}
+                disabled={manualLocked}
                 trackColor={{ true: colors.primary, false: colors.border }}
                 thumbColor={colors.onPrimary}
                 testID="toggle-manual"
