@@ -16,7 +16,6 @@ import { db } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import {
-  getHostMembershipPlans,
   formatPlanPrice,
   describePlan,
   audienceAllows,
@@ -39,31 +38,25 @@ export default function HostMembershipsScreen({ route, navigation }) {
   );
 
   const load = async () => {
-    const [unified, legacy, hostSnap, myTier] = await Promise.all([
+    const [unified, hostSnap, myTier] = await Promise.all([
       // Already filtered to what a member can buy for themselves: a manual-only
       // plan is the host's to hand out, and showing it with a Buy button would
       // sell something that has no online price path.
       listOnlinePlans(hostId),
-      getHostMembershipPlans(hostId, { activeOnly: true }),
       getDoc(doc(db, "users", hostId)),
       getMyPricingTierForHost(hostId),
     ]);
-    // TRANSITIONAL — REMOVE AFTER PLANS MIGRATION (scripts/migrate-plans.mjs --apply)
-    //
-    // `plans` is empty until the migration runs, and the migration deliberately
-    // waits until these screens are verified in a build. Reading only the new
-    // source in between would leave members unable to buy anything — an outage
-    // caused purely by ordering. Legacy membershipPlans were the online-sold
-    // ones by definition, so they stand in safely.
-    //
-    // It goes quiet on its own the moment the migration runs, which is exactly
-    // why it needs deleting deliberately: once `plans` is populated this line
-    // never takes the fallback again, so it will look harmless forever while
-    // quietly keeping a dead read (and the whole membershipService import) alive.
-    //
-    // To remove: drop `legacy` from the Promise.all, drop this branch, and drop
-    // getHostMembershipPlans from the import above if nothing else uses it.
-    const data = unified.length ? unified : legacy;
+    // The migration has run, so the transitional legacy fallback is gone.
+    // Unified plans store priceCents/credits, but this screen's render helpers
+    // (formatPlanPrice, describePlan) still read the legacy priceCentavos/
+    // creditsIncluded names — the fallback had masked that coupling by returning
+    // legacy-shaped docs. Map the two fields so an online plan renders its real
+    // price instead of $0.
+    const data = unified.map((p) => ({
+      ...p,
+      priceCentavos: p.priceCents,
+      creditsIncluded: p.credits,
+    }));
     // Purchase scope (kinlo_business/05 §G): only show plans this buyer's tier
     // is allowed to buy (local-only plans hidden from general members).
     setPlans(data.filter((p) => audienceAllows(p.audienceTier, myTier)));
