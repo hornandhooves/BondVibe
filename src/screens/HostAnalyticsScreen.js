@@ -19,6 +19,7 @@ import GradientBackground from "../components/GradientBackground";
 import MonthReadCard from "../components/ai/MonthReadCard";
 import { AvatarDisplay } from "../components/AvatarPicker";
 import { auth } from "../services/firebase";
+import { formatDate } from "../utils/formatDate";
 import {
   getHostAnalytics,
   formatPlanPrice,
@@ -302,7 +303,7 @@ export default function HostAnalyticsScreen({ navigation }) {
                         {m.type === "credits"
                           ? t("hostAnalytics.creditsLeft", { count: m.creditsRemaining || 0 })
                           : ""}
-                        {t("hostAnalytics.expires", { date: exp ? exp.toLocaleDateString() : "—" })}
+                        {t("hostAnalytics.expires", { date: exp ? formatDate(exp) : "—" })}
                       </Text>
                     </View>
                     <Icon name="clock" size={16} color={colors.warning} />

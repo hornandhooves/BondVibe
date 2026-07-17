@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import Icon from "../Icon";
 import { useTheme } from "../../contexts/ThemeContext";
 import { isPackageExpired } from "../../services/businessPackagesService";
+import { formatDate } from "../../utils/formatDate";
 
 export default function CreditCard({ member, onPlus, onMinus, onAssign }) {
   const { colors } = useTheme();
@@ -48,7 +49,7 @@ export default function CreditCard({ member, onPlus, onMinus, onAssign }) {
               ? ` · ${
                   expired
                     ? t("business.credits.expired")
-                    : t("business.credits.expires", { date: new Date(pkg.expiresAt).toLocaleDateString() })
+                    : t("business.credits.expires", { date: formatDate(pkg.expiresAt) })
                 }`
               : ""}
           </Text>

@@ -26,6 +26,7 @@ import { getAvailableVehicles, getRentalCities, VEHICLE_TYPES } from "../service
 import { formatCentavos } from "../utils/pricing";
 import { ELEVATION, RADII, SPACING, FONTS } from "../constants/theme-tokens";
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
+import { formatDate } from "../utils/formatDate";
 
 const toISO = (d) => (d ? new Date(d).toISOString() : undefined);
 
@@ -189,8 +190,8 @@ export default function RentalHubScreen({ route, navigation }) {
         )}
         {fromDate && untilDate && (
           <Text style={[styles.datePill, { color: colors.textSecondary }]} numberOfLines={1}>
-            {new Date(fromDate).toLocaleDateString("es-MX", { day: "numeric", month: "short" })} –{" "}
-            {new Date(untilDate).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
+            {formatDate(new Date(fromDate), { day: "numeric", month: "short" })} –{" "}
+            {formatDate(new Date(untilDate), { day: "numeric", month: "short" })}
           </Text>
         )}
       </View>

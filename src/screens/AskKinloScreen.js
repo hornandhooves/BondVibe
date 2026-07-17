@@ -19,6 +19,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import { doc, getDoc } from "firebase/firestore";
+import { formatDate } from "../utils/formatDate";
 import { useTranslation } from "react-i18next";
 import { db } from "../services/firebase";
 import GradientBackground from "../components/GradientBackground";
@@ -39,7 +40,7 @@ function EventAttachment({ eventId, navigation }) {
   }, [eventId]);
   if (!ev) return null;
   const when = ev.date
-    ? new Date(ev.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+    ? formatDate(new Date(ev.date), { weekday: "short", month: "short", day: "numeric" })
     : "";
   return (
     <TouchableOpacity

@@ -79,6 +79,7 @@ import {
   updateSubscriptionConfig,
 } from "../services/configService";
 import { approveOwnerTransfer } from "../services/businessStaffService";
+import { formatDate, formatDateTime } from "../utils/formatDate";
 
 export default function AdminDashboardScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -1248,7 +1249,7 @@ export default function AdminDashboardScreen({ navigation }) {
                             { color: colors.textTertiary },
                           ]}
                         >
-                          {new Date(request.createdAt).toLocaleDateString()}
+                          {formatDate(request.createdAt)}
                         </Text>
                       </View>
                     </View>
@@ -1408,7 +1409,7 @@ export default function AdminDashboardScreen({ navigation }) {
                   </Text>
                   <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 4 }}>
                     {(c.platform || "?")} · {c.screen || c.source || "js"}
-                    {c.createdAt?.toDate ? ` · ${c.createdAt.toDate().toLocaleString()}` : ""}
+                    {c.createdAt?.toDate ? ` · ${formatDateTime(c.createdAt.toDate())}` : ""}
                   </Text>
                   {!!c.stack && (
                     <Text

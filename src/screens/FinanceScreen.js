@@ -13,13 +13,14 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import { getHostFinance } from "../services/hostInsightsService";
+import { formatDate } from "../utils/formatDate";
 
 // BUG 1: prefix MX$ so amounts read as MXN, never a bare $ (which reads as USD).
 const money = (c) => `MX$${((c || 0) / 100).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const monthLabel = (k) => {
   if (!k || k === "—") return "—";
   const [y, m] = k.split("-");
-  return new Date(y, Number(m) - 1, 1).toLocaleDateString("en", { month: "short", year: "2-digit" });
+  return formatDate(new Date(y, Number(m) - 1, 1), { month: "short", year: "2-digit" });
 };
 
 export default function FinanceScreen({ navigation }) {

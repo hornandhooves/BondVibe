@@ -17,6 +17,7 @@ import { auth, db } from "../services/firebase";
 import { joinFreeEvent } from "../services/eventJoinService";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
+import { formatDate } from "../utils/formatDate";
 import {
   getUsableMembershipForHost,
   getHostMembershipPlans,
@@ -172,7 +173,7 @@ export default function HowToAttendScreen({ route, navigation }) {
               title={t("howToAttend.useOneCredit")}
               subtitle={t("howToAttend.creditsLeftValidUntil", {
                 count: membership.creditsRemaining,
-                date: expiry ? expiry.toLocaleDateString() : "—",
+                date: expiry ? formatDate(expiry) : "—",
               })}
               onPress={handleUseCredit}
             />

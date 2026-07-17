@@ -8,6 +8,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import Icon from "../Icon";
 import { useTheme } from "../../contexts/ThemeContext";
+import { formatDate } from "../../utils/formatDate";
 
 export function priorityColor(priority, colors) {
   return (
@@ -81,7 +82,7 @@ export default function MomentumCard({ card, onPress, onMove, onLongPress, onPre
           )}
           {!!card.dueDate && (
             <View style={[styles.metaChip, { backgroundColor: colors.surfaceGlass }]}>
-              <Text style={[styles.metaText, { color: colors.textSecondary }]}>{new Date(card.dueDate).toLocaleDateString()}</Text>
+              <Text style={[styles.metaText, { color: colors.textSecondary }]}>{formatDate(card.dueDate)}</Text>
             </View>
           )}
           {(card.labels || []).slice(0, 2).map((l) => (

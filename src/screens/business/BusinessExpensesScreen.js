@@ -37,6 +37,7 @@ import {
 import { RANGE_IDS, DEFAULT_RANGE, rangeBounds, rangeLabelKey } from "../../constants/businessRanges";
 import { formatCentavos, formatCentavosCompact } from "../../utils/pricing";
 import { FONTS } from "../../constants/theme-tokens";
+import { formatDate } from "../../utils/formatDate";
 
 const PL_GRADIENT = ["#0E3D33", "#155C4B"]; // P&L summary card (135°)
 const PL_EYEBROW = "#9FDCC7";
@@ -253,7 +254,7 @@ export default function BusinessExpensesScreen({ navigation }) {
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.expCat, { color: colors.text }]}>{t(`business.expense.category.${x.category}`)}</Text>
                         <Text style={[styles.expMeta, { color: colors.textTertiary }]}>
-                          {t(`business.payment.method.${x.method}`)} · {new Date(x.date).toLocaleDateString()}
+                          {t(`business.payment.method.${x.method}`)} · {formatDate(x.date)}
                           {x.receiptUrl ? " · 📎" : ""}
                         </Text>
                       </View>

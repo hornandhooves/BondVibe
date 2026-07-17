@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import Icon from "./Icon";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { generateMoonPhaseDates } from "../utils/lunarUtils";
+import { formatDate as fmtDate } from "../utils/formatDate";
 
 // Days of the week (ids only; display strings are translated at render time)
 const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
@@ -218,21 +219,12 @@ export default function RecurrenceModal({
 
 
   // Format date
-  const formatDate = (date) => {
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-  
-  const formatDateShort = (date) => {
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-  };
+  // Aliased: this component already has local formatDate/formatDateShort names.
+  const formatDate = (date) =>
+    fmtDate(date, { month: "short", day: "numeric", year: "numeric" });
+
+  const formatDateShort = (date) =>
+    fmtDate(date, { weekday: "short", month: "short", day: "numeric" });
 
   // Get ordinal suffix
   const getOrdinalSuffix = (n) => {

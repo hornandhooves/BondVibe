@@ -23,6 +23,7 @@ import { db } from "./firebase";
 import { getMyBizId } from "./businessService";
 import { listMembers, memberRefFor } from "./businessMembersService";
 import { formatCentavos } from "../utils/pricing";
+import { formatDateTime } from "../utils/formatDate";
 
 export const PAYMENT_METHODS = ["cash", "transfer", "stripe", "mercadopago", "other"];
 
@@ -105,7 +106,7 @@ export function receiptText(payment, businessName, methodLabel) {
     "————————————",
     payment.memberName || "",
     `${formatCentavos(payment.amountCents)} · ${methodLabel}`,
-    new Date(payment.date).toLocaleString(),
+    formatDateTime(payment.date),
   ];
   if (payment.note) lines.push(payment.note);
   return lines.filter(Boolean).join("\n");

@@ -19,12 +19,13 @@ import { getHostMembersDetail } from "../services/hostInsightsService";
 import { getMembershipState } from "../utils/membershipUtils";
 import { listMembers, MEMBER_STATUS } from "../services/businessMembersService";
 import { listAttendanceInRange } from "../services/businessAttendanceService";
+import { formatDate } from "../utils/formatDate";
 
 const normAvatar = (a) =>
   !a ? null : typeof a === "string" ? { type: "emoji", value: a } : a;
 const fmtDate = (ts) => {
   const ms = ts?.toMillis ? ts.toMillis() : ts ? new Date(ts).getTime() : 0;
-  return ms ? new Date(ms).toLocaleDateString() : "—";
+  return ms ? formatDate(ms) : "—";
 };
 
 export default function AnalyticsDetailScreen({ route, navigation }) {

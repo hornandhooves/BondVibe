@@ -16,6 +16,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import { getRental, getVehicle, completeRental } from "../services/rentalService";
 import { formatCentavos } from "../utils/pricing";
+import { formatDate } from "../utils/formatDate";
 
 export default function ActiveRentalScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
@@ -154,7 +155,7 @@ export default function ActiveRentalScreen({ route, navigation }) {
 function fmtDate(iso) {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+    return formatDate(new Date(iso), { day: "numeric", month: "short", year: "numeric" });
   } catch {
     return "—";
   }

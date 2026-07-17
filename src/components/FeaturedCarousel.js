@@ -20,6 +20,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useIsFocused } from "@react-navigation/native";
 import { useTheme } from "../contexts/ThemeContext";
 import { TYPE, SPACING, RADII, BRAND, ELEVATION } from "../constants/theme-tokens";
+import { formatDate } from "../utils/formatDate";
 
 const ADVANCE_MS = 3000;
 const RESUME_AFTER_MS = 5000;
@@ -36,10 +37,7 @@ function CompactCard({ event, width, onPress }) {
   const { colors } = useTheme();
   const img = Array.isArray(event.images) ? event.images[0] : null;
   const when = event.date
-    ? new Date(event.date).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      })
+    ? formatDate(new Date(event.date), { month: "short", day: "numeric" })
     : "";
   return (
     <TouchableOpacity

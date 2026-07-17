@@ -16,6 +16,7 @@ import GradientBackground from "../../components/GradientBackground";
 import DateField from "../../components/DateField";
 import { useTheme } from "../../contexts/ThemeContext";
 import { listAvailability, createAvailability, deleteAvailability, listSessionTypes } from "../../services/businessSessionsService";
+import { formatDate } from "../../utils/formatDate";
 
 const weekdayShort = (i, lang) => new Date(2024, 0, 7 + i).toLocaleDateString(lang || "en", { weekday: "short" });
 
@@ -72,7 +73,7 @@ export default function AvailabilityScreen({ navigation }) {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.name, { color: colors.text }]}>{s.sessionTypeName || t("business.availability.slot")}</Text>
                 <Text style={[styles.meta, { color: colors.textTertiary }]}>
-                  {(s.weekdays?.length ? s.weekdays.map((d) => weekdayShort(d, i18n.language)).join(" ") : s.date ? new Date(s.date).toLocaleDateString() : "")} · {s.time} · {s.durationMin}m{s.location ? ` · ${s.location}` : ""}
+                  {(s.weekdays?.length ? s.weekdays.map((d) => weekdayShort(d, i18n.language)).join(" ") : s.date ? formatDate(s.date) : "")} · {s.time} · {s.durationMin}m{s.location ? ` · ${s.location}` : ""}
                 </Text>
               </View>
               <TouchableOpacity onPress={() => deleteAvailability(s.id).then(load)}><Icon name="close" size={18} color={colors.textTertiary} /></TouchableOpacity>

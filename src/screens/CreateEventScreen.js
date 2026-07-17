@@ -56,6 +56,7 @@ import RecurrenceModal from "../components/RecurrenceModal";
 import { generateRecurringDates, getRecurrenceSummary } from "../utils/recurrenceUtils";
 import DraftWithAI from "../components/ai/DraftWithAI";
 import DurationWheelModal, { formatDuration } from "../components/DurationWheelModal";
+import { formatDate as fmtDate } from "../utils/formatDate";
 
 // Recurrence handled by modal
 
@@ -369,10 +370,8 @@ export default function CreateEventScreen({ navigation, route }) {
     return unsub;
   }, [navigation, persistDraft]);
 
-  const formatDate = (date) => {
-    const options = { month: "short", day: "numeric", year: "numeric" };
-    return date.toLocaleDateString("en-US", options);
-  };
+  const formatDate = (date) =>
+    fmtDate(date, { month: "short", day: "numeric", year: "numeric" });
 
   const formatTime = (date) => {
     const hours = date.getHours();

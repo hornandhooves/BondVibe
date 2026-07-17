@@ -16,6 +16,7 @@ import {
   Modal,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { formatTime } from "../utils/formatDate";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import * as Location from "expo-location";
@@ -1137,10 +1138,7 @@ export default function EventChatScreen({ route, navigation }) {
                       onChange={(e, d) => {
                         if (Platform.OS !== "ios") setShowDepPicker(false);
                         if (d) {
-                          const t = d.toLocaleTimeString([], {
-                            hour: "numeric",
-                            minute: "2-digit",
-                          });
+                          const t = formatTime(d, { hour: "numeric", minute: "2-digit" });
                           setCarpoolForm((f) => ({
                             ...f,
                             departureTime: t,

@@ -228,6 +228,7 @@
     "greetingMorning": "Buenos días",
     "greetingAfternoon": "Buenas tardes",
     "greetingEvening": "Buenas noches",
+    "greetingNight": "Buenas noches",
     "defaultName": "Amigo",
     "digestBanner": "Tu semana, curada por Kinlo AI",
     "searchPlaceholder": "Buscar eventos",

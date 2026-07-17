@@ -7,15 +7,15 @@ import Icon from './Icon';
 import { useTheme } from '../contexts/ThemeContext';
 import { formatMXN } from '../utils/pricing';
 import { coarseLocationLabel } from '../utils/eventLocation';
+import { formatDate as fmtDate } from "../utils/formatDate";
 
 export default function EventCard({ event, onPress }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const options = { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-    return date.toLocaleDateString('en-US', options);
-  };
+  const formatDate = (dateString) =>
+    fmtDate(new Date(dateString), {
+      weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+    });
 
   const spotsLeft = event.maxAttendees - event.currentAttendees;
   const isAlmostFull = spotsLeft <= 2;

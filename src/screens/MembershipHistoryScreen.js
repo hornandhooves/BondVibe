@@ -15,6 +15,7 @@ import GradientBackground from "../components/GradientBackground";
 import { useTheme } from "../contexts/ThemeContext";
 import { getMembershipRedemptions } from "../services/membershipService";
 import { toMillis } from "../utils/membershipUtils";
+import { formatDate } from "../utils/formatDate";
 
 export default function MembershipHistoryScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
@@ -49,7 +50,7 @@ export default function MembershipHistoryScreen({ route, navigation }) {
 
   const fmtDate = (ts) => {
     const ms = toMillis(ts);
-    return ms ? new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "";
+    return ms ? formatDate(ms, { month: "short", day: "numeric", year: "numeric" }) : "";
   };
 
   return (

@@ -19,6 +19,7 @@ import GradientBackground from "../components/GradientBackground";
 import KeyboardAccessory from "../components/KeyboardAccessory";
 import { auth, db } from "../services/firebase";
 import { subscribeUserGroups, joinGroupByCode } from "../services/hostGroupService";
+import { formatDate } from "../utils/formatDate";
 import {
   getUserNotifications,
   markAsRead,
@@ -261,7 +262,7 @@ export default function NotificationsScreen({ navigation }) {
     if (seconds < 3600) return t("notifications.minAgo", { count: Math.floor(seconds / 60) });
     if (seconds < 86400) return t("notifications.hoursAgo", { count: Math.floor(seconds / 3600) });
     if (seconds < 604800) return t("notifications.daysAgo", { count: Math.floor(seconds / 86400) });
-    return date.toLocaleDateString();
+    return formatDate(date);
   };
 
   const handleNotificationAction = async (notification) => {

@@ -21,6 +21,7 @@ import { db } from "../services/firebase";
 import Icon from "../components/Icon";
 import { getWeeklyDigest } from "../services/digestService";
 import { TYPE, SPACING, RADII, BRAND, AI } from "../constants/theme-tokens";
+import { formatDate } from "../utils/formatDate";
 
 function PickRow({ pick, navigation }) {
   const { t } = useTranslation();
@@ -32,7 +33,7 @@ function PickRow({ pick, navigation }) {
   }, [pick.eventId]);
   if (!ev) return null;
   const when = ev.date
-    ? new Date(ev.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+    ? formatDate(new Date(ev.date), { weekday: "short", month: "short", day: "numeric" })
     : "";
   return (
     <View style={styles.pickRow}>

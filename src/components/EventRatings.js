@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import { getEventRatings } from "../services/ratingService";
 import { AvatarDisplay } from "./AvatarPicker";
+import { formatDate as fmtDate } from "../utils/formatDate";
 
 // Accept legacy string avatars and {type,value} objects; AvatarDisplay needs
 // an object (or null), so wrap plain strings as an emoji avatar.
@@ -60,11 +61,7 @@ export default function EventRatings({ eventId, isHost }) {
   const formatDate = (date) => {
     if (!date) return "";
     const d = new Date(date);
-    return d.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+    return fmtDate(d, { month: "short", day: "numeric", year: "numeric" });
   };
 
   const renderStars = (rating) => {

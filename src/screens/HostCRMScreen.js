@@ -23,6 +23,7 @@ import MemberPulseCard from "../components/ai/MemberPulseCard";
 import KeyboardAccessory from "../components/KeyboardAccessory";
 import { AvatarDisplay } from "../components/AvatarPicker";
 import { usePremium } from "../hooks/usePremium";
+import { formatDate } from "../utils/formatDate";
 import {
   getHostCRM,
   nudgeAttendee,
@@ -202,7 +203,7 @@ export default function HostCRMScreen({ navigation }) {
                     </Text>
                     <Text style={[styles.meta, { color: colors.textSecondary }]} numberOfLines={1}>
                       {t("hostCRM.eventsCount", { count: r.eventsCount })}
-                      {r.lastDate ? t("hostCRM.lastDate", { date: r.lastDate.toLocaleDateString() }) : ""}
+                      {r.lastDate ? t("hostCRM.lastDate", { date: formatDate(r.lastDate) }) : ""}
                     </Text>
                   </View>
                 </View>
