@@ -28,6 +28,13 @@ export default function MatchPersonScreen({ route, navigation }) {
   const [busy, setBusy] = useState(false);
   const [match, setMatch] = useState(null); // { matchId, allowMessaging }
 
+  // KQA-003: nothing to show without a profile. The normal flow always passes
+  // one (from the match grid), so this only catches a bad deep link or a
+  // param-less navigation — every field below dereferences `profile`.
+  // Placed AFTER the hooks, not right after the destructure: an early return
+  // before useState would make those hooks conditional (Rules of Hooks / lint).
+  if (!profile) return null;
+
   const onLike = async () => {
     setBusy(true);
     try {

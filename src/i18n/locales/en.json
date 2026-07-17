@@ -228,6 +228,7 @@
     "greetingMorning": "Good morning",
     "greetingAfternoon": "Good afternoon",
     "greetingEvening": "Good evening",
+    "greetingNight": "Good evening",
     "defaultName": "Friend",
     "digestBanner": "Your week, curated by Kinlo AI",
     "searchPlaceholder": "Search events",

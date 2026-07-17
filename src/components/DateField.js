@@ -15,11 +15,9 @@ import {
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useTheme } from "../contexts/ThemeContext";
 import { useTranslation } from "react-i18next";
+import { formatDate } from "../utils/formatDate";
 
-const fmt = (d) =>
-  d
-    ? new Date(d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })
-    : null;
+const fmt = (d) => (d ? formatDate(d) : null);
 
 export default function DateField({
   label,

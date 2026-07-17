@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { getGreetingKey } from "../utils/greeting";
 import {
   View,
   Text,
@@ -77,12 +78,7 @@ export default function HomeScreen({ navigation }) {
     setSelectedEvent(null);
   };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return t("home.greetingMorning");
-    if (hour < 18) return t("home.greetingAfternoon");
-    return t("home.greetingEvening");
-  };
+  const getGreeting = () => t(getGreetingKey(new Date().getHours()));
   const getUserDisplayName = () => {
     if (!user) return t("home.defaultName");
     return user.fullName || user.name || t("home.defaultName");

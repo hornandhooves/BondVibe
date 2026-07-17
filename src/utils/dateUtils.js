@@ -1,4 +1,5 @@
 // Date formatting utilities for Kinlo
+import { formatDate, formatTime } from "./formatDate";
 
 /**
  * Format ISO date string to readable format
@@ -28,11 +29,7 @@ export const formatISODate = (isoDate) => {
       return "TBD";
     }
 
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+    return formatDate(date, { month: "short", day: "numeric", year: "numeric" });
   } catch (error) {
     console.error("Error formatting date:", error);
     return "TBD";
@@ -69,11 +66,7 @@ export const formatEventTime = (date, time = null) => {
       return "";
     }
 
-    return eventDate.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
+    return formatTime(eventDate, { hour: "numeric", minute: "2-digit", hour12: true });
   } catch (error) {
     console.error("Error formatting time:", error);
     return "";
