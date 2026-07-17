@@ -164,9 +164,23 @@ const arrVals = (f) => (f?.arrayValue?.values || []).map((v) => v.stringValue);
   chk("host CANNOT self-grant isPremium", await patchDoc(`users/${host.uid}?updateMask.fieldPaths=isPremium`, {
     isPremium: b(true),
   }, host.headers), 403);
-  chk("host CAN set own hostConfig.payoutProcessor", await patchDoc(`users/${host.uid}?updateMask.fieldPaths=hostConfig.payoutProcessor`, {
-    hostConfig: { mapValue: { fields: { payoutProcessor: s("mercadopago") } } },
-  }, host.headers), 200);
+  // ---- HOST ONBOARDING 3/3 (hardened): role + hostConfig are server-only ----
+  // These gate DEPLOY_SEQUENCE step (c). Before #26 the owner could set their own
+  // role and hostConfig; the hardened rule now rejects both, so hosting is
+  // granted ONLY by the activateHost/deferHostType callables (Admin SDK,
+  // rule-exempt). This assertion used to expect the OLD behaviour
+  // ("host CAN set own hostConfig" → 200) — it flipped with the hardening.
+  section("Host onboarding 3/3 (role/hostConfig server-only)");
+  chk("user CANNOT self-set role:host (server-only now)", await patchDoc(`users/${stranger.uid}?updateMask.fieldPaths=role`, {
+    role: s("host"),
+  }, stranger.headers), 403);
+  chk("user CANNOT self-write hostConfig (server-only now)", await patchDoc(`users/${host.uid}?updateMask.fieldPaths=hostConfig`, {
+    hostConfig: { mapValue: { fields: { type: s("free") } } },
+  }, host.headers), 403);
+  // The hardening must not have broken ordinary profile editing.
+  chk("user CAN still edit a normal profile field (displayName)", await patchDoc(`users/${member.uid}?updateMask.fieldPaths=displayName`, {
+    displayName: s("E2E Member"),
+  }, member.headers), 200);
 
   // ---- MEMBERSHIP PLANS / money-sensitive collections ----
   section("Memberships & money-sensitive");
@@ -182,6 +196,63 @@ const arrVals = (f) => (f?.arrayValue?.values || []).map((v) => v.stringValue);
   chk("client CANNOT create promotion (server-only)", await createDoc(`promotions?documentId=pr1_${Date.now()}`, {
     hostId: s(host.uid),
   }, host.headers), 403);
+
+  // ---- UNIFIED PLANS (businesses/{bizId}/plans) — ships with 3/3 ----
+  // bizId === ownerUid (v1): with no business doc, isBizOwnerUid(bizId) is
+  // uid==bizId, so `host` owns business `host.uid` without creating one.
+  section("Unified plans (businesses/{bizId}/plans)");
+  const bizId = host.uid;
+  const planPath = (id) => `businesses/${bizId}/plans?documentId=${id}`;
+  const planFields = (modes) => ({
+    name: s("10 Classes"), kind: s("class"), credits: i(10), validityDays: i(60),
+    priceCents: i(120000), audienceTier: s("both"), active: b(true),
+    paymentModes: { arrayValue: { values: modes.map(s) } },
+  });
+
+  // read: any authenticated user (it's a price list) / denied without auth
+  const okPlan = `e2eplan_${Date.now()}`;
+  chk("owner creates plan [manual]", await createDoc(planPath(okPlan), planFields(["manual"]), host.headers), 200);
+  chk("any signed-in user CAN read a plan", await readDoc(`businesses/${bizId}/plans/${okPlan}`, member.headers), 200);
+  chk("unauthenticated CANNOT read a plan", await fetch(`${FS}/businesses/${bizId}/plans/${okPlan}`).then((r) => r.status), [401, 403]);
+
+  // write: owner only
+  chk("owner creates plan [online]", await createDoc(planPath(`e2eplan_on_${Date.now()}`), planFields(["online"]), host.headers), 200);
+  chk("non-owner CANNOT create a plan", await createDoc(planPath(`e2eplan_bad_${Date.now()}`), planFields(["manual"]), member.headers), 403);
+  chk("owner CAN update own plan", await patchDoc(`businesses/${bizId}/plans/${okPlan}?updateMask.fieldPaths=name`, { name: s("10 Classes v2") }, host.headers), 200);
+  chk("non-owner CANNOT update a plan", await patchDoc(`businesses/${bizId}/plans/${okPlan}?updateMask.fieldPaths=name`, { name: s("hijack") }, member.headers), 403);
+
+  // paymentModes validated server-side: non-empty, subset of {online,manual}
+  chk("create with EMPTY paymentModes DENIED", await createDoc(planPath(`e2eplan_empty_${Date.now()}`), planFields([]), host.headers), 403);
+  chk("create with UNKNOWN paymentMode DENIED", await createDoc(planPath(`e2eplan_junk_${Date.now()}`), planFields(["carrier-pigeon"]), host.headers), 403);
+  chk("create with BOTH modes ALLOWED", await createDoc(planPath(`e2eplan_both_${Date.now()}`), planFields(["online", "manual"]), host.headers), 200);
+
+  cleanup.push(`businesses/${bizId}/plans/${okPlan}`);
+
+  // ---- HOST CALLABLES (activateHost / deferHostType) — the granted path ----
+  // The other half of 3/3: a direct role/hostConfig write is denied above, so
+  // hosting MUST come from these. They run with the Admin SDK, rule-exempt, and
+  // are the reason the hardening doesn't strand anyone. Skipped cleanly if the
+  // functions emulator isn't up (rules tests 2 + 4 are the deploy gate).
+  section("Host activation callables");
+  const actUser = await mkUser();
+  // activateHost reads users/{uid} (throws "No user profile" otherwise). The real
+  // app always has this doc before host activation — create a plain one, exactly
+  // what signup writes: role defaults to 'user', which the hardened rule allows.
+  await createDoc(`users?documentId=${actUser.uid}`, { email: s("act@e2e.com"), role: s("user") }, actUser.headers);
+  const act = await callFn("activateHost", { type: "free" }, actUser.headers).catch((e) => ({ status: 0, body: { _err: e.message } }));
+  if (act.status === 0 || act.body?._err) {
+    console.log("  ⊘ functions emulator not reachable — callable tests SKIPPED (rules gate is 2+4)");
+  } else {
+    chk("activateHost('free') succeeds", act.body?.result?.ok, true);
+    const af = await getFields(`users/${actUser.uid}`, actUser.headers);
+    chk("  → role written to host (by Admin SDK)", af?.role?.stringValue, "host");
+    chk("  → hostConfig.type written to free", af?.hostConfig?.mapValue?.fields?.type?.stringValue, "free");
+    const defUser = await mkUser();
+    const def = await callFn("deferHostType", {}, defUser.headers);
+    chk("deferHostType() succeeds", def.body?.result?.ok, true);
+    await fetch(`${IDT}:delete?key=${API_KEY}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idToken: defUser.idToken }) });
+  }
+  await fetch(`${IDT}:delete?key=${API_KEY}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idToken: actUser.idToken }) });
 
   // ---- EVENT POLLS ----
   section("Event polls");

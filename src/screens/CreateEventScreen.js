@@ -454,9 +454,12 @@ export default function CreateEventScreen({ navigation, route }) {
               text: t("createEvent.membershipPlansAlert.createPlan"),
               onPress: async () => {
                 // Persist the in-progress event so the detour to create a
-                // membership plan doesn't lose it (silent-restore on return).
+                // membership doesn't lose it (silent-restore on return).
                 await persistDraft("membership");
-                navigation.navigate("MembershipPlans", { fromEventCreation: true });
+                // The NEW unified form. This opened MembershipPlans — the old
+                // screen — so a host sent here from event creation built their
+                // plan in a UI that exists nowhere else in the app.
+                navigation.navigate("BusinessPlanForm", { fromEventCreation: true });
               },
             },
           ]

@@ -334,7 +334,9 @@ export default function NotificationsScreen({ navigation }) {
         if (notification.metadata?.membershipId) {
           navigation.navigate("MembershipSale", { ...notification.metadata });
         } else {
-          navigation.navigate("MembershipPlans");
+          // Was MembershipPlans (the retired screen) — a live push notification
+          // whose tap would have dead-ended once the route was unregistered.
+          navigation.navigate("BusinessMemberships");
         }
         break;
 

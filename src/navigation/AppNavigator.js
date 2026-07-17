@@ -50,8 +50,6 @@ import MemberRecordScreen from "../screens/business/MemberRecordScreen";
 import MembershipCardScreen from "../screens/business/MembershipCardScreen";
 import BusinessBirthdaysScreen from "../screens/business/BusinessBirthdaysScreen";
 import CsvImportScreen from "../screens/business/CsvImportScreen";
-import PackagesScreen from "../screens/business/PackagesScreen";
-import PackageFormScreen from "../screens/business/PackageFormScreen";
 import BusinessCheckInScreen from "../screens/business/BusinessCheckInScreen";
 import RedeemCodeScreen from "../screens/business/RedeemCodeScreen";
 import RequestSessionScreen from "../screens/business/RequestSessionScreen";
@@ -94,12 +92,13 @@ import CheckoutScreen from "../screens/payment/CheckoutScreen";
 
 // Stripe Connect Screens
 import HostTypeSelectionScreen from "../screens/HostTypeSelectionScreen";
+import MembershipsScreen from "../screens/business/MembershipsScreen";
+import PlanFormScreen from "../screens/business/PlanFormScreen";
 import HostLiveScreen from "../screens/HostLiveScreen";
 import HostStatusScreen from "../screens/HostStatusScreen";
 import StripeConnectScreen from "../screens/StripeConnectScreen";
 
 // Host Membership Screens
-import MembershipPlansScreen from "../screens/MembershipPlansScreen";
 import HostMembershipsScreen from "../screens/HostMembershipsScreen";
 import MembershipCheckoutScreen from "../screens/MembershipCheckoutScreen";
 import MyMembershipsScreen from "../screens/MyMembershipsScreen";
@@ -745,8 +744,11 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="BusinessMembershipCard" component={MembershipCardScreen} />
           <Stack.Screen name="BusinessBirthdays" component={BusinessBirthdaysScreen} />
           <Stack.Screen name="BusinessCsvImport" component={CsvImportScreen} />
-          <Stack.Screen name="BusinessPackages" component={PackagesScreen} />
-          <Stack.Screen name="BusinessPackageForm" component={PackageFormScreen} />
+          {/* Unified memberships. BusinessPackages/BusinessPackageForm stay
+              registered until the migration runs and the old data is gone —
+              removing them now would dead-end anything still pointing there. */}
+          <Stack.Screen name="BusinessMemberships" component={MembershipsScreen} />
+          <Stack.Screen name="BusinessPlanForm" component={PlanFormScreen} />
           <Stack.Screen name="BusinessCheckIn" component={BusinessCheckInScreen} />
           <Stack.Screen name="BusinessRedeemCode" component={RedeemCodeScreen} />
           <Stack.Screen name="BusinessRequestSession" component={RequestSessionScreen} />
@@ -794,10 +796,11 @@ const AppNavigator = forwardRef((props, ref) => {
           />
           <Stack.Screen name="Checkout" component={CheckoutScreen} />
           <Stack.Screen name="StripeConnect" component={StripeConnectScreen} />
-          <Stack.Screen
-            name="MembershipPlans"
-            component={MembershipPlansScreen}
-          />
+          {/* MembershipPlans (the old host-side plan list + form) is retired:
+              BusinessMemberships / BusinessPlanForm replace it. Unregistered on
+              purpose — leaving the route alive is how a second surface survives
+              a "unification". HostMemberships below is the ATTENDEE's buy
+              screen and stays. */}
           <Stack.Screen
             name="HostMemberships"
             component={HostMembershipsScreen}

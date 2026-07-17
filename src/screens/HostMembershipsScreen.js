@@ -21,6 +21,7 @@ import {
   describePlan,
   audienceAllows,
 } from "../services/membershipService";
+import { listOnlinePlans } from "../services/plansService";
 import { getMyPricingTierForHost } from "../services/businessMembersService";
 
 export default function HostMembershipsScreen({ route, navigation }) {
@@ -38,11 +39,31 @@ export default function HostMembershipsScreen({ route, navigation }) {
   );
 
   const load = async () => {
-    const [data, hostSnap, myTier] = await Promise.all([
+    const [unified, legacy, hostSnap, myTier] = await Promise.all([
+      // Already filtered to what a member can buy for themselves: a manual-only
+      // plan is the host's to hand out, and showing it with a Buy button would
+      // sell something that has no online price path.
+      listOnlinePlans(hostId),
       getHostMembershipPlans(hostId, { activeOnly: true }),
       getDoc(doc(db, "users", hostId)),
       getMyPricingTierForHost(hostId),
     ]);
+    // TRANSITIONAL — REMOVE AFTER PLANS MIGRATION (scripts/migrate-plans.mjs --apply)
+    //
+    // `plans` is empty until the migration runs, and the migration deliberately
+    // waits until these screens are verified in a build. Reading only the new
+    // source in between would leave members unable to buy anything — an outage
+    // caused purely by ordering. Legacy membershipPlans were the online-sold
+    // ones by definition, so they stand in safely.
+    //
+    // It goes quiet on its own the moment the migration runs, which is exactly
+    // why it needs deleting deliberately: once `plans` is populated this line
+    // never takes the fallback again, so it will look harmless forever while
+    // quietly keeping a dead read (and the whole membershipService import) alive.
+    //
+    // To remove: drop `legacy` from the Promise.all, drop this branch, and drop
+    // getHostMembershipPlans from the import above if nothing else uses it.
+    const data = unified.length ? unified : legacy;
     // Purchase scope (kinlo_business/05 §G): only show plans this buyer's tier
     // is allowed to buy (local-only plans hidden from general members).
     setPlans(data.filter((p) => audienceAllows(p.audienceTier, myTier)));

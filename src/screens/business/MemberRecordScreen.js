@@ -35,6 +35,8 @@ import {
   MEMBER_STATUS,
   PRICING_TIER,
 } from "../../services/businessMembersService";
+import { getMyBizId } from "../../services/businessService";
+import AssignPlanSheet from "../../components/business/AssignPlanSheet";
 import { listPackages, assignPackage, adjustCredits, PACKAGE_KIND } from "../../services/businessPackagesService";
 import { markPresent, listMemberAttendance } from "../../services/businessAttendanceService";
 import { listMemberPayments } from "../../services/businessPaymentsService";
@@ -49,6 +51,9 @@ export default function MemberRecordScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const memberId = route.params?.memberId;
+  // The services here default bizId internally; the assign callable needs it
+  // explicit, since the server can't infer the active business context.
+  const bizId = getMyBizId();
   const [member, setMember] = useState(null);
   const [business, setBusiness] = useState(null);
   const [attendance, setAttendance] = useState([]);
@@ -376,52 +381,20 @@ export default function MemberRecordScreen({ route, navigation }) {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Assign-package modal */}
-      <Modal visible={assignVisible} transparent animationType="slide" onRequestClose={() => setAssignVisible(false)}>
-        <View style={styles.backdrop}>
-          <View style={[styles.sheet, { backgroundColor: colors.background }]}>
-            <View style={styles.sheetHeader}>
-              <Text style={[styles.sheetTitle, { color: colors.text }]}>{t("business.credits.pickPackage")}</Text>
-              <TouchableOpacity onPress={() => setAssignVisible(false)}>
-                <Icon name="close" size={22} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            {packages.length === 0 ? (
-              <View style={{ paddingVertical: 30, alignItems: "center" }}>
-                <Text style={{ color: colors.textTertiary, textAlign: "center" }}>{t("business.credits.noPackages")}</Text>
-                <TouchableOpacity
-                  style={[styles.createPkgBtn, { backgroundColor: colors.primary }]}
-                  onPress={() => {
-                    setAssignVisible(false);
-                    navigation.navigate("BusinessPackageForm", {});
-                  }}
-                >
-                  <Text style={styles.createPkgText}>{t("business.packages.addFirst")}</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <ScrollView style={{ maxHeight: 360 }}>
-                {packages.map((p) => (
-                  <TouchableOpacity
-                    key={p.id}
-                    style={[styles.pkgRow, { borderColor: colors.border }]}
-                    onPress={() => onAssignPackage(p)}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.pkgName, { color: colors.text }]}>{p.name}</Text>
-                      <Text style={[styles.pkgMeta, { color: colors.textTertiary }]}>
-                        {t("business.packages.creditsCount", { count: p.credits || 0 })}
-                        {` · ${p.priceCents ? formatCentavos(p.priceCents) : t("business.packages.free")}`}
-                      </Text>
-                    </View>
-                    <Icon name="forward" size={18} color={colors.textTertiary} />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-          </View>
-        </View>
-      </Modal>
+        {/* Assign a plan — Kinlo Pro. Replaces the inline assign-package modal:
+            assigning and recording the payment were always the same moment
+            (someone paid you in cash and now they have credits), and the sheet
+            reads the unified plans instead of packages. The Pro check inside is
+            UX; the callable enforces the entitlement server-side. */}
+        <AssignPlanSheet
+          visible={assignVisible}
+          onClose={() => setAssignVisible(false)}
+          bizId={bizId}
+          memberId={memberId}
+          memberName={member?.name}
+          navigation={navigation}
+          onAssigned={load}
+        />
 
       {/* Credit adjust modal (with reason) */}
       <Modal visible={!!adjust} transparent animationType="fade" onRequestClose={() => setAdjust(null)}>
