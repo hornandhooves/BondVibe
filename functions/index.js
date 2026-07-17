@@ -198,8 +198,7 @@ exports.assignPlanManually = onCall(async (request) => {
 
   const now = new Date();
   const credits = plan.unlimited ? null : (plan.credits || 0);
-  const expiresAt = new Date(now.getTime() + (plan.validityDays || 30) * 86400000)
-      .toISOString();
+  const expiresAt = new Date(now.getTime() + (plan.validityDays || 30) * 86400000).toISOString();
 
   const activePackage = {
     packageId: planId,
