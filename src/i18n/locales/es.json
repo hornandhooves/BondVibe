@@ -4308,6 +4308,26 @@
     "exploreMeanwhile": "Explorar las herramientas de host"
   },
   "plans": {
+    "assign": {
+      "title": "Asignar una membresía",
+      "sub": "Asigna y registra efectivo/transferencia — función de Kinlo Pro.",
+      "subFor": "Dale una membresía a {{name}} y registra cómo pagó.",
+      "planLabel": "Membresía",
+      "methodLabel": "¿Cómo pagó?",
+      "method": {
+        "cash": "Efectivo",
+        "transfer": "Transferencia",
+        "comped": "Cortesía"
+      },
+      "confirm": "Asignar membresía",
+      "proGate": "Asignar membresías a mano y registrar efectivo o transferencias es parte de Kinlo Pro.",
+      "seePro": "Ver Kinlo Pro",
+      "noPlans": "Ninguna de tus membresías se puede asignar a mano todavía. Activa \"Asignar a mano\" en una primero.",
+      "createPlan": "Crear una membresía",
+      "errorTitle": "No se pudo asignar",
+      "errorPro": "Esto necesita Kinlo Pro.",
+      "errorAudience": "Esta membresía no está disponible para el nivel de este miembro."
+    },
     "title": "Membresías",
     "subtitle": "Paquetes de clases, pases y membresías. Véndelas online, asígnalas a mano, o ambas.",
     "emptyTitle": "Aún no vendes nada",

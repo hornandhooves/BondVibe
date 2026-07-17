@@ -4308,6 +4308,26 @@
     "exploreMeanwhile": "Explore host tools meanwhile"
   },
   "plans": {
+    "assign": {
+      "title": "Assign a plan",
+      "sub": "Assign & record cash/transfer — a Kinlo Pro feature.",
+      "subFor": "Give {{name}} a plan and record how they paid.",
+      "planLabel": "Plan",
+      "methodLabel": "How did they pay?",
+      "method": {
+        "cash": "Cash",
+        "transfer": "Transfer",
+        "comped": "Comp'd"
+      },
+      "confirm": "Assign plan",
+      "proGate": "Assigning memberships by hand and recording cash or transfers is part of Kinlo Pro.",
+      "seePro": "See Kinlo Pro",
+      "noPlans": "None of your memberships can be assigned by hand yet. Turn on \"Assign manually\" on a plan first.",
+      "createPlan": "Create a membership",
+      "errorTitle": "Couldn't assign the plan",
+      "errorPro": "This needs Kinlo Pro.",
+      "errorAudience": "This plan isn't available for this member's tier."
+    },
     "title": "Memberships",
     "subtitle": "Class packs, passes & memberships. Sell online, assign by hand, or both.",
     "emptyTitle": "Nothing to sell yet",

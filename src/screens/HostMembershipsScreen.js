@@ -21,6 +21,7 @@ import {
   describePlan,
   audienceAllows,
 } from "../services/membershipService";
+import { listOnlinePlans } from "../services/plansService";
 import { getMyPricingTierForHost } from "../services/businessMembersService";
 
 export default function HostMembershipsScreen({ route, navigation }) {
@@ -38,11 +39,22 @@ export default function HostMembershipsScreen({ route, navigation }) {
   );
 
   const load = async () => {
-    const [data, hostSnap, myTier] = await Promise.all([
+    const [unified, legacy, hostSnap, myTier] = await Promise.all([
+      // Already filtered to what a member can buy for themselves: a manual-only
+      // plan is the host's to hand out, and showing it with a Buy button would
+      // sell something that has no online price path.
+      listOnlinePlans(hostId),
       getHostMembershipPlans(hostId, { activeOnly: true }),
       getDoc(doc(db, "users", hostId)),
       getMyPricingTierForHost(hostId),
     ]);
+    // Transitional, and it switches itself off. `plans` is empty until the
+    // migration runs, and the migration deliberately waits until these screens
+    // are verified in a build — so reading only the new source would leave
+    // members unable to buy anything in between. An outage caused purely by
+    // ordering. Legacy membershipPlans were the online-sold ones by definition,
+    // which makes them a safe stand-in until they're migrated across.
+    const data = unified.length ? unified : legacy;
     // Purchase scope (kinlo_business/05 §G): only show plans this buyer's tier
     // is allowed to buy (local-only plans hidden from general members).
     setPlans(data.filter((p) => audienceAllows(p.audienceTier, myTier)));

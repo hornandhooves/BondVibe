@@ -128,6 +128,107 @@ exports.adminListUserEmails = onCall(async (request) => {
  * but never unlocks money: canCreatePaidEvents stays false until Stripe reports
  * the account charge-enabled, and hostApproved (admin-only) still gates review.
  */
+/**
+ * Assign a membership by hand and record how it was paid — Kinlo Pro.
+ *
+ * This runs on the server because the entitlement has to be enforced somewhere a
+ * modified client can't reach. Hiding the sheet stops an honest host from
+ * stumbling into a paid feature; it doesn't stop anyone from calling the write
+ * directly. Manual assignment IS the Pro feature — it's how a studio takes cash
+ * without Stripe — so the check belongs here, not in the UI.
+ *
+ * Produces the SAME activePackage the online checkout produces. That's the whole
+ * premise of the unification: one product, two ways in, one runtime.
+ */
+exports.assignPlanManually = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Sign in first.");
+  }
+
+  const {bizId, memberId, planId, paymentMethod} = request.data || {};
+  if (!bizId || !memberId || !planId) {
+    throw new HttpsError("invalid-argument", "bizId, memberId and planId are required.");
+  }
+  const METHODS = ["cash", "transfer", "comped"];
+  if (!METHODS.includes(paymentMethod)) {
+    throw new HttpsError("invalid-argument", `paymentMethod must be one of ${METHODS}.`);
+  }
+
+  // bizId === ownerUid (v1). Only the owner assigns: an assignment records money
+  // taken against their business.
+  if (bizId !== uid) {
+    throw new HttpsError("permission-denied", "Not your business.");
+  }
+
+  const ownerSnap = await db.collection("users").doc(uid).get();
+  if (ownerSnap.data()?.isPremium !== true) {
+    // isPremium is set only by the Stripe subscription webhook — a client can't
+    // write it (firestore.rules), so this is a real gate, not a suggestion.
+    throw new HttpsError("permission-denied", "kinlo_pro_required");
+  }
+
+  const planSnap = await db
+    .collection("businesses").doc(bizId).collection("plans").doc(planId).get();
+  if (!planSnap.exists) {
+    throw new HttpsError("not-found", "Plan not found.");
+  }
+  const plan = planSnap.data();
+  if (!Array.isArray(plan.paymentModes) || !plan.paymentModes.includes("manual")) {
+    // The host turned manual off for this plan. Honour that here too, or the
+    // switch in the form would be decoration.
+    throw new HttpsError("failed-precondition", "Plan is not assignable by hand.");
+  }
+
+  const memberRef = db
+    .collection("businesses").doc(bizId).collection("members").doc(memberId);
+  const memberSnap = await memberRef.get();
+  if (!memberSnap.exists) {
+    throw new HttpsError("not-found", "Member not found.");
+  }
+  const member = memberSnap.data();
+
+  // Audience scope, mirroring assignPackage: a local-only plan can't go to a
+  // general member. Enforced here because this path never touches that client.
+  const tier = plan.audienceTier || "both";
+  const memberTier = member.pricingTier || "general";
+  if (tier !== "both" && tier !== memberTier) {
+    throw new HttpsError("failed-precondition", "audience_mismatch");
+  }
+
+  const now = new Date();
+  const credits = plan.unlimited ? null : (plan.credits || 0);
+  const expiresAt = new Date(now.getTime() + (plan.validityDays || 30) * 86400000)
+      .toISOString();
+
+  const activePackage = {
+    packageId: planId,
+    name: plan.name || "",
+    kind: plan.kind || "class",
+    creditsTotal: credits,
+    creditsRemaining: credits,
+    expiresAt,
+    audienceTier: tier,
+    assignedAt: now.toISOString(),
+    // How it was paid — what "record payment" used to be, folded in.
+    paymentMethod,
+    assignedBy: uid,
+  };
+
+  const log = Array.isArray(member.creditLog) ? member.creditLog : [];
+  await memberRef.update({
+    activePackage,
+    creditBalance: credits === null ? 0 : credits,
+    creditLog: [
+      {delta: credits || 0, reason: `assign:${plan.name}`, at: now.toISOString()},
+      ...log,
+    ].slice(0, 30),
+    updatedAt: now.toISOString(),
+  });
+
+  return {ok: true, activePackage};
+});
+
 exports.activateHost = onCall(async (request) => {
   const uid = request.auth && request.auth.uid;
   if (!uid) {
