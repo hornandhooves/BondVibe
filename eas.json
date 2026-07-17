@@ -16,12 +16,34 @@
         "buildType": "apk"
       }
     },
+    "beta": {
+      "channel": "beta",
+      "autoIncrement": true,
+      "ios": {
+        "distribution": "store"
+      },
+      "android": {
+        "distribution": "internal",
+        "buildType": "apk"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "channel": "production"
     }
   },
   "submit": {
+    "beta": {
+      "ios": {
+        "appleId": "jcpuntoduarte@gmail.com",
+        "ascAppId": "6756991364",
+        "appleTeamId": "XZA3946V5X"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./google-play-service-account.json",
+        "track": "internal"
+      }
+    },
     "production": {
       "ios": {
         "appleId": "jcpuntoduarte@gmail.com",
