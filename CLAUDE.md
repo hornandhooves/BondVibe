@@ -69,14 +69,35 @@ dashboard). App scheme is `kinlo://`; the git repo is still `hornandhooves/BondV
   - Firebase enables `firestore` / `identitytoolkit` / `storage` APIs on **every** new
     project, so "API enabled" proves nothing. Check for actual data before believing a
     project matters.
-- **OTA updates:** client-only changes reach TestFlight via
-  `eas update --branch production --platform ios` (runtimeVersion `1.0.0`). The
-  **last update on `production` wins** for all users — publish OTA **only from
-  `main`**; use the `preview` channel for testing.
+- **Channels — testers and users must never share one.** A build listens on the
+  channel baked in at BUILD time (`eas.json` → `build.<profile>.channel`); you
+  cannot redirect an installed build by picking a different `--branch`.
+  | profile | channel | who's on it |
+  |---|---|---|
+  | `development` | `development` | dev client, local loop |
+  | `preview` | `preview` | sideloaded APK / ad-hoc iOS, throwaway checks |
+  | **`beta`** | **`beta`** | **testers — iOS TestFlight + Android APK link** |
+  | `production` | `production` | the launch channel. **Nobody is on it yet.** |
+- **OTA updates:** testers get client-only changes via
+  `eas update --branch beta --platform ios` (and `--platform android`). Publish
+  OTA **only from `main`**. Never `--branch production` while testing: the **last
+  update on `production` wins** for every real user, and that channel exists for
+  launch. Omitting `--platform` exports `all`, which includes **web** — web has
+  never bundled (`@stripe/stripe-react-native` imports RN internals), so always
+  pass `--platform`.
+- **runtimeVersion is `{"policy": "appVersion"}`** → today `1.0.0`, from
+  `app.json` `version`. An update only reaches builds with the **same**
+  runtimeVersion, so bumping `version` orphans every installed build until it's
+  rebuilt. `autoIncrement` moves buildNumber/versionCode, not this.
 - **Do NOT run `eas build`.** Simulator builds are fine (`expo run:ios`); native
-  TestFlight builds are handled separately. A change is OTA-able unless it adds a
-  **native module** (e.g. `react-native-maps`) — those need a native build, not
-  OTA.
+  builds are handled separately. A change is OTA-able unless it adds a **native
+  module** (e.g. `react-native-maps`) — those need a native build, not OTA.
+- **iOS builds stop for an Apple login + 2FA** (no credentials are stored on EAS
+  yet), so they can't run unattended.
+- **TestFlight is the controlled environment** — invite-only, not the App Store.
+  Internal testing: 100 testers, no Apple review. External: 10,000, one Beta App
+  Review. The `preview` profile can't reach it: `distribution: internal` on iOS
+  is ad-hoc, which needs every device's UDID registered.
 
 ---
 
