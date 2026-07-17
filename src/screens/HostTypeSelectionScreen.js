@@ -10,38 +10,51 @@ import {
   Alert,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { doc, updateDoc } from "firebase/firestore";
 import { db, auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
-import GradientBackground from "../components/GradientBackground";
+import { FONTS } from "../constants/theme-tokens";
 import Icon from "../components/Icon";
-import * as WebBrowser from "expo-web-browser";
-import {
-  createConnectAccount,
-  getAccountLink,
-  checkAccountStatus,
-} from "../services/stripeConnectService";
-import { MERCADOPAGO_ENABLED } from "../config/featureFlags";
 
-// Deep link the Stripe return page redirects to (intercepted by
-// openAuthSessionAsync to auto-close the browser).
-const STRIPE_RETURN_URL = "kinlo://stripe/return";
-
+/**
+ * How you host — free (live instantly) or paid (payouts set up later).
+ *
+ * Two things changed here, both about when we ask for money:
+ *
+ * 1. Free is preselected and recommended. The screen used to open with nothing
+ *    chosen, demanding a decision between a free thing and a thing involving a
+ *    tax ID before the person had hosted anything at all.
+ * 2. Choosing paid no longer opens Stripe onboarding. That put a KYC flow —
+ *    account creation, an external browser, bank details — between someone and
+ *    their first event, and the browser hop was where they left. Payouts are now
+ *    connected in context, when they actually price an event. Picking paid here
+ *    just records the intent.
+ *
+ * Either way hosting activates now: the real gate on taking money is
+ * `canCreatePaidEvents`, which only Stripe's charge-enabled status flips.
+ *
+ * Mercado Pago (MERCADOPAGO_ENABLED, config/featureFlags) stays hidden: this
+ * screen no longer picks a payout processor at all, so there is nothing here to
+ * gate. That choice belongs to the payout setup step, which already honours the
+ * flag.
+ */
 export default function HostTypeSelectionScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
-  const [selectedType, setSelectedType] = useState(null);
-  const [payoutProcessor, setPayoutProcessor] = useState("stripe");
+  const insets = useSafeAreaInsets();
+
+  // Preselected: an opinionated default is the difference between "choose your
+  // business model" and "start hosting".
+  const [selectedType, setSelectedType] = useState("free");
   const [loading, setLoading] = useState(false);
 
-  const { userEmail, fullName, fromProfile } = route.params || {};
+  const { fromProfile } = route.params || {};
 
   // Where to go once the user has made (or deferred) their choice. Opened from
   // Profile → pop back. During ONBOARDING → do NOT self-navigate: the hostConfig
   // write we just made re-fires the AppNavigator user-doc listener, which
-  // advances the flow (→ AiOptIn → MainTabs), exactly like Legal/ProfileSetup.
-  // (The old reset to "Home" targeted a route that no longer exists after the
-  // 5-tab MainTabs refactor — a dead/no-op action that raced the router.)
+  // advances the flow, exactly like Legal/ProfileSetup.
   const goAfterSelection = () => {
     if (fromProfile && navigation.canGoBack()) {
       navigation.goBack();
@@ -54,117 +67,44 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
     try {
       // User deferred. They remain a NORMAL user (role: "user", no host
       // privileges) but keep hostApproved so they can pick a type later from
-      // their Profile. The "deferred" marker stops AppNavigator from
-      // prompting them again on every login.
+      // their Profile. The "deferred" marker stops AppNavigator from prompting
+      // them again on every login.
       await updateDoc(doc(db, "users", auth.currentUser.uid), {
         role: "user",
         "hostConfig.type": "deferred",
         "hostConfig.canCreatePaidEvents": false,
         "hostConfig.updatedAt": new Date().toISOString(),
       });
-      console.log("✅ User deferred host type selection (stays normal user)");
       goAfterSelection();
     } catch (error) {
       console.error("❌ Error deferring selection:", error);
-      Alert.alert(t("hostTypeSelection.error"), t("hostTypeSelection.couldNotContinue"));
+      Alert.alert(
+        t("hostTypeSelection.error"),
+        t("hostTypeSelection.couldNotContinue")
+      );
       setLoading(false);
     }
   };
 
   const handleContinue = async () => {
-    if (!selectedType) {
-      Alert.alert(
-        t("hostTypeSelection.selectionRequired"),
-        t("hostTypeSelection.selectionRequiredMessage")
-      );
-      return;
-    }
-
     setLoading(true);
+    const now = new Date().toISOString();
 
     try {
-      if (selectedType === "free") {
-        // Activate hosting as a Free Host (role becomes "host").
-        await updateDoc(doc(db, "users", auth.currentUser.uid), {
-          role: "host",
-          "hostConfig.type": "free",
-          "hostConfig.canCreatePaidEvents": false,
-          "hostConfig.createdAt": new Date().toISOString(),
-          "hostConfig.updatedAt": new Date().toISOString(),
-        });
-
-        console.log("✅ User set as Free Host");
-        goAfterSelection();
-      } else if (
-        selectedType === "paid" &&
-        payoutProcessor === "mercadopago" &&
-        MERCADOPAGO_ENABLED
-      ) {
-        // Unreachable while the flag is off (the option isn't rendered and the
-        // default is stripe) — the guard is here so a stale state can't write a
-        // payoutProcessor the rest of the app now refuses to honour.
-        // Mercado Pago payout (for hosts without an RFC). The MP account
-        // connection is wired separately; for now we record the preference and
-        // activate the paid host. canCreatePaidEvents stays false until the MP
-        // account is connected/verified.
-        await updateDoc(doc(db, "users", auth.currentUser.uid), {
-          role: "host",
-          "hostConfig.type": "paid",
-          "hostConfig.payoutProcessor": "mercadopago",
-          "hostConfig.canCreatePaidEvents": false,
-          "hostConfig.createdAt": new Date().toISOString(),
-          "hostConfig.updatedAt": new Date().toISOString(),
-        });
-        console.log("✅ User set as Paid Host (Mercado Pago, connection pending)");
-        Alert.alert(
-          t("hostTypeSelection.mercadoPago"),
-          t("hostTypeSelection.mercadoPagoMessage")
-        );
-        goAfterSelection();
-      } else if (selectedType === "paid") {
-        // Create Stripe Connect account
-        console.log("📤 Creating Stripe Connect account...");
-        const accountResult = await createConnectAccount(
-          auth.currentUser.uid,
-          userEmail || auth.currentUser.email,
-          fullName || t("hostTypeSelection.host")
-        );
-
-        if (!accountResult.success) {
-          throw new Error(accountResult.error);
-        }
-
-        // Get onboarding link
-        console.log("📤 Getting onboarding link...");
-        const linkResult = await getAccountLink(auth.currentUser.uid);
-
-        if (!linkResult.success) {
-          throw new Error(linkResult.error);
-        }
-
-        // Open Stripe onboarding. openAuthSessionAsync auto-closes the browser
-        // when Stripe redirects back to our return page.
-        console.log("🌐 Opening Stripe onboarding...");
-        await WebBrowser.openAuthSessionAsync(linkResult.url, STRIPE_RETURN_URL);
-
-        // Activate hosting as a Paid Host. Do NOT hardcode canCreatePaidEvents:
-        // an account already set up (e.g. via the rental flow) may already be
-        // charge-enabled. Derive it from the real Stripe status below.
-        await updateDoc(doc(db, "users", auth.currentUser.uid), {
-          role: "host",
-          "hostConfig.type": "paid",
-          "hostConfig.payoutProcessor": "stripe",
-          "hostConfig.createdAt": new Date().toISOString(),
-          "hostConfig.updatedAt": new Date().toISOString(),
-        });
-
-        // Sync canCreatePaidEvents from Stripe (sets true when charges+details
-        // are ready); never clobbers an already-active account.
-        await checkAccountStatus(auth.currentUser.uid).catch(() => {});
-
-        console.log("✅ User set as Paid Host (status synced from Stripe)");
-        goAfterSelection();
-      }
+      await updateDoc(doc(db, "users", auth.currentUser.uid), {
+        role: "host",
+        "hostConfig.type": selectedType,
+        // Never true here: only Stripe's charge-enabled status may flip this,
+        // and nobody has connected Stripe at this point in the flow.
+        "hostConfig.canCreatePaidEvents": false,
+        // Paid hosts carry an explicit intent, so the status screen and the
+        // in-context payout prompt know to offer setup. Free hosts get null,
+        // not a missing field — Firestore rejects undefined.
+        "hostConfig.payoutsIntent": selectedType === "paid" ? "pending" : null,
+        "hostConfig.createdAt": now,
+        "hostConfig.updatedAt": now,
+      });
+      goAfterSelection();
     } catch (error) {
       console.error("❌ Error setting up host:", error);
       Alert.alert(
@@ -175,333 +115,163 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
     }
   };
 
-  const styles = createStyles(colors);
+  const s = createStyles(colors);
+  const freeSelected = selectedType === "free";
 
   return (
-    <GradientBackground>
+    <View style={[s.container, { backgroundColor: colors.background }]}>
       <StatusBar style={isDark ? "light" : "dark"} />
 
-      <View style={styles.header}>
-        <View style={{ width: 50 }} />
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {t("hostTypeSelection.chooseHostType")}
-        </Text>
-        <View style={{ width: 50 }} />
-      </View>
-
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        style={s.scrollView}
+        contentContainerStyle={[
+          s.scrollContent,
+          { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 32 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.introSection}>
-          <View style={styles.introIconTile}>
-            <Icon name="tent" size={36} color={colors.primary} />
+        <View style={s.intro}>
+          <View style={[s.introIcon, { backgroundColor: colors.brandSoft }]}>
+            <Icon name="tent" size={32} color={colors.primary} />
           </View>
-          <Text style={[styles.introTitle, { color: colors.text }]}>
-            {t("hostTypeSelection.congratulations")}
+          <Text style={[s.title, { color: colors.text }]}>
+            {t("hostTypeSelection.approvedTitle")}
           </Text>
-          <Text style={[styles.introText, { color: colors.textSecondary }]}>
-            {t("hostTypeSelection.introText")}
+          <Text style={[s.subtitle, { color: colors.textSecondary }]}>
+            {t("hostTypeSelection.approvedSubtitle")}
           </Text>
         </View>
 
-        {/* Free Host Option */}
+        {/* Free — recommended, live instantly */}
         <TouchableOpacity
-          style={styles.optionCard}
           onPress={() => setSelectedType("free")}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
           disabled={loading}
+          accessibilityRole="button"
+          accessibilityState={{ selected: freeSelected }}
+          style={[
+            s.card,
+            {
+              backgroundColor: freeSelected ? colors.brandSoft : colors.surface,
+              borderColor: freeSelected ? colors.primary : colors.border,
+              borderWidth: freeSelected ? 2 : 1,
+              opacity: loading ? 0.6 : 1,
+            },
+          ]}
         >
-          <View
-            style={[
-              styles.optionGlass,
-              {
-                backgroundColor:
-                  selectedType === "free"
-                    ? `${colors.primary}26`
-                    : colors.surfaceGlass,
-                borderColor:
-                  selectedType === "free"
-                    ? `${colors.primary}66`
-                    : colors.border,
-                opacity: loading ? 0.5 : 1,
-              },
-            ]}
-          >
-            <View style={styles.optionHeader}>
-              <View style={styles.optionIconTile}>
-                <Icon name="calendar" size={24} color={colors.primary} />
-              </View>
-              <View style={styles.optionTitleContainer}>
-                <Text style={[styles.optionTitle, { color: colors.text }]}>
-                  {t("hostTypeSelection.freeHostTitle")}
-                </Text>
-                <Text
-                  style={[
-                    styles.optionSubtitle,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {t("hostTypeSelection.freeHostSubtitle")}
-                </Text>
-              </View>
-              {selectedType === "free" && (
-                <Icon name="check" size={22} color={colors.primary} />
-              )}
+          <View style={s.cardHeader}>
+            <View style={[s.cardIcon, { backgroundColor: colors.surface }]}>
+              <Icon name="calendar" size={22} color={colors.primary} />
             </View>
-
-            <View style={styles.featuresList}>
-              <View style={styles.featureRow}>
-                <View style={styles.featureBullet}>
-                  <Icon name="check" size={14} color={colors.success} />
-                </View>
-                <Text style={[styles.featureText, { color: colors.text }]}>
-                  {t("hostTypeSelection.freeFeatureUnlimitedEvents")}
-                </Text>
-              </View>
-              <View style={styles.featureRow}>
-                <View style={styles.featureBullet}>
-                  <Icon name="check" size={14} color={colors.success} />
-                </View>
-                <Text style={[styles.featureText, { color: colors.text }]}>
-                  {t("hostTypeSelection.freeFeatureBuildCommunity")}
-                </Text>
-              </View>
-              <View style={styles.featureRow}>
-                <View style={styles.featureBullet}>
-                  <Icon name="check" size={14} color={colors.success} />
-                </View>
-                <Text style={[styles.featureText, { color: colors.text }]}>
-                  {t("hostTypeSelection.freeFeatureGetStarted")}
-                </Text>
-              </View>
-              <View style={styles.featureRow}>
-                <View style={styles.featureBullet}>
-                  <Icon name="check" size={14} color={colors.success} />
-                </View>
-                <Text style={[styles.featureText, { color: colors.text }]}>
-                  {t("hostTypeSelection.freeFeatureUpgradeAnytime")}
-                </Text>
-              </View>
-            </View>
-
-            <View
-              style={[
-                styles.recommendBadge,
-                { backgroundColor: `${colors.primary}15` },
-              ]}
-            >
-              <Text style={[styles.recommendText, { color: colors.primary }]}>
-                {t("hostTypeSelection.perfectForGettingStarted")}
+            <View style={s.cardTitles}>
+              <Text style={[s.cardTitle, { color: colors.text }]}>
+                {t("hostTypeSelection.freeTitle")}
+              </Text>
+              <Text style={[s.cardMeta, { color: colors.textSecondary }]}>
+                {t("hostTypeSelection.freeMeta")}
               </Text>
             </View>
-          </View>
-        </TouchableOpacity>
-
-        {/* Paid Host Option */}
-        <TouchableOpacity
-          style={styles.optionCard}
-          onPress={() => setSelectedType("paid")}
-          activeOpacity={0.8}
-          disabled={loading}
-        >
-          <View
-            style={[
-              styles.optionGlass,
-              {
-                backgroundColor:
-                  selectedType === "paid"
-                    ? `${colors.primary}26`
-                    : colors.surfaceGlass,
-                borderColor:
-                  selectedType === "paid"
-                    ? `${colors.primary}66`
-                    : colors.border,
-                opacity: loading ? 0.5 : 1,
-              },
-            ]}
-          >
-            <View style={styles.optionHeader}>
-              <View style={styles.optionIconTile}>
-                <Icon name="dollar" size={24} color={colors.primary} />
+            {freeSelected && (
+              <View style={[s.check, { backgroundColor: colors.primary }]}>
+                <Icon name="check" size={14} color={colors.onPrimary} />
               </View>
-              <View style={styles.optionTitleContainer}>
-                <Text style={[styles.optionTitle, { color: colors.text }]}>
-                  {t("hostTypeSelection.paidHostTitle")}
-                </Text>
-                <Text
-                  style={[
-                    styles.optionSubtitle,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {t("hostTypeSelection.paidHostSubtitle")}
-                </Text>
-              </View>
-              {selectedType === "paid" && (
-                <Icon name="check" size={22} color={colors.primary} />
-              )}
-            </View>
-
-            <View style={styles.featuresList}>
-              <View style={styles.featureRow}>
-                <View style={styles.featureBullet}>
-                  <Icon name="check" size={14} color={colors.success} />
-                </View>
-                <Text style={[styles.featureText, { color: colors.text }]}>
-                  {t("hostTypeSelection.paidFeatureCreatePaidEvents")}
-                </Text>
-              </View>
-              <View style={styles.featureRow}>
-                <View style={styles.featureBullet}>
-                  <Icon name="check" size={14} color={colors.success} />
-                </View>
-                <Text style={[styles.featureText, { color: colors.text }]}>
-                  {t("hostTypeSelection.paidFeatureAlsoFreeEvents")}
-                </Text>
-              </View>
-              <View style={styles.featureRow}>
-                <View style={styles.featureBullet}>
-                  <Icon name="check" size={14} color={colors.success} />
-                </View>
-                <Text style={[styles.featureText, { color: colors.text }]}>
-                  {t("hostTypeSelection.paidFeatureReceiveDirectly")}
-                </Text>
-              </View>
-              <View style={styles.featureRow}>
-                <View style={styles.featureBullet}>
-                  <Icon name="check" size={14} color={colors.success} />
-                </View>
-                <Text style={[styles.featureText, { color: colors.text }]}>
-                  {t("hostTypeSelection.paidFeatureFeesCovered")}
-                </Text>
-              </View>
-            </View>
-
-            <View
-              style={[
-                styles.infoBadge,
-                { backgroundColor: "rgba(255, 159, 10, 0.15)" },
-              ]}
-            >
-              <Icon name="info" size={14} color={colors.warning} />
-              <Text style={[styles.infoText, { color: colors.warning }]}>
-                {t("hostTypeSelection.requiresStripeVerification")}
-              </Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-
-        {/* Payout processor — only when "paid" is selected */}
-        {selectedType === "paid" && (
-          <View style={styles.processorSection}>
-            <Text style={[styles.processorLabel, { color: colors.textSecondary }]}>
-              {t("hostTypeSelection.howDoYouWantToGetPaid")}
-            </Text>
-            {[
-              {
-                id: "stripe",
-                title: t("hostTypeSelection.stripeTitle"),
-                subtitle: t("hostTypeSelection.stripeSubtitle"),
-              },
-              // Hidden, not removed, until the Mercado Pago integration lands —
-              // flipping MERCADOPAGO_ENABLED restores it verbatim. The list is a
-              // vertical stack, so Stripe alone renders full-width and correct.
-              ...(MERCADOPAGO_ENABLED
-                ? [
-                    {
-                      id: "mercadopago",
-                      title: t("hostTypeSelection.mercadoPagoTitle"),
-                      subtitle: t("hostTypeSelection.mercadoPagoSubtitle"),
-                    },
-                  ]
-                : []),
-            ].map((opt) => (
-              <TouchableOpacity
-                key={opt.id}
-                onPress={() => setPayoutProcessor(opt.id)}
-                activeOpacity={0.8}
-                disabled={loading}
-                style={[
-                  styles.processorOption,
-                  {
-                    backgroundColor:
-                      payoutProcessor === opt.id
-                        ? `${colors.primary}1F`
-                        : colors.surfaceGlass,
-                    borderColor:
-                      payoutProcessor === opt.id
-                        ? `${colors.primary}66`
-                        : colors.border,
-                  },
-                ]}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.processorTitle, { color: colors.text }]}>
-                    {opt.title}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.processorSubtitle,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {opt.subtitle}
-                  </Text>
-                </View>
-                {payoutProcessor === opt.id && (
-                  <Icon name="check" size={22} color={colors.primary} />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        <TouchableOpacity
-          style={styles.continueButton}
-          onPress={handleContinue}
-          disabled={!selectedType || loading}
-          activeOpacity={0.8}
-        >
-          <View
-            style={[
-              styles.continueGlass,
-              {
-                backgroundColor: `${colors.primary}33`,
-                borderColor: `${colors.primary}66`,
-                opacity: !selectedType || loading ? 0.5 : 1,
-              },
-            ]}
-          >
-            {loading ? (
-              <View style={styles.loadingRow}>
-                <ActivityIndicator size="small" color={colors.primary} />
-                <Text
-                  style={[
-                    styles.continueText,
-                    { color: colors.primary, marginLeft: 12 },
-                  ]}
-                >
-                  {t("hostTypeSelection.settingUp")}
-                </Text>
-              </View>
-            ) : (
-              <Text style={[styles.continueText, { color: colors.primary }]}>
-                {t("hostTypeSelection.continue")}
-              </Text>
             )}
           </View>
+
+          <View style={s.features}>
+            {["freeFeatureEvents", "freeFeatureMembers", "freeFeatureUpgrade"].map(
+              (k) => (
+                <View key={k} style={s.featureRow}>
+                  <Icon name="check" size={14} color={colors.success} />
+                  <Text style={[s.featureText, { color: colors.text }]}>
+                    {t(`hostTypeSelection.${k}`)}
+                  </Text>
+                </View>
+              )
+            )}
+          </View>
+        </TouchableOpacity>
+
+        {/* Paid — secondary. No Stripe here; payouts get connected in context. */}
+        <TouchableOpacity
+          onPress={() => setSelectedType("paid")}
+          activeOpacity={0.85}
+          disabled={loading}
+          accessibilityRole="button"
+          accessibilityState={{ selected: !freeSelected }}
+          style={[
+            s.card,
+            {
+              backgroundColor: colors.surface,
+              borderColor: !freeSelected ? colors.primary : colors.border,
+              borderWidth: !freeSelected ? 2 : 1,
+              opacity: loading ? 0.6 : 1,
+            },
+          ]}
+        >
+          <View style={s.cardHeader}>
+            <View style={[s.cardIcon, { backgroundColor: colors.warnSoft }]}>
+              <Icon name="dollar" size={22} color={colors.warning} />
+            </View>
+            <View style={s.cardTitles}>
+              <Text style={[s.cardTitle, { color: colors.text }]}>
+                {t("hostTypeSelection.paidTitle")}
+              </Text>
+              <Text style={[s.cardMeta, { color: colors.textSecondary }]}>
+                {t("hostTypeSelection.paidMeta")}
+              </Text>
+            </View>
+            {!freeSelected && (
+              <View style={[s.check, { backgroundColor: colors.primary }]}>
+                <Icon name="check" size={14} color={colors.onPrimary} />
+              </View>
+            )}
+          </View>
+
+          <View style={[s.notice, { backgroundColor: colors.warnSoft }]}>
+            <Icon name="info" size={14} color={colors.warning} />
+            <Text style={[s.noticeText, { color: colors.warning }]}>
+              {t("hostTypeSelection.paidLaterNote")}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleContinue}
+          disabled={loading}
+          activeOpacity={0.9}
+          style={[
+            s.cta,
+            { backgroundColor: colors.primary, opacity: loading ? 0.6 : 1 },
+          ]}
+        >
+          {loading ? (
+            <View style={s.loadingRow}>
+              <ActivityIndicator size="small" color={colors.onPrimary} />
+              <Text
+                style={[s.ctaText, { color: colors.onPrimary, marginLeft: 10 }]}
+              >
+                {t("hostTypeSelection.settingUp")}
+              </Text>
+            </View>
+          ) : (
+            <Text style={[s.ctaText, { color: colors.onPrimary }]}>
+              {freeSelected
+                ? t("hostTypeSelection.ctaStartFree")
+                : t("hostTypeSelection.ctaContinuePaid")}
+            </Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={handleDecideLater}
           disabled={loading}
-          style={styles.noteSection}
+          style={s.later}
+          activeOpacity={0.7}
         >
           <Text
             style={[
-              styles.noteText,
+              s.laterText,
               { color: colors.textTertiary, opacity: loading ? 0.5 : 1 },
             ]}
           >
@@ -509,117 +279,86 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
           </Text>
         </TouchableOpacity>
       </ScrollView>
-    </GradientBackground>
+    </View>
   );
 }
 
 function createStyles(colors) {
   return StyleSheet.create({
     container: { flex: 1 },
-    header: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingHorizontal: 24,
-      paddingTop: 60,
-      paddingBottom: 20,
-    },
-    headerTitle: { fontSize: 20, fontWeight: "700", letterSpacing: -0.3 },
-    skipButton: {
-      fontSize: 15,
-      fontWeight: "600",
-    },
     scrollView: { flex: 1 },
-    scrollContent: { paddingHorizontal: 24, paddingBottom: 40 },
-    introSection: { alignItems: "center", marginBottom: 32 },
-    introIconTile: {
-      width: 72,
-      height: 72,
+    scrollContent: { paddingHorizontal: 20 },
+    intro: { alignItems: "center", marginBottom: 28 },
+    introIcon: {
+      width: 68,
+      height: 68,
       borderRadius: 20,
-      backgroundColor: colors.brandSoft,
       alignItems: "center",
       justifyContent: "center",
       marginBottom: 16,
     },
-    introTitle: {
-      fontSize: 28,
-      fontWeight: "700",
-      marginBottom: 12,
-      letterSpacing: -0.5,
-    },
-    introText: {
-      fontSize: 15,
+    title: {
+      fontFamily: FONTS.display,
+      fontSize: 26,
+      letterSpacing: -0.6,
       textAlign: "center",
-      lineHeight: 22,
-      paddingHorizontal: 20,
+      marginBottom: 8,
     },
-    optionCard: { borderRadius: 20, overflow: "hidden", marginBottom: 20 },
-    optionGlass: { borderWidth: 1, padding: 20 },
-    optionHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 16,
+    subtitle: {
+      fontFamily: FONTS.body,
+      fontSize: 14.5,
+      lineHeight: 21,
+      textAlign: "center",
+      paddingHorizontal: 8,
     },
-    optionIconTile: {
-      width: 48,
-      height: 48,
-      borderRadius: 14,
-      backgroundColor: colors.brandSoft,
+    // Flat cards: border only, no shadow (design system §3).
+    card: { borderRadius: 18, padding: 18, marginBottom: 14 },
+    cardHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
+    cardIcon: {
+      width: 42,
+      height: 42,
+      borderRadius: 12,
       alignItems: "center",
       justifyContent: "center",
-      marginRight: 14,
     },
-    optionTitleContainer: { flex: 1 },
-    optionTitle: { fontSize: 20, fontWeight: "700", marginBottom: 4 },
-    optionSubtitle: { fontSize: 13 },
-    featuresList: { marginBottom: 16 },
-    featureRow: {
+    cardTitles: { flex: 1 },
+    cardTitle: { fontFamily: FONTS.display, fontSize: 17, letterSpacing: -0.3 },
+    cardMeta: { fontFamily: FONTS.body, fontSize: 12.5, marginTop: 2 },
+    check: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    features: { marginTop: 14, gap: 9 },
+    featureRow: { flexDirection: "row", alignItems: "center", gap: 9 },
+    featureText: { fontFamily: FONTS.bodyMedium, fontSize: 13.5, flex: 1 },
+    notice: {
       flexDirection: "row",
       alignItems: "flex-start",
-      marginBottom: 10,
-    },
-    featureBullet: { marginRight: 10, marginTop: 3 },
-    featureText: { fontSize: 14, flex: 1, lineHeight: 20 },
-    recommendBadge: {
-      paddingVertical: 8,
-      paddingHorizontal: 14,
+      gap: 7,
       borderRadius: 10,
-      alignItems: "center",
+      padding: 11,
+      marginTop: 14,
     },
-    recommendText: { fontSize: 13, fontWeight: "600" },
-    infoBadge: {
-      paddingVertical: 8,
-      paddingHorizontal: 14,
-      borderRadius: 10,
-      flexDirection: "row",
+    noticeText: {
+      fontFamily: FONTS.bodySemibold,
+      fontSize: 12.5,
+      flex: 1,
+      lineHeight: 17,
+    },
+    cta: {
+      borderRadius: 27,
+      paddingVertical: 16,
       alignItems: "center",
       justifyContent: "center",
-      gap: 6,
+      minHeight: 54,
+      marginTop: 10,
     },
-    infoText: { fontSize: 13, fontWeight: "600" },
-    processorSection: { marginBottom: 16 },
-    processorLabel: { fontSize: 14, fontWeight: "700", marginBottom: 10 },
-    processorOption: {
-      flexDirection: "row",
-      alignItems: "center",
-      borderWidth: 1,
-      borderRadius: 14,
-      padding: 16,
-      marginBottom: 10,
-    },
-    processorTitle: { fontSize: 16, fontWeight: "700" },
-    processorSubtitle: { fontSize: 13, marginTop: 2 },
-    continueButton: { borderRadius: 16, overflow: "hidden", marginTop: 8 },
-    continueGlass: {
-      borderWidth: 1,
-      paddingVertical: 18,
-      alignItems: "center",
-      justifyContent: "center",
-      minHeight: 58,
-    },
+    ctaText: { fontFamily: FONTS.bodyExtra, fontSize: 16, letterSpacing: 0.2 },
     loadingRow: { flexDirection: "row", alignItems: "center" },
-    continueText: { fontSize: 18, fontWeight: "700", letterSpacing: -0.3 },
-    noteSection: { padding: 16, alignItems: "center", marginTop: 12 },
-    noteText: { fontSize: 13, textAlign: "center", lineHeight: 20 },
+    later: { alignItems: "center", paddingVertical: 18 },
+    laterText: { fontFamily: FONTS.bodySemibold, fontSize: 13.5 },
   });
 }

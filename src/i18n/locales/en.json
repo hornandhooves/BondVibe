@@ -1688,6 +1688,18 @@
     "buy": "Buy"
   },
   "hostTypeSelection": {
+    "approvedTitle": "You're approved",
+    "approvedSubtitle": "Start free today. You can charge for events whenever you're ready.",
+    "freeTitle": "Start free",
+    "freeMeta": "Recommended · live instantly",
+    "freeFeatureEvents": "Unlimited free events & community",
+    "freeFeatureMembers": "Members, chat, matchmaking",
+    "freeFeatureUpgrade": "Upgrade to paid anytime",
+    "paidTitle": "Charge for events",
+    "paidMeta": "Set up payouts — takes ~2 min",
+    "paidLaterNote": "You can do this later — free hosting starts now regardless.",
+    "ctaStartFree": "Start free",
+    "ctaContinuePaid": "Continue",
     "error": "Error",
     "couldNotContinue": "Could not continue. Please try again.",
     "selectionRequired": "Selection Required",

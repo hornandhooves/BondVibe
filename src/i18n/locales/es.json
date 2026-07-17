@@ -1688,6 +1688,18 @@
     "buy": "Comprar"
   },
   "hostTypeSelection": {
+    "approvedTitle": "¡Estás aprobado!",
+    "approvedSubtitle": "Empieza gratis hoy. Puedes cobrar por eventos cuando quieras.",
+    "freeTitle": "Empieza gratis",
+    "freeMeta": "Recomendado · activo al instante",
+    "freeFeatureEvents": "Eventos gratuitos y comunidad ilimitados",
+    "freeFeatureMembers": "Miembros, chat y matchmaking",
+    "freeFeatureUpgrade": "Pasa a cobrar cuando quieras",
+    "paidTitle": "Cobrar por eventos",
+    "paidMeta": "Configura los pagos — unos 2 min",
+    "paidLaterNote": "Puedes hacerlo después — el hosting gratis empieza ya.",
+    "ctaStartFree": "Empezar gratis",
+    "ctaContinuePaid": "Continuar",
     "error": "Error",
     "couldNotContinue": "No se pudo continuar. Inténtalo de nuevo.",
     "selectionRequired": "Selección requerida",
