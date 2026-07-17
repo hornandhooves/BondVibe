@@ -133,9 +133,9 @@ export default function BusinessHubScreen({ navigation }) {
             icon="ticket"
             iconColor={colors.primary}
             iconBg={`${colors.primary}1A`}
-            title={t("business.hub.packagesTitle")}
-            subtitle={t("business.hub.packagesSubtitle")}
-            onPress={() => navigation.navigate("BusinessPackages")}
+            title={t("business.hub.membershipsTitle")}
+            subtitle={t("business.hub.membershipsSubtitle")}
+            onPress={() => navigation.navigate("BusinessMemberships")}
           />
           {allows("finance") && (
             <ListRow

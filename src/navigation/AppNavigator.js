@@ -94,6 +94,8 @@ import CheckoutScreen from "../screens/payment/CheckoutScreen";
 
 // Stripe Connect Screens
 import HostTypeSelectionScreen from "../screens/HostTypeSelectionScreen";
+import MembershipsScreen from "../screens/business/MembershipsScreen";
+import PlanFormScreen from "../screens/business/PlanFormScreen";
 import HostLiveScreen from "../screens/HostLiveScreen";
 import HostStatusScreen from "../screens/HostStatusScreen";
 import StripeConnectScreen from "../screens/StripeConnectScreen";
@@ -745,6 +747,11 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="BusinessMembershipCard" component={MembershipCardScreen} />
           <Stack.Screen name="BusinessBirthdays" component={BusinessBirthdaysScreen} />
           <Stack.Screen name="BusinessCsvImport" component={CsvImportScreen} />
+          {/* Unified memberships. BusinessPackages/BusinessPackageForm stay
+              registered until the migration runs and the old data is gone —
+              removing them now would dead-end anything still pointing there. */}
+          <Stack.Screen name="BusinessMemberships" component={MembershipsScreen} />
+          <Stack.Screen name="BusinessPlanForm" component={PlanFormScreen} />
           <Stack.Screen name="BusinessPackages" component={PackagesScreen} />
           <Stack.Screen name="BusinessPackageForm" component={PackageFormScreen} />
           <Stack.Screen name="BusinessCheckIn" component={BusinessCheckInScreen} />
