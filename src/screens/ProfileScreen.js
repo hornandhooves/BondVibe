@@ -330,11 +330,18 @@ export default function ProfileScreen({ navigation }) {
               );
             })()}
 
-            {/* ── Kinlo Pro banner ── */}
+            {/* ── Kinlo Pro banner ──
+                 Sells Pro to a host who isn't Pro; to one who is, it's the door
+                 into what they bought. Pitching "Community Matching included" at
+                 someone already paying for it — same row, same paywall — was the
+                 bug: it reads as being asked to buy it twice. */}
             {canManageStripe && (
               <TouchableOpacity
-                onPress={() => navigation.navigate("BondVibePro")}
+                onPress={() =>
+                  navigation.navigate(isPremium ? "BusinessHub" : "BondVibePro")
+                }
                 activeOpacity={0.85}
+                testID="profile-pro-banner"
               >
                 <View style={s.proBanner}>
                   <View style={[s.proIconCircle, { backgroundColor: "rgba(148,97,247,0.2)" }]}>
@@ -349,7 +356,11 @@ export default function ProfileScreen({ navigation }) {
                         </View>
                       )}
                     </View>
-                    <Text style={s.proSub}>{t("profile.kinloProSub")}</Text>
+                    <Text style={s.proSub}>
+                    {isPremium
+                      ? t("profile.kinloProOpenHub")
+                      : t("profile.kinloProSub")}
+                  </Text>
                   </View>
                   <Icon name="forward" size={18} color="rgba(255,255,255,0.4)" />
                 </View>
