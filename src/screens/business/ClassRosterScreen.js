@@ -20,6 +20,7 @@ import {
 } from "../../services/businessClassesService";
 import { listMembers, getMember } from "../../services/businessMembersService";
 import { markPresent } from "../../services/businessAttendanceService";
+import { formatDate } from "../../utils/formatDate";
 
 const weekdayShort = (i, lang) => new Date(2024, 0, 7 + i).toLocaleDateString(lang || "en", { weekday: "short" });
 
@@ -92,7 +93,7 @@ export default function ClassRosterScreen({ route, navigation }) {
   const waitlist = cls.waitlist || [];
   const full = roster.length >= (cls.capacity || 1);
   const schedule =
-    (cls.weekdays?.length ? cls.weekdays.map((d) => weekdayShort(d, i18n.language)).join(" · ") : cls.date ? new Date(cls.date).toLocaleDateString() : "") + `  ${cls.time || ""}`;
+    (cls.weekdays?.length ? cls.weekdays.map((d) => weekdayShort(d, i18n.language)).join(" · ") : cls.date ? formatDate(cls.date) : "") + `  ${cls.time || ""}`;
 
   return (
     <GradientBackground>

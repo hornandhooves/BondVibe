@@ -9,6 +9,7 @@ import { db, auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import { checkInFromScan, subscribeCheckins } from "../services/checkinService";
+import { formatDateTime } from "../utils/formatDate";
 
 export default function CheckInScannerScreen({ route, navigation }) {
   const { eventId: paramEventId, eventTitle: paramEventTitle } = route.params || {};
@@ -104,7 +105,7 @@ export default function CheckInScannerScreen({ route, navigation }) {
                   <Icon name="calendar" size={18} color={colors.primary} />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.eventName, { color: colors.text }]} numberOfLines={1}>{e.title}</Text>
-                    {!!e.date && <Text style={[styles.eventDate, { color: colors.textTertiary }]}>{new Date(e.date).toLocaleString()}</Text>}
+                    {!!e.date && <Text style={[styles.eventDate, { color: colors.textTertiary }]}>{formatDateTime(e.date)}</Text>}
                   </View>
                   <Icon name="forward" size={18} color={colors.textTertiary} />
                 </TouchableOpacity>

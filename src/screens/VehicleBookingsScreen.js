@@ -20,9 +20,10 @@ import GradientBackground from "../components/GradientBackground";
 import { useTheme } from "../contexts/ThemeContext";
 import { getOwnerRentals, getMyFleet } from "../services/rentalService";
 import { formatCentavos } from "../utils/pricing";
+import { formatDate } from "../utils/formatDate";
 
 const fmt = (iso) =>
-  iso ? new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "—";
+  iso ? formatDate(new Date(iso), { day: "numeric", month: "short" }) : "—";
 
 export default function VehicleBookingsScreen({ navigation }) {
   const { colors, isDark } = useTheme();

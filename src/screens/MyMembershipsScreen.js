@@ -17,6 +17,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import MembershipCard from "../components/business/MembershipCard";
 import { getMyBusinessPasses } from "../services/businessPassService";
+import { formatDate } from "../utils/formatDate";
 import {
   getUserMemberships,
   getMembershipState,
@@ -89,8 +90,8 @@ export default function MyMembershipsScreen({ navigation }) {
             </Text>
             <Text style={[styles.expiry, { color: colors.textSecondary }]}>
               {state === "expired"
-                ? t("myMemberships.expiredOn", { date: expiry ? expiry.toLocaleDateString() : "" })
-                : t("myMemberships.validUntil", { date: expiry ? expiry.toLocaleDateString() : "—" })}
+                ? t("myMemberships.expiredOn", { date: expiry ? formatDate(expiry) : "" })
+                : t("myMemberships.validUntil", { date: expiry ? formatDate(expiry) : "—" })}
             </Text>
           </View>
           <View style={[styles.badge, { backgroundColor: `${meta.color}22` }]}>

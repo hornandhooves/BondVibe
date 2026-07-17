@@ -19,3 +19,25 @@ describe("formatDate sigue el idioma de la app (KQA-002)", () => {
     expect(formatDate("2026-07-17")).toMatch(/jul/);
   });
 });
+
+// formatDateTime is the KQA-004 addition for the bare toLocaleString() spots
+// (AdminDashboard, CheckInScanner). It must follow the same locale rule and
+// include a time component.
+describe("formatDateTime follows the app language and shows date + time (KQA-004)", () => {
+  afterEach(() => jest.resetModules());
+
+  it("en 'en' → English month and a time", () => {
+    jest.doMock("../../i18n", () => ({ language: "en" }));
+    const { formatDateTime } = require("../formatDate");
+    const out = formatDateTime("2026-07-17T14:30:00");
+    expect(out).toMatch(/Jul/);
+    expect(out).toMatch(/\d:\d{2}/); // h:mm present
+  });
+
+  it("en 'es' → Spanish month", () => {
+    jest.resetModules();
+    jest.doMock("../../i18n", () => ({ language: "es" }));
+    const { formatDateTime } = require("../formatDate");
+    expect(formatDateTime("2026-07-17T14:30:00")).toMatch(/jul/);
+  });
+});

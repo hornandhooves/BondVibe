@@ -28,6 +28,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { getCard, updateCard, deleteCard } from "../../services/businessMomentumService";
 import { callClaude } from "../../services/claudeService";
 import { PRIORITIES, ACTION_STATUSES, CHANNELS } from "../../constants/momentumDefaults";
+import { formatDate } from "../../utils/formatDate";
 
 export default function MomentumCardScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
@@ -296,7 +297,7 @@ export default function MomentumCardScreen({ route, navigation }) {
                 {card.activity.slice(0, 10).map((a, i) => (
                   <View key={i} style={[styles.actRow, i > 0 && { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
                     <Text style={[styles.actText, { color: colors.textSecondary }]}>{a.text}</Text>
-                    <Text style={[styles.actDate, { color: colors.textTertiary }]}>{new Date(a.at).toLocaleDateString()}</Text>
+                    <Text style={[styles.actDate, { color: colors.textTertiary }]}>{formatDate(a.at)}</Text>
                   </View>
                 ))}
               </View>

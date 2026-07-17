@@ -40,6 +40,7 @@ import { markPresent, listMemberAttendance } from "../../services/businessAttend
 import { listMemberPayments } from "../../services/businessPaymentsService";
 import { audienceAllows } from "../../utils/membershipUtils";
 import { formatCentavos } from "../../utils/pricing";
+import { formatDate } from "../../utils/formatDate";
 
 const initials = (name = "") =>
   name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
@@ -292,7 +293,7 @@ export default function MemberRecordScreen({ route, navigation }) {
                 <Text style={[styles.attTitle, { color: colors.text }]} numberOfLines={1}>
                   {a.classTitle || t("business.attendance.checkedIn")}
                 </Text>
-                <Text style={[styles.attDate, { color: colors.textTertiary }]}>{new Date(a.date).toLocaleDateString()}</Text>
+                <Text style={[styles.attDate, { color: colors.textTertiary }]}>{formatDate(a.date)}</Text>
                 <Text style={[styles.attSource, { color: a.source === "qr" ? colors.success : colors.textTertiary }]}>
                   {a.source === "qr" ? t("business.attendance.qr") : t("business.attendance.manual")}
                 </Text>
@@ -325,7 +326,7 @@ export default function MemberRecordScreen({ route, navigation }) {
             {payments.slice(0, 10).map((p, i) => (
               <View key={p.id} style={[styles.attRow, i > 0 && { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
                 <Text style={[styles.attTitle, { color: colors.text }]} numberOfLines={1}>{t(`business.payment.method.${p.method}`)}</Text>
-                <Text style={[styles.attDate, { color: colors.textTertiary }]}>{new Date(p.date).toLocaleDateString()}</Text>
+                <Text style={[styles.attDate, { color: colors.textTertiary }]}>{formatDate(p.date)}</Text>
                 <Text style={[styles.attSource, { color: colors.success }]}>{formatCentavos(p.amountCents)}</Text>
               </View>
             ))}

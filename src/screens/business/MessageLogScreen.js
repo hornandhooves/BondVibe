@@ -11,6 +11,7 @@ import Icon from "../../components/Icon";
 import GradientBackground from "../../components/GradientBackground";
 import { useTheme } from "../../contexts/ThemeContext";
 import { listMessages } from "../../services/businessAutomationsService";
+import { formatDate } from "../../utils/formatDate";
 
 export default function MessageLogScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -24,7 +25,7 @@ export default function MessageLogScreen({ navigation }) {
   const statusColor = (s) => (s === "sent" ? colors.success : s === "failed" ? colors.error : colors.textTertiary);
   const tsStr = (ts) => {
     const ms = ts?.toMillis ? ts.toMillis() : ts?.seconds ? ts.seconds * 1000 : null;
-    return ms ? new Date(ms).toLocaleDateString() : "";
+    return ms ? formatDate(ms) : "";
   };
 
   const styles = createStyles(colors);

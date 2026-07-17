@@ -29,3 +29,17 @@ export const formatDate = (d, opts = { day: "numeric", month: "short", year: "nu
  */
 export const formatTime = (d, opts = { hour: "numeric", minute: "2-digit" }, lng) =>
   new Date(d).toLocaleTimeString(localeFor(lng), opts);
+
+/**
+ * Date + time together, for the spots that used bare `toLocaleString()` (KQA-004).
+ * Same locale rule; default is short-month date plus h:mm.
+ * @param {Date|string|number} d
+ * @param {Intl.DateTimeFormatOptions} [opts]
+ * @param {string} [lng]
+ * @returns {string}
+ */
+export const formatDateTime = (
+  d,
+  opts = { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" },
+  lng
+) => new Date(d).toLocaleString(localeFor(lng), opts);

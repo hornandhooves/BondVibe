@@ -31,6 +31,7 @@ import {
 } from "../../services/businessPaymentsService";
 import { RANGE_IDS, DEFAULT_RANGE, rangeBounds, rangeLabelKey } from "../../constants/businessRanges";
 import { formatCentavos } from "../../utils/pricing";
+import { formatDate } from "../../utils/formatDate";
 
 export default function BusinessFinanceScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -181,7 +182,7 @@ export default function BusinessFinanceScreen({ navigation }) {
                       {p.memberName || t("business.payment.walkIn")}
                     </Text>
                     <Text style={[styles.payMeta, { color: colors.textTertiary }]}>
-                      {t(`business.payment.method.${p.method}`)} · {new Date(p.date).toLocaleDateString()}
+                      {t(`business.payment.method.${p.method}`)} · {formatDate(p.date)}
                     </Text>
                   </View>
                   <Text style={[styles.payAmount, { color: colors.success }]}>{formatCentavos(p.amountCents)}</Text>

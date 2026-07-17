@@ -15,13 +15,14 @@ import { db } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import { AvatarDisplay } from "../components/AvatarPicker";
+import { formatDate } from "../utils/formatDate";
 
 const normAvatar = (a) =>
   !a ? null : typeof a === "string" ? { type: "emoji", value: a } : a;
 
 const fmtDate = (ts) => {
   const ms = ts?.toMillis ? ts.toMillis() : ts ? new Date(ts).getTime() : 0;
-  return ms ? new Date(ms).toLocaleDateString() : "—";
+  return ms ? formatDate(ms) : "—";
 };
 
 export default function MembershipSaleScreen({ route, navigation }) {
