@@ -94,6 +94,8 @@ import CheckoutScreen from "../screens/payment/CheckoutScreen";
 
 // Stripe Connect Screens
 import HostTypeSelectionScreen from "../screens/HostTypeSelectionScreen";
+import HostLiveScreen from "../screens/HostLiveScreen";
+import HostStatusScreen from "../screens/HostStatusScreen";
 import StripeConnectScreen from "../screens/StripeConnectScreen";
 
 // Host Membership Screens
@@ -422,9 +424,19 @@ const AppNavigator = forwardRef((props, ref) => {
               const needsHostType =
                 (userData.hostApproved || userData.role === "host") &&
                 !userData.hostConfig;
+              // Hosting just got switched on and the outcome hasn't been shown
+              // yet. Without this step the router would race the screen: writing
+              // hostConfig re-fires this listener, needsHostType goes false, and
+              // it would route straight past "your community is live" to the
+              // next gate. "deferred" is excluded — nothing was activated.
+              const hostType = userData.hostConfig && userData.hostConfig.type;
+              const needsHostWelcome =
+                (hostType === "free" || hostType === "paid") &&
+                userData.hostWelcomeSeen !== true;
               const destinationIsMainTabs =
                 legalAccepted && profileCompleted && hasHandle &&
-                !needsHostType && userData.aiOptIn !== undefined;
+                !needsHostType && !needsHostWelcome &&
+                userData.aiOptIn !== undefined;
 
               // Temporary guard log (BUG 36) — prints the exact fields + snapshot
               // source at the routing decision so any stray branch is visible.
@@ -489,6 +501,17 @@ const AppNavigator = forwardRef((props, ref) => {
                 navigateToRoute("HostTypeSelection", {
                   user,
                   params: { userEmail: user.email, fullName: "Host" },
+                });
+              }
+              // 4.5 Hosting is on — show what happened before moving on. Free
+              //     lands on "your community is live", paid on the review
+              //     status. Both write hostWelcomeSeen, which clears this gate.
+              else if (needsHostWelcome) {
+                console.log(
+                  `🎪 Host activated (${hostType}) - showing the outcome`,
+                );
+                navigateToRoute(hostType === "free" ? "HostLive" : "HostStatus", {
+                  user,
                 });
               }
               // 5. One-time "Turn on Kinlo AI" opt-in (§2.1) — gates all AI.
@@ -686,6 +709,19 @@ const AppNavigator = forwardRef((props, ref) => {
             name="HostTypeSelection"
             component={HostTypeSelectionScreen}
             initialParams={initialParams}
+          />
+          {/* Where the host-type choice lands: free is live now, paid is under
+              review. Both are gestureEnabled: false — swiping back would return
+              to a choice that's already been made and written. */}
+          <Stack.Screen
+            name="HostLive"
+            component={HostLiveScreen}
+            options={{ gestureEnabled: false }}
+          />
+          <Stack.Screen
+            name="HostStatus"
+            component={HostStatusScreen}
+            options={{ gestureEnabled: false }}
           />
           {/* The authed landing: 5-tab shell. Home/Wall/Rentals/Profile live
               ONLY as tabs; MyEvents stays pushable too (Manage → hosted list). */}

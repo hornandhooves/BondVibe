@@ -11,11 +11,10 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { doc, updateDoc } from "firebase/firestore";
-import { db, auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import { FONTS } from "../constants/theme-tokens";
 import Icon from "../components/Icon";
+import { activateHost, deferHostType } from "../services/hostService";
 
 /**
  * How you host — free (live instantly) or paid (payouts set up later).
@@ -65,16 +64,10 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
   const handleDecideLater = async () => {
     setLoading(true);
     try {
-      // User deferred. They remain a NORMAL user (role: "user", no host
-      // privileges) but keep hostApproved so they can pick a type later from
-      // their Profile. The "deferred" marker stops AppNavigator from prompting
-      // them again on every login.
-      await updateDoc(doc(db, "users", auth.currentUser.uid), {
-        role: "user",
-        "hostConfig.type": "deferred",
-        "hostConfig.canCreatePaidEvents": false,
-        "hostConfig.updatedAt": new Date().toISOString(),
-      });
+      // The user stays a NORMAL user but keeps hostApproved, so they can pick a
+      // type later from their Profile. The "deferred" marker stops AppNavigator
+      // prompting them again on every login.
+      await deferHostType();
       goAfterSelection();
     } catch (error) {
       console.error("❌ Error deferring selection:", error);
@@ -88,23 +81,15 @@ export default function HostTypeSelectionScreen({ navigation, route }) {
 
   const handleContinue = async () => {
     setLoading(true);
-    const now = new Date().toISOString();
-
     try {
-      await updateDoc(doc(db, "users", auth.currentUser.uid), {
-        role: "host",
-        "hostConfig.type": selectedType,
-        // Never true here: only Stripe's charge-enabled status may flip this,
-        // and nobody has connected Stripe at this point in the flow.
-        "hostConfig.canCreatePaidEvents": false,
-        // Paid hosts carry an explicit intent, so the status screen and the
-        // in-context payout prompt know to offer setup. Free hosts get null,
-        // not a missing field — Firestore rejects undefined.
-        "hostConfig.payoutsIntent": selectedType === "paid" ? "pending" : null,
-        "hostConfig.createdAt": now,
-        "hostConfig.updatedAt": now,
-      });
-      goAfterSelection();
+      // Server-side: role is no longer client-writable, so hosting is granted by
+      // the activateHost callable (which also decides what stays locked).
+      await activateHost(selectedType);
+
+      // Land on the outcome, rather than dropping into the tabs with no signal
+      // that anything happened. Both screens replace this one so Back can't
+      // return to a choice that's already been made.
+      navigation.replace(selectedType === "free" ? "HostLive" : "HostStatus");
     } catch (error) {
       console.error("❌ Error setting up host:", error);
       Alert.alert(

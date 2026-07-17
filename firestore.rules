@@ -86,9 +86,6 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedFields);
     }
 
-    function changing(field) {
-      return field in request.resource.data.diff(resource.data).affectedKeys();
-    }
 
     // A list field changed by EXACTLY the caller adding themselves (all prior
     // members retained + one new element = the caller). Lets a user join a
@@ -115,29 +112,35 @@ service cloud.firestore {
       allow read: if isSignedIn();
       // Server-computed reputation fields + the premium entitlement can't be
       // set by the user, not even at account creation. New accounts must be a
-      // plain 'user' — 'admin' is granted only by an existing admin.
+      // plain 'user': 'admin' is granted only by an existing admin, and 'host'
+      // only by the activateHost function (see the update rule below).
       allow create: if isSignedIn() && isOwner(userId) &&
                        !request.resource.data.keys()
                           .hasAny(['hostStats', 'carpoolStats', 'isPremium',
                                    'plan', 'matchCountByEvent',
                                    'handle', 'handleLower']) &&
-                       request.resource.data.get('role', 'user') in ['user', 'host'];
+                       request.resource.data.get('role', 'user') == 'user';
 
       // The owner can edit their profile but NOT hostStats/carpoolStats (host
       // ratings + loyalty are computed server-side), nor isPremium/plan (the
       // subscription entitlements are granted server-side), nor hostApproved
-      // (admin approval). Crucially, the owner may set role only to
-      // 'user'/'host' — self-promotion to 'admin' is blocked; admin is granted
-      // exclusively through the isAdmin() branch (an existing admin).
+      // (admin approval), nor hostConfig (set only alongside role, server-side).
+      //
+      // role is NOT self-settable at all. It used to allow 'user'|'host', which
+      // made hosting self-grantable from a modified client and reduced the whole
+      // approval step to a UI convention: isApprovedHost() below trusts
+      // role == 'host'. Hosting is now granted by the activateHost callable and
+      // released by deferHostType — both run with the Admin SDK, which bypasses
+      // these rules — so what the UI promises is what the backend enforces.
+      // 'admin' remains exclusive to the isAdmin() branch.
       allow update: if isAdmin() ||
                        (isOwner(userId) &&
                         !request.resource.data.diff(resource.data)
                           .affectedKeys()
                           .hasAny(['hostStats', 'carpoolStats', 'isPremium',
                                    'plan', 'matchCountByEvent', 'hostApproved',
-                                   'handle', 'handleLower']) &&
-                        (!changing('role') ||
-                         request.resource.data.role in ['user', 'host'])) ||
+                                   'handle', 'handleLower', 'role',
+                                   'hostConfig'])) ||
                        // Cross-account push-token de-dup: any user may CLEAR a
                        // stale token (set null) on any doc, but cannot point
                        // another user's token at their own device (hijack).

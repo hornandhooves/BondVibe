@@ -1336,6 +1336,12 @@
     }
   },
   "hostGate": {
+    "benefitChat": "Chat y grupos de la comunidad",
+    "benefitMembers": "Miembros y asistencia",
+    "benefitMatching": "Matchmaking para tus eventos",
+    "benefitInsights": "Métricas y herramientas de ingresos",
+    "pendingNote": "Ya tenemos los datos de tu comunidad — solo elige cómo quieres organizar.",
+    "ctaResume": "Terminar configuración",
     "title": "Conviértete en host de Kinlo",
     "body": "Una sola cuenta de host aprobado desbloquea eventos, rentas y anuncios del marketplace — una sola solicitud rápida.",
     "cta": "Conviértete en host",
@@ -4259,5 +4265,39 @@
         "staff": "Staff"
       }
     }
+  },
+  "hostLive": {
+    "title": "Tu comunidad está activa",
+    "subtitle": "Sin esperas. Vamos a montarla — tres pasos rápidos para empezar.",
+    "getStarted": "Empieza aquí",
+    "createEventTitle": "Crea tu primer evento",
+    "createEventSub": "Elige fecha y lugar",
+    "inviteTitle": "Invita a tu gente",
+    "inviteSub": "Comparte un enlace o código",
+    "personalizeTitle": "Personaliza tu espacio",
+    "personalizeSub": "Foto de portada y descripción",
+    "explore": "Prefiero explorar primero"
+  },
+  "hostStatus": {
+    "header": "Estado de tu cuenta de host",
+    "reviewTitle": "Eventos de pago — en revisión",
+    "reviewMeta": "Normalmente en 24–48 horas",
+    "approvedTitle": "Eventos de pago — aprobado",
+    "approvedMeta": "Conecta los pagos para empezar a cobrar",
+    "loading": "Consultando estado…",
+    "statusUnavailable": "—",
+    "step": {
+      "applied": "Enviada",
+      "reviewing": "En revisión",
+      "payouts": "Pagos"
+    },
+    "meanwhileTitle": "Mientras tanto, ya estás organizando",
+    "meanwhileBody": "Los eventos gratuitos, la comunidad y los miembros funcionan ya. Los eventos de pago se activan al pasar la revisión.",
+    "whatsNext": "Qué sigue",
+    "next1": "Revisamos tu comunidad (24–48 h) — te avisaremos.",
+    "next2": "Conecta los pagos (Stripe) — unos 2 minutos.",
+    "next3": "Cobra por tus eventos y recibe el dinero directamente.",
+    "connectPayouts": "Conectar pagos",
+    "exploreMeanwhile": "Explorar las herramientas de host"
   }
 }

@@ -108,13 +108,10 @@ export default function RequestHostScreen({ navigation }) {
       });
 
       setSubmitting(false);
-      setModalConfig({
-        visible: true,
-        title: t("requestHost.applicationSubmittedTitle"),
-        message: t("requestHost.applicationSubmittedMessage"),
-        icon: "party",
-        tone: "success",
-      });
+      // Straight on to choosing how they host. There's no approval to wait for
+      // any more — free hosting activates on the next screen — so a "submitted,
+      // we'll be in touch" modal would be inventing a queue that doesn't exist.
+      navigation.replace("HostTypeSelection");
     } catch (error) {
       console.error("❌ Error submitting host request:", error);
       setSubmitting(false);
@@ -126,9 +123,12 @@ export default function RequestHostScreen({ navigation }) {
     }
   };
 
+  // The only modal left is "you already have a request in flight" — send them on
+  // to pick a host type rather than back to Home, since that's the step they
+  // stopped at.
   const handleModalClose = () => {
     setModalConfig((c) => ({ ...c, visible: false }));
-    navigation.navigate("MainTabs", { screen: "HomeTab" });
+    navigation.replace("HostTypeSelection");
   };
 
   const onBack = () => {

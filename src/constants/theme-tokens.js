@@ -163,6 +163,12 @@ export const AI = {
   textOnDark: '#e6ddf2',
 };
 
+// Dark invitation hero (become-host gate). A brand surface, so it's identical in
+// both themes — same rationale as BRAND.gradient. Deliberately NOT AI.panel:
+// they happen to look alike today, but an AI restyle must not silently repaint
+// the host gate.
+export const HERO_PANEL = ['#2A1E3D', '#4A2A6E']; // LinearGradient 135°
+
 // §3.4 Match-type accents + misc roles shared by both themes.
 export const MATCH_COLORS = {
   friend: { fg: '#1F8A6E', soft: '#E1F5EC' },

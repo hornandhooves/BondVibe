@@ -1336,6 +1336,12 @@
     }
   },
   "hostGate": {
+    "benefitChat": "Community chat & groups",
+    "benefitMembers": "Members & attendance",
+    "benefitMatching": "Matchmaking for your events",
+    "benefitInsights": "Insights & revenue tools",
+    "pendingNote": "We've got your community details — just pick how you want to host.",
+    "ctaResume": "Finish setting up",
     "title": "Become a Kinlo host",
     "body": "One approved host account unlocks events, rentals, and marketplace listings — a single quick request.",
     "cta": "Become a host",
@@ -4259,5 +4265,39 @@
         "staff": "Staff"
       }
     }
+  },
+  "hostLive": {
+    "title": "Your community is live",
+    "subtitle": "No waiting. Let's set it up — three quick wins to start.",
+    "getStarted": "Get started",
+    "createEventTitle": "Create your first event",
+    "createEventSub": "Pick a date & place",
+    "inviteTitle": "Invite your people",
+    "inviteSub": "Share a join link or code",
+    "personalizeTitle": "Personalize your space",
+    "personalizeSub": "Cover photo & description",
+    "explore": "I'll explore first"
+  },
+  "hostStatus": {
+    "header": "Your host status",
+    "reviewTitle": "Paid hosting — under review",
+    "reviewMeta": "Usually within 24–48 hours",
+    "approvedTitle": "Paid hosting — approved",
+    "approvedMeta": "Connect payouts to start charging",
+    "loading": "Checking status…",
+    "statusUnavailable": "—",
+    "step": {
+      "applied": "Applied",
+      "reviewing": "Reviewing",
+      "payouts": "Payouts"
+    },
+    "meanwhileTitle": "Meanwhile, you're already hosting",
+    "meanwhileBody": "Free events, community and members work right now. Paid tickets unlock when review clears.",
+    "whatsNext": "What happens next",
+    "next1": "We review your community (24–48h) — we'll notify you.",
+    "next2": "Connect payouts (Stripe) — a 2-min setup.",
+    "next3": "Charge for events & get paid directly.",
+    "connectPayouts": "Connect payouts",
+    "exploreMeanwhile": "Explore host tools meanwhile"
   }
 }

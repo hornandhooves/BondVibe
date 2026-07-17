@@ -113,6 +113,87 @@ exports.adminListUserEmails = onCall(async (request) => {
   return {emails};
 });
 
+/**
+ * Activate hosting for the calling user (host onboarding redesign, phase 3).
+ *
+ * Hosting used to be switched on by the client writing role:'host' straight into
+ * its own user doc. The rules permitted it — the owner could always set role to
+ * 'user' or 'host' — so the "wait for admin approval" step was a UI convention
+ * and nothing more: a modified client could grant itself hosting at any time.
+ * We've now decided free hosting genuinely IS instant, and the rules no longer
+ * let anyone set their own role. So the grant has to happen here, where it can
+ * actually be enforced.
+ *
+ * Free is instant. Paid activates hosting too — free events work right away —
+ * but never unlocks money: canCreatePaidEvents stays false until Stripe reports
+ * the account charge-enabled, and hostApproved (admin-only) still gates review.
+ */
+exports.activateHost = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Sign in first.");
+  }
+
+  const type = request.data && request.data.type;
+  if (type !== "free" && type !== "paid") {
+    throw new HttpsError("invalid-argument", "type must be 'free' or 'paid'.");
+  }
+
+  const userRef = db.collection("users").doc(uid);
+  const snap = await userRef.get();
+  if (!snap.exists) {
+    throw new HttpsError("failed-precondition", "No user profile.");
+  }
+
+  const data = snap.data() || {};
+  // Suspended accounts don't get to host their way back in.
+  if (data.suspended === true) {
+    throw new HttpsError("permission-denied", "Account suspended.");
+  }
+
+  const now = new Date().toISOString();
+  await userRef.set({
+    role: "host",
+    hostConfig: {
+      type,
+      // Only the Stripe status sync may ever set this true. Preserve it rather
+      // than forcing false: an account that already finished Connect elsewhere
+      // (e.g. the rentals flow) is genuinely charge-enabled already.
+      canCreatePaidEvents:
+        (data.hostConfig && data.hostConfig.canCreatePaidEvents) === true,
+      payoutsIntent: type === "paid" ? "pending" : null,
+      createdAt: (data.hostConfig && data.hostConfig.createdAt) || now,
+      updatedAt: now,
+    },
+  }, {merge: true});
+
+  return {ok: true, type};
+});
+
+/**
+ * Step back from hosting before it starts — "decide later".
+ *
+ * Same reason as activateHost: role is server-owned now, so returning to a
+ * plain user can't be a client write either. Marks the choice deferred so the
+ * router stops prompting on every login.
+ */
+exports.deferHostType = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Sign in first.");
+  }
+  const now = new Date().toISOString();
+  await db.collection("users").doc(uid).set({
+    role: "user",
+    hostConfig: {
+      type: "deferred",
+      canCreatePaidEvents: false,
+      updatedAt: now,
+    },
+  }, {merge: true});
+  return {ok: true};
+});
+
 // Admin management — grant/revoke admin via a Firebase Auth custom claim
 // (the source of truth) AND keep the Firestore role in sync for UI. Only an
 // existing admin may call these; the very first admin is bootstrapped

@@ -1,26 +1,22 @@
 /**
- * HostTypeSelectionScreen — "how you host" (host onboarding redesign, phase 2).
+ * HostTypeSelectionScreen — what the screen SHOWS (host onboarding, phase 2).
  *
- * These pin the three promises the redesign makes: free is the default, nobody
- * is sent to Stripe from this screen, and hosting activates either way. They
- * also carry forward the guarantee from the Mercado Pago work — that option must
- * not reappear here — even though this screen no longer picks a payout processor
- * at all (that moved to StripeConnect, downstream).
+ * Activation and routing live in hostOnboardingPhase3.test.js; this file keeps
+ * the UI promises: free reads as the default and the recommendation, nothing
+ * here sends anyone into Stripe, and Mercado Pago doesn't come back.
  */
 import React from "react";
-import { render, fireEvent, waitFor } from "@testing-library/react-native";
-import { updateDoc } from "firebase/firestore";
+import { render, fireEvent } from "@testing-library/react-native";
 import * as WebBrowser from "expo-web-browser";
 import * as stripeConnect from "../../services/stripeConnectService";
 import HostTypeSelectionScreen from "../HostTypeSelectionScreen";
 
-jest.mock("../../services/firebase", () => ({ db: {}, auth: { currentUser: { uid: "u1" } } }));
-jest.mock("firebase/firestore", () => ({
-  doc: jest.fn(() => "docref"),
-  updateDoc: jest.fn(() => Promise.resolve()),
+jest.mock("../../services/hostService", () => ({
+  activateHost: jest.fn(() => Promise.resolve({ ok: true })),
+  deferHostType: jest.fn(() => Promise.resolve({ ok: true })),
 }));
-// Not imported by the screen any more — mocked so that if someone wires it back
-// in, these tests fail loudly instead of hitting the network.
+// Not imported by the screen any more. Mocked and asserted not-called, so wiring
+// KYC back into this screen fails loudly rather than silently hitting Stripe.
 jest.mock("expo-web-browser", () => ({ openAuthSessionAsync: jest.fn() }));
 jest.mock("../../services/stripeConnectService", () => ({
   createConnectAccount: jest.fn(),
@@ -43,116 +39,54 @@ jest.mock("../../contexts/ThemeContext", () => ({
 }));
 jest.mock("react-i18next", () => ({ useTranslation: () => ({ t: (k) => k }) }));
 
-const setup = (params = {}) => {
-  const navigation = { goBack: jest.fn(), canGoBack: () => true };
-  return {
-    navigation,
-    ...render(<HostTypeSelectionScreen navigation={navigation} route={{ params }} />),
-  };
-};
+const setup = (params = {}) =>
+  render(
+    <HostTypeSelectionScreen
+      navigation={{ replace: jest.fn(), goBack: jest.fn(), canGoBack: () => true }}
+      route={{ params }}
+    />
+  );
 
-/** The hostConfig written by the last updateDoc call. */
-const lastWrite = () => updateDoc.mock.calls[updateDoc.mock.calls.length - 1][1];
+describe("HostTypeSelectionScreen — what it shows", () => {
+  beforeEach(() => jest.clearAllMocks());
 
-describe("HostTypeSelectionScreen", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    updateDoc.mockResolvedValue();
+  it("opens on free, with no choice needing to be made first", () => {
+    // The CTA reads "start free" before anything is tapped.
+    expect(setup().getByText("hostTypeSelection.ctaStartFree")).toBeTruthy();
   });
 
-  describe("free is the default", () => {
-    it("offers to start free before anything is tapped", () => {
-      // The CTA reads "start free" on open: no choice has to be made first.
-      expect(setup().getByText("hostTypeSelection.ctaStartFree")).toBeTruthy();
-    });
-
-    it("activates hosting instantly as a free host", async () => {
-      const utils = setup();
-      fireEvent.press(utils.getByText("hostTypeSelection.ctaStartFree"));
-
-      await waitFor(() => expect(updateDoc).toHaveBeenCalled());
-      expect(lastWrite()).toMatchObject({
-        role: "host",
-        "hostConfig.type": "free",
-        "hostConfig.canCreatePaidEvents": false,
-        "hostConfig.payoutsIntent": null,
-      });
-    });
-  });
-
-  describe("paid defers the money", () => {
-    it("never opens Stripe onboarding from this screen", async () => {
-      const utils = setup();
-      fireEvent.press(utils.getByText("hostTypeSelection.paidTitle"));
-      fireEvent.press(utils.getByText("hostTypeSelection.ctaContinuePaid"));
-
-      await waitFor(() => expect(updateDoc).toHaveBeenCalled());
-      // The browser hop into KYC was the drop-off this redesign removes.
-      expect(WebBrowser.openAuthSessionAsync).not.toHaveBeenCalled();
-      expect(stripeConnect.createConnectAccount).not.toHaveBeenCalled();
-      expect(stripeConnect.getAccountLink).not.toHaveBeenCalled();
-    });
-
-    it("activates hosting anyway, recording payouts as pending", async () => {
-      const utils = setup();
-      fireEvent.press(utils.getByText("hostTypeSelection.paidTitle"));
-      fireEvent.press(utils.getByText("hostTypeSelection.ctaContinuePaid"));
-
-      await waitFor(() => expect(updateDoc).toHaveBeenCalled());
-      expect(lastWrite()).toMatchObject({
-        role: "host", // hosting is live now; only paid tickets wait
-        "hostConfig.type": "paid",
-        "hostConfig.canCreatePaidEvents": false,
-        "hostConfig.payoutsIntent": "pending",
-      });
-    });
-
-    it("says free hosting starts regardless", () => {
-      expect(setup().getByText("hostTypeSelection.paidLaterNote")).toBeTruthy();
-    });
-  });
-
-  describe("Mercado Pago", () => {
-    it("is not offered — this screen no longer picks a payout processor", () => {
-      const utils = setup();
-      fireEvent.press(utils.getByText("hostTypeSelection.paidTitle"));
-      expect(utils.queryByText("hostTypeSelection.mercadoPagoTitle")).toBeNull();
-      expect(utils.queryByText("hostTypeSelection.howDoYouWantToGetPaid")).toBeNull();
-    });
-
-    it("is never written as a payout processor", async () => {
-      const utils = setup();
-      fireEvent.press(utils.getByText("hostTypeSelection.paidTitle"));
-      fireEvent.press(utils.getByText("hostTypeSelection.ctaContinuePaid"));
-
-      await waitFor(() => expect(updateDoc).toHaveBeenCalled());
-      expect(lastWrite()["hostConfig.payoutProcessor"]).toBeUndefined();
-    });
-  });
-
-  describe("decide later", () => {
-    it("leaves the user as a normal user, marked deferred", async () => {
-      const utils = setup({ fromProfile: true });
-      fireEvent.press(utils.getByText("hostTypeSelection.decideLater"));
-
-      await waitFor(() => expect(updateDoc).toHaveBeenCalled());
-      expect(lastWrite()).toMatchObject({
-        role: "user",
-        "hostConfig.type": "deferred",
-      });
-    });
-
-    it("pops back when opened from Profile", async () => {
-      const utils = setup({ fromProfile: true });
-      fireEvent.press(utils.getByText("hostTypeSelection.ctaStartFree"));
-      await waitFor(() => expect(utils.navigation.goBack).toHaveBeenCalled());
-    });
-  });
-
-  it("never writes undefined — Firestore rejects it", async () => {
+  it("presents free as recommended and instant", () => {
     const utils = setup();
-    fireEvent.press(utils.getByText("hostTypeSelection.ctaStartFree"));
-    await waitFor(() => expect(updateDoc).toHaveBeenCalled());
-    Object.values(lastWrite()).forEach((v) => expect(v).not.toBeUndefined());
+    expect(utils.getByText("hostTypeSelection.freeTitle")).toBeTruthy();
+    expect(utils.getByText("hostTypeSelection.freeMeta")).toBeTruthy();
+  });
+
+  it("switches the CTA when paid is picked", () => {
+    const utils = setup();
+    fireEvent.press(utils.getByText("hostTypeSelection.paidTitle"));
+    expect(utils.getByText("hostTypeSelection.ctaContinuePaid")).toBeTruthy();
+    expect(utils.queryByText("hostTypeSelection.ctaStartFree")).toBeNull();
+  });
+
+  it("promises free hosting starts regardless of the paid choice", () => {
+    expect(setup().getByText("hostTypeSelection.paidLaterNote")).toBeTruthy();
+  });
+
+  it("renders no Stripe onboarding trigger at all", () => {
+    const utils = setup();
+    fireEvent.press(utils.getByText("hostTypeSelection.paidTitle"));
+    expect(WebBrowser.openAuthSessionAsync).not.toHaveBeenCalled();
+    expect(stripeConnect.createConnectAccount).not.toHaveBeenCalled();
+  });
+
+  it("does not offer Mercado Pago — payout processors aren't chosen here", () => {
+    const utils = setup();
+    fireEvent.press(utils.getByText("hostTypeSelection.paidTitle"));
+    expect(utils.queryByText("hostTypeSelection.mercadoPagoTitle")).toBeNull();
+    expect(utils.queryByText("hostTypeSelection.howDoYouWantToGetPaid")).toBeNull();
+  });
+
+  it("keeps a way out that isn't a decision", () => {
+    expect(setup().getByText("hostTypeSelection.decideLater")).toBeTruthy();
   });
 });
