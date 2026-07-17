@@ -973,6 +973,27 @@ service cloud.firestore {
         allow read, write: if isBizStaff(bizId) || isBizOwnerUid(bizId);
       }
 
+      // Unified plans (packages + membership plans as one product).
+      //
+      // Readable by any signed-in user, unlike packages: members have to see the
+      // plans they can buy. Nothing sensitive lives here — it's a price list.
+      //
+      // Only the OWNER writes. Staff can manage packages above, but a plan can
+      // be sold online for money that lands in the owner's Stripe account, so
+      // creating one is an owner decision.
+      //
+      // paymentModes is validated here, not just in the client: an empty array
+      // is a product no channel can sell, and it would look perfectly fine in
+      // the host's list.
+      match /plans/{planId} {
+        allow read: if isSignedIn();
+        allow create, update: if isBizOwnerUid(bizId) &&
+                                 request.resource.data.paymentModes is list &&
+                                 request.resource.data.paymentModes.size() > 0 &&
+                                 request.resource.data.paymentModes.hasOnly(['online', 'manual']);
+        allow delete: if isBizOwnerUid(bizId);
+      }
+
       // Attendance ledger (QR or manual mark-present).
       match /attendance/{recordId} {
         allow read, write: if isBizStaff(bizId) || isBizOwnerUid(bizId);
