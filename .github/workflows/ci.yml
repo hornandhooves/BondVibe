@@ -1,8 +1,14 @@
 name: CI
 
-# Runs the test suite + i18n parity on every PR to main (and on pushes to main).
-# Enable "Require status checks to pass before merging" in branch protection and
-# select this "test" job so no red PR can merge.
+# Runs lint + the test suite + i18n parity on every PR to main (and on pushes to
+# main). Enable "Require status checks to pass before merging" in branch
+# protection and select this "test" job so no red PR can merge.
+#
+# Lint is here for a reason this codebase learned the hard way: it catches what
+# jest can't. A no-undef from a mis-paired import passed jest (the smoke render
+# never exercised that path) but the linter flagged it; and an indentation error
+# in functions/index.js blocked a deploy at the functions predeploy hook, having
+# sailed through a CI that only ran jest. Both linters now gate the PR.
 on:
   pull_request:
     branches: [main]
@@ -11,7 +17,7 @@ on:
 
 jobs:
   test:
-    name: Jest + i18n parity
+    name: Lint + Jest + i18n parity
     runs-on: ubuntu-latest
     # Run in a non-UTC zone (before the node process starts) — duration.test.js's
     # round-5 BUG 4 tz-regression tests require it; setting process.env.TZ at
@@ -29,6 +35,17 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # functions/ is a separate npm package with its own lock — the app's
+      # `npm ci` doesn't install it, so the functions linter needs this.
+      - name: Install functions dependencies
+        run: npm --prefix functions ci
+
+      - name: ESLint (app)
+        run: npm run lint
+
+      - name: ESLint (functions)
+        run: npm --prefix functions run lint
 
       - name: EN/ES i18n parity
         run: node scripts/check-i18n-parity.js
