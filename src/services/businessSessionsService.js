@@ -95,7 +95,9 @@ export async function createSessionType(data, bizId = getMyBizId()) {
     name: (data.name || "").trim(),
     capacityMax: Math.max(1, parseInt(data.capacityMax, 10) || 1),
     durationMin: parseInt(data.durationMin, 10) || 60,
-    priceCents: Math.max(0, Math.round((parseFloat(data.price) || 0) * 100)),
+    priceCents: cleanBookingMode(data.bookingMode) === "quote"
+      ? 0
+      : Math.max(0, Math.round((parseFloat(data.price) || 0) * 100)),
     description: (data.description || "").trim() || null,
     // ── Marketplace exposure (Marketplace P1). A service = a public SessionType.
     publicListing: data.publicListing === true,
@@ -121,6 +123,7 @@ export async function updateSessionType(id, patch, bizId = getMyBizId()) {
   if ("publicListing" in clean) clean.publicListing = clean.publicListing === true;
   if ("locationMode" in clean) clean.locationMode = cleanLocationMode(clean.locationMode);
   if ("bookingMode" in clean) clean.bookingMode = cleanBookingMode(clean.bookingMode);
+  if (clean.bookingMode === "quote") clean.priceCents = 0;
   if ("photos" in clean && !Array.isArray(clean.photos)) clean.photos = [];
   if ("vertical" in clean && !clean.vertical) clean.vertical = null;
   if ("vertical" in clean) clean.fieldsSchema = fieldsSchemaFor(clean.vertical);
