@@ -1352,6 +1352,27 @@
     "benefitOne": "One approval — every host capability",
     "alreadyHost": "Already hosting events? You're all set — this unlocks rentals."
   },
+  "services": {
+    "fab": {
+      "publish": "Publish service"
+    },
+    "publish": {
+      "title": "Publish a service",
+      "subtitle": "Anyone on Kinlo can discover and book this."
+    },
+    "my": {
+      "title": "My services"
+    },
+    "gate": {
+      "title": "Publish on Kinlo",
+      "body": "Publishing services and creating events use one approved host account — one quick request.",
+      "benefitList": "List services in the marketplace",
+      "benefitEvents": "Create events & build communities",
+      "benefitStripe": "Get paid securely with Stripe",
+      "cta": "Become a host",
+      "note": "Already approved as a host? You'll skip straight to publishing."
+    }
+  },
   "marketplace": {
     "tab": "Marketplace",
     "searchPh": "What do you need?",

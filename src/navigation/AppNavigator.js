@@ -69,6 +69,8 @@ import ClassRosterScreen from "../screens/business/ClassRosterScreen";
 import SessionsAgendaScreen from "../screens/business/SessionsAgendaScreen";
 import AgendaScreen from "../screens/business/AgendaScreen";
 import SessionTypesScreen from "../screens/business/SessionTypesScreen";
+import PublishServiceScreen from "../screens/business/PublishServiceScreen";
+import MyServicesScreen from "../screens/business/MyServicesScreen";
 import AvailabilityScreen from "../screens/business/AvailabilityScreen";
 import BookingFormScreen from "../screens/business/BookingFormScreen";
 import SessionDetailScreen from "../screens/business/SessionDetailScreen";
@@ -850,6 +852,8 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="RentalHub" component={RentalHubScreen} />
           <Stack.Screen name="VehicleDetail" component={VehicleDetailScreen} />
           <Stack.Screen name="Marketplace" component={MarketplaceExploreScreen} />
+          <Stack.Screen name="PublishService" component={PublishServiceScreen} />
+          <Stack.Screen name="MyServices" component={MyServicesScreen} />
           <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen} />
           <Stack.Screen name="ServiceCheckout" component={ServiceCheckoutScreen} />
           <Stack.Screen name="RentalCheckout" component={RentalCheckoutScreen} />

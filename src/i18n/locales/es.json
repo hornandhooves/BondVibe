@@ -1352,6 +1352,27 @@
     "benefitOne": "Una aprobación — todas las capacidades de host",
     "alreadyHost": "¿Ya organizas eventos? Ya está todo listo — esto desbloquea las rentas."
   },
+  "services": {
+    "fab": {
+      "publish": "Publicar servicio"
+    },
+    "publish": {
+      "title": "Publicar un servicio",
+      "subtitle": "Cualquiera en Kinlo puede descubrirlo y reservarlo."
+    },
+    "my": {
+      "title": "Mis servicios"
+    },
+    "gate": {
+      "title": "Publica en Kinlo",
+      "body": "Publicar servicios y crear eventos usan una misma cuenta de anfitrión aprobada — una sola solicitud.",
+      "benefitList": "Publica servicios en el marketplace",
+      "benefitEvents": "Crea eventos y forma comunidades",
+      "benefitStripe": "Cobra de forma segura con Stripe",
+      "cta": "Conviértete en anfitrión",
+      "note": "¿Ya te aprobaron como anfitrión? Pasarás directo a publicar."
+    }
+  },
   "marketplace": {
     "tab": "Marketplace",
     "searchPh": "¿Qué necesitas?",

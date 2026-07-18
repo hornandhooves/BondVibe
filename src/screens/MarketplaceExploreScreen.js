@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
   TextInput,
   Image,
-  ActivityIndicator,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
+import { useMode } from "../contexts/ModeContext";
 import { FONTS } from "../constants/theme-tokens";
 import GradientBackground from "../components/GradientBackground";
 import Icon from "../components/Icon";
@@ -38,10 +38,23 @@ const locationLabelKey = (m) =>
     ? "marketplace.detail.online"
     : "marketplace.detail.atStudio";
 
-export default function MarketplaceExploreScreen({ navigation }) {
+export default function MarketplaceExploreScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
+  const { isHosting } = useMode();
   const s = createStyles(colors, isDark);
+
+  // MarketplaceExploreScreen renders in two contexts: as the Services tab root
+  // (route "ServicesTab", where AppHeader already provides the "Services" title +
+  // mode tag, so we must NOT draw a second header) and as a pushed "Marketplace"
+  // browse route (from ServiceCheckout's "done" alert), which has no AppHeader
+  // and therefore needs its own header with a back button. Mirrors MyEventsScreen.
+  const pushed = route?.name === "Marketplace";
+  // Host affordances (Services P0) live only on the tab root in hosting mode.
+  // Publishing/managing require an approved host — the gate is enforced in-place
+  // by PublishServiceScreen / MyServicesScreen (mirrors MyFleetScreen), so here
+  // we navigate unconditionally and let those screens present the invitation.
+  const showHostTools = !pushed && isHosting;
 
   const [vertical, setVertical] = useState(null); // null = all service verticals
   const [q, setQ] = useState("");
@@ -57,7 +70,7 @@ export default function MarketplaceExploreScreen({ navigation }) {
       const v = vertical && vertical !== "rentals" ? vertical : undefined;
       const list = await getMarketplaceListings({ vertical: v });
       setListings(list);
-    } catch (e) {
+    } catch {
       setError(true);
     }
     setLoading(false);
@@ -84,9 +97,17 @@ export default function MarketplaceExploreScreen({ navigation }) {
   return (
     <GradientBackground>
       <StatusBar style={isDark ? "light" : "dark"} />
-      <View style={s.header}>
-        <Text style={[s.headerTitle, { color: colors.text }]}>{t("marketplace.tab")}</Text>
-      </View>
+      {pushed && (
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={hit}>
+            <Icon name="back" size={26} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[s.headerTitle, s.headerTitlePushed, { color: colors.text }]}>
+            {t("marketplace.tab")}
+          </Text>
+          <View style={{ width: 26 }} />
+        </View>
+      )}
 
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         <View style={[s.search, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -138,9 +159,22 @@ export default function MarketplaceExploreScreen({ navigation }) {
           })}
         </View>
 
-        <Text style={[s.sectionTitle, { color: colors.text }]}>
-          {vertical ? t(`marketplace.vertical.${vertical}`) : t("marketplace.nearYou")}
-        </Text>
+        <View style={s.sectionRow}>
+          <Text style={[s.sectionTitle, { color: colors.text }]}>
+            {vertical ? t(`marketplace.vertical.${vertical}`) : t("marketplace.nearYou")}
+          </Text>
+          {showHostTools && (
+            <TouchableOpacity
+              style={s.myServicesLink}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate("MyServices")}
+              testID="services-my-link"
+            >
+              <Text style={[s.myServicesTxt, { color: colors.primary }]}>{t("services.my.title")}</Text>
+              <Icon name="forward" size={15} color={colors.primary} />
+            </TouchableOpacity>
+          )}
+        </View>
 
         {loading ? (
           <SkeletonList colors={colors} />
@@ -188,11 +222,28 @@ export default function MarketplaceExploreScreen({ navigation }) {
             );
           })
         )}
-        <View style={{ height: 40 }} />
+        <View style={{ height: showHostTools ? 96 : 40 }} />
       </ScrollView>
+
+      {/* Publish-service FAB (Services P0) — mirrors the create-event FAB in
+          Events. Host-mode only; the become-a-host gate is enforced in-place by
+          PublishServiceScreen, so this navigates unconditionally. */}
+      {showHostTools && (
+        <TouchableOpacity
+          style={[s.fab, { backgroundColor: colors.primary }]}
+          activeOpacity={0.9}
+          onPress={() => navigation.navigate("PublishService")}
+          testID="services-publish-fab"
+        >
+          <Icon name="plus" size={20} color="#fff" />
+          <Text style={s.fabTxt}>{t("services.fab.publish")}</Text>
+        </TouchableOpacity>
+      )}
     </GradientBackground>
   );
 }
+
+const hit = { top: 10, bottom: 10, left: 10, right: 10 };
 
 function SkeletonList({ colors }) {
   return (
@@ -253,8 +304,16 @@ function ErrorState({ colors, s, t, onRetry }) {
 
 function createStyles(colors, isDark) {
   return StyleSheet.create({
-    header: { paddingHorizontal: 18, paddingTop: 60, paddingBottom: 8 },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 18,
+      paddingTop: 60,
+      paddingBottom: 8,
+    },
     headerTitle: { fontFamily: FONTS.display, fontSize: 22, letterSpacing: -0.4 },
+    headerTitlePushed: { flex: 1, textAlign: "center" },
     content: { paddingHorizontal: 18, paddingBottom: 8 },
     search: {
       flexDirection: "row",
@@ -279,7 +338,33 @@ function createStyles(colors, isDark) {
       marginBottom: 6,
     },
     tileLabel: { fontFamily: FONTS.bodySemibold, fontSize: 10, textAlign: "center" },
-    sectionTitle: { fontFamily: FONTS.bodyExtra, fontSize: 17, marginBottom: 12 },
+    sectionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 12,
+    },
+    sectionTitle: { fontFamily: FONTS.bodyExtra, fontSize: 17 },
+    myServicesLink: { flexDirection: "row", alignItems: "center", gap: 2 },
+    myServicesTxt: { fontFamily: FONTS.bodyBold, fontSize: 13.5 },
+    fab: {
+      position: "absolute",
+      right: 18,
+      bottom: 24,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      height: 52,
+      paddingHorizontal: 20,
+      borderRadius: 26,
+      // The FAB is a CTA — the one place a shadow is allowed (design system §3).
+      shadowColor: "#7C3AED",
+      shadowOpacity: 0.32,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 8,
+    },
+    fabTxt: { color: "#fff", fontFamily: FONTS.bodyExtra, fontSize: 15, letterSpacing: -0.2 },
     card: {
       flexDirection: "row",
       alignItems: "center",
