@@ -78,6 +78,12 @@ export async function listSessionTypes(bizId = getMyBizId()) {
   const snap = await getDocs(col(bizId, "sessionTypes"));
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
+/** One session type by id (edit-by-id, so screens don't pass whole objects through nav). */
+export async function getSessionType(id, bizId = getMyBizId()) {
+  if (!bizId || !id) return null;
+  const snap = await getDoc(ref(bizId, "sessionTypes", id));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
 // Marketplace field sanitizers — shared by create + update so a SessionType
 // never carries `undefined` (Firestore rejects it) and enum fields stay valid.
 const LOCATION_MODES = ["at_business", "at_customer", "online"];

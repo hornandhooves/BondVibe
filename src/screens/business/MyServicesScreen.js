@@ -75,11 +75,11 @@ export default function MyServicesScreen({ navigation }) {
     }
   };
 
-  const unpublish = (s) => {
-    Alert.alert(t("services.my.unpublishTitle"), t("services.my.unpublishMsg"), [
+  const deleteService = (s) => {
+    Alert.alert(t("services.my.deleteTitle"), t("services.my.deleteMsg"), [
       { text: t("common.cancel"), style: "cancel" },
       {
-        text: t("services.my.unpublish"),
+        text: t("services.my.delete"),
         style: "destructive",
         onPress: async () => {
           try {
@@ -95,9 +95,9 @@ export default function MyServicesScreen({ navigation }) {
 
   const openMenu = (s) => {
     Alert.alert(s.name, undefined, [
-      { text: t("services.my.edit"), onPress: () => navigation.navigate("PublishService", { service: s }) },
+      { text: t("services.my.edit"), onPress: () => navigation.navigate("PublishService", { serviceId: s.id }) },
       { text: isLive(s) ? t("services.my.pause") : t("services.my.resume"), onPress: () => togglePause(s) },
-      { text: t("services.my.unpublish"), style: "destructive", onPress: () => unpublish(s) },
+      { text: t("services.my.delete"), style: "destructive", onPress: () => deleteService(s) },
       { text: t("common.cancel"), style: "cancel" },
     ]);
   };
@@ -178,7 +178,7 @@ export default function MyServicesScreen({ navigation }) {
                 key={s.id}
                 style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 activeOpacity={0.85}
-                onPress={() => navigation.navigate("PublishService", { service: s })}
+                onPress={() => navigation.navigate("PublishService", { serviceId: s.id })}
                 testID={`service-row-${s.id}`}
               >
                 <View style={[styles.thumb, { backgroundColor: meta.bg }]}>

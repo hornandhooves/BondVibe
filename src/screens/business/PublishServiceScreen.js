@@ -11,7 +11,7 @@
  * public listing and a verified + insured business for at-home (at_customer)
  * services. The UI mirrors that gate; the server is the guarantee.
  */
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View, Text, TextInput, ScrollView, StyleSheet, TouchableOpacity,
   ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform,
@@ -27,7 +27,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { FONTS } from "../../constants/theme-tokens";
 import useUserRole from "../../hooks/useUserRole";
 import { isApprovedHost } from "../../utils/hostGate";
-import { createSessionType, updateSessionType } from "../../services/businessSessionsService";
+import { createSessionType, updateSessionType, getSessionType } from "../../services/businessSessionsService";
 import { getMyBizId, getBusiness } from "../../services/businessService";
 import { getHostMembershipPlans } from "../../services/membershipService";
 import { SERVICE_VERTICALS } from "../../services/marketplaceService";
@@ -61,26 +61,50 @@ export default function PublishServiceScreen({ navigation, route }) {
   const { role, hostApproved, loading: roleLoading } = useUserRole();
   const approved = isApprovedHost({ role, hostApproved });
 
-  // Edit mode: the whole service is passed from My services (serializable plain
-  // object), so there's no extra fetch.
-  const editing = route?.params?.service || null;
-  const editId = editing?.id || null;
+  // Edit mode passes only the id (serviceId) — never the whole object, so React
+  // Navigation state stays serializable and deep-link-safe. No serviceId = create.
+  const editId = route?.params?.serviceId || null;
+  const [loading, setLoading] = useState(!!editId);
 
-  const [name, setName] = useState(editing?.name || "");
-  const [vertical, setVertical] = useState(editing?.vertical || null);
-  const [durationMin, setDurationMin] = useState(String(editing?.durationMin || 60));
-  const [capacityMax, setCapacityMax] = useState(editing?.capacityMax || 1);
-  const [description, setDescription] = useState(editing?.description || "");
-  const [photos, setPhotos] = useState(Array.isArray(editing?.photos) ? editing.photos : []);
-  const [locationMode, setLocationMode] = useState(editing?.locationMode || "at_business");
-  const [bookingMode, setBookingMode] = useState(editing?.bookingMode || "slot");
-  const [price, setPrice] = useState(editing?.priceCents ? String(editing.priceCents / 100) : "");
-  const [planPackageId, setPlanPackageId] = useState(editing?.planPackageId || null);
-  const [city, setCity] = useState(editing?.city || "");
+  const [name, setName] = useState("");
+  const [vertical, setVertical] = useState(null);
+  const [durationMin, setDurationMin] = useState("60");
+  const [capacityMax, setCapacityMax] = useState(1);
+  const [description, setDescription] = useState("");
+  const [photos, setPhotos] = useState([]);
+  const [locationMode, setLocationMode] = useState("at_business");
+  const [bookingMode, setBookingMode] = useState("slot");
+  const [price, setPrice] = useState("");
+  const [planPackageId, setPlanPackageId] = useState(null);
+  const [city, setCity] = useState("");
 
   const [hostPlans, setHostPlans] = useState([]);
   const [biz, setBiz] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  // Fetch the service being edited once, by id, then populate the form.
+  useEffect(() => {
+    if (!editId) return;
+    let alive = true;
+    getSessionType(editId)
+      .then((svc) => {
+        if (!alive || !svc) return;
+        setName(svc.name || "");
+        setVertical(svc.vertical || null);
+        setDurationMin(String(svc.durationMin || 60));
+        setCapacityMax(svc.capacityMax || 1);
+        setDescription(svc.description || "");
+        setPhotos(Array.isArray(svc.photos) ? svc.photos : []);
+        setLocationMode(svc.locationMode || "at_business");
+        setBookingMode(svc.bookingMode || "slot");
+        setPrice(svc.priceCents ? String(svc.priceCents / 100) : "");
+        setPlanPackageId(svc.planPackageId || null);
+        setCity(svc.city || "");
+      })
+      .catch(() => {})
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [editId]);
 
   const load = useCallback(async () => {
     const [plans, b] = await Promise.all([
@@ -109,7 +133,9 @@ export default function PublishServiceScreen({ navigation, route }) {
   const removePhoto = (uri) => setPhotos((prev) => prev.filter((p) => p !== uri));
 
   const capKind = capacityMax <= 1 ? "one" : "group";
-  const setCap = (kind) => setCapacityMax(kind === "one" ? 1 : capacityMax > 1 ? capacityMax : 8);
+  const GROUP_DEFAULT = 8, GROUP_MIN = 2, GROUP_MAX = 20;
+  const setCap = (kind) => setCapacityMax(kind === "one" ? 1 : capacityMax > 1 ? capacityMax : GROUP_DEFAULT);
+  const stepCap = (delta) => setCapacityMax((c) => Math.min(GROUP_MAX, Math.max(GROUP_MIN, c + delta)));
 
   const save = async () => {
     if (!name.trim()) return Alert.alert(t("services.publish.nameRequired"));
@@ -176,6 +202,18 @@ export default function PublishServiceScreen({ navigation, route }) {
         <StatusBar style={isDark ? "light" : "dark"} />
         <ServiceHostGate navigation={navigation} onBack={() => navigation.goBack()} />
       </>
+    );
+  }
+
+  // Fetching the service being edited (edit-by-id).
+  if (loading) {
+    return (
+      <GradientBackground>
+        <StatusBar style={isDark ? "light" : "dark"} />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </GradientBackground>
     );
   }
 
@@ -264,6 +302,31 @@ export default function PublishServiceScreen({ navigation, route }) {
               onChange={setCap}
             />
           </View>
+          {/* Group size is explicit (S-obs-3): never persist an invented 8 silently. */}
+          {capKind === "group" && (
+            <View style={[styles.stepperRow, inputStyle]}>
+              <Text style={[styles.stepperLabel, { color: colors.text }]}>{t("services.publish.groupSize")}</Text>
+              <View style={styles.stepperCtrls}>
+                <TouchableOpacity
+                  style={[styles.stepperBtn, { borderColor: colors.border }, capacityMax <= GROUP_MIN && { opacity: 0.4 }]}
+                  onPress={() => stepCap(-1)}
+                  disabled={capacityMax <= GROUP_MIN}
+                  testID="cap-minus"
+                >
+                  <Text style={[styles.stepperSign, { color: colors.text }]}>−</Text>
+                </TouchableOpacity>
+                <Text style={[styles.stepperValue, { color: colors.text }]} testID="cap-value">{capacityMax}</Text>
+                <TouchableOpacity
+                  style={[styles.stepperBtn, { borderColor: colors.border }, capacityMax >= GROUP_MAX && { opacity: 0.4 }]}
+                  onPress={() => stepCap(1)}
+                  disabled={capacityMax >= GROUP_MAX}
+                  testID="cap-plus"
+                >
+                  <Text style={[styles.stepperSign, { color: colors.text }]}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
           <TextInput
             style={[styles.input, styles.textarea, inputStyle]}
             value={description}
@@ -396,6 +459,12 @@ function createStyles(colors, isDark) {
     chipTxt: { fontSize: 13 },
 
     detailsRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
+    stepperRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12 },
+    stepperLabel: { fontFamily: FONTS.bodySemibold, fontSize: 14 },
+    stepperCtrls: { flexDirection: "row", alignItems: "center", gap: 14 },
+    stepperBtn: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+    stepperSign: { fontFamily: FONTS.display, fontSize: 20, lineHeight: 22 },
+    stepperValue: { fontFamily: FONTS.display, fontSize: 18, letterSpacing: -0.4, minWidth: 26, textAlign: "center" },
     durationBox: { flex: 1, borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, paddingVertical: 9, justifyContent: "center" },
     durationLabel: { fontFamily: FONTS.bodyMedium, fontSize: 11 },
     durationInner: { flexDirection: "row", alignItems: "baseline", gap: 5, marginTop: 2 },
