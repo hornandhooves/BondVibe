@@ -77,6 +77,16 @@ service firebase.storage {
                       isImageUnder(10 * 1024 * 1024);
     }
 
+    // Marketplace service listing photos (Services P1). A service is a public
+    // SessionType under businesses/{bizId}; v1 has bizId === the owner's uid, so
+    // the owner uploads under their own namespace — mirrors the expenses rule
+    // above. Public read: these back a browsable marketplace listing.
+    match /businesses/{bizId}/services/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == bizId &&
+                      isImageUnder(10 * 1024 * 1024);
+    }
+
     // Everything else is denied by default.
     match /{allPaths=**} {
       allow read, write: if false;

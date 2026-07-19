@@ -1,11 +1,19 @@
 /**
- * SessionTypesScreen — private-session products (kinlo_business/03). 1:1 /
- * couple / group, duration, price. Create/edit via an inline modal.
+ * SessionTypesScreen — PRIVATE SESSIONS (member-only CRM tool).
+ *
+ * A private session is a member-only SessionType (`publicListing:false`, no
+ * marketplace vertical) booked via RequestSession — the host's 1:1 / couples /
+ * group products for their own members (used by MyMembershipsScreen and the
+ * quote path in ServiceDetailScreen). It is NOT a marketplace service: publishing
+ * a public service now lives in the Services tab (PublishServiceScreen /
+ * MyServicesScreen). This screen therefore dropped its old "List on marketplace"
+ * toggle + all marketplace fields, and lists only uncategorised (private) session
+ * types. Reached from the Business Hub → Programming → "Private sessions".
  */
 import React, { useState, useCallback } from "react";
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Modal, KeyboardAvoidingView, Platform, Alert, Switch,
+  ActivityIndicator, Modal, KeyboardAvoidingView, Platform, Alert,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from "@react-navigation/native";
@@ -15,56 +23,39 @@ import GradientBackground from "../../components/GradientBackground";
 import { useTheme } from "../../contexts/ThemeContext";
 import { listSessionTypes, createSessionType, updateSessionType, deleteSessionType, capacityKind } from "../../services/businessSessionsService";
 import { formatCentavos } from "../../utils/pricing";
-import { SERVICE_VERTICALS } from "../../services/marketplaceService";
-import { getHostMembershipPlans } from "../../services/membershipService";
-import { getMyBizId, getBusiness } from "../../services/businessService";
 
 export default function SessionTypesScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const [types, setTypes] = useState([]);
-  const [hostPlans, setHostPlans] = useState([]);
-  const [biz, setBiz] = useState(null);
   const [loading, setLoading] = useState(true);
   const [edit, setEdit] = useState(null); // { id?, name, capacityMax, durationMin, price, description }
 
   const load = useCallback(async () => {
-    const [tys, plans, b] = await Promise.all([
-      listSessionTypes(),
-      getHostMembershipPlans(getMyBizId(), { activeOnly: true }).catch(() => []),
-      getBusiness().catch(() => null),
-    ]);
-    setTypes(tys);
-    setHostPlans(Array.isArray(plans) ? plans : []);
-    setBiz(b);
+    const tys = await listSessionTypes();
+    // Private sessions only: a categorised (vertical) type is a marketplace
+    // service, managed from the Services tab (My services), not here.
+    setTypes((Array.isArray(tys) ? tys : []).filter((ty) => !ty.vertical));
     setLoading(false);
   }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const openNew = () => setEdit({ name: "", capacityMax: "1", durationMin: "60", price: "", description: "", publicListing: false, vertical: null, locationMode: "at_business", bookingMode: "slot", city: "", planPackageId: null });
-  const openEdit = (ty) => setEdit({ id: ty.id, name: ty.name, capacityMax: String(ty.capacityMax), durationMin: String(ty.durationMin), price: ty.priceCents ? String(ty.priceCents / 100) : "", description: ty.description || "", publicListing: ty.publicListing === true, vertical: ty.vertical || null, locationMode: ty.locationMode || "at_business", bookingMode: ty.bookingMode || "slot", city: ty.city || "", planPackageId: ty.planPackageId || null });
+  const openNew = () => setEdit({ name: "", capacityMax: "1", durationMin: "60", price: "", description: "" });
+  const openEdit = (ty) => setEdit({ id: ty.id, name: ty.name, capacityMax: String(ty.capacityMax), durationMin: String(ty.durationMin), price: ty.priceCents ? String(ty.priceCents / 100) : "", description: ty.description || "" });
 
   const save = async () => {
     if (!edit.name.trim()) { Alert.alert(t("business.sessionType.nameRequired")); return; }
-    if (edit.publicListing && !edit.vertical) { Alert.alert(t("marketplace.host.vertical"), t("marketplace.host.listHint")); return; }
-    // P3: publishing an at-home service needs a verified + insured business
-    // (mirrors the firestore.rules gate; the server is the guarantee).
-    if (edit.publicListing && edit.locationMode === "at_customer" && !(biz && biz.verified && biz.insured)) {
-      Alert.alert(t("marketplace.host.verifyNote"), t("marketplace.host.verifyBlock"));
-      return;
-    }
-    // Marketplace exposure fields (Marketplace P1 — M5). Only meaningful when
-    // publicListing is on, but always persisted so toggling off is clean.
-    const mkt = {
-      publicListing: edit.publicListing === true,
-      vertical: edit.vertical || null,
-      locationMode: edit.locationMode,
-      bookingMode: edit.bookingMode,
-      city: edit.city,
-      planPackageId: edit.planPackageId || null,
+    const payload = {
+      name: edit.name.trim(),
+      capacityMax: parseInt(edit.capacityMax, 10) || 1,
+      durationMin: parseInt(edit.durationMin, 10) || 60,
+      price: edit.price,
+      description: edit.description.trim() || null,
+      // A private session is never a marketplace listing.
+      publicListing: false,
     };
-    if (edit.id) await updateSessionType(edit.id, { name: edit.name.trim(), capacityMax: parseInt(edit.capacityMax, 10) || 1, durationMin: parseInt(edit.durationMin, 10) || 60, price: edit.price, description: edit.description.trim() || null, ...mkt });
-    else await createSessionType({ ...edit, ...mkt });
+    if (edit.id) await updateSessionType(edit.id, payload);
+    else await createSessionType(payload);
     setEdit(null);
     load();
   };
@@ -122,74 +113,6 @@ export default function SessionTypesScreen({ navigation }) {
             <Text style={[styles.capHint, { color: colors.textTertiary }]}>{t("business.sessionType.capacityHint")}</Text>
             <TextInput style={[styles.input, inputStyle, { minHeight: 60, textAlignVertical: "top" }]} value={edit?.description} onChangeText={(v) => setEdit((e) => ({ ...e, description: v }))} placeholder={t("business.sessionType.descPlaceholder")} placeholderTextColor={colors.textTertiary} multiline />
 
-            {/* Marketplace exposure (Marketplace P1 — M5). A service = a public SessionType. */}
-            <View style={styles.mktRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.mktLabel, { color: colors.text }]}>{t("marketplace.host.listOnMkt")}</Text>
-                <Text style={[styles.mktHint, { color: colors.textTertiary }]}>{t("marketplace.host.listHint")}</Text>
-              </View>
-              <Switch value={!!edit?.publicListing} onValueChange={(v) => setEdit((e) => ({ ...e, publicListing: v }))} trackColor={{ true: colors.primary }} />
-            </View>
-            {edit?.publicListing && (
-              <View>
-                <Text style={[styles.capHint, { color: colors.textTertiary }]}>{t("marketplace.host.vertical")}</Text>
-                <View style={styles.chipsWrap}>
-                  {SERVICE_VERTICALS.map((v) => {
-                    const active = edit?.vertical === v;
-                    return (
-                      <TouchableOpacity key={v} onPress={() => setEdit((e) => ({ ...e, vertical: v }))} style={[styles.chip, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.brandSoft : "transparent" }]}>
-                        <Text style={[styles.chipTxt, { color: active ? colors.primary : colors.textSecondary }]}>{t(`marketplace.vertical.${v}`)}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-                <Text style={[styles.capHint, { color: colors.textTertiary }]}>{t("marketplace.host.whereHappen")}</Text>
-                <View style={styles.chipsWrap}>
-                  {[["at_business", "marketplace.detail.atStudio"], ["at_customer", "marketplace.detail.atCustomer"], ["online", "marketplace.detail.online"]].map(([m, k]) => {
-                    const active = edit?.locationMode === m;
-                    return (
-                      <TouchableOpacity key={m} onPress={() => setEdit((e) => ({ ...e, locationMode: m }))} style={[styles.chip, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.brandSoft : "transparent" }]}>
-                        <Text style={[styles.chipTxt, { color: active ? colors.primary : colors.textSecondary }]}>{t(k)}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-                <Text style={[styles.capHint, { color: colors.textTertiary }]}>{t("marketplace.host.bookingMode")}</Text>
-                <View style={styles.chipsWrap}>
-                  {[["slot", "marketplace.host.bookingSlot"], ["quote", "marketplace.host.bookingQuote"]].map(([m, k]) => {
-                    const active = edit?.bookingMode === m;
-                    return (
-                      <TouchableOpacity key={m} onPress={() => setEdit((e) => ({ ...e, bookingMode: m }))} style={[styles.chip, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.brandSoft : "transparent" }]}>
-                        <Text style={[styles.chipTxt, { color: active ? colors.primary : colors.textSecondary }]}>{t(k)}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-                <TextInput style={[styles.input, inputStyle]} value={edit?.city} onChangeText={(v) => setEdit((e) => ({ ...e, city: v }))} placeholder={t("rentals.hub.city")} placeholderTextColor={colors.textTertiary} />
-                {hostPlans.length > 0 && (
-                  <View>
-                    <Text style={[styles.capHint, { color: colors.textTertiary }]}>{t("marketplace.host.linkPlan")}</Text>
-                    <View style={styles.chipsWrap}>
-                      <TouchableOpacity onPress={() => setEdit((e) => ({ ...e, planPackageId: null }))} style={[styles.chip, { borderColor: !edit?.planPackageId ? colors.primary : colors.border, backgroundColor: !edit?.planPackageId ? colors.brandSoft : "transparent" }]}>
-                        <Text style={[styles.chipTxt, { color: !edit?.planPackageId ? colors.primary : colors.textSecondary }]}>{t("marketplace.host.noPlan")}</Text>
-                      </TouchableOpacity>
-                      {hostPlans.map((p) => {
-                        const active = edit?.planPackageId === p.id;
-                        return (
-                          <TouchableOpacity key={p.id} onPress={() => setEdit((e) => ({ ...e, planPackageId: p.id }))} style={[styles.chip, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.brandSoft : "transparent" }]}>
-                            <Text style={[styles.chipTxt, { color: active ? colors.primary : colors.textSecondary }]} numberOfLines={1}>{p.name}</Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  </View>
-                )}
-                {edit?.locationMode === "at_customer" && (
-                  <Text style={[styles.capHint, { color: colors.warning }]}>{t("marketplace.host.verifyNote")}</Text>
-                )}
-              </View>
-            )}
-
             <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primary }]} onPress={save}><Text style={styles.saveText}>{t("business.sessionType.save")}</Text></TouchableOpacity>
             {edit?.id && <TouchableOpacity style={styles.deleteBtn} onPress={remove}><Text style={[styles.deleteText, { color: colors.error }]}>{t("business.sessionType.delete")}</Text></TouchableOpacity>}
             </ScrollView>
@@ -222,12 +145,6 @@ function createStyles(colors) {
     input: { borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 10 },
     row: { flexDirection: "row", gap: 8 },
     capHint: { fontSize: 11.5, marginBottom: 10, marginTop: -2 },
-    mktRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, marginBottom: 6 },
-    mktLabel: { fontSize: 15, fontWeight: "800" },
-    mktHint: { fontSize: 11.5, marginTop: 2, lineHeight: 15 },
-    chipsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
-    chip: { borderWidth: 1, borderRadius: 15, paddingHorizontal: 12, paddingVertical: 7 },
-    chipTxt: { fontSize: 12.5, fontWeight: "700" },
     saveBtn: { height: 50, borderRadius: 25, alignItems: "center", justifyContent: "center", marginTop: 6 },
     saveText: { color: "#fff", fontSize: 15, fontWeight: "800" },
     deleteBtn: { alignItems: "center", paddingVertical: 14 },

@@ -68,7 +68,6 @@ export default function MarketplaceRow({ navigation }) {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.rowContent}>
           {listings.map((l) => {
             const meta = VERTICAL_META[l.vertical] || VERTICAL_META.wellness;
-            const isQuote = l.bookingMode === "quote" || !l.priceCents;
             return (
               <TouchableOpacity
                 key={`${l.bizId}_${l.id}`}
@@ -88,7 +87,11 @@ export default function MarketplaceRow({ navigation }) {
                   {t(`marketplace.vertical.${l.vertical || "wellness"}`)}
                 </Text>
                 <Text style={[s.cardPrice, { color: colors.text }]}>
-                  {isQuote ? t("marketplace.detail.quoteFree") : formatCentavos(l.priceCents)}
+                  {l.bookingMode === "quote"
+                    ? t("marketplace.detail.quote")
+                    : !l.priceCents
+                    ? t("marketplace.detail.free")
+                    : formatCentavos(l.priceCents)}
                 </Text>
               </TouchableOpacity>
             );

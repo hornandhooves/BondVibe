@@ -170,34 +170,19 @@ export default function BusinessHubScreen({ navigation }) {
             title={t("business.hub.agendaTitle")}
             subtitle={t("business.hub.agendaSubtitle")}
             onPress={() => navigation.navigate("BusinessAgendaDay")}
+          />
+          {/* Private sessions (member-only 1:1 / couples / group). Publishing a
+              PUBLIC service moved to the Services tab (Services P3) — the old
+              Hub "Marketplace" section is gone. */}
+          <ListRow
+            icon="clock"
+            iconColor={colors.primary}
+            iconBg={`${colors.primary}1A`}
+            title={t("business.hub.privateSessionsTitle")}
+            subtitle={t("business.hub.privateSessionsSubtitle")}
+            onPress={() => navigation.navigate("BusinessSessionTypes")}
             divider={false}
           />
-        </View>
-
-        {/* Marketplace (Marketplace P1 — M5): expose services publicly + browse. */}
-        <SectionHeader title={t("business.hub.marketplaceSection")} />
-        <View style={card}>
-          {allows("marketplace") && (
-            <ListRow
-              icon="tag"
-              iconColor={colors.primary}
-              iconBg={`${colors.primary}1A`}
-              title={t("business.hub.marketplaceTitle")}
-              subtitle={t("business.hub.marketplaceSubtitle")}
-              onPress={() => navigation.navigate("BusinessSessionTypes")}
-            />
-          )}
-          {allows("marketplace") && (
-            <ListRow
-              icon="search"
-              iconColor={colors.secondary}
-              iconBg={`${colors.secondary}1A`}
-              title={t("business.hub.marketplaceBrowseTitle")}
-              subtitle={t("business.hub.marketplaceBrowseSubtitle")}
-              onPress={() => navigation.navigate("Marketplace")}
-              divider={false}
-            />
-          )}
         </View>
 
         <SectionHeader title={t("business.hub.retentionOrgSection")} />

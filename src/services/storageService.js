@@ -220,6 +220,37 @@ export const uploadVehiclePhotos = async (vehicleId, photoUris) => {
   return out;
 };
 
+/** Upload one marketplace-service listing photo; returns its URL (Services P1). */
+export const uploadServiceImage = async (bizId, sessionTypeId, imageUri, index) => {
+  const compressedUri = await compressImage(imageUri);
+  const response = await fetch(compressedUri);
+  const blob = await response.blob();
+  const imageRef = ref(storage, `businesses/${bizId}/services/${sessionTypeId}_${index}.jpg`);
+  await uploadBytes(imageRef, blob);
+  return getDownloadURL(imageRef);
+};
+
+/**
+ * Resolve a service's photo list for saving: upload any local URIs, keep any
+ * already-remote URLs. Preserves order. Mirrors uploadVehiclePhotos.
+ * @param {string} bizId
+ * @param {string} sessionTypeId
+ * @param {string[]} photoUris - mix of local URIs and remote URLs
+ * @returns {Promise<string[]>} array of remote URLs
+ */
+export const uploadServicePhotos = async (bizId, sessionTypeId, photoUris) => {
+  const out = [];
+  for (let i = 0; i < photoUris.length; i++) {
+    const uri = photoUris[i];
+    if (isRemoteUrl(uri)) {
+      out.push(uri);
+    } else {
+      out.push(await uploadServiceImage(bizId, sessionTypeId, uri, i));
+    }
+  }
+  return out;
+};
+
 /**
  * Extract storage path from Firebase Storage URL
  * @param {string} url - Firebase Storage download URL

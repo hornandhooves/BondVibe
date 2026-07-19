@@ -78,6 +78,12 @@ export async function listSessionTypes(bizId = getMyBizId()) {
   const snap = await getDocs(col(bizId, "sessionTypes"));
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
+/** One session type by id (edit-by-id, so screens don't pass whole objects through nav). */
+export async function getSessionType(id, bizId = getMyBizId()) {
+  if (!bizId || !id) return null;
+  const snap = await getDoc(ref(bizId, "sessionTypes", id));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
 // Marketplace field sanitizers — shared by create + update so a SessionType
 // never carries `undefined` (Firestore rejects it) and enum fields stay valid.
 const LOCATION_MODES = ["at_business", "at_customer", "online"];
@@ -95,7 +101,9 @@ export async function createSessionType(data, bizId = getMyBizId()) {
     name: (data.name || "").trim(),
     capacityMax: Math.max(1, parseInt(data.capacityMax, 10) || 1),
     durationMin: parseInt(data.durationMin, 10) || 60,
-    priceCents: Math.max(0, Math.round((parseFloat(data.price) || 0) * 100)),
+    priceCents: cleanBookingMode(data.bookingMode) === "quote"
+      ? 0
+      : Math.max(0, Math.round((parseFloat(data.price) || 0) * 100)),
     description: (data.description || "").trim() || null,
     // ── Marketplace exposure (Marketplace P1). A service = a public SessionType.
     publicListing: data.publicListing === true,
@@ -121,6 +129,7 @@ export async function updateSessionType(id, patch, bizId = getMyBizId()) {
   if ("publicListing" in clean) clean.publicListing = clean.publicListing === true;
   if ("locationMode" in clean) clean.locationMode = cleanLocationMode(clean.locationMode);
   if ("bookingMode" in clean) clean.bookingMode = cleanBookingMode(clean.bookingMode);
+  if (clean.bookingMode === "quote") clean.priceCents = 0;
   if ("photos" in clean && !Array.isArray(clean.photos)) clean.photos = [];
   if ("vertical" in clean && !clean.vertical) clean.vertical = null;
   if ("vertical" in clean) clean.fieldsSchema = fieldsSchemaFor(clean.vertical);

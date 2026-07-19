@@ -156,7 +156,7 @@ export default function ServiceCheckoutScreen({ route, navigation }) {
         </View>
 
         <View style={s.breakdown}>
-          <Row label={t("marketplace.checkout.service")} value={price ? formatCentavos(price) : t("marketplace.detail.quoteFree")} />
+          <Row label={t("marketplace.checkout.service")} value={price ? formatCentavos(price) : t("marketplace.detail.free")} />
           {breakdown && (
             <>
               <Row label={t("marketplace.checkout.kinloFee")} value={formatCentavos(breakdown.platformFeeCentavos)} />
@@ -164,7 +164,7 @@ export default function ServiceCheckoutScreen({ route, navigation }) {
             </>
           )}
           <View style={s.divider} />
-          <Row label={t("marketplace.checkout.total")} value={total ? formatCentavos(total) : t("marketplace.detail.quoteFree")} strong />
+          <Row label={t("marketplace.checkout.total")} value={total ? formatCentavos(total) : t("marketplace.detail.free")} strong />
         </View>
 
         {!isFree && (
