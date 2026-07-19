@@ -252,13 +252,17 @@ exports.activateHost = onCall(async (request) => {
   }
 
   const now = new Date().toISOString();
+  // Don't degrade an existing admin to a plain host: keep their role and grant
+  // hostApproved so they pass isApprovedHost() (the services/rentals gate)
+  // WITHOUT a role change. A normal self-service host instead gets role:"host"
+  // and passes ONLY via the role — so "decide later" (deferHostType) can revoke
+  // it by flipping role back to "user" (no lingering hostApproved). data.role is
+  // the user's own Firestore doc, read server-side (not client input), so this
+  // is not spoofable.
+  const isAdmin = data.role === "admin";
   await userRef.set({
-    // Don't degrade an existing admin to a plain host: an admin already passes
-    // isApprovedHost() once hostApproved is set, so keep their role. Everyone
-    // else becomes a host. hostApproved is the flag the services/rentals gate
-    // reads, so setting it here is what lets the caller through.
-    role: data.role === "admin" ? "admin" : "host",
-    hostApproved: true,
+    role: isAdmin ? "admin" : "host",
+    ...(isAdmin ? {hostApproved: true} : {}),
     hostConfig: {
       type,
       // Only the Stripe status sync may ever set this true. Preserve it rather
