@@ -1445,6 +1445,7 @@
       "requestQuote": "Request a quote",
       "fromPrice": "From {{price}}",
       "quoteFree": "Free quote",
+      "free": "Free",
       "viewPlan": "View plan",
       "plan": "Plan",
       "hostedBy": "Hosted by {{name}}",

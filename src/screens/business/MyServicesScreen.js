@@ -168,7 +168,11 @@ export default function MyServicesScreen({ navigation }) {
             const meta = VERTICAL_META[s.vertical] || VERTICAL_META.wellness;
             const live = isLive(s);
             const badge = live ? colors.success : colors.warning;
-            const price = s.bookingMode === "quote" || !s.priceCents ? t("services.my.quote") : formatCentavos(s.priceCents);
+            const price = s.bookingMode === "quote"
+              ? t("services.my.quote")
+              : !s.priceCents
+              ? t("marketplace.detail.free")
+              : formatCentavos(s.priceCents);
             return (
               <TouchableOpacity
                 key={s.id}

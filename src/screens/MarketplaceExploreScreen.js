@@ -214,8 +214,10 @@ export default function MarketplaceExploreScreen({ navigation, route }) {
                   </Text>
                 </View>
                 <Text style={[s.cardPrice, { color: colors.text }]}>
-                  {l.bookingMode === "quote" || !l.priceCents
+                  {l.bookingMode === "quote"
                     ? t("marketplace.detail.quoteFree")
+                    : !l.priceCents
+                    ? t("marketplace.detail.free")
                     : formatCentavos(l.priceCents)}
                 </Text>
               </TouchableOpacity>

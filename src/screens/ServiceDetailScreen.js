@@ -182,8 +182,10 @@ export default function ServiceDetailScreen({ route, navigation }) {
           <Text style={[s.priceLabel, { color: colors.textSecondary }]}>
             {isPlan
               ? t("marketplace.detail.plan")
-              : isQuote
+              : listing.bookingMode === "quote"
               ? t("marketplace.detail.quoteFree")
+              : isQuote
+              ? t("marketplace.detail.free")
               : t("marketplace.detail.fromPrice", { price: "" }).trim()}
           </Text>
           {(isPlan || !isQuote) && (

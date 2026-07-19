@@ -1445,6 +1445,7 @@
       "requestQuote": "Pedir cotización",
       "fromPrice": "Desde {{price}}",
       "quoteFree": "Cotización gratis",
+      "free": "Gratis",
       "viewPlan": "Ver plan",
       "plan": "Plan",
       "hostedBy": "Anfitrión: {{name}}",
