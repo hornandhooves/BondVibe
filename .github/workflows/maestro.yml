@@ -77,6 +77,8 @@ jobs:
           npm --prefix functions ci
           node scripts/seed-e2e.mjs
 
+      # Batch HOST: login como host aprobado → flujos smoke (provider-publish-photo
+      # crea "Masaje E2E", service-delete lo borra; el orden alfabético lo garantiza).
       - name: Login (host) + run smoke flows
         if: steps.gate.outputs.ready == 'true'
         env:
@@ -85,3 +87,15 @@ jobs:
         run: |
           maestro test -e EMAIL="$HOST_EMAIL" -e PASSWORD="$HOST_PASSWORD" .maestro/login.yaml
           maestro test --include-tags smoke .maestro/flows
+
+      # Batch ADMIN: la regresión KQA-S02 EXIGE una cuenta admin que aún NO es host
+      # (hostApproved != true). Con sesión host daría falso verde, por eso su propio
+      # login + tag "regression" (no "smoke").
+      - name: Login (admin, no host) + run regression flow (KQA-S02)
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+        run: |
+          maestro test -e EMAIL="$ADMIN_EMAIL" -e PASSWORD="$ADMIN_PASSWORD" .maestro/login.yaml
+          maestro test --include-tags regression .maestro/flows

@@ -14,9 +14,21 @@ tags:
 # ============================================================================
 - launchApp:
     clearState: false
-- tapOn: "Servicios"
-- tapOn: "Mis servicios"
-- assertVisible: "Masaje E2E"
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 40000
+- tapOn:
+    id: "tab-services"
+- tapOn:
+    id: "services-my-link"      # link "Mis servicios" en el marketplace
+# La tarjeta es un TouchableOpacity que colapsa el nombre en el a11y tree → el texto
+# "Masaje E2E" NO es matchable; espera el testID del botón de menú, que codifica el
+# nombre y prueba que la lista async ya cargó.
+- extendedWaitUntil:
+    visible:
+      id: "myservice.menu.Masaje E2E"
+    timeout: 15000
 
 # Menú "..." de la tarjeta → Eliminar
 - tapOn:
@@ -24,11 +36,14 @@ tags:
 - assertVisible: "Eliminar servicio"
 - tapOn: "Eliminar servicio"
 
-# El copy de confirmación advierte que es permanente
+# El copy de confirmación advierte que es permanente. Maestro hace full-match del
+# texto del elemento; "Esto no se puede deshacer" es substring del mensaje completo
+# ("Se quitará del marketplace. Esto no se puede deshacer.") → usa regex .*…*.
 - assertVisible: "¿Eliminar este servicio?"
-- assertVisible: "Esto no se puede deshacer"
+- assertVisible: ".*no se puede deshacer.*"
 - tapOn: "Eliminar servicio"
 
-# Desapareció
-- assertNotVisible: "Masaje E2E"
+# Desapareció (el testID del menú de esa tarjeta ya no existe).
+- assertNotVisible:
+    id: "myservice.menu.Masaje E2E"
 - takeScreenshot: service-deleted

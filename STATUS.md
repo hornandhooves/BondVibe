@@ -24,8 +24,17 @@
 ## Features enviadas
 - **Services — flujo de proveedor (P0–P3)** — PR #39, cerrado. "Publicar" es la acción (sin toggle "listar"), con Category, fotos, slot/quote, `at_customer` con gate verified+insured. QA §1/§2/§4/§5 PASS + 2 confirmaciones en vivo (KQA-S02, foto). Design §3 👍.
 
+## E2E / QA automatizado (Maestro) — PR #41 (abierto)
+- **Flujos en `.maestro/flows/`** (iOS), cableados por testID:
+  - `provider-publish-photo` — **VERDE local** ✅ — publica un servicio con foto (stub del picker `EXPO_PUBLIC_E2E=1`) → upload a Storage → aparece en Mis servicios. 17 pasos.
+  - `service-delete` — **VERDE local** ✅ — borra desde Mis servicios con doble confirmación y verifica el copy permanente ("…no se puede deshacer").
+  - `admin-becomes-host-keeps-panel` (regresión KQA-S02) — **PENDIENTE** ⏳ — necesita la cuenta seed **admin-no-host** (`hostApproved != true`); con sesión host da falso verde. `scripts/seed-e2e.mjs` la crea.
+- **CI** `.github/workflows/maestro.yml` (macOS): **NO-BLOQUEANTE** hasta que existan el secret `E2E_FIREBASE_SA_JSON` **y** la build de test standalone (`EXPO_PUBLIC_E2E=1`). Dos batches: login host → smoke; login admin → regression.
+- **Verde local** se logra con `launchApp: stopApp:false` porque el **dev-client sobre Metro NO es target válido** para Maestro (el relaunch re-bundlea y crashea XCUITest: `kAXErrorInvalidUIElement`). El CI necesita la build standalone (sin Metro), que da aislamiento por flujo con el relaunch normal.
+- testIDs agregados: `tab-*`, `services-publish-fab`, `services-my-link`, `publish.name`, `cat-<vertical>`, `service-add-photo`, `publish.photo.<i>`, `service-publish-cta`, `myservice.menu.<nombre>`, `home.avatar`, `login-submit`, `keyboard.done` (KeyboardAccessory).
+
 ## Pendientes abiertos
-- _(ninguno en este workstream)_
+- **Seed E2E admin-no-host** para dejar verde `admin-becomes-host-keeps-panel` (+ secret CI + build test standalone). Ver `.maestro/README.md`.
 
 ---
 

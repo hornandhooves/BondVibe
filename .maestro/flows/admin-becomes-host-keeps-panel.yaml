@@ -1,6 +1,7 @@
 appId: com.kinlo.app  # confirmado: app.json → expo.ios.bundleIdentifier
+# tag SOLO "regression" (no "smoke"): este flujo exige sesión ADMIN-no-host, así que
+# corre en su propio batch con login admin, no en el smoke que usa sesión host.
 tags:
-  - smoke
   - regression
 ---
 # ============================================================================
@@ -16,10 +17,16 @@ tags:
 # ============================================================================
 - launchApp:
     clearState: false
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 40000
 
-# Disparar become-host desde Servicios
-- tapOn: "Servicios"
-- tapOn: "Publicar servicio"
+# Disparar become-host desde Servicios (selectores por testID, ver README)
+- tapOn:
+    id: "tab-services"
+- tapOn:
+    id: "services-publish-fab"
 - extendedWaitUntil:
     visible: "Empezar gratis"    # gate/onboarding de anfitrión para admin-no-host
     timeout: 10000
@@ -37,8 +44,10 @@ tags:
 - takeScreenshot: kqa-s02-admin-badge
 
 # (2) Ahora puede publicar (form, no gate)
-- tapOn: "Servicios"
-- tapOn: "Publicar servicio"
+- tapOn:
+    id: "tab-services"
+- tapOn:
+    id: "services-publish-fab"
 - assertVisible: "Publicar un servicio"
 - assertNotVisible: "Empezar gratis"
 - takeScreenshot: kqa-s02-publish-opens
