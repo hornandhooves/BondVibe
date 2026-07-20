@@ -1,0 +1,103 @@
+rules_version = '2';
+
+// ============================================================================
+// FIXTURE — DO NOT DEPLOY. Faithful copy of the PRE-FIX rules for the four
+// Firestore privesc findings, kept only so the tests can DEMONSTRATE that each
+// exploit really worked before fix/security-rules-privesc. Every rule below is
+// verbatim from firestore.rules @ main (b55c591); only unrelated collections
+// are omitted.
+//
+// If a test asserts an exploit succeeds here and fails against the real rules,
+// the finding is proven and the fix is confirmed.
+// ============================================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+             (request.auth.token.admin == true ||
+              get(/databases/$(database)/documents/users/$(request.auth.uid))
+                .data.role == 'admin');
+    }
+
+    function isApprovedHost() {
+      return isSignedIn() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid))
+          .data.get('hostApproved', false) == true ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid))
+          .data.get('role', 'user') == 'host'
+      );
+    }
+
+    function isBizOwnerUid(bizId) {
+      return isSignedIn() && (
+        !exists(/databases/$(database)/documents/businesses/$(bizId))
+          ? request.auth.uid == bizId
+          : get(/databases/$(database)/documents/businesses/$(bizId)).data.get('ownerUid', bizId) == request.auth.uid
+      );
+    }
+
+    function isBizStaff(bizId) {
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/businesses/$(bizId)/staff/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/businesses/$(bizId)/staff/$(request.auth.uid)).data.get('status', 'active') == 'active';
+    }
+
+    // FINDING 1 (create) + 3 (suspended) + 4 (matchmaking.freeTrialEndsAt):
+    // hostApproved/hostConfig missing from the CREATE denylist; suspended and
+    // the matchmaking entitlement subfield missing from the UPDATE guard.
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isOwner(userId) &&
+                       !request.resource.data.keys()
+                          .hasAny(['hostStats', 'carpoolStats', 'isPremium',
+                                   'plan', 'matchCountByEvent',
+                                   'handle', 'handleLower']) &&
+                       request.resource.data.get('role', 'user') == 'user';
+      allow update: if isAdmin() ||
+                       (isOwner(userId) &&
+                        !request.resource.data.diff(resource.data)
+                          .affectedKeys()
+                          .hasAny(['hostStats', 'carpoolStats', 'isPremium',
+                                   'plan', 'matchCountByEvent', 'hostApproved',
+                                   'handle', 'handleLower', 'role',
+                                   'hostConfig']));
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    // FINDING 5: unrestricted owner update lets 'status' desync the rental
+    // state machine.
+    match /vehicles/{vehicleId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isApprovedHost() &&
+                       request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() &&
+                       (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() &&
+                       (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    // FINDING 2: unrestricted staff-or-owner update → ownerUid takeover and
+    // self-granted verified/insured.
+    match /businesses/{bizId} {
+      allow read: if isBizStaff(bizId) || isBizOwnerUid(bizId);
+      allow create: if isBizOwnerUid(bizId);
+      allow update: if isBizStaff(bizId) || isBizOwnerUid(bizId);
+      allow delete: if isBizOwnerUid(bizId);
+
+      match /staff/{staffUid} {
+        allow read: if isBizStaff(bizId) || isBizOwnerUid(bizId) ||
+                       (isSignedIn() && staffUid == request.auth.uid);
+        allow write: if isBizOwnerUid(bizId);
+      }
+    }
+  }
+}

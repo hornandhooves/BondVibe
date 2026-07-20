@@ -114,11 +114,18 @@ service cloud.firestore {
       // set by the user, not even at account creation. New accounts must be a
       // plain 'user': 'admin' is granted only by an existing admin, and 'host'
       // only by the activateHost function (see the update rule below).
+      //
+      // PRIVESC (fix/security-rules-privesc): hostApproved + hostConfig were
+      // absent from this denylist, so a modified client could create its own
+      // account with hostApproved: true. isApprovedHost() trusts that flag, so
+      // the whole admin-approval step was bypassable at signup — the update
+      // rule below blocked it, but create never did.
       allow create: if isSignedIn() && isOwner(userId) &&
                        !request.resource.data.keys()
                           .hasAny(['hostStats', 'carpoolStats', 'isPremium',
                                    'plan', 'matchCountByEvent',
-                                   'handle', 'handleLower']) &&
+                                   'handle', 'handleLower',
+                                   'hostApproved', 'hostConfig']) &&
                        request.resource.data.get('role', 'user') == 'user';
 
       // The owner can edit their profile but NOT hostStats/carpoolStats (host
@@ -133,6 +140,17 @@ service cloud.firestore {
       // released by deferHostType — both run with the Admin SDK, which bypasses
       // these rules — so what the UI promises is what the backend enforces.
       // 'admin' remains exclusive to the isAdmin() branch.
+      //
+      // 'suspended' is admin-only state (adminService.suspendUser). Without it
+      // in the denylist a suspended account could simply un-suspend itself.
+      // isAdmin() short-circuits above, so admins still suspend/reinstate.
+      //
+      // matchmaking.* stays self-writable — MatchConsent writes consentAt and
+      // MatchmakingSettings writes enabled/paused, both client-side with no
+      // Cloud Function behind them. But matchmaking.freeTrialEndsAt is an
+      // ENTITLEMENT: curatedGate.gateFor() unlocks Curated Matching while
+      // now < freeTrialEndsAt, so a self-write granted unlimited free Plus.
+      // Pin that one subfield to its stored value instead of locking the map.
       allow update: if isAdmin() ||
                        (isOwner(userId) &&
                         !request.resource.data.diff(resource.data)
@@ -140,7 +158,11 @@ service cloud.firestore {
                           .hasAny(['hostStats', 'carpoolStats', 'isPremium',
                                    'plan', 'matchCountByEvent', 'hostApproved',
                                    'handle', 'handleLower', 'role',
-                                   'hostConfig'])) ||
+                                   'hostConfig', 'suspended']) &&
+                        request.resource.data.get('matchmaking', {})
+                          .get('freeTrialEndsAt', null) ==
+                        resource.data.get('matchmaking', {})
+                          .get('freeTrialEndsAt', null)) ||
                        // Cross-account push-token de-dup: any user may CLEAR a
                        // stale token (set null) on any doc, but cannot point
                        // another user's token at their own device (hijack).
@@ -616,8 +638,16 @@ service cloud.firestore {
       // closes the model-A hole where any signed-in user could create a vehicle.
       allow create: if isSignedIn() && isApprovedHost() &&
                        request.resource.data.ownerId == request.auth.uid;
+      // 'status' belongs to the rental state machine ("reserved" is written by
+      // reserveVehicle, cleared by completeRental / expireReservations — all
+      // Admin SDK). The owner could previously set it directly and desync that
+      // machine, e.g. clear "reserved" out from under a paid reservation and
+      // re-let the vehicle. Admins keep the escape hatch for support.
       allow update: if isSignedIn() &&
-                       (resource.data.ownerId == request.auth.uid || isAdmin());
+                       (isAdmin() ||
+                        (resource.data.ownerId == request.auth.uid &&
+                         !request.resource.data.diff(resource.data)
+                           .affectedKeys().hasAny(['status'])));
       allow delete: if isSignedIn() &&
                        (resource.data.ownerId == request.auth.uid || isAdmin());
     }
@@ -940,7 +970,16 @@ service cloud.firestore {
     match /businesses/{bizId} {
       allow read: if isBizStaff(bizId) || isBizOwnerUid(bizId);
       allow create: if isBizOwnerUid(bizId);
-      allow update: if isBizStaff(bizId) || isBizOwnerUid(bizId);
+      // PRIVESC (fix/security-rules-privesc): this was an unrestricted
+      // staff-or-owner update, so ANY staff member could rewrite ownerUid and
+      // take the business over (isBizOwnerUid reads that very field), or flip
+      // verified/insured — the admin-granted flags that isVerifiedInsured()
+      // uses to allow at_customer service listings. All three are granted
+      // server-side (Admin SDK bypasses these rules), so no client may set them.
+      allow update: if (isBizStaff(bizId) || isBizOwnerUid(bizId)) &&
+                       !request.resource.data.diff(resource.data)
+                         .affectedKeys()
+                         .hasAny(['ownerUid', 'verified', 'insured']);
       allow delete: if isBizOwnerUid(bizId);
 
       // Staff roster — only the owner manages staff (v1). An invitee may read

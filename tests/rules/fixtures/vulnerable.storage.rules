@@ -1,0 +1,33 @@
+rules_version = '2';
+
+// ============================================================================
+// FIXTURE — DO NOT DEPLOY. Faithful copy of the PRE-FIX storage rule for the
+// expense-receipt leak, so the test can DEMONSTRATE that any signed-in user
+// really could read any business's receipts before fix/security-rules-privesc.
+// Verbatim from storage.rules @ main (b55c591); unrelated paths omitted.
+// ============================================================================
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isImageUnder(maxBytes) {
+      return request.resource.size < maxBytes &&
+             request.resource.contentType in
+               ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic'];
+    }
+
+    // FINDING 6: read was world-readable to any signed-in user.
+    match /businesses/{bizId}/expenses/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == bizId &&
+                      isImageUnder(10 * 1024 * 1024);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -70,9 +70,16 @@ service firebase.storage {
 
     // Business expense receipts (P&L). v1: bizId === the owner's uid, so the
     // owner uploads under their own namespace — mirrors the uid-scoped rules
-    // above. The receipt URL is only referenced by the finance-gated expense doc.
+    // above.
+    //
+    // LEAK (fix/security-rules-privesc): read was `isSignedIn()`, so ANY signed-in
+    // user could fetch ANY business's expense receipts — invoices, amounts,
+    // vendor and bank details. The old note ("the URL is only referenced by the
+    // finance-gated expense doc") was security by obscurity: the Firestore gate
+    // on businesses/{bizId}/expenses never protected the Storage object, and
+    // this path is enumerable. Read is now scoped to the owner, matching write.
     match /businesses/{bizId}/expenses/{fileName} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && request.auth.uid == bizId;
       allow write: if isSignedIn() && request.auth.uid == bizId &&
                       isImageUnder(10 * 1024 * 1024);
     }
