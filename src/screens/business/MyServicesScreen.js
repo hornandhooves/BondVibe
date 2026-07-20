@@ -198,7 +198,7 @@ export default function MyServicesScreen({ navigation }) {
                     <Text style={[styles.badgeTxt, { color: badge }]}>{t(live ? "services.my.live" : "services.my.paused")}</Text>
                   </View>
                 </View>
-                <TouchableOpacity onPress={() => openMenu(s)} hitSlop={hit} testID={`service-menu-${s.id}`}>
+                <TouchableOpacity onPress={() => openMenu(s)} hitSlop={hit} testID={`myservice.menu.${s.name}`}>
                   <Icon name="more" size={22} color={colors.textSecondary} />
                 </TouchableOpacity>
               </TouchableOpacity>

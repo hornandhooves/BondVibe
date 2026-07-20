@@ -1,0 +1,37 @@
+appId: com.kinlo.app
+---
+# ============================================================================
+# login.yaml — flujo reutilizable de login (evita hardcodear credenciales).
+#
+# Uso desde otro flujo:
+#   - runFlow:
+#       file: ../login.yaml
+#       env:
+#         EMAIL: ${HOST_EMAIL}
+#         PASSWORD: ${HOST_PASSWORD}
+#
+# O invócalo suelto para dejar la sesión sembrada y luego correr los flujos
+# (que usan clearState:false):
+#   maestro test -e EMAIL=... -e PASSWORD=... .maestro/login.yaml
+#
+# Las cuentas las crea scripts/seed-e2e.mjs (host aprobado / admin-no-host).
+# testIDs: login-email, login-password, login-submit (LoginScreen), tab-home.
+# ============================================================================
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-email"
+- tapOn:
+    id: "login-email"
+- inputText: ${EMAIL}
+- tapOn:
+    id: "login-password"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "login-submit"
+# Aterriza en Home (tab-home) = login OK.
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 30000

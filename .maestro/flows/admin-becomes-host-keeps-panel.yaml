@@ -1,0 +1,44 @@
+appId: com.kinlo.app  # confirmado: app.json → expo.ios.bundleIdentifier
+tags:
+  - smoke
+  - regression
+---
+# ============================================================================
+# admin-becomes-host-keeps-panel.yaml   (REGRESIÓN KQA-S02)
+# Un ADMIN que aún NO es host recorre become-host → activateHost, y debe:
+#   (1) conservar badge "Admin" + "Panel de administración" (no degradado a host)
+#   (2) poder abrir el formulario de publicar (no el gate)
+# Protege el fix admin-safe (commit 42386db) contra futuras regresiones.
+#
+# PREREQUISITO CRÍTICO: sesión como cuenta ADMIN que todavía NO es host
+#   (hostApproved != true). Con una cuenta que YA es host, este test no
+#   ejercita la transición y da FALSO VERDE. Ver README → seed.
+# ============================================================================
+- launchApp:
+    clearState: false
+
+# Disparar become-host desde Servicios
+- tapOn: "Servicios"
+- tapOn: "Publicar servicio"
+- extendedWaitUntil:
+    visible: "Empezar gratis"    # gate/onboarding de anfitrión para admin-no-host
+    timeout: 10000
+- tapOn: "Empezar gratis"        # → activateHost (fix admin-safe)
+- extendedWaitUntil:
+    visible: "Tu comunidad está activa"
+    timeout: 20000
+- tapOn: "Prefiero explorar primero"
+
+# (1) NO degradado: badge Admin + Panel siguen
+- tapOn:
+    id: "home.avatar"            # AppHeader avatar (testID home.avatar)
+- assertVisible: "Admin"
+- assertVisible: "Panel de administración"
+- takeScreenshot: kqa-s02-admin-badge
+
+# (2) Ahora puede publicar (form, no gate)
+- tapOn: "Servicios"
+- tapOn: "Publicar servicio"
+- assertVisible: "Publicar un servicio"
+- assertNotVisible: "Empezar gratis"
+- takeScreenshot: kqa-s02-publish-opens

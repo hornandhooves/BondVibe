@@ -54,6 +54,9 @@ export function ServiceHostGate({ navigation, onBack }) {
 }
 
 const MAX_PHOTOS = 5;
+// E2E (Maestro): the native image picker is non-deterministic, so a test build
+// (EXPO_PUBLIC_E2E=1) skips it and adds a fixed bundled asset — see .maestro/README.
+const E2E = process.env.EXPO_PUBLIC_E2E === "1";
 
 export default function PublishServiceScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
@@ -117,6 +120,12 @@ export default function PublishServiceScreen({ navigation, route }) {
   useFocusEffect(useCallback(() => { if (approved) load(); }, [approved, load]));
 
   const pickImages = async () => {
+    if (E2E) {
+      // Deterministic stub: add a fixed bundled asset instead of the OS picker.
+      const uri = Image.resolveAssetSource(require("../../../assets/icon.png")).uri;
+      setPhotos((prev) => [...prev, uri].slice(0, MAX_PHOTOS));
+      return;
+    }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) return;
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -268,7 +277,7 @@ export default function PublishServiceScreen({ navigation, route }) {
             onChangeText={setName}
             placeholder={t("services.publish.namePlaceholder")}
             placeholderTextColor={colors.textTertiary}
-            testID="service-name"
+            testID="publish.name"
           />
           <Text style={[styles.fieldLabel, { color: colors.text }]}>{t("services.publish.category")}</Text>
           <View style={styles.chipsWrap}>
@@ -338,8 +347,8 @@ export default function PublishServiceScreen({ navigation, route }) {
           />
           <Text style={[styles.fieldLabel, { color: colors.text }]}>{t("services.publish.photos")}</Text>
           <View style={styles.photosRow}>
-            {photos.map((uri) => (
-              <View key={uri} style={styles.photoWrap}>
+            {photos.map((uri, i) => (
+              <View key={uri} style={styles.photoWrap} testID={`publish.photo.${i}`}>
                 <Image source={{ uri }} style={styles.photo} />
                 <TouchableOpacity style={[styles.photoRemove, { backgroundColor: colors.background }]} onPress={() => removePhoto(uri)}>
                   <Icon name="close" size={13} color={colors.text} />

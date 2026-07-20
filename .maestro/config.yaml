@@ -1,0 +1,10 @@
+# .maestro/config.yaml — Maestro workspace config
+# Docs: https://maestro.mobile.dev
+# Colócalo en la raíz del repo como  .maestro/config.yaml
+
+flows:
+  - "flows/*.yaml"
+
+# En CI corre solo el humo:  maestro test --include-tags smoke .maestro
+includeTags: []
+excludeTags: []

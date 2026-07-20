@@ -1,0 +1,34 @@
+appId: com.kinlo.app  # confirmado: app.json → expo.ios.bundleIdentifier
+tags:
+  - smoke
+  - services
+---
+# ============================================================================
+# service-delete.yaml   (S-obs-1: borrado duro con copy claro)
+# Borra un servicio desde "Mis servicios" y verifica que la confirmación deja
+# claro que es PERMANENTE ("no se puede deshacer"). También limpia el dato de
+# prueba que dejó provider-publish-photo.
+#
+# PREREQUISITO: host aprobado con un servicio "Masaje E2E" (córrelo después de
+#   provider-publish-photo, o seedéalo). README → seed.
+# ============================================================================
+- launchApp:
+    clearState: false
+- tapOn: "Servicios"
+- tapOn: "Mis servicios"
+- assertVisible: "Masaje E2E"
+
+# Menú "..." de la tarjeta → Eliminar
+- tapOn:
+    id: "myservice.menu.Masaje E2E"   # testID myservice.menu.<nombre> (MyServicesScreen)
+- assertVisible: "Eliminar servicio"
+- tapOn: "Eliminar servicio"
+
+# El copy de confirmación advierte que es permanente
+- assertVisible: "¿Eliminar este servicio?"
+- assertVisible: "Esto no se puede deshacer"
+- tapOn: "Eliminar servicio"
+
+# Desapareció
+- assertNotVisible: "Masaje E2E"
+- takeScreenshot: service-deleted

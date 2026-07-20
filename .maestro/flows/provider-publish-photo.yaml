@@ -1,0 +1,49 @@
+appId: com.kinlo.app  # confirmado: app.json → expo.ios.bundleIdentifier
+tags:
+  - smoke
+  - services
+---
+# ============================================================================
+# provider-publish-photo.yaml
+# Un anfitrión APROBADO publica un servicio con foto y lo ve en "Mis servicios".
+# Cubre el upload a Storage (storage.rules) end-to-end — el recorrido que se
+# probó a mano y que NO debe volver a probarse a mano.
+#
+# PREREQUISITO: sesión iniciada como host aprobado (README → seed).
+# SELECTORES: texto visible en ES; sustituir por testID donde se pueda (README).
+# FOTO: pre-concedo el permiso; para CI determinista, stub del picker (README).
+# ============================================================================
+- launchApp:
+    permissions:
+      photos: allow
+    clearState: false            # conserva la sesión seed
+
+- tapOn: "Servicios"
+- assertVisible: "Publicar servicio"
+- tapOn: "Publicar servicio"
+- assertVisible: "Publicar un servicio"   # si sale el gate aquí, el seed NO es host aprobado
+
+# Nombre + categoría
+- tapOn:
+    id: "publish.name"
+- inputText: "Masaje E2E"
+- hideKeyboard
+- tapOn: "Bienestar"
+
+# Foto: build de test con EXPO_PUBLIC_E2E=1 → "Agregar" añade un asset fijo del
+# bundle (stub del picker en PublishServiceScreen); sin picker nativo frágil.
+- tapOn: "Agregar"
+- assertVisible:
+    id: "publish.photo.0"
+
+# Publicar → éxito
+- tapOn: "Publicar en el marketplace"
+- extendedWaitUntil:
+    visible: "Publicado"
+    timeout: 20000
+- tapOn: "OK"
+
+# Aparece en Mis servicios
+- tapOn: "Mis servicios"
+- assertVisible: "Masaje E2E"
+- takeScreenshot: publish-photo-success

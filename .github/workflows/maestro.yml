@@ -1,0 +1,87 @@
+name: Maestro E2E (Services)
+
+# Re-verifica los recorridos críticos de Services (los que se probaban a mano):
+# publicar con foto (upload a Storage), regresión KQA-S02 (admin conserva Panel),
+# y borrado de servicio. Corre en PRs que tocan esas superficies.
+#
+# NO-BLOQUEANTE hasta cablear build+seed: si falta el secret E2E_FIREBASE_SA_JSON,
+# el job hace skip y pasa (verde) — así no frena los PRs. En cuanto se agregue el
+# secret (+ build de test), los pasos reales se activan solos y empiezan a exigir.
+on:
+  pull_request:
+    paths:
+      - "src/screens/business/**"
+      - "src/services/businessSessionsService.js"
+      - "src/components/AppHeader.js"
+      - "storage.rules"
+      - ".maestro/**"
+  workflow_dispatch: {}
+
+jobs:
+  e2e:
+    name: Maestro (iOS Simulator, smoke)
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gate — ¿hay secrets de E2E?
+        id: gate
+        env:
+          SA: ${{ secrets.E2E_FIREBASE_SA_JSON }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Maestro E2E::Skipping — falta E2E_FIREBASE_SA_JSON (+ build de test EXPO_PUBLIC_E2E=1). Ver .maestro/README.md. Job verde para no bloquear."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.ready == 'true'
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install deps
+        if: steps.gate.outputs.ready == 'true'
+        run: npm ci
+
+      - name: Install Maestro
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      # BUILD DE TEST con el stub del picker (EXPO_PUBLIC_E2E=1). El repo no hace
+      # build nativo en CI por política, así que hay que construir aquí
+      # (expo prebuild + xcodebuild a un derivedData) o bajar un .app artefacto,
+      # e instalarlo: xcrun simctl install booted path/to/Kinlo.app. TODO.
+      - name: Build + install test app
+        if: steps.gate.outputs.ready == 'true'
+        env: { EXPO_PUBLIC_E2E: "1" }
+        run: |
+          echo "TODO: build EXPO_PUBLIC_E2E=1 + xcrun simctl install booted Kinlo.app"
+          exit 1  # protege contra un falso verde mientras el build no esté cableado
+
+      - name: Seed E2E accounts
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/sa.json
+          HOST_EMAIL: ${{ secrets.E2E_HOST_EMAIL }}
+          HOST_PASSWORD: ${{ secrets.E2E_HOST_PASSWORD }}
+          ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+        run: |
+          printf '%s' '${{ secrets.E2E_FIREBASE_SA_JSON }}' > sa.json
+          npm --prefix functions ci
+          node scripts/seed-e2e.mjs
+
+      - name: Login (host) + run smoke flows
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          HOST_EMAIL: ${{ secrets.E2E_HOST_EMAIL }}
+          HOST_PASSWORD: ${{ secrets.E2E_HOST_PASSWORD }}
+        run: |
+          maestro test -e EMAIL="$HOST_EMAIL" -e PASSWORD="$HOST_PASSWORD" .maestro/login.yaml
+          maestro test --include-tags smoke .maestro/flows
