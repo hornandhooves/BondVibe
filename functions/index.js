@@ -972,8 +972,17 @@ exports.createMembershipPaymentIntent = onRequest(
         stripe = require("stripe")(stripeSecretKey.value());
       }
 
-      const {planId, userId} = req.body;
-      if (!planId || !userId) {
+      // AUTH: the buyer is the verified caller, not a body-supplied userId.
+      // This endpoint had NO auth at all: anyone could POST an arbitrary userId
+      // and mint a PaymentIntent whose metadata.userId decides who the webhook
+      // grants the membership to (and whose email receives the Stripe receipt).
+      const caller = await verifyBearer(req);
+      if (!caller) {
+        return res.status(401).json({error: "unauthenticated"});
+      }
+      const userId = caller.uid;
+      const {planId} = req.body;
+      if (!planId) {
         return res.status(400).json({error: "Missing required fields"});
       }
 
@@ -1099,8 +1108,17 @@ exports.createPromotionPaymentIntent = onRequest(
       if (!stripe) {
         stripe = require("stripe")(stripeSecretKey.value());
       }
-      const {eventId, planId, userId} = req.body;
-      if (!eventId || !planId || !userId) {
+      // AUTH: the promoter is the verified caller, not a body-supplied userId.
+      // Unauthenticated before, so the "only the host may promote" check below
+      // was decorative — it compared the event's creator against a value the
+      // caller controlled.
+      const caller = await verifyBearer(req);
+      if (!caller) {
+        return res.status(401).json({error: "unauthenticated"});
+      }
+      const userId = caller.uid;
+      const {eventId, planId} = req.body;
+      if (!eventId || !planId) {
         return res.status(400).json({error: "Missing required fields"});
       }
 
@@ -1189,80 +1207,95 @@ exports.reserveMembershipCredit = onCall(async (request) => {
   const hostId = getEventCreatorId(eventData);
   const creditCost = eventData.creditCost || 1;
 
-  // Already reserved for this event?
-  const dupe = await db
-    .collection("membershipReservations")
-    .where("eventId", "==", eventId)
-    .where("userId", "==", uid)
-    .where("status", "==", "reserved")
-    .limit(1)
-    .get();
-  if (!dupe.empty) {
-    return {success: true, reservationId: dupe.docs[0].id, alreadyReserved: true};
-  }
+  // The credit check and the hold must be ONE atomic step. Read-then-write let
+  // two concurrent RSVPs both count the same `holdsSnap` and both reserve, so a
+  // membership could be over-booked past creditsRemaining (and the duplicate
+  // check could double-book the same user). Mirrors reserveVehicle: every read
+  // happens before any write, and Firestore retries the block on contention.
+  const result = await db.runTransaction(async (tx) => {
+    // --- reads ---
+    // Already reserved for this event?
+    const dupe = await tx.get(
+      db
+        .collection("membershipReservations")
+        .where("eventId", "==", eventId)
+        .where("userId", "==", uid)
+        .where("status", "==", "reserved")
+        .limit(1),
+    );
+    if (!dupe.empty) {
+      return {success: true, reservationId: dupe.docs[0].id, alreadyReserved: true};
+    }
 
-  // Find the user's active memberships with this host.
-  const membershipsSnap = await db
-    .collection("memberships")
-    .where("userId", "==", uid)
-    .where("hostId", "==", hostId)
-    .get();
+    // Find the user's active memberships with this host.
+    const membershipsSnap = await tx.get(
+      db
+        .collection("memberships")
+        .where("userId", "==", uid)
+        .where("hostId", "==", hostId),
+    );
 
-  const now = Date.now();
-  const candidates = membershipsSnap.docs
-    .map((d) => ({id: d.id, ...d.data()}))
-    .filter((m) => {
-      const exp = m.expiresAt?.toMillis ? m.expiresAt.toMillis() : 0;
-      return m.status !== "cancelled" && exp > now;
+    const now = Date.now();
+    const candidates = membershipsSnap.docs
+      .map((d) => ({id: d.id, ...d.data()}))
+      .filter((m) => {
+        const exp = m.expiresAt?.toMillis ? m.expiresAt.toMillis() : 0;
+        return m.status !== "cancelled" && exp > now;
+      });
+
+    if (candidates.length === 0) {
+      throw new HttpsError("failed-precondition", "No active membership with this host.");
+    }
+
+    // Every membership is credit-based (no unlimited): pick the soonest-expiring
+    // one that has enough credits left after active holds.
+    let chosen = null;
+    for (const m of candidates.sort(
+      (a, b) => (a.expiresAt?.toMillis() || 0) - (b.expiresAt?.toMillis() || 0),
+    )) {
+      const holdsSnap = await tx.get(
+        db
+          .collection("membershipReservations")
+          .where("membershipId", "==", m.id)
+          .where("status", "==", "reserved"),
+      );
+      const available = (m.creditsRemaining || 0) - holdsSnap.size;
+      if (available >= creditCost) {
+        chosen = m;
+        break;
+      }
+    }
+
+    if (!chosen) {
+      throw new HttpsError(
+        "failed-precondition",
+        "No credits left. Please renew your membership or pay for this class.",
+      );
+    }
+
+    // --- writes ---
+    const reservationRef = db.collection("membershipReservations").doc();
+    tx.set(reservationRef, {
+      membershipId: chosen.id,
+      userId: uid,
+      hostId,
+      eventId,
+      eventTitle: eventData.title || "",
+      creditCost,
+      membershipType: chosen.type,
+      status: "reserved",
+      reservedAt: FieldValue.serverTimestamp(),
     });
 
-  if (candidates.length === 0) {
-    throw new HttpsError("failed-precondition", "No active membership with this host.");
-  }
+    // Add the user to the event attendees.
+    tx.update(db.collection("events").doc(eventId), {
+      attendees: FieldValue.arrayUnion(uid),
+    });
 
-  // Every membership is credit-based (no unlimited): pick the soonest-expiring
-  // one that has enough credits left after active holds.
-  let chosen = null;
-  for (const m of candidates.sort(
-    (a, b) => (a.expiresAt?.toMillis() || 0) - (b.expiresAt?.toMillis() || 0),
-  )) {
-    const holdsSnap = await db
-      .collection("membershipReservations")
-      .where("membershipId", "==", m.id)
-      .where("status", "==", "reserved")
-      .get();
-    const available = (m.creditsRemaining || 0) - holdsSnap.size;
-    if (available >= creditCost) {
-      chosen = m;
-      break;
-    }
-  }
-
-  if (!chosen) {
-    throw new HttpsError(
-      "failed-precondition",
-      "No credits left. Please renew your membership or pay for this class.",
-    );
-  }
-
-  const reservationRef = await db.collection("membershipReservations").add({
-    membershipId: chosen.id,
-    userId: uid,
-    hostId,
-    eventId,
-    eventTitle: eventData.title || "",
-    creditCost,
-    membershipType: chosen.type,
-    status: "reserved",
-    reservedAt: FieldValue.serverTimestamp(),
+    return {success: true, reservationId: reservationRef.id};
   });
 
-  // Add the user to the event attendees.
-  await db.collection("events").doc(eventId).update({
-    attendees: FieldValue.arrayUnion(uid),
-  });
-
-  return {success: true, reservationId: reservationRef.id};
+  return result;
 });
 
 /**

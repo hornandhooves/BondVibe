@@ -54,8 +54,12 @@ export const createPromotionPaymentIntent = async (eventId, planId) => {
       `${FUNCTIONS_BASE_URL}/createPromotionPaymentIntent`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId, planId, userId }),
+        headers: {
+          "Content-Type": "application/json",
+          // Identity comes from this token; the server ignores any body userId.
+          Authorization: `Bearer ${await auth.currentUser.getIdToken()}`,
+        },
+        body: JSON.stringify({ eventId, planId }),
       }
     );
     const data = await response.json();

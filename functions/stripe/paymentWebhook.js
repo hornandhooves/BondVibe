@@ -459,6 +459,20 @@ async function handleEventTicketPurchase(paymentIntent) {
     throw new Error("Missing required metadata in payment intent");
   }
 
+  // Idempotency: if this payment was already processed, skip. Stripe retries a
+  // webhook whenever the endpoint is slow or returns non-2xx, and this was the
+  // only payment-intent handler without the guard — a retry re-ran the blind
+  // `.set()` below and would stamp status back to "succeeded" over any later
+  // state (e.g. a refund/dispute recorded on the payment doc).
+  const existingPayment = await db
+    .collection("payments")
+    .doc(paymentIntentId)
+    .get();
+  if (existingPayment.exists) {
+    console.log("⏭️ Event ticket payment already processed, skipping");
+    return;
+  }
+
   // 1. Save payment record
   console.log("💾 Saving payment record...");
   const paymentData = {

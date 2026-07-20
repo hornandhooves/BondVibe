@@ -218,8 +218,12 @@ export const createMembershipPaymentIntent = async (planId) => {
       `${FUNCTIONS_BASE_URL}/createMembershipPaymentIntent`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId, userId }),
+        headers: {
+          "Content-Type": "application/json",
+          // Identity comes from this token; the server ignores any body userId.
+          Authorization: `Bearer ${await auth.currentUser.getIdToken()}`,
+        },
+        body: JSON.stringify({ planId }),
       }
     );
 
