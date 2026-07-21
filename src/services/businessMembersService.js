@@ -25,6 +25,7 @@ import {
   serverTimestamp,
   increment,
 } from "firebase/firestore";
+import * as Crypto from "expo-crypto";
 import { db, auth } from "./firebase";
 import { getMyBizId } from "./businessService";
 
@@ -70,9 +71,34 @@ const memberRef = (bizId, id) => doc(db, "businesses", bizId, "members", id);
 /** Public member doc ref (used by packages/attendance services). */
 export const memberRefFor = (bizId, id) => doc(db, "businesses", bizId, "members", id);
 
+// Guest-code suffix length. SECURITY (fix/privacy-guestcode-joinevent): was 4
+// chars from Math.random() (~10^6 space, predictable RNG) → brute-forceable to
+// redeem a stranger's pass. Now 8 CSPRNG chars ≈ 31^8 ≈ 8.5e11, and the redeem
+// callable is per-uid rate-limited server-side.
+const CODE_SUFFIX_LEN = 8;
+
 /**
- * Generate a short, human-shareable guest code, e.g. "RITMO-7F3K".
- * Prefix derived from the business name; 4 random unambiguous chars.
+ * A cryptographically-random suffix over CODE_ALPHABET, uniform (rejection
+ * sampling removes modulo bias), via expo-crypto's secure RNG — NOT Math.random.
+ * @param {number} len number of characters
+ * @return {string} the random suffix
+ */
+function secureCodeSuffix(len) {
+  const A = CODE_ALPHABET.length; // 31
+  const maxUnbiased = 256 - (256 % A); // 248 — reject bytes >= this to stay uniform
+  let out = "";
+  while (out.length < len) {
+    const bytes = Crypto.getRandomBytes(len); // secure; top up if rejections thin it
+    for (let i = 0; i < bytes.length && out.length < len; i++) {
+      if (bytes[i] < maxUnbiased) out += CODE_ALPHABET[bytes[i] % A];
+    }
+  }
+  return out;
+}
+
+/**
+ * Generate a short, human-shareable guest code, e.g. "RITMO-7F3KQ9A2".
+ * Prefix derived from the business name; 8 CSPRNG unambiguous chars.
  */
 export function generateGuestCode(businessName = "") {
   const prefix =
@@ -80,11 +106,7 @@ export function generateGuestCode(businessName = "") {
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, "")
       .slice(0, 6) || "KINLO";
-  let suffix = "";
-  for (let i = 0; i < 4; i++) {
-    suffix += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
-  }
-  return `${prefix}-${suffix}`;
+  return `${prefix}-${secureCodeSuffix(CODE_SUFFIX_LEN)}`;
 }
 
 /**

@@ -82,10 +82,20 @@ jest.mock("expo-apple-authentication", () => {
     AppleAuthenticationButton: () => React.createElement("View", null),
   };
 });
-jest.mock("expo-crypto", () => ({
-  digestStringAsync: jest.fn(() => Promise.resolve("hash")),
-  CryptoDigestAlgorithm: { SHA256: "SHA256" },
-}));
+jest.mock("expo-crypto", () => {
+  // Stateful counter so successive getRandomBytes() calls differ; every byte is
+  // < 248 so the guest-code rejection sampler always terminates in one pass.
+  let c = 7;
+  return {
+    digestStringAsync: jest.fn(() => Promise.resolve("hash")),
+    CryptoDigestAlgorithm: { SHA256: "SHA256" },
+    getRandomBytes: (n) => {
+      const a = new Uint8Array(n);
+      for (let i = 0; i < n; i++) a[i] = (c = (c * 17 + 3) % 248);
+      return a;
+    },
+  };
+});
 jest.mock("expo-auth-session", () => ({
   useAuthRequest: () => [null, null, jest.fn()],
   exchangeCodeAsync: jest.fn(() => Promise.resolve({ accessToken: "x" })),

@@ -966,6 +966,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // guestCodeAttempts/{uid} — per-user redeem rate-limit counter, written ONLY
+    // by redeemBusinessGuestCode (Admin SDK). A client must never read or (worse)
+    // reset its own attempt count. Server-only.
+    match /guestCodeAttempts/{uid} {
+      allow read, write: if false;
+    }
+
     // Admin-tunable payout settings (§7). settings/payouts.retentionHours: global
     // retention window, default 24, HARD FLOOR 0 — the rule rejects a negative
     // value (the server also clamps on use). Readable so the admin dashboard can

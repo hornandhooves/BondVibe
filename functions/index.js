@@ -2269,8 +2269,36 @@ exports.joinGroupByCode = onCall(async (request) => {
 exports.redeemBusinessGuestCode = onCall(async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  // SECURITY (fix/privacy-guestcode-joinevent): redeeming links this account to a
+  // business member record (a pass/benefit). Require a verified email so a
+  // throwaway/unverified account can't claim codes.
+  if (request.auth.token.email_verified !== true) {
+    throw new HttpsError("permission-denied", "email_not_verified");
+  }
   const code = (request.data?.code || "").trim().toUpperCase();
   if (!code) throw new HttpsError("invalid-argument", "Missing code.");
+
+  // Per-uid rate limit — blunt brute-forcing the code space. Every attempt
+  // (valid or not) consumes quota, counted transactionally in a rolling window.
+  const RL_MAX = 12;
+  const RL_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+  const rlRef = db.collection("guestCodeAttempts").doc(uid);
+  await db.runTransaction(async (tx) => {
+    const s = await tx.get(rlRef);
+    const now = Date.now();
+    const d = s.exists ? s.data() : {};
+    const start = typeof d.windowStart === "number" ? d.windowStart : 0;
+    const within = now - start < RL_WINDOW_MS;
+    const count = within ? (d.count || 0) : 0;
+    if (within && count >= RL_MAX) {
+      throw new HttpsError("resource-exhausted", "too_many_attempts");
+    }
+    tx.set(rlRef, {
+      windowStart: within ? start : now,
+      count: count + 1,
+      updatedAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+  });
 
   const snap = await db
     .collectionGroup("members")
@@ -2376,6 +2404,12 @@ exports.setEventLocation = onCall(async (request) => {
 exports.joinEvent = onCall(async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  // SECURITY (fix/privacy-guestcode-joinevent): joining places you on the event
+  // roster; require a verified email, same gate as reserveMembershipCredit and
+  // the paid-join path.
+  if (request.auth.token.email_verified !== true) {
+    throw new HttpsError("permission-denied", "email_not_verified");
+  }
   const {eventId} = request.data || {};
   if (!eventId) throw new HttpsError("invalid-argument", "Missing eventId.");
 
