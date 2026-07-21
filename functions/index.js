@@ -26,8 +26,10 @@ const db = admin.firestore();
 // Shared auth for HTTP endpoints (verify ID token, derive identity server-side).
 const {verifyBearer, isAdminUid} = require("./lib/auth");
 
-// Import refunds AFTER Firebase is initialized
-const {cancelEventAttendance, hostCancelEvent} = require("./stripe/refunds");
+// Import refunds AFTER Firebase is initialized. processRefund is reused by the
+// admin payouts callable (ledger-aware: held→refund, released→reversal+refund).
+const {cancelEventAttendance, hostCancelEvent, processRefund} =
+  require("./stripe/refunds");
 
 // @handle claiming/checking (server-enforced uniqueness).
 const {claimHandle, checkHandle, adminReassignHandle} = require("./handles");
@@ -2877,6 +2879,184 @@ exports.releaseHostPayouts = onSchedule(
     );
   },
 );
+
+// ============================================
+// ADMIN PAYOUTS — read + act on the escrow ledger (docs/DISENO_admin_payouts_backend.md)
+// paymentLedger + hostPayoutAccounts are DENY-ALL (server-only). The admin payouts
+// UI (Diseño 2) can't read them directly, so it goes through these callables. All
+// three are isAdmin-gated (same pattern as setPayoutFrozen) and REUSE the escrow /
+// refunds money code — no money flow is re-implemented here.
+// ============================================
+
+/**
+ * List escrow ledger rows for the admin payouts UI, paginated + filtered, each
+ * enriched with the host's outstanding debt (hostPayoutAccounts.penaltyOwed).
+ * data: { status?, type?, cursor?, limit=25 }. `status` filters the ledger
+ * `state`; `cursor` is the paymentIntentId to resume the scan after.
+ *
+ * NO composite index required: the query is always `orderBy(capturedAt desc)`
+ * (automatic single-field index) and state/type are filtered in code, so it can
+ * never break on a missing/still-building index. Fine for admin volume.
+ */
+exports.adminListPayouts = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in first.");
+  if (!(await isAdminUid(uid))) {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+  const {status, type, cursor} = request.data || {};
+  const limit = Math.min(
+    Math.max(parseInt((request.data || {}).limit, 10) || 25, 1), 100);
+
+  // The query is ALWAYS just `orderBy(capturedAt desc)` — served by the automatic
+  // single-field index that every collection has — so it can NEVER fail on a
+  // missing or still-building composite index. state/type are filtered IN CODE
+  // over the scanned pages (paymentLedger is admin-volume + low-frequency, so a
+  // bounded forward scan is cheap and avoids the index-deploy coupling entirely).
+  const coll = db.collection("paymentLedger");
+  const filtered = !!(status || type);
+  const BATCH = filtered ? 200 : limit; // over-fetch when filtering to fill a page
+  const MAX_SCAN = 3000; // hard safety bound on docs read per call
+
+  const mapRow = (l, d) => ({
+    paymentIntentId: l.paymentIntentId || d.id,
+    type: l.type || null,
+    sourceId: l.sourceId || null,
+    bizId: l.bizId || null,
+    hostUid: l.hostUid || null,
+    buyerUid: l.buyerUid || null,
+    grossAmount: l.grossAmount || 0,
+    hostAmount: l.hostAmount || 0,
+    platformFee: l.platformFee || 0,
+    stripeFee: l.stripeFee || 0,
+    currency: l.currency || "mxn",
+    state: l.state || null,
+    frozen: l.frozen === true,
+    releaseAt: l.releaseAt || null,
+    deliveryEndAt: l.deliveryEndAt || null,
+    transferId: l.transferId || null,
+    refundId: l.refundId || null,
+    hostPenaltyOwed: l.hostPenaltyOwed || 0,
+  });
+
+  const rows = [];
+  let scanCursorId = cursor || null; // a position in capturedAt-desc order
+  let scanned = 0;
+  let exhausted = false;
+  while (rows.length < limit && scanned < MAX_SCAN) {
+    let q = coll.orderBy("capturedAt", "desc").limit(BATCH);
+    if (scanCursorId) {
+      // startAfter(docSnapshot) positions by the doc's capturedAt (Firestore
+      // appends __name__), so the cursor works whether or not that doc matched.
+      const cs = await coll.doc(scanCursorId).get();
+      if (cs.exists) q = q.startAfter(cs);
+    }
+    const snap = await q.get();
+    if (snap.empty) {
+      exhausted = true;
+      break;
+    }
+    let pageFilled = false;
+    for (const d of snap.docs) {
+      scanned++;
+      scanCursorId = d.id;
+      const l = d.data();
+      if (status && l.state !== status) continue;
+      if (type && l.type !== type) continue;
+      rows.push(mapRow(l, d));
+      if (rows.length >= limit) {
+        pageFilled = true;
+        break;
+      }
+    }
+    if (pageFilled) break; // more rows may follow — do NOT mark exhausted
+    // Only now (whole batch scanned) can a short batch mean the collection ended.
+    if (snap.size < BATCH) {
+      exhausted = true;
+      break;
+    }
+  }
+
+  // Per-host debt for the "Deuda de hosts" card (deny-all → Admin SDK only).
+  const hostUids = [...new Set(rows.map((r) => r.hostUid).filter(Boolean))];
+  const debts = {};
+  await Promise.all(hostUids.map(async (h) => {
+    const s = await db.collection("hostPayoutAccounts").doc(h).get();
+    debts[h] = s.exists ? (s.data().penaltyOwed || 0) : 0;
+  }));
+  const payouts = rows.map((r) => ({
+    ...r, hostDebtOwed: r.hostUid ? (debts[r.hostUid] || 0) : 0,
+  }));
+
+  // Continue from the last scanned position unless we reached the collection end.
+  // (May yield one final empty page when a full page lands exactly on the end —
+  // harmless for an admin list.)
+  const nextCursor = exhausted ? null : scanCursorId;
+  return {payouts, hostDebts: debts, nextCursor};
+});
+
+/**
+ * "Release now" — release a HELD payout immediately (ignores releaseAt), reusing
+ * escrow.releaseOnePayout (idempotent, transactional, nets hostPenaltyOwed).
+ * REJECTS a frozen ledger (a disputed/held-for-review payout must not be paid) and
+ * anything not in state "held" (never re-pay a refunded/released row). data:
+ * { paymentIntentId }.
+ */
+exports.adminReleasePayout = onCall({secrets: [stripeSecretKey]}, async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in first.");
+  if (!(await isAdminUid(uid))) {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+  const {paymentIntentId} = request.data || {};
+  if (!paymentIntentId) {
+    throw new HttpsError("invalid-argument", "paymentIntentId required.");
+  }
+  const ref = db.collection("paymentLedger").doc(paymentIntentId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Ledger not found.");
+  const l = snap.data();
+  if (l.frozen === true) {
+    throw new HttpsError("failed-precondition", "payout_frozen");
+  }
+  if (l.state !== "held") {
+    // Guard BEFORE delegating: releaseOnePayout would otherwise transfer to the
+    // host for a refunded/reversed row (its idempotency key never fired).
+    throw new HttpsError("failed-precondition", "not_releasable");
+  }
+  if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+  const outcome = await escrow.releaseOnePayout(stripe, db, snap);
+  return {ok: true, paymentIntentId, outcome};
+});
+
+/**
+ * "Refund" — refund a payout, reusing refunds.processRefund (ledger-aware:
+ * held→refund from the platform balance, released→transfer reversal + refund).
+ * Full gross refund (fees included). The UI confirms first (irreversible).
+ * data: { paymentIntentId, reason? }.
+ */
+exports.adminRefundPayout = onCall({secrets: [stripeSecretKey]}, async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in first.");
+  if (!(await isAdminUid(uid))) {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+  const {paymentIntentId, reason} = request.data || {};
+  if (!paymentIntentId) {
+    throw new HttpsError("invalid-argument", "paymentIntentId required.");
+  }
+  const ledSnap = await db.collection("paymentLedger").doc(paymentIntentId).get();
+  if (!ledSnap.exists) throw new HttpsError("not-found", "Ledger not found.");
+  if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+  // Full refund (1.0), fees included, so an admin refund returns the whole charge.
+  const result = await processRefund(
+    stripe, paymentIntentId, 1.0, reason || "admin_refund", true);
+  if (!result || result.success !== true) {
+    throw new HttpsError(
+      "failed-precondition", (result && result.error) || "refund_failed");
+  }
+  return {ok: true, paymentIntentId, refund: result.refund};
+});
 
 // Import Stripe Payment Webhook
 const {stripePaymentWebhook} = require("./stripe/paymentWebhook");
