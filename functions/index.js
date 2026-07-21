@@ -267,6 +267,10 @@ exports.activateHost = onCall(async (request) => {
   await userRef.set({
     role: isAdmin ? "admin" : "host",
     ...(isAdmin ? {hostApproved: true} : {}),
+    // ESCROW (§7): payout tier present from day one, default 'standard'. The
+    // release cron resolves retention per host; 'super' (retention 0h) activates
+    // later with no re-architecture.
+    payoutTier: data.payoutTier || "standard",
     hostConfig: {
       type,
       // Only the Stripe status sync may ever set this true. Preserve it rather
@@ -832,6 +836,14 @@ exports.createEventPaymentIntent = onRequest(
       // Buyer email → Stripe sends an automatic receipt to it.
       const buyerEmail = await getUserEmail(userId);
 
+      // ESCROW (docs/DISENO_escrow_pagos.md §2): event end drives the release
+      // date the webhook stamps on the ledger. Events store start `date` +
+      // `durationMinutes` (no eventEndAt field) → derive it.
+      const {eventEndAtMs} = require("./stripe/escrow");
+      const eventEndMs = eventEndAtMs(eventData);
+      const eventEndAtISO = Number.isFinite(eventEndMs) ?
+        new Date(eventEndMs).toISOString() : "";
+
       const paymentIntentConfig = {
         amount: pricing.totalAmount, // User pays total (event + fees)
         currency: "mxn",
@@ -851,18 +863,21 @@ exports.createEventPaymentIntent = onRequest(
           hostReceives: pricing.hostReceives.toString(),
           refundableAmount: pricing.refundableAmount.toString(),
           feeModel: "USER_PAYS_FEES",
+          // ESCROW ledger inputs (webhook builds paymentLedger from these).
+          hostAccountId: stripeAccountId || "",
+          eventEndAt: eventEndAtISO,
         },
         description: `Ticket for ${eventData.title}`,
       };
 
-      // Add Stripe Connect parameters
-      // BondVibe keeps: platform fee + stripe fee
-      // Host receives: event price (100% of what they set)
-      if (eventPrice > 0 && stripeAccountId) {
-        paymentIntentConfig.application_fee_amount = pricing.platformFee + pricing.stripeFee;
-        paymentIntentConfig.transfer_data = {
-          destination: stripeAccountId,
-        };
+      // ESCROW (§1/§2): SEPARATE CHARGES AND TRANSFERS. No transfer_data /
+      // on_behalf_of / application_fee — the funds land in Kinlo's OWN balance
+      // and the host is paid later by the releaseHostPayouts cron (after the
+      // event + retention window). transfer_group links the charge to that
+      // future transfer. This replaces the old destination charge, where Stripe
+      // paid the host at capture and a later refund clawback could fail.
+      if (eventPrice > 0) {
+        paymentIntentConfig.transfer_group = eventId;
       }
 
       const paymentIntent = await stripe.paymentIntents.create(
@@ -2429,6 +2444,39 @@ exports.onEventWritten = onDocumentWritten("events/{eventId}", async (event) => 
   if (!after || !after.exists) return; // deleted
   const data = after.data();
 
+  // ESCROW §8: if the event's end time moved (date or durationMinutes changed),
+  // recompute releaseAt on its still-HELD ledger rows so payouts release at the
+  // right time. released/refunded/reversed are terminal; frozen is admin-held.
+  const before = event.data?.before;
+  const beforeData = before && before.exists ? before.data() : null;
+  if (beforeData) {
+    const escrow = require("./stripe/escrow");
+    const beforeEnd = escrow.eventEndAtMs(beforeData);
+    const afterEnd = escrow.eventEndAtMs(data);
+    if (Number.isFinite(afterEnd) && beforeEnd !== afterEnd) {
+      const eventId = event.params.eventId;
+      const heldSnap = await db.collection("paymentLedger")
+        .where("eventId", "==", eventId)
+        .where("state", "==", "held")
+        .get();
+      if (!heldSnap.empty) {
+        const newEndISO = new Date(afterEnd).toISOString();
+        for (const d of heldSnap.docs) {
+          const hostSnap = await db.collection("users").doc(d.data().hostUid).get();
+          const hostData = hostSnap.exists ? hostSnap.data() : {};
+          const retention = await escrow.effectiveRetentionHours(db, hostData);
+          await d.ref.update({
+            eventEndAt: newEndISO,
+            releaseAt: escrow.computeReleaseAtISO(afterEnd, retention),
+          });
+        }
+        console.log(
+          `♻️ Recomputed releaseAt for ${heldSnap.size} held ledger(s) of ${eventId}`,
+        );
+      }
+    }
+  }
+
   // F2 Phase A: derive the coarse gated fields (area + approxCoords) and mirror
   // the exact detail into the participant-gated private doc. ADDITIVE — the
   // legacy public location/locationCoords are left in place (Phase B strips
@@ -2753,6 +2801,76 @@ const {
 
 // Export Event Notifications
 exports.onEventAttendeesChanged = onEventAttendeesChanged;
+
+// ============================================================================
+// PAYMENTS ESCROW — release cron (docs/DISENO_escrow_pagos.md §4)
+// After a paid event ends + its retention window, transfer the host's cut from
+// Kinlo's balance to the host's Connect account. Separate charges + transfers.
+// ============================================================================
+
+// §7 admin control: freeze/unfreeze a payout (the ledger is Admin-SDK-only, so
+// this is how an admin toggles `frozen` — the dispute webhook does it
+// automatically; this covers manual holds). Only frozen==false payouts release.
+exports.setPayoutFrozen = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in first.");
+  if (!(await isAdminUid(uid))) {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+  const {paymentIntentId, frozen} = request.data || {};
+  if (!paymentIntentId || typeof frozen !== "boolean") {
+    throw new HttpsError("invalid-argument", "paymentIntentId + frozen required.");
+  }
+  const ref = db.collection("paymentLedger").doc(paymentIntentId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Ledger not found.");
+  await ref.set({
+    frozen,
+    frozenBy: uid,
+    frozenAt: FieldValue.serverTimestamp(),
+  }, {merge: true});
+  return {ok: true, paymentIntentId, frozen};
+});
+
+// Runs hourly. Pages through held payouts whose releaseAt has passed and that
+// aren't frozen, and releases each (escrow.releaseOnePayout — same code the
+// tests drive). Paginated to avoid the unbounded-query bug (§4). Needs a
+// composite index (state, frozen, releaseAt) — firestore.indexes.json.
+const escrow = require("./stripe/escrow");
+exports.releaseHostPayouts = onSchedule(
+  {schedule: "every 1 hours", secrets: [stripeSecretKey]},
+  async () => {
+    if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+    const nowISO = new Date().toISOString();
+    const PAGE = 100;
+    let processed = 0; let released = 0; let held = 0; let last = null;
+    for (;;) {
+      let q = db.collection("paymentLedger")
+        .where("state", "==", "held")
+        .where("frozen", "==", false)
+        .where("releaseAt", "<=", nowISO)
+        .orderBy("releaseAt", "asc")
+        .limit(PAGE);
+      if (last) q = q.startAfter(last);
+      const snap = await q.get();
+      if (snap.empty) break;
+      for (const doc of snap.docs) {
+        last = doc;
+        processed++;
+        try {
+          const r = await escrow.releaseOnePayout(stripe, db, doc);
+          if (r === "released") released++; else if (r === "held") held++;
+        } catch (e) {
+          console.error(`releaseOnePayout error ${doc.id}:`, e.message);
+        }
+      }
+      if (snap.size < PAGE) break;
+    }
+    console.log(
+      `releaseHostPayouts: processed=${processed} released=${released} held=${held}`,
+    );
+  },
+);
 
 // Import Stripe Payment Webhook
 const {stripePaymentWebhook} = require("./stripe/paymentWebhook");

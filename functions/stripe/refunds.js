@@ -6,6 +6,7 @@
 const functions = require("firebase-functions/v2");
 const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
+const {FieldValue} = require("firebase-admin/firestore");
 const {tPush} = require("../i18n"); // BUG 34: localized notification strings
 const {getAttendeeId} = require("../utils/eventHelpers");
 const {isAdminUid} = require("../lib/auth");
@@ -189,6 +190,30 @@ async function processRefund(
       feesRetained: nonRefundableFees,
     });
 
+    // ESCROW (docs/DISENO_escrow_pagos.md §5): the money sits in Kinlo's balance
+    // until release. The refund path depends on the ledger state.
+    //  - held (common): refund straight from Kinlo's balance — no reverse_transfer,
+    //    no transfer happened, the host got $0. Trivial, no clawback.
+    //  - released (rare): claw the host's transfer back first (createReversal),
+    //    then refund. If the host has no balance it goes negative → future payouts.
+    // Legacy payments without a ledger keep the pre-escrow behavior.
+    const ledgerRef = db.collection("paymentLedger").doc(paymentIntentId);
+    const ledgerSnap = await ledgerRef.get();
+    const ledger = ledgerSnap.exists ? ledgerSnap.data() : null;
+
+    if (ledger && ledger.state === "released" && ledger.transferId) {
+      const transferred = Math.max(
+        0, (ledger.hostAmount || 0) - (ledger.hostPenaltyOwed || 0));
+      const reversalAmount = Math.min(refundAmount, transferred);
+      if (reversalAmount > 0) {
+        await stripe.transfers.createReversal(ledger.transferId, {
+          amount: reversalAmount,
+          metadata: {paymentIntentId, reason: reason || "refund"},
+        });
+        console.log("↩️ Transfer reversed:", ledger.transferId, reversalAmount);
+      }
+    }
+
     const refund = await stripe.refunds.create({
       payment_intent: paymentIntentId,
       amount: refundAmount,
@@ -204,6 +229,16 @@ async function processRefund(
     });
 
     console.log("✅ Refund created:", refund.id);
+
+    // Reflect the terminal money state on the ledger (§3 states).
+    if (ledger) {
+      const newState = ledger.state === "released" ? "reversed" : "refunded";
+      await ledgerRef.set({
+        state: newState,
+        refundId: refund.id,
+        refundedAt: FieldValue.serverTimestamp(),
+      }, {merge: true});
+    }
 
     return {
       success: true,
@@ -493,6 +528,29 @@ exports.hostCancelEvent = functions.https.onCall(
             amount: refundResult.refund.amount,
             stripeFeeRetained: refundResult.refund.stripeFeeRetained,
           });
+
+          // ESCROW §6: HOST cancelled → attendee refunded in full (fees
+          // included). The unrecoverable Stripe processing fee is charged to the
+          // host as a penalty on their per-host debt, netted from their next
+          // release (§4). Never absorbed by Kinlo. The ledger is authoritative
+          // for the fee amount + the payout host.
+          const ledSnap = await db
+            .collection("paymentLedger")
+            .doc(paymentData.paymentIntentId)
+            .get();
+          const led = ledSnap.exists ? ledSnap.data() : null;
+          const penaltyFee = led ?
+            (led.stripeFee || 0) :
+            (parseInt((paymentData.metadata || {}).stripeFee, 10) || 0);
+          const payoutHostUid = led ?
+            led.hostUid :
+            (eventData.businessOwnerUid || eventData.creatorId);
+          if (penaltyFee > 0 && payoutHostUid) {
+            await db.collection("hostPayoutAccounts").doc(payoutHostUid).set({
+              penaltyOwed: FieldValue.increment(penaltyFee),
+              updatedAt: FieldValue.serverTimestamp(),
+            }, {merge: true});
+          }
 
           // Notify user (recipient = the refunded attendee). BUG 34: key+params.
           const refundPesos = (refundResult.refund.amount / 100).toFixed(2);
