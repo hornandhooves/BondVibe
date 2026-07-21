@@ -22,7 +22,10 @@
  * that pre-read capacity themselves; `removeFromRoster` / `promoteOldestWaitlist`
  * run their own transaction (idempotent, safe for non-tx callers).
  */
-const {FieldValue} = require("firebase-admin/firestore");
+// Lazy so that importing this module (e.g. transitively via an AI feature that a
+// CLIENT jest test loads for its config) does NOT pull firebase-admin's ESM deps
+// at import time — only the actual server writers dereference it.
+const fv = () => require("firebase-admin/firestore").FieldValue;
 
 const eventRef = (db, eventId) => db.collection("events").doc(eventId);
 const rosterRef = (db, eventId, uid) =>
@@ -48,9 +51,9 @@ async function joinRosterTx(tx, db, eventId, eventData, uid) {
   const max = maxOf(eventData);
   const count = eventData.participantCount || 0;
   const status = max && count >= max ? "waitlist" : "active";
-  tx.set(rRef, {uid, eventId, status, joinedAt: FieldValue.serverTimestamp()});
+  tx.set(rRef, {uid, eventId, status, joinedAt: fv().serverTimestamp()});
   if (status === "active") {
-    tx.update(eventRef(db, eventId), {participantCount: FieldValue.increment(1)});
+    tx.update(eventRef(db, eventId), {participantCount: fv().increment(1)});
   }
   return status;
 }
@@ -68,9 +71,9 @@ async function joinRosterTx(tx, db, eventId, eventData, uid) {
  */
 function writeActiveRoster(tx, db, eventId, uid) {
   tx.set(rosterRef(db, eventId, uid), {
-    uid, eventId, status: "active", joinedAt: FieldValue.serverTimestamp(),
+    uid, eventId, status: "active", joinedAt: fv().serverTimestamp(),
   });
-  tx.update(eventRef(db, eventId), {participantCount: FieldValue.increment(1)});
+  tx.update(eventRef(db, eventId), {participantCount: fv().increment(1)});
 }
 
 /**
@@ -91,10 +94,23 @@ async function removeFromRoster(db, eventId, uid) {
     const wasActive = s.data().status === "active";
     tx.delete(rRef);
     if (wasActive) {
-      tx.update(eventRef(db, eventId), {participantCount: FieldValue.increment(-1)});
+      tx.update(eventRef(db, eventId), {participantCount: fv().increment(-1)});
     }
     return {removed: true, wasActive};
   });
+}
+
+/**
+ * The list of ACTIVE participant uids (server-side, Admin SDK). Use ONLY where the
+ * actual list of uids is needed (chat push, reminders, friends-going, per-user
+ * aggregates); for a COUNT use event.participantCount (0 extra reads).
+ * @param {FirebaseFirestore.Firestore} db admin Firestore
+ * @param {string} eventId the event
+ * @return {Promise<string[]>} active participant uids
+ */
+async function activeUids(db, eventId) {
+  const snap = await rosterCol(db, eventId).where("status", "==", "active").get();
+  return snap.docs.map((d) => d.data().uid || d.id);
 }
 
 /**
@@ -109,37 +125,46 @@ async function isOnRoster(db, eventId, uid) {
 }
 
 /**
- * Promote the oldest waitlisted roster doc to active IF there is capacity — the
  * FIFO waitlist promotion, run from the roster trigger after an active leaver.
- * Its own transaction re-reads capacity + the candidate so concurrent leaves
- * can't over-promote. Returns the promoted uid or null.
+ * LOOP-FILLS every currently-open spot (not just one): so N simultaneous leaves —
+ * whose triggers race — still net exactly N promotions and no spot is left empty
+ * waiting for the next leave. Each promotion is its own transaction that re-reads
+ * capacity + the candidate, so it never over-promotes past max. Returns the list
+ * of promoted uids (in FIFO order).
  * @param {FirebaseFirestore.Firestore} db admin Firestore
  * @param {string} eventId the event
- * @return {Promise<string|null>} the promoted uid, or null if none / no room
+ * @return {Promise<string[]>} the promoted uids (possibly empty)
  */
 async function promoteOldestWaitlist(db, eventId) {
-  const head = await rosterCol(db, eventId)
-    .where("status", "==", "waitlist")
-    .orderBy("joinedAt", "asc")
-    .limit(1)
-    .get();
-  if (head.empty) return null;
-  const candidateUid = head.docs[0].id;
-
-  return db.runTransaction(async (tx) => {
-    const eSnap = await tx.get(eventRef(db, eventId));
-    if (!eSnap.exists) return null;
-    const e = eSnap.data();
-    if (e.status === "cancelled") return null;
-    const max = maxOf(e);
-    if (max && (e.participantCount || 0) >= max) return null; // no room
-    const cRef = rosterRef(db, eventId, candidateUid);
-    const cSnap = await tx.get(cRef);
-    if (!cSnap.exists || cSnap.data().status !== "waitlist") return null; // raced
-    tx.update(cRef, {status: "active", promotedAt: FieldValue.serverTimestamp()});
-    tx.update(eventRef(db, eventId), {participantCount: FieldValue.increment(1)});
-    return candidateUid;
-  });
+  const promoted = [];
+  // Bound the loop defensively (open spots are small; this just prevents a
+  // pathological infinite loop if state churns).
+  for (let guard = 0; guard < 1000; guard++) {
+    const head = await rosterCol(db, eventId)
+      .where("status", "==", "waitlist")
+      .orderBy("joinedAt", "asc")
+      .limit(1)
+      .get();
+    if (head.empty) break; // no one waiting
+    const candidateUid = head.docs[0].id;
+    const ok = await db.runTransaction(async (tx) => {
+      const eSnap = await tx.get(eventRef(db, eventId));
+      if (!eSnap.exists) return false;
+      const e = eSnap.data();
+      if (e.status === "cancelled") return false;
+      const max = maxOf(e);
+      if (max && (e.participantCount || 0) >= max) return false; // no room
+      const cRef = rosterRef(db, eventId, candidateUid);
+      const cSnap = await tx.get(cRef);
+      if (!cSnap.exists || cSnap.data().status !== "waitlist") return false; // raced
+      tx.update(cRef, {status: "active", promotedAt: fv().serverTimestamp()});
+      tx.update(eventRef(db, eventId), {participantCount: fv().increment(1)});
+      return true;
+    });
+    if (!ok) break; // full, or the head raced away — stop (another run continues)
+    promoted.push(candidateUid);
+  }
+  return promoted;
 }
 
 module.exports = {
@@ -151,5 +176,6 @@ module.exports = {
   writeActiveRoster,
   removeFromRoster,
   isOnRoster,
+  activeUids,
   promoteOldestWaitlist,
 };

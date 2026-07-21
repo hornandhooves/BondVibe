@@ -115,6 +115,66 @@ test("ROST1 join active vs waitlist, then a cancel PROMOTES the waitlisted (FIFO
   assert.ok(!notes.empty, "B should receive a waitlist_promoted notification");
 });
 
+test("ROST3 a post-refactor joiner is on the ROSTER (server readers read it, not the array)", async () => {
+  const eventId = `evt_${nextId()}`;
+  const a = `a_${nextId()}`;
+  await db.collection("events").doc(eventId).set({
+    creatorId: `host_${nextId()}`, title: "Open", price: 0,
+    maxAttendees: 50, participantCount: 0,
+    date: new Date(Date.now() + 3 * 864e5).toISOString(),
+  });
+  const ta = await tokenFor(a);
+  assert.strictEqual((await call("joinEvent", {eventId}, ta)).status, 200);
+
+  // The exact query every server reader (chat push :563, reminders :1883,
+  // friends-going, aggregates, recaps) uses: active roster of the event.
+  const active = await db.collection("events").doc(eventId).collection("roster")
+    .where("status", "==", "active").get();
+  assert.ok(active.docs.some((d) => d.id === a), "joiner is in the active roster");
+  // …and there is NO world-readable attendees array to read from.
+  const e = (await db.collection("events").doc(eventId).get()).data();
+  assert.strictEqual(e.attendees, undefined, "no attendees array on the public doc");
+});
+
+test("ROST4 CONCURRENT leaves loop-fill ALL freed spots (no empty seats, no oversell)", async () => {
+  const eventId = `evt_${nextId()}`;
+  const [a, b, c, d] = [`a_${nextId()}`, `b_${nextId()}`, `c_${nextId()}`, `d_${nextId()}`];
+  const base = new Date("2026-01-01T00:00:00Z").getTime();
+  await db.collection("events").doc(eventId).set({
+    creatorId: `host_${nextId()}`, title: "Full+waitlist", maxAttendees: 2,
+    participantCount: 2, date: new Date(Date.now() + 3 * 864e5).toISOString(),
+  });
+  const col = db.collection("events").doc(eventId).collection("roster");
+  const Ts = admin.firestore.Timestamp;
+  await col.doc(a).set({uid: a, status: "active", joinedAt: Ts.fromMillis(base)});
+  await col.doc(b).set({uid: b, status: "active", joinedAt: Ts.fromMillis(base + 1)});
+  await col.doc(c).set({uid: c, status: "waitlist", joinedAt: Ts.fromMillis(base + 2)});
+  await col.doc(d).set({uid: d, status: "waitlist", joinedAt: Ts.fromMillis(base + 3)});
+  const [ta, tb] = [await tokenFor(a), await tokenFor(b)];
+
+  // Both active members leave at the same time → 2 spots free.
+  await Promise.all([
+    call("leaveEvent", {eventId}, ta),
+    call("leaveEvent", {eventId}, tb),
+  ]);
+
+  // Both waitlisters should end up promoted (loop-fill), count back to max=2.
+  let ok = false;
+  for (let i = 0; i < 30; i++) {
+    const [cd, count] = await Promise.all([
+      col.where("status", "==", "active").get(),
+      participantCount(eventId),
+    ]);
+    const ids = cd.docs.map((x) => x.id);
+    if (count === 2 && ids.includes(c) && ids.includes(d)) {
+      ok = true;
+      break;
+    }
+    await sleep(400);
+  }
+  assert.ok(ok, "both waitlisters promoted; no spot left empty; count == max (no oversell)");
+});
+
 test("ROST2 migrateEventRosters is idempotent (no double count on re-run)", async () => {
   const eventId = `evt_${nextId()}`;
   await db.collection("events").doc(eventId).set({

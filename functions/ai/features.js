@@ -10,6 +10,8 @@
  * match_intel only runs between two opted-in match profiles.
  */
 
+const roster = require("../utils/roster");
+
 const SYSTEM_BASE =
   "You are Kinlo's community intelligence. You help people belong and " +
   "show up in real life. You are given ONLY this user's real Kinlo " +
@@ -50,12 +52,13 @@ async function loadHostCopilot(db, uid) {
       title: e.title || "",
       price: e.price || 0,
       capacity: e.maxAttendees || null,
-      attended: (e.attendees || []).length,
+      attended: e.participantCount || 0, // ROSTER (fix/privacy-event-roster): count
       category: e.category || null,
     };
   });
-  const memberCount = new Set(
-    docs.flatMap((d) => d.data().attendees || [])).size;
+  // ROSTER: unique members = the union of the active rosters of the host's events.
+  const rosterLists = await Promise.all(docs.map((d) => roster.activeUids(db, d.id)));
+  const memberCount = new Set(rosterLists.flat()).size;
   return {host: {pastEvents, memberCount}};
 }
 
@@ -78,7 +81,7 @@ async function loadMemberIntel(db, uid) {
   for (const d of eventsSnap.docs) {
     const e = d.data();
     const t = e.date ? new Date(e.date).getTime() : 0;
-    for (const a of e.attendees || []) {
+    for (const a of await roster.activeUids(db, d.id)) { // ROSTER: attendee list
       const c = counts[a] || {n: 0, lastMs: 0};
       c.n += 1;
       c.lastMs = Math.max(c.lastMs, t);
@@ -120,20 +123,22 @@ async function loadAiAnalytics(db, uid) {
   const prevMonth = nowMs - 60 * 86400000;
   const snap = await db.collection("events").where("creatorId", "==", uid)
     .limit(80).get();
-  const events = snap.docs.map((d) => d.data());
+  // ROSTER: keep the doc id so per-attendee aggregates can read the roster.
+  const events = snap.docs.map((d) => ({_id: d.id, ...d.data()}));
   const inWindow = (e, from, to) => {
     const t = e.date ? new Date(e.date).getTime() : 0;
     return t >= from && t < to;
   };
   const revenueOf = (list) => list.reduce(
-    (s, e) => s + (e.price || 0) * (e.attendees || []).length, 0);
+    (s, e) => s + (e.price || 0) * (e.participantCount || 0), 0); // ROSTER: count
   const cur = events.filter((e) => inWindow(e, monthAgo, nowMs));
   const prev = events.filter((e) => inWindow(e, prevMonth, monthAgo));
   const revenue = revenueOf(cur);
   const revenuePrev = revenueOf(prev);
   const counts = {};
   for (const e of events) {
-    for (const a of e.attendees || []) counts[a] = (counts[a] || 0) + 1;
+    // ROSTER: unique/repeat attendance from the active roster, not the array.
+    for (const a of await roster.activeUids(db, e._id)) counts[a] = (counts[a] || 0) + 1;
   }
   const uniq = Object.keys(counts).length;
   const repeat = uniq ?
@@ -153,7 +158,7 @@ async function loadAiAnalytics(db, uid) {
         {weekday: "short"}) : null,
       price: e.price || 0,
       capacity: e.maxAttendees || null,
-      attended: (e.attendees || []).length,
+      attended: e.participantCount || 0, // ROSTER: count
     })),
   };
 }
@@ -376,11 +381,13 @@ async function loadMatchIntel(db, uid, cfg, input) {
  */
 async function loadWeeklyDigest(db, uid) {
   const nowIso = new Date().toISOString();
-  const [userSnap, mineSnap, soonSnap] = await Promise.all([
+  // ROSTER (fix/privacy-event-roster): the user's RSVPs come from their active
+  // roster docs (collectionGroup by uid — the array-contains query is gone). Only
+  // where(uid==) needs the collection-group index; status is filtered in code.
+  const [userSnap, myRoster, soonSnap] = await Promise.all([
     db.collection("users").doc(uid).get(),
-    db.collection("events")
-      .where("attendees", "array-contains", uid)
-      .where("date", ">=", nowIso).limit(6).get().catch(() => null),
+    db.collectionGroup("roster").where("uid", "==", uid).limit(50).get()
+      .catch(() => null),
     db.collection("events")
       .where("date", ">=", nowIso).orderBy("date", "asc").limit(8).get(),
   ]);
@@ -388,11 +395,23 @@ async function loadWeeklyDigest(db, uid) {
   const evLite = (d) => {
     const e = d.data();
     return {eventId: d.id, title: e.title || "", startsAt: e.date || null,
-      going: (e.attendees || []).length};
+      going: e.participantCount || 0}; // ROSTER: count
   };
+  // Resolve the user's upcoming events from their active roster docs.
+  let upcoming = [];
+  if (myRoster && !myRoster.empty) {
+    const ids = [...new Set(myRoster.docs
+      .filter((d) => d.data().status === "active")
+      .map((d) => d.ref.parent.parent.id))].slice(0, 12);
+    const evDocs = await Promise.all(
+      ids.map((id) => db.collection("events").doc(id).get()));
+    upcoming = evDocs
+      .filter((d) => d.exists && String(d.data().date || "") >= nowIso)
+      .slice(0, 6).map(evLite);
+  }
   return {
     user: {name: (u.fullName || "").split(" ")[0] || "there"},
-    upcoming: mineSnap ? mineSnap.docs.map(evLite) : [],
+    upcoming,
     openingSoon: soonSnap.docs.map(evLite),
   };
 }

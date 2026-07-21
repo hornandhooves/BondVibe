@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { useFocusEffect } from "@react-navigation/native";
 import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import { db, auth } from "../services/firebase";
+import { getMyRosterEvents } from "../services/rosterService";
 import GradientBackground from "../components/GradientBackground";
 import Icon from "../components/Icon";
 import { useTheme } from "../contexts/ThemeContext";
@@ -50,19 +51,18 @@ export default function EventChatsScreen({ navigation }) {
         }
         try {
           // Every event whose chat you can see: ones you joined + ones you host.
-          const [joinedSnap, hostSnap] = await Promise.all([
-            getDocs(
-              query(
-                collection(db, "events"),
-                where("attendees", "array-contains", uid)
-              )
-            ),
+          // ROSTER (fix/privacy-event-roster): joined events come from the roster.
+          const [joined, hostSnap] = await Promise.all([
+            getMyRosterEvents(),
             getDocs(
               query(collection(db, "events"), where("creatorId", "==", uid))
             ),
           ]);
           const byId = {};
-          [...joinedSnap.docs, ...hostSnap.docs].forEach((d) => {
+          joined.forEach((e) => {
+            byId[e.id] = e;
+          });
+          hostSnap.docs.forEach((d) => {
             byId[d.id] = { id: d.id, ...d.data() };
           });
           const list = Object.values(byId);

@@ -403,6 +403,16 @@
       ]
     },
     {
+      "collectionGroup": "roster",
+      "fieldPath": "uid",
+      "indexes": [
+        {
+          "queryScope": "COLLECTION_GROUP",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "attendees",
       "fieldPath": "userId",
       "indexes": [

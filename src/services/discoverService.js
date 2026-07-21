@@ -17,6 +17,7 @@ import {
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
 import { getBlockedIds } from "./blockService";
+import { getMyRosterEventIds } from "./rosterService";
 
 const uid = () => auth.currentUser?.uid || null;
 
@@ -53,9 +54,11 @@ export const getSuggestedEvents = async (max = 6) => {
         qLimit(20)
       )
     );
+    // ROSTER (fix/privacy-event-roster): "already joined" comes from the roster.
+    const myIds = new Set(await getMyRosterEventIds());
     return snap.docs
       .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((e) => !blocked.has(e.creatorId) && !(e.attendees || []).includes(me))
+      .filter((e) => !blocked.has(e.creatorId) && !myIds.has(e.id))
       .slice(0, max);
   } catch (e) {
     console.error("❌ getSuggestedEvents:", e);

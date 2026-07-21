@@ -56,6 +56,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { usePremium } from "../hooks/usePremium";
 import { buildCheckinPayload } from "../services/checkinService";
 import { getMatchDataFor } from "../services/matchingService";
+import { leaveEvent, isOnRoster, getEventRosterUids } from "../services/rosterService";
 import { joinFreeEvent } from "../services/eventJoinService";
 import { getMatchInsight } from "../utils/personalityScoring";
 import { getFollowing } from "../services/followService";
@@ -208,9 +209,10 @@ export default function EventDetailScreen({ route, navigation }) {
           createdAt: createdAtDate,
         };
         setEvent(updatedEvent);
-        setIsJoined(isUserAttending(data.attendees, auth.currentUser.uid));
-        if (data.attendees && data.attendees.length > 0)
-          loadAttendeesData(data.attendees);
+        // ROSTER (fix/privacy-event-roster): membership + roster from the gated
+        // subcollection. loadAttendeesData reads the roster (host-only by rule).
+        isOnRoster(eventId).then(setIsJoined);
+        loadAttendeesData();
       }
     });
     return () => unsubscribe();
@@ -231,9 +233,7 @@ export default function EventDetailScreen({ route, navigation }) {
       if (eventDoc.exists()) {
         const eventData = { id: eventDoc.id, ...eventDoc.data() };
         setEvent(eventData);
-        setIsJoined(
-          isUserAttending(eventData.attendees, auth.currentUser.uid)
-        );
+        isOnRoster(eventId).then(setIsJoined); // ROSTER: gated subcollection
         if (eventData.isRecurring && eventData.recurrenceGroupId) {
           setIsRecurring(true);
           setRecurrenceGroupId(eventData.recurrenceGroupId);
@@ -264,7 +264,7 @@ export default function EventDetailScreen({ route, navigation }) {
           eventData.creatorId === auth.currentUser.uid ||
           userData?.role === "admin"
         ) {
-          await loadAttendeesData(eventData.attendees || []);
+          await loadAttendeesData();
         }
       } else {
         setEvent(null);
@@ -277,11 +277,11 @@ export default function EventDetailScreen({ route, navigation }) {
     }
   };
 
-  const loadAttendeesData = async (attendeeIds) => {
+  const loadAttendeesData = async () => {
     try {
-      const validIds = getAttendeeIds(attendeeIds).filter(
-        (id) => id.trim().length > 0
-      );
+      // ROSTER (fix/privacy-event-roster): read the active roster (host/admin only
+      // — the rule denies a list to others; getEventRosterUids returns [] on deny).
+      const validIds = await getEventRosterUids(eventId);
       if (validIds.length === 0) return;
       const attendeesPromises = validIds.map(async (userId) => {
         try {
@@ -380,10 +380,9 @@ export default function EventDetailScreen({ route, navigation }) {
       }
       setJoining(true);
       try {
-        const eventRef = doc(db, "events", eventId);
-        await updateDoc(eventRef, {
-          attendees: arrayRemove(auth.currentUser.uid),
-        });
+        // ROSTER (fix/privacy-event-roster): the roster is server-only — leave via
+        // the callable (mirrors cancelEventAttendance for paid).
+        await leaveEvent(eventId);
         setIsJoined(false);
         Alert.alert(t("eventDetail.alerts.leftEventTitle"), t("eventDetail.alerts.leftEventMsg"));
         await loadEvent();
@@ -396,7 +395,7 @@ export default function EventDetailScreen({ route, navigation }) {
     }
 
     const maxCapacity = event.maxAttendees || event.maxPeople || 0;
-    const currentCount = event.attendees?.length || 0;
+    const currentCount = event.participantCount ?? event.attendees?.length ?? 0;
     if (currentCount >= maxCapacity) {
       Alert.alert(t("eventDetail.alerts.eventFullTitle"), t("eventDetail.alerts.eventFullMsg"));
       return;
@@ -699,7 +698,7 @@ export default function EventDetailScreen({ route, navigation }) {
   const canSeeAttendees = isCreator || isAdmin;
   const maxCapacity = event.maxAttendees || event.maxPeople || 0;
   const currentAttendees =
-    event.attendees?.length || event.participants?.length || 0;
+    event.participantCount ?? event.attendees?.length ?? event.participants?.length ?? 0;
   const spotsLeft = maxCapacity - currentAttendees;
   const isFull = spotsLeft <= 0;
 

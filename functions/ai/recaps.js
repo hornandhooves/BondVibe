@@ -9,6 +9,7 @@
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
 const {FieldValue} = require("firebase-admin/firestore");
 const {getAiConfig, callAnthropic} = require("./foundation");
+const roster = require("../utils/roster");
 
 const MAX_RECAP_IMAGES = 3;
 
@@ -48,8 +49,10 @@ function buildOnRecapPhotoCreated(db, anthropicKey) {
         return;
       }
 
-      // First moment → AI caption + recap post.
-      const attendees = ev.attendees || [];
+      // First moment → AI caption + recap post. ROSTER (fix/privacy-event-roster):
+      // the recap needs the attendee LIST (route into their feeds + "You were
+      // there ✓") → read the active roster, not the removed array.
+      const attendees = await roster.activeUids(db, eventId);
       let caption = `What a time at ${ev.title || "this event"}.`;
       try {
         const cfg = await getAiConfig(db);

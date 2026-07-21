@@ -44,21 +44,26 @@ exports.onEventRosterChanged = onDocumentWritten(
     const creatorId = getEventCreatorId(e);
 
     if (created && after.data().status === "active") {
+      // Skip migration backfill so migrateEventRosters doesn't spam the host with
+      // a "new attendee" push for every pre-existing attendee it relocates.
+      if (after.data().source === "backfill") return null;
       await notifyHostOfNewAttendees(
         creatorId, eventId, e.title, e.price, [rosterUid]);
       return null;
     }
 
     if (deleted && before.data().status === "active") {
-      // A spot freed: tell the host, then promote the oldest waitlisted person
-      // (FIFO) into it and notify the promoted user + the host.
+      // A spot freed: tell the host, then LOOP-FILL the open spot(s) from the
+      // waitlist (FIFO) — notifying each promoted user + the host.
       await notifyHostOfCancellations(creatorId, eventId, e.title, [rosterUid]);
-      const promotedUid = await roster.promoteOldestWaitlist(db, eventId);
-      if (promotedUid) {
+      const promotedUids = await roster.promoteOldestWaitlist(db, eventId);
+      for (const promotedUid of promotedUids) {
         await notifyPromoted(eventId, promotedUid, e.title);
         await notifyHostOfNewAttendees(
           creatorId, eventId, e.title, e.price, [promotedUid]);
-        console.log(`✅ Promoted ${promotedUid} from the waitlist`);
+      }
+      if (promotedUids.length) {
+        console.log(`✅ Promoted ${promotedUids.length} from the waitlist`);
       }
     }
     return null;

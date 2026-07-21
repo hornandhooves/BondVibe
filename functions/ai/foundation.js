@@ -21,6 +21,7 @@
 
 const {onCall} = require("firebase-functions/v2/https");
 const p2 = require("./features");
+const roster = require("../utils/roster");
 
 // ─── Tunables: defaults, overridable via Firestore config/ai ────────────────
 const AI_DEFAULTS = {
@@ -149,10 +150,13 @@ async function loadSmartWallContext(db, uid, cfg) {
   const u = userSnap.exists ? userSnap.data() : {};
   const following = new Set(
     followsSnap.docs.map((d) => d.data().followeeId).filter(Boolean));
-  const candidates = eventsSnap.docs.map((d) => {
+  // ROSTER (fix/privacy-event-roster): friendsGoing needs the LIST of attendees
+  // (intersect with who the user follows) → read each candidate's active roster.
+  // The COUNT (spotsLeft) uses participantCount — no extra reads.
+  const candidates = await Promise.all(eventsSnap.docs.map(async (d) => {
     const e = d.data();
-    const friendsGoing = (e.attendees || [])
-      .filter((a) => following.has(a)).length;
+    const activeUids = await roster.activeUids(db, d.id);
+    const friendsGoing = activeUids.filter((a) => following.has(a)).length;
     return {
       eventId: d.id,
       title: e.title || "",
@@ -166,9 +170,9 @@ async function loadSmartWallContext(db, uid, cfg) {
       userInterested: (e.interested || []).includes(uid),
       interestedCount: (e.interested || []).length,
       spotsLeft: e.maxAttendees ?
-        Math.max(0, e.maxAttendees - (e.attendees || []).length) : null,
+        Math.max(0, e.maxAttendees - (e.participantCount || 0)) : null,
     };
-  });
+  }));
   return {
     user: {
       interests: u.interests || [],
@@ -207,7 +211,7 @@ async function loadAskKinloContext(db, uid, cfg) {
       category: e.category || null,
       city: e.city || null,
       price: e.price || 0,
-      going: (e.attendees || []).length,
+      going: e.participantCount || 0, // ROSTER: count from participantCount
     };
   });
   return {

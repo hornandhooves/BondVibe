@@ -559,8 +559,10 @@ exports.onNewMessage = onDocumentCreated(
         participantIds.add(creatorId);
       }
 
-      // Add attendees (normalized to UID strings)
-      getAttendeeIds(eventData.attendees).forEach((id) =>
+      // Add attendees. ROSTER (fix/privacy-event-roster): the roster moved to the
+      // gated subcollection — read the ACTIVE roster so every participant still
+      // gets the chat push (not just the creator once the array was gone).
+      (await roster.activeUids(db, eventId)).forEach((id) =>
         participantIds.add(id),
       );
 
@@ -1880,7 +1882,8 @@ exports.sendEventReminders = onSchedule(
       const bodyKey = `notifications.event.reminder.${kind.key}Body`;
       const params = {event: title};
       const pushes = [];
-      for (const uid of getAttendeeIds(e.attendees)) {
+      // ROSTER: reminders go to the ACTIVE roster (read from the subcollection).
+      for (const uid of await roster.activeUids(db, docSnap.id)) {
         await db.collection("notifications").add({
           userId: uid,
           type: "event_reminder",
@@ -2968,16 +2971,17 @@ exports.migrateEventRosters = onCall(async (request) => {
     const waitlist = Array.isArray(e.waitlist) ? e.waitlist : [];
 
     // Roster docs FIRST (active first, then waitlist), FIFO order via joinedAt.
+    // source:"backfill" → the roster trigger ignores these creates (no host spam).
     let idx = 0;
     for (const auid of active) {
       await d.ref.collection("roster").doc(auid).set({
-        uid: auid, eventId: d.id, status: "active",
+        uid: auid, eventId: d.id, status: "active", source: "backfill",
         joinedAt: Timestamp.fromMillis(ORDER_BASE + idx++),
       }, {merge: true});
     }
     for (const wuid of waitlist) {
       await d.ref.collection("roster").doc(wuid).set({
-        uid: wuid, eventId: d.id, status: "waitlist",
+        uid: wuid, eventId: d.id, status: "waitlist", source: "backfill",
         joinedAt: Timestamp.fromMillis(ORDER_BASE + idx++),
       }, {merge: true});
     }
@@ -3313,18 +3317,22 @@ exports.deleteUserAccount = onRequest(
         console.error("⚠️ group membership detach failed:", e.message);
       }
 
-      // 9. Detach the user from events they only JOINED (not created).
+      // 9. Detach the user from events they only JOINED (not created). ROSTER
+      //    (fix/privacy-event-roster): leave each via their roster docs
+      //    (collectionGroup by uid) — decrements participantCount + frees the spot
+      //    (the roster trigger promotes the waitlist). `interested` stays a public
+      //    array, purged separately.
       try {
-        const joined = await db.collection("events")
-          .where("attendees", "array-contains", userId).get();
-        await Promise.all(joined.docs.map((ev) =>
-          ev.ref.update({
-            attendees: FieldValue.arrayRemove(userId),
-            waitlist: FieldValue.arrayRemove(userId),
-            interested: FieldValue.arrayRemove(userId),
-          })));
-        counts.eventsLeft = joined.size;
-        console.log(`✅ Removed from ${joined.size} joined events`);
+        const [myRoster, interested] = await Promise.all([
+          db.collectionGroup("roster").where("uid", "==", userId).get(),
+          db.collection("events").where("interested", "array-contains", userId).get(),
+        ]);
+        await Promise.all(myRoster.docs.map((d) =>
+          roster.removeFromRoster(db, d.ref.parent.parent.id, userId)));
+        await Promise.all(interested.docs.map((ev) =>
+          ev.ref.update({interested: FieldValue.arrayRemove(userId)})));
+        counts.eventsLeft = myRoster.size;
+        console.log(`✅ Removed from ${myRoster.size} joined events`);
       } catch (e) {
         console.error("⚠️ event attendee detach failed:", e.message);
       }
