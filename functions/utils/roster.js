@@ -15,6 +15,12 @@
  *
  * All writes are Admin SDK (rules make the subcollection server-only), so these
  * bypass rules by design.
+ *
+ * Firestore requires all reads before all writes in a transaction, so the API is
+ * split: `joinRosterTx` is for callers whose tx has done NO writes yet (it reads
+ * the roster doc then writes); `writeActiveRoster` is a PURE write for callers
+ * that pre-read capacity themselves; `removeFromRoster` / `promoteOldestWaitlist`
+ * run their own transaction (idempotent, safe for non-tx callers).
  */
 const {FieldValue} = require("firebase-admin/firestore");
 
@@ -26,13 +32,9 @@ const rosterCol = (db, eventId) => eventRef(db, eventId).collection("roster");
 const maxOf = (e) => e.maxAttendees || e.maxPeople || 0;
 
 /**
- * Join `uid` to the roster INSIDE a caller's transaction, honoring capacity.
- * The caller MUST have already tx.get(eventRef) (Firestore requires all reads
- * before writes) and pass its data as `eventData`; this does one more read (the
- * roster doc) which is still in the read phase as long as the caller hasn't
- * written yet.
- *
- * @param {FirebaseFirestore.Transaction} tx the caller's transaction
+ * Join `uid` INSIDE a caller's transaction that has done NO writes yet, honoring
+ * capacity: active if participantCount < max, else waitlist. Idempotent.
+ * @param {FirebaseFirestore.Transaction} tx caller's transaction (pre-write)
  * @param {FirebaseFirestore.Firestore} db admin Firestore
  * @param {string} eventId the event
  * @param {object} eventData the event doc data (already read by the caller)
@@ -46,59 +48,76 @@ async function joinRosterTx(tx, db, eventId, eventData, uid) {
   const max = maxOf(eventData);
   const count = eventData.participantCount || 0;
   const status = max && count >= max ? "waitlist" : "active";
-  tx.set(rRef, {
-    uid,
-    eventId,
-    status,
-    joinedAt: FieldValue.serverTimestamp(),
-  });
+  tx.set(rRef, {uid, eventId, status, joinedAt: FieldValue.serverTimestamp()});
   if (status === "active") {
-    tx.update(eventRef(db, eventId), {
-      participantCount: FieldValue.increment(1),
-    });
+    tx.update(eventRef(db, eventId), {participantCount: FieldValue.increment(1)});
   }
   return status;
 }
 
 /**
- * Remove `uid` from the roster INSIDE a caller's transaction. Decrements
- * participantCount only if the doc was ACTIVE (waitlist docs never counted). The
- * caller must have read the roster doc already OR pass wasActive explicitly; here
- * we read it ourselves (read phase). Returns whether a spot was freed.
- *
- * @param {FirebaseFirestore.Transaction} tx the caller's transaction
+ * PURE WRITE: add `uid` as an ACTIVE participant + increment participantCount.
+ * The caller MUST have already read the roster doc (to guard against a double
+ * count) and decided the user is not already active. Use when the caller checked
+ * capacity itself (e.g. membership join, which rejects rather than waitlists).
+ * @param {FirebaseFirestore.Transaction} tx caller's transaction
+ * @param {FirebaseFirestore.Firestore} db admin Firestore
+ * @param {string} eventId the event
+ * @param {string} uid the joiner
+ * @return {void}
+ */
+function writeActiveRoster(tx, db, eventId, uid) {
+  tx.set(rosterRef(db, eventId, uid), {
+    uid, eventId, status: "active", joinedAt: FieldValue.serverTimestamp(),
+  });
+  tx.update(eventRef(db, eventId), {participantCount: FieldValue.increment(1)});
+}
+
+/**
+ * Remove `uid` from the roster in its own transaction (idempotent — a second call
+ * is a no-op, so participantCount can't be double-decremented). Decrements only if
+ * the doc was ACTIVE (waitlist never counted). Safe for non-transactional callers
+ * (leave/refund/release/delete-account).
  * @param {FirebaseFirestore.Firestore} db admin Firestore
  * @param {string} eventId the event
  * @param {string} uid the leaver
- * @return {Promise<{removed:boolean, freedSpot:boolean}>} outcome
+ * @return {Promise<{removed:boolean, wasActive:boolean}>} outcome
  */
-async function leaveRosterTx(tx, db, eventId, uid) {
-  const rRef = rosterRef(db, eventId, uid);
-  const snap = await tx.get(rRef);
-  if (!snap.exists) return {removed: false, freedSpot: false};
-  const wasActive = snap.data().status === "active";
-  tx.delete(rRef);
-  if (wasActive) {
-    tx.update(eventRef(db, eventId), {
-      participantCount: FieldValue.increment(-1),
-    });
-  }
-  return {removed: true, freedSpot: wasActive};
+async function removeFromRoster(db, eventId, uid) {
+  return db.runTransaction(async (tx) => {
+    const rRef = rosterRef(db, eventId, uid);
+    const s = await tx.get(rRef);
+    if (!s.exists) return {removed: false, wasActive: false};
+    const wasActive = s.data().status === "active";
+    tx.delete(rRef);
+    if (wasActive) {
+      tx.update(eventRef(db, eventId), {participantCount: FieldValue.increment(-1)});
+    }
+    return {removed: true, wasActive};
+  });
+}
+
+/**
+ * Whether `uid` is on the roster (any status). Point read.
+ * @param {FirebaseFirestore.Firestore} db admin Firestore
+ * @param {string} eventId the event
+ * @param {string} uid the user
+ * @return {Promise<boolean>} true if a roster doc exists
+ */
+async function isOnRoster(db, eventId, uid) {
+  return (await rosterRef(db, eventId, uid).get()).exists;
 }
 
 /**
  * Promote the oldest waitlisted roster doc to active IF there is capacity — the
  * FIFO waitlist promotion, run from the roster trigger after an active leaver.
- * Its own transaction: re-reads capacity + the head of the waitlist so concurrent
- * leaves can't over-promote. Returns the promoted uid or null.
- *
+ * Its own transaction re-reads capacity + the candidate so concurrent leaves
+ * can't over-promote. Returns the promoted uid or null.
  * @param {FirebaseFirestore.Firestore} db admin Firestore
  * @param {string} eventId the event
- * @return {Promise<string|null>} the promoted uid, or null if none/no room
+ * @return {Promise<string|null>} the promoted uid, or null if none / no room
  */
 async function promoteOldestWaitlist(db, eventId) {
-  // Read the single oldest waitlist doc OUTSIDE the tx to get a candidate, then
-  // re-validate inside the tx (capacity + still-waitlisted) before promoting.
   const head = await rosterCol(db, eventId)
     .where("status", "==", "waitlist")
     .orderBy("joinedAt", "asc")
@@ -113,8 +132,7 @@ async function promoteOldestWaitlist(db, eventId) {
     const e = eSnap.data();
     if (e.status === "cancelled") return null;
     const max = maxOf(e);
-    const count = e.participantCount || 0;
-    if (max && count >= max) return null; // no room
+    if (max && (e.participantCount || 0) >= max) return null; // no room
     const cRef = rosterRef(db, eventId, candidateUid);
     const cSnap = await tx.get(cRef);
     if (!cSnap.exists || cSnap.data().status !== "waitlist") return null; // raced
@@ -130,6 +148,8 @@ module.exports = {
   rosterCol,
   maxOf,
   joinRosterTx,
-  leaveRosterTx,
+  writeActiveRoster,
+  removeFromRoster,
+  isOnRoster,
   promoteOldestWaitlist,
 };

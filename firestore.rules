@@ -42,8 +42,11 @@ service cloud.firestore {
     
     function isEventParticipant(eventId) {
       let eventData = get(/databases/$(database)/documents/events/$(eventId)).data;
+      // PRIVACY (fix/privacy-event-roster): the roster moved off the world-readable
+      // event doc into events/{id}/roster/{uid}; membership is proven by the
+      // existence of the caller's own roster doc, not `uid in attendees`.
       return request.auth.uid == eventData.creatorId ||
-             (eventData.attendees != null && request.auth.uid in eventData.attendees);
+             exists(/databases/$(database)/documents/events/$(eventId)/roster/$(request.auth.uid));
     }
 
     function isEventHost(eventId) {
@@ -77,9 +80,9 @@ service cloud.firestore {
     // An attendee who is NOT the creator — only these users may rate an event.
     function isEventAttendeeNotCreator(eventId) {
       let eventData = get(/databases/$(database)/documents/events/$(eventId)).data;
+      // PRIVACY (fix/privacy-event-roster): roster membership via the subcollection.
       return request.auth.uid != eventData.creatorId &&
-             eventData.attendees != null &&
-             request.auth.uid in eventData.attendees;
+             exists(/databases/$(database)/documents/events/$(eventId)/roster/$(request.auth.uid));
     }
     
     function onlyUpdating(allowedFields) {
@@ -283,6 +286,18 @@ service cloud.firestore {
       // gate). Writes are server-only (setEventLocation CF via the Admin SDK).
       match /private/{doc} {
         allow read: if isSignedIn() && isEventParticipant(eventId);
+        allow write: if false;
+      }
+
+      // Attendee roster (fix/privacy-event-roster) — moved off the world-readable
+      // event doc so a stranger can no longer read + de-anonymize who's attending.
+      // A participant reads ONLY their own roster doc (proof of RSVP); the
+      // host/co-host reads the whole roster. All writes are server-only (joinEvent
+      // / reserveMembershipCredit / webhooks / refunds via the Admin SDK) — the
+      // client never writes it, so participantCount can't be forged.
+      match /roster/{rosterUid} {
+        allow read: if isSignedIn() &&
+                       (request.auth.uid == rosterUid || isEventHost(eventId));
         allow write: if false;
       }
 

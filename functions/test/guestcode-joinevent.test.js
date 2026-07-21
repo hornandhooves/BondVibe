@@ -134,11 +134,13 @@ test("GC6 joinEvent (verified) joins a free event", async () => {
   const token = await tokenFor(uid, {verified: true});
   const eventId = `evt_${nextId()}`;
   await db.collection("events").doc(eventId).set({
-    title: "Free run", price: 0, attendees: [],
+    title: "Free run", price: 0, participantCount: 0,
     date: new Date(Date.now() + 3 * 86400000).toISOString(), maxAttendees: 50,
   });
   const res = await post("joinEvent", {eventId}, token);
   assert.strictEqual(res.status, 200);
-  const ev = await db.collection("events").doc(eventId).get();
-  assert.ok((ev.data().attendees || []).includes(uid));
+  // ROSTER (fix/privacy-event-roster): joining writes an active roster doc.
+  const r = (await db.collection("events").doc(eventId)
+    .collection("roster").doc(uid).get()).data();
+  assert.ok(r && r.status === "active", "joiner is an active roster member");
 });

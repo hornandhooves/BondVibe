@@ -651,26 +651,16 @@ async function handleEventTicketPurchase(paymentIntent) {
   //    that re-checks capacity; if the event filled meanwhile, the paid user is
   //    waitlisted (promoted by onEventAttendeesChanged when a spot frees) rather
   //    than dropped or oversold past maxAttendees.
-  console.log("👥 Adding user to event attendees...");
-  const eventRef = db.collection("events").doc(eventId);
+  //    ROSTER (fix/privacy-event-roster): the same oversell transaction, now over
+  //    participantCount + the gated roster subcollection (reading one int is more
+  //    atomic than counting the array, not less). Full → waitlist; the roster
+  //    trigger promotes when a spot frees.
+  console.log("👥 Adding paid attendee to the roster...");
+  const roster = require("../utils/roster");
   const placement = await db.runTransaction(async (tx) => {
-    const snap = await tx.get(eventRef);
+    const snap = await tx.get(db.collection("events").doc(eventId));
     if (!snap.exists) return "event_missing";
-    const e = snap.data();
-    const ids = (Array.isArray(e.attendees) ? e.attendees : [])
-      .map((a) => (typeof a === "string" ? a : a && a.userId))
-      .filter(Boolean);
-    if (ids.includes(userId)) return "already";
-    const max = e.maxAttendees || e.maxPeople || 0;
-    if (max && ids.length >= max) {
-      const wl = Array.isArray(e.waitlist) ? e.waitlist : [];
-      if (!wl.includes(userId)) {
-        tx.update(eventRef, {waitlist: FieldValue.arrayUnion(userId)});
-      }
-      return "waitlisted";
-    }
-    tx.update(eventRef, {attendees: FieldValue.arrayUnion(userId)});
-    return "attendee";
+    return roster.joinRosterTx(tx, db, eventId, snap.data(), userId);
   });
   console.log(`✅ Ticket placement: ${placement}`);
 

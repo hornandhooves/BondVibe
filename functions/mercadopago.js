@@ -151,8 +151,15 @@ exports.mercadoPagoWebhook = onRequest(
         createdAt: FieldValue.serverTimestamp(),
       });
 
-      await db.collection("events").doc(eventId).update({
-        attendees: FieldValue.arrayUnion(userId),
+      // ROSTER (fix/privacy-event-roster): add via the same transactional
+      // capacity path as the Stripe webhook (participantCount + gated roster) —
+      // this also closes a pre-existing oversell gap (MP added unconditionally,
+      // with no capacity re-check). Full → waitlist; the roster trigger promotes.
+      const roster = require("./utils/roster");
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(db.collection("events").doc(eventId));
+        if (!snap.exists) return;
+        await roster.joinRosterTx(tx, db, eventId, snap.data(), userId);
       });
 
       return res.status(200).send("ok");

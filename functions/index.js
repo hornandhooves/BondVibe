@@ -49,6 +49,7 @@ const bizAutomations = require("./business/automations");
 
 // Import event helpers (attendee/creator normalization)
 const {getAttendeeIds, getEventCreatorId, getHostIdForPayout} = require("./utils/eventHelpers");
+const roster = require("./utils/roster");
 
 // F2 gated-location derivation (pure helpers, unit-tested in lib/eventLocation.test.js)
 const {
@@ -56,7 +57,7 @@ const {
 } = require("./lib/eventLocation");
 // Modular FieldValue — same as FieldValue in prod, but stub-safe
 // under the functions emulator (whose admin stub drops the namespaced statics).
-const {FieldValue} = require("firebase-admin/firestore");
+const {FieldValue, Timestamp} = require("firebase-admin/firestore");
 
 // Community Matching functions (defined in ./matching, re-exported below).
 const matching = require("./matching/matching");
@@ -737,13 +738,13 @@ exports.createEventPaymentIntent = onRequest(
       // joinEvent (atomic capacity), but paid joins skipped this entirely — a
       // sold-out event still took the money. Fail fast here; the webhook adds
       // the attendee atomically (waitlists on the rare concurrent-payment race).
+      // ROSTER (fix/privacy-event-roster): capacity is participantCount (source of
+      // truth) + the caller's roster doc, not the removed attendees array.
       {
-        const att = Array.isArray(eventData.attendees) ? eventData.attendees : [];
-        const ids = att
-          .map((a) => (typeof a === "string" ? a : a && a.userId))
-          .filter(Boolean);
         const max = eventData.maxAttendees || eventData.maxPeople || 0;
-        if (max && !ids.includes(userId) && ids.length >= max) {
+        const already = (await db.collection("events").doc(eventId)
+          .collection("roster").doc(userId).get()).exists;
+        if (max && !already && (eventData.participantCount || 0) >= max) {
           return res.status(409).json({error: "event_full"});
         }
       }
@@ -1299,13 +1300,16 @@ exports.reserveMembershipCredit = onCall(async (request) => {
     // with the write. Full → reject (don't reserve the credit). joinEvent does
     // the same for free RSVPs.
     const evtSnap = await tx.get(db.collection("events").doc(eventId));
+    // ROSTER (fix/privacy-event-roster): capacity from participantCount + the
+    // caller's own roster doc (read here, in the read phase; the add below is the
+    // matching write). A membership join REJECTS when full (never waitlists) —
+    // unchanged semantics, only the source changed (count, not the array).
+    const alreadyOnRoster = (await tx.get(
+      db.collection("events").doc(eventId).collection("roster").doc(uid))).exists;
     if (evtSnap.exists) {
       const ev = evtSnap.data();
-      const attIds = (Array.isArray(ev.attendees) ? ev.attendees : [])
-        .map((a) => (typeof a === "string" ? a : a && a.userId))
-        .filter(Boolean);
       const max = ev.maxAttendees || ev.maxPeople || 0;
-      if (max && !attIds.includes(uid) && attIds.length >= max) {
+      if (max && !alreadyOnRoster && (ev.participantCount || 0) >= max) {
         throw new HttpsError("failed-precondition", "event_full");
       }
     }
@@ -1370,10 +1374,9 @@ exports.reserveMembershipCredit = onCall(async (request) => {
       reservedAt: FieldValue.serverTimestamp(),
     });
 
-    // Add the user to the event attendees.
-    tx.update(db.collection("events").doc(eventId), {
-      attendees: FieldValue.arrayUnion(uid),
-    });
+    // Add the user as an ACTIVE roster participant (guard against a double count
+    // if they were already on the roster — e.g. joined free then reserved credit).
+    if (!alreadyOnRoster) roster.writeActiveRoster(tx, db, eventId, uid);
 
     return {success: true, reservationId: reservationRef.id};
   });
@@ -1701,10 +1704,9 @@ exports.releaseMembershipReservation = onCall(async (request) => {
     });
   }
 
-  // Remove the attendee from the event regardless.
-  await db.collection("events").doc(reservation.eventId).update({
-    attendees: FieldValue.arrayRemove(reservation.userId),
-  });
+  // Remove from the roster regardless (decrements participantCount if active); the
+  // roster trigger promotes the next waitlisted person into the freed spot.
+  await roster.removeFromRoster(db, reservation.eventId, reservation.userId);
 
   return {success: true, forfeited: forfeit};
 });
@@ -2429,26 +2431,30 @@ exports.joinEvent = onCall(async (request) => {
       throw new HttpsError("failed-precondition", "This event has already happened.");
     }
 
-    const attendees = Array.isArray(e.attendees) ? e.attendees : [];
-    const ids = attendees
-      .map((a) => (typeof a === "string" ? a : a && a.userId))
-      .filter(Boolean);
-    if (ids.includes(uid)) return {success: true, already: true};
-
-    const max = e.maxAttendees || e.maxPeople || 0;
-    if (max && ids.length >= max) {
-      // Full → waitlist (FIFO). onEventAttendeesChanged promotes when a spot opens.
-      const waitlist = Array.isArray(e.waitlist) ? e.waitlist : [];
-      if (waitlist.includes(uid)) {
-        return {success: true, waitlisted: true, already: true};
-      }
-      tx.update(ref, {waitlist: FieldValue.arrayUnion(uid)});
-      return {success: true, waitlisted: true, position: waitlist.length + 1};
-    }
-
-    tx.update(ref, {attendees: FieldValue.arrayUnion(uid)});
+    // ROSTER (fix/privacy-event-roster): capacity + waitlist now live in the
+    // gated subcollection + participantCount (source of truth), not the array.
+    // Full → waitlist (FIFO); the roster trigger promotes when a spot opens.
+    const placement = await roster.joinRosterTx(tx, db, eventId, e, uid);
+    if (placement === "already") return {success: true, already: true};
+    if (placement === "waitlist") return {success: true, waitlisted: true};
     return {success: true};
   });
+});
+
+/**
+ * Leave an event (free RSVP / waitlist). ROSTER (fix/privacy-event-roster): the
+ * roster subcollection is server-only, so the client can no longer self-remove
+ * via an array write — it calls this callable (mirrors cancelEventAttendance for
+ * paid tickets). Removing frees a spot (decrements participantCount if the caller
+ * was active); the roster trigger then promotes the next waitlisted person.
+ */
+exports.leaveEvent = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const {eventId} = request.data || {};
+  if (!eventId) throw new HttpsError("invalid-argument", "Missing eventId.");
+  const {removed} = await roster.removeFromRoster(db, eventId, uid);
+  return {success: true, removed};
 });
 
 /**
@@ -2836,13 +2842,14 @@ exports.createAccountLink = createAccountLink;
 exports.getAccountStatus = getAccountStatus;
 exports.stripeConnectWebhook = stripeConnectWebhook;
 
-// Import Event Notifications
+// Import Event Notifications. ROSTER (fix/privacy-event-roster): the
+// attendees-array trigger was replaced by a per-roster-doc trigger.
 const {
-  onEventAttendeesChanged,
+  onEventRosterChanged,
 } = require("./notifications/eventNotifications");
 
 // Export Event Notifications
-exports.onEventAttendeesChanged = onEventAttendeesChanged;
+exports.onEventRosterChanged = onEventRosterChanged;
 
 // ============================================================================
 // PAYMENTS ESCROW — release cron (docs/DISENO_escrow_pagos.md §4)
@@ -2945,7 +2952,6 @@ exports.migrateEventRosters = onCall(async (request) => {
   const pageSize = Math.min(
     Math.max(parseInt((request.data || {}).limit, 10) || 200, 1), 400);
   const cursor = (request.data || {}).cursor || null;
-  const Timestamp = admin.firestore.Timestamp;
   const ORDER_BASE = new Date("2020-01-01T00:00:00Z").getTime(); // FIFO anchor
 
   let q = db.collection("events").orderBy("__name__").limit(pageSize);

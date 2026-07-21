@@ -126,9 +126,10 @@ test("EV5 reserveMembershipCredit (onCall) rejects an unverified email", async (
 
 test("CAP1 createEventPaymentIntent rejects a sold-out event (409) before charging", async () => {
   const eventId = `evt_${nextId()}`;
+  // ROSTER: capacity is participantCount (source of truth), not the array.
   await db.collection("events").doc(eventId).set({
     creatorId: `host_${nextId()}`, title: "Full", price: 250,
-    maxAttendees: 1, attendees: ["someone_else"],
+    maxAttendees: 1, participantCount: 1,
     date: new Date(Date.now() + 864e5).toISOString(),
   });
   const token = await tokenFor(`buyer_${nextId()}`, {verified: true});
@@ -141,7 +142,7 @@ test("CAP2 reserveMembershipCredit rejects a sold-out event", async () => {
   const eventId = `evt_${nextId()}`;
   await db.collection("events").doc(eventId).set({
     creatorId: `host_${nextId()}`, title: "Full class", acceptsMembership: true,
-    creditCost: 1, maxAttendees: 1, attendees: ["someone_else"],
+    creditCost: 1, maxAttendees: 1, participantCount: 1,
     date: new Date(Date.now() + 864e5).toISOString(),
   });
   const token = await tokenFor(`u_${nextId()}`, {verified: true});
@@ -156,8 +157,8 @@ test("CAP3 paid-ticket webhook waitlists (does not oversell) when the event is f
   const buyer = `buyer_${nextId()}`;
   const host = `host_${nextId()}`;
   await db.collection("events").doc(eventId).set({
-    creatorId: host, title: "Sold out", attendees: ["already_in"],
-    maxAttendees: 1, date: new Date(Date.now() + 864e5).toISOString(),
+    creatorId: host, title: "Sold out", maxAttendees: 1, participantCount: 1,
+    date: new Date(Date.now() + 864e5).toISOString(),
   });
 
   const payload = JSON.stringify({
@@ -178,11 +179,13 @@ test("CAP3 paid-ticket webhook waitlists (does not oversell) when the event is f
   assert.strictEqual(res.status, 200);
 
   const e = (await db.collection("events").doc(eventId).get()).data();
-  // Attendees NOT oversold past capacity…
-  assert.deepStrictEqual(e.attendees, ["already_in"]);
-  // …the paid buyer is waitlisted instead.
-  assert.ok(Array.isArray(e.waitlist) && e.waitlist.includes(buyer),
-    `expected ${buyer} on waitlist, got ${JSON.stringify(e.waitlist)}`);
+  // participantCount NOT oversold past capacity…
+  assert.strictEqual(e.participantCount, 1);
+  // …the paid buyer is waitlisted in the roster instead (no active spot taken).
+  const r = (await db.collection("events").doc(eventId)
+    .collection("roster").doc(buyer).get()).data();
+  assert.ok(r && r.status === "waitlist",
+    `expected ${buyer} waitlisted, got ${JSON.stringify(r)}`);
 });
 
 test("CAP4 paid-ticket webhook adds the attendee when there IS room", async () => {
@@ -191,8 +194,8 @@ test("CAP4 paid-ticket webhook adds the attendee when there IS room", async () =
   const buyer = `buyer_${nextId()}`;
   const host = `host_${nextId()}`;
   await db.collection("events").doc(eventId).set({
-    creatorId: host, title: "Open", attendees: [],
-    maxAttendees: 10, date: new Date(Date.now() + 864e5).toISOString(),
+    creatorId: host, title: "Open", maxAttendees: 10, participantCount: 0,
+    date: new Date(Date.now() + 864e5).toISOString(),
   });
 
   const payload = JSON.stringify({
@@ -212,5 +215,8 @@ test("CAP4 paid-ticket webhook adds the attendee when there IS room", async () =
   });
   assert.strictEqual(res.status, 200);
   const e = (await db.collection("events").doc(eventId).get()).data();
-  assert.ok(e.attendees.includes(buyer), "buyer should be an attendee");
+  assert.strictEqual(e.participantCount, 1, "participantCount incremented");
+  const r = (await db.collection("events").doc(eventId)
+    .collection("roster").doc(buyer).get()).data();
+  assert.ok(r && r.status === "active", "buyer should be an active roster member");
 });
