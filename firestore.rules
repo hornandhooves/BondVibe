@@ -205,7 +205,10 @@ service cloud.firestore {
       allow read: if isSignedIn();
       // Hosts can't self-promote for free: featured + rating-aggregate +
       // matching (Kinlo Pro) fields are set only by the server (Admin SDK).
+      // Email must be verified — the ID token's forgery-proof claim, so an
+      // unverified account can't publish events. Browsing (read) stays open.
       allow create: if isSignedIn() &&
+                       request.auth.token.email_verified == true &&
                        request.resource.data.creatorId == request.auth.uid &&
                        request.resource.data.get('featured', false) == false &&
                        // F2: the coarse gated-location fields are server-computed

@@ -491,15 +491,37 @@ async function handleEventTicketPurchase(paymentIntent) {
   await db.collection("payments").doc(paymentIntentId).set(paymentData);
   console.log("✅ Payment record saved");
 
-  // 2. Add user to event attendees. The host's "new attendee" notification
-  //    (in-app bubble + push, including the paid amount) is sent by the
-  //    onEventAttendeesChanged Cloud Function, so we don't duplicate it here.
+  // 2. Add user to event attendees — atomically, honoring capacity. The host's
+  //    "new attendee" notification is sent by onEventAttendeesChanged, so we
+  //    don't duplicate it here.
+  //    OVERSELL: this used to be a blind arrayUnion. createEventPaymentIntent
+  //    now rejects a sold-out event before charging, but two payments in flight
+  //    could still both land here and overbook. Do the add in a transaction
+  //    that re-checks capacity; if the event filled meanwhile, the paid user is
+  //    waitlisted (promoted by onEventAttendeesChanged when a spot frees) rather
+  //    than dropped or oversold past maxAttendees.
   console.log("👥 Adding user to event attendees...");
   const eventRef = db.collection("events").doc(eventId);
-  await eventRef.update({
-    attendees: FieldValue.arrayUnion(userId),
+  const placement = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(eventRef);
+    if (!snap.exists) return "event_missing";
+    const e = snap.data();
+    const ids = (Array.isArray(e.attendees) ? e.attendees : [])
+      .map((a) => (typeof a === "string" ? a : a && a.userId))
+      .filter(Boolean);
+    if (ids.includes(userId)) return "already";
+    const max = e.maxAttendees || e.maxPeople || 0;
+    if (max && ids.length >= max) {
+      const wl = Array.isArray(e.waitlist) ? e.waitlist : [];
+      if (!wl.includes(userId)) {
+        tx.update(eventRef, {waitlist: FieldValue.arrayUnion(userId)});
+      }
+      return "waitlisted";
+    }
+    tx.update(eventRef, {attendees: FieldValue.arrayUnion(userId)});
+    return "attendee";
   });
-  console.log("✅ User added to attendees");
+  console.log(`✅ Ticket placement: ${placement}`);
 
   console.log("✅ Payment processing complete");
 }

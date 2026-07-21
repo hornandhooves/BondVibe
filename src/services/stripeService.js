@@ -83,10 +83,11 @@ export const createTipPaymentIntent = async (hostId, userId, amount, eventId = '
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        // Identity from this token; the server ignores any body userId.
+        Authorization: `Bearer ${await auth.currentUser.getIdToken()}`,
       },
       body: JSON.stringify({
         hostId,
-        userId,
         amount,
         eventId,
         message,

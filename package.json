@@ -14,7 +14,7 @@
     "emulators": "firebase emulators:start --only auth,firestore,functions",
     "test:e2e:emulator": "firebase emulators:exec --only auth,firestore,functions \"USE_EMULATOR=1 node scripts/e2e-rules.js\"",
     "test:rules": "firebase emulators:exec --only firestore,storage \"jest --config jest.rules.config.js\"",
-    "test:payments": "firebase emulators:exec --only functions,firestore,auth \"node --test functions/test/payments-hardening.test.js\"",
+    "test:payments": "firebase emulators:exec --only functions,firestore,auth \"node --test functions/test/*.test.js\"",
     "lint": "expo lint",
     "gates": "npm run lint && npm test && npm run test:e2e && npx expo-doctor && npx expo export --platform ios && npx expo export --platform android && echo '\\n✅ ALL GATES PASSED — safe to build'"
   },

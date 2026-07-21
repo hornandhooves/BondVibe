@@ -233,6 +233,10 @@ exports.activateHost = onCall(async (request) => {
   if (!uid) {
     throw new HttpsError("unauthenticated", "Sign in first.");
   }
+  // Becoming a host requires a verified email (forgery-proof token claim).
+  if (request.auth.token.email_verified !== true) {
+    throw new HttpsError("permission-denied", "email_not_verified");
+  }
 
   const type = request.data && request.data.type;
   if (type !== "free" && type !== "paid") {
@@ -704,6 +708,10 @@ exports.createEventPaymentIntent = onRequest(
       if (!caller) {
         return res.status(401).json({error: "unauthenticated"});
       }
+      // A verified email is required to pay (forgery-proof token claim).
+      if (!caller.email_verified) {
+        return res.status(403).json({error: "email_not_verified"});
+      }
       const userId = caller.uid;
       const {eventId} = req.body;
 
@@ -718,6 +726,21 @@ exports.createEventPaymentIntent = onRequest(
       }
 
       const eventData = eventDoc.data();
+
+      // OVERSELL: enforce capacity BEFORE charging. Free joins go through
+      // joinEvent (atomic capacity), but paid joins skipped this entirely — a
+      // sold-out event still took the money. Fail fast here; the webhook adds
+      // the attendee atomically (waitlists on the rare concurrent-payment race).
+      {
+        const att = Array.isArray(eventData.attendees) ? eventData.attendees : [];
+        const ids = att
+          .map((a) => (typeof a === "string" ? a : a && a.userId))
+          .filter(Boolean);
+        const max = eventData.maxAttendees || eventData.maxPeople || 0;
+        if (max && !ids.includes(userId) && ids.length >= max) {
+          return res.status(409).json({error: "event_full"});
+        }
+      }
       // BUG 32.6: pay the business OWNER for staff-created events (businessOwnerUid),
       // else the creator. Also scopes the two-tier member lookup to the owner's biz.
       const hostId = getHostIdForPayout(eventData);
@@ -886,9 +909,20 @@ exports.createTipPaymentIntent = onRequest(
         stripe = require("stripe")(stripeSecretKey.value());
       }
 
-      const {hostId, eventId, amount, message, userId} = req.body;
+      // AUTH: the tipper is the verified caller, not a body-supplied userId
+      // (mirrors createEventPaymentIntent / #43). Prevents a modified client
+      // from attributing a tip to another user, and blocks unverified accounts.
+      const caller = await verifyBearer(req);
+      if (!caller) {
+        return res.status(401).json({error: "unauthenticated"});
+      }
+      if (!caller.email_verified) {
+        return res.status(403).json({error: "email_not_verified"});
+      }
+      const userId = caller.uid;
+      const {hostId, eventId, amount, message} = req.body;
 
-      if (!hostId || !amount || !userId) {
+      if (!hostId || !amount) {
         return res.status(400).json({error: "Missing required fields"});
       }
 
@@ -979,6 +1013,9 @@ exports.createMembershipPaymentIntent = onRequest(
       const caller = await verifyBearer(req);
       if (!caller) {
         return res.status(401).json({error: "unauthenticated"});
+      }
+      if (!caller.email_verified) {
+        return res.status(403).json({error: "email_not_verified"});
       }
       const userId = caller.uid;
       const {planId} = req.body;
@@ -1116,6 +1153,9 @@ exports.createPromotionPaymentIntent = onRequest(
       if (!caller) {
         return res.status(401).json({error: "unauthenticated"});
       }
+      if (!caller.email_verified) {
+        return res.status(403).json({error: "email_not_verified"});
+      }
       const userId = caller.uid;
       const {eventId, planId} = req.body;
       if (!eventId || !planId) {
@@ -1195,6 +1235,9 @@ function eventStartDate(eventData) {
 exports.reserveMembershipCredit = onCall(async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  if (request.auth.token.email_verified !== true) {
+    throw new HttpsError("permission-denied", "email_not_verified");
+  }
   const {eventId} = request.data || {};
   if (!eventId) throw new HttpsError("invalid-argument", "Missing eventId.");
 
@@ -1225,6 +1268,23 @@ exports.reserveMembershipCredit = onCall(async (request) => {
     );
     if (!dupe.empty) {
       return {success: true, reservationId: dupe.docs[0].id, alreadyReserved: true};
+    }
+
+    // OVERSELL: a membership join adds the user to attendees (below) but never
+    // checked capacity — a full class still let credit-holders RSVP past
+    // maxAttendees. Re-read the event inside the tx so the count is consistent
+    // with the write. Full → reject (don't reserve the credit). joinEvent does
+    // the same for free RSVPs.
+    const evtSnap = await tx.get(db.collection("events").doc(eventId));
+    if (evtSnap.exists) {
+      const ev = evtSnap.data();
+      const attIds = (Array.isArray(ev.attendees) ? ev.attendees : [])
+        .map((a) => (typeof a === "string" ? a : a && a.userId))
+        .filter(Boolean);
+      const max = ev.maxAttendees || ev.maxPeople || 0;
+      if (max && !attIds.includes(uid) && attIds.length >= max) {
+        throw new HttpsError("failed-precondition", "event_full");
+      }
     }
 
     // Find the user's active memberships with this host.
@@ -3254,6 +3314,9 @@ async function releaseVehicleRange(vehicleId, rentalId) {
 exports.reserveVehicle = onCall({secrets: [stripeSecretKey]}, async (request) => {
   const uid = request.auth && request.auth.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  if (request.auth.token.email_verified !== true) {
+    throw new HttpsError("permission-denied", "email_not_verified");
+  }
   const {vehicleId, startAt, endAt, eventId} = request.data || {};
   if (!vehicleId || !startAt || !endAt) {
     throw new HttpsError("invalid-argument", "Missing rental details.");
@@ -3504,6 +3567,9 @@ async function releaseServiceSlot(bizId, sessionTypeId, bookingId) {
 exports.reserveServiceBooking = onCall({secrets: [stripeSecretKey]}, async (request) => {
   const uid = request.auth && request.auth.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  if (request.auth.token.email_verified !== true) {
+    throw new HttpsError("permission-denied", "email_not_verified");
+  }
   const {bizId, sessionTypeId, startAt, buyerName} = request.data || {};
   if (!bizId || !sessionTypeId || !startAt) {
     throw new HttpsError("invalid-argument", "Missing booking details.");

@@ -42,10 +42,13 @@ const nextId = () => `t${Date.now()}_${uniq++}`;
 async function tokenFor(uid) {
   const email = `${uid}@kinlo.test`;
   const password = "Test123456!";
+  // emailVerified:true — payment callables now require a verified email
+  // (fix/email-verify-and-capacity); these tests exercise the auth-from-token
+  // and capacity logic, not the email gate, so their users must be verified.
   try {
-    await admin.auth().createUser({uid, email, password});
+    await admin.auth().createUser({uid, email, password, emailVerified: true});
   } catch (e) {
-    await admin.auth().updateUser(uid, {email, password});
+    await admin.auth().updateUser(uid, {email, password, emailVerified: true});
   }
   const r = await fetch(`${IDT}:signInWithPassword?key=fake-api-key`, {
     method: "POST",
