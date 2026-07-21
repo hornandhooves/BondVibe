@@ -3883,6 +3883,38 @@ exports.businessRemindersCron = onSchedule(
 );
 exports.twilioSmsWebhook = onRequest({cors: false}, bizAutomations.twilioWebhook);
 
+// Staff roles an owner may ASSIGN via an invite. Derived from DEFAULT_ROLES
+// (src/constants/businessRoles.js) minus "owner": owner is never granted by an
+// invite — that path is the admin-gated requestOwnerTransfer (P3, follow-up).
+// "admin" is a platform role, never business staff. A business may also define
+// CUSTOM roles (businesses/{bizId}/roles, random doc ids) which are allowed too.
+// Everything else is rejected so a forged role ("owner"/"admin"/garbage) can't be
+// smuggled into a staff record (which would grant finance/ownership access).
+const BUILTIN_STAFF_ROLES = ["manager", "instructor", "reception"];
+
+/**
+ * Validate a staff role against the REAL assignable set for a business and return
+ * the value to store. Blocks "owner"/"admin" (case-insensitive), accepts the
+ * built-in roles, and accepts a custom role that actually exists under
+ * businesses/{bizId}/roles. Throws invalid-argument otherwise.
+ * @param {string} bizId the business id
+ * @param {*} role the requested role
+ * @return {Promise<string>} the validated role to persist
+ */
+async function assertAssignableRole(bizId, role) {
+  const r = String(role || "").trim();
+  const lower = r.toLowerCase();
+  if (!r || lower === "owner" || lower === "admin") {
+    throw new HttpsError("invalid-argument", "invalid_role");
+  }
+  if (BUILTIN_STAFF_ROLES.includes(lower)) return lower;
+  // A custom role the business actually defined (owner/admin already blocked).
+  const roleSnap = await db.collection("businesses").doc(bizId)
+    .collection("roles").doc(r).get();
+  if (roleSnap.exists) return r;
+  throw new HttpsError("invalid-argument", "invalid_role");
+}
+
 /**
  * Invite a staff member to a business (owner-only). Looks up the user by email
  * and grants a scoped role. kinlo_business/01 §7. v1: bizId === owner uid.
@@ -3890,10 +3922,18 @@ exports.twilioSmsWebhook = onRequest({cors: false}, bizAutomations.twilioWebhook
 exports.inviteBusinessStaff = onCall(async (request) => {
   const uid = request.auth && request.auth.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  // P1 (fix/staff-invite-email-verified): staff access must not be grantable to
+  // an UNVERIFIED email. Without this, an attacker registers a Firebase account
+  // with the invitee's email (email_verified:false), then claims/accepts the
+  // invite and becomes active staff of a business they don't belong to. Mirrors
+  // the reserveVehicle / reserveServiceBooking gate.
+  if (request.auth.token.email_verified !== true) {
+    throw new HttpsError("permission-denied", "email_not_verified");
+  }
   const bizId = uid; // one business per owner
   // Normalize: trim + lowercase so any real account email matches (incl. Gmail).
   const email = String((request.data && request.data.email) || "").trim().toLowerCase();
-  const role = String((request.data && request.data.role) || "reception");
+  const role = await assertAssignableRole(bizId, (request.data && request.data.role) || "reception");
   const handle = String((request.data && request.data.handle) || "")
     .trim().toLowerCase().replace(/^@+/, "");
 
@@ -4005,6 +4045,12 @@ exports.inviteBusinessStaff = onCall(async (request) => {
 exports.claimStaffInvites = onCall(async (request) => {
   const uid = request.auth && request.auth.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  // P1: this converts a pending email invite into a staff record keyed by the
+  // TOKEN's email. If the email isn't verified, the caller hasn't proven they
+  // own it — refuse, so a squatted account can't claim someone else's invite.
+  if (request.auth.token.email_verified !== true) {
+    throw new HttpsError("permission-denied", "email_not_verified");
+  }
   const email = String((request.auth.token && request.auth.token.email) || "").trim().toLowerCase();
   if (!email) return {claimed: 0};
 
@@ -4025,8 +4071,19 @@ exports.claimStaffInvites = onCall(async (request) => {
   // BUG 32.1: a claimed email invite becomes an "invited" staff record (NOT
   // active) + a notification, so the new user still Accepts before gaining
   // access — same consent step as a handle invite.
+  let claimed = 0;
   for (const d of snap.docs) {
     const inv = d.data();
+    // Defense in depth: re-validate the stored role against the business's REAL
+    // assignable set before materializing the staff record. A pre-existing or
+    // tampered invite with a forbidden role ("owner"/"admin") or an unknown role
+    // is skipped (left pending), never converted into staff.
+    try {
+      await assertAssignableRole(inv.bizId, inv.role);
+    } catch (e) {
+      console.warn(`Skipping invite ${d.id} — invalid role ${inv.role}`);
+      continue;
+    }
     let bizName = "";
     try {
       const b = await db.collection("businesses").doc(inv.bizId).get();
@@ -4071,8 +4128,9 @@ exports.claimStaffInvites = onCall(async (request) => {
       claimedBy: uid,
       claimedAt: FieldValue.serverTimestamp(),
     });
+    claimed += 1;
   }
-  return {claimed: snap.size};
+  return {claimed};
 });
 
 /**
@@ -4083,6 +4141,12 @@ exports.claimStaffInvites = onCall(async (request) => {
 exports.respondToStaffInvite = onCall(async (request) => {
   const uid = request.auth && request.auth.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  // P1: accepting an invite flips a staff record to "active" (grants access). An
+  // unverified email hasn't been proven to belong to the caller, so block it here
+  // too — the last gate before access, closing the claim→respond hijack chain.
+  if (request.auth.token.email_verified !== true) {
+    throw new HttpsError("permission-denied", "email_not_verified");
+  }
   const bizId = String((request.data && request.data.bizId) || "").trim();
   const accept = !!(request.data && request.data.accept);
   if (!bizId) throw new HttpsError("invalid-argument", "bizId required.");
