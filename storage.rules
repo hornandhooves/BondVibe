@@ -18,6 +18,35 @@ service firebase.storage {
                ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic'];
     }
 
+    // ── Business finance authorization (cross-service, mirrors firestore.rules) ──
+    // The CURRENT owner of a business, read from Firestore. bizId is only the v1
+    // default; ownership can move (requestOwnerTransfer/approveOwnerTransfer rewrite
+    // businesses/{bizId}.ownerUid). Falls back to bizId when the doc/field is absent
+    // — same semantics as firestore.rules isBizOwnerUid.
+    function bizOwnerUid(bizId) {
+      return firestore.exists(/databases/(default)/documents/businesses/$(bizId))
+        ? firestore.get(/databases/(default)/documents/businesses/$(bizId)).data.get('ownerUid', bizId)
+        : bizId;
+    }
+    function staffData(bizId) {
+      return firestore.get(
+        /databases/(default)/documents/businesses/$(bizId)/staff/$(request.auth.uid)).data;
+    }
+    // Active, non-reception staff — the same finance gate firestore.rules applies to
+    // the payments/expenses docs (reception is excluded from finance).
+    function isActiveFinanceStaff(bizId) {
+      return firestore.exists(
+               /databases/(default)/documents/businesses/$(bizId)/staff/$(request.auth.uid)) &&
+             staffData(bizId).get('status', 'active') == 'active' &&
+             staffData(bizId).get('role', 'reception') != 'reception';
+    }
+    // Whoever the Firestore finance gate authorizes for businesses/{bizId}: the
+    // current owner or active finance staff.
+    function isFinanceAuthorized(bizId) {
+      return isSignedIn() &&
+             (request.auth.uid == bizOwnerUid(bizId) || isActiveFinanceStaff(bizId));
+    }
+
     // Event images — readable by any signed-in user; uploads namespaced by the
     // uploader's uid so nobody can overwrite another user's (or the host's)
     // event images. The event doc references only the host's uploaded URLs, so
@@ -68,20 +97,20 @@ service firebase.storage {
                       isImageUnder(10 * 1024 * 1024);
     }
 
-    // Business expense receipts (P&L). v1: bizId === the owner's uid, so the
-    // owner uploads under their own namespace — mirrors the uid-scoped rules
-    // above.
+    // Business expense receipts (P&L) — sensitive financial data (invoices,
+    // amounts, vendor + bank details).
     //
     // LEAK (fix/security-rules-privesc): read was `isSignedIn()`, so ANY signed-in
-    // user could fetch ANY business's expense receipts — invoices, amounts,
-    // vendor and bank details. The old note ("the URL is only referenced by the
-    // finance-gated expense doc") was security by obscurity: the Firestore gate
-    // on businesses/{bizId}/expenses never protected the Storage object, and
-    // this path is enumerable. Read is now scoped to the owner, matching write.
+    // user could fetch ANY business's receipts. That was scoped to `uid == bizId`.
+    //
+    // P1 (fix/security-rules-round2): `uid == bizId` breaks on an ownership
+    // TRANSFER — bizId (the doc id) never changes, so the OLD owner kept access and
+    // the NEW owner was locked out. Gate on the CURRENT ownerUid from Firestore
+    // instead (read AND write), matching the Firestore finance gate, and allow
+    // active finance staff who manage the expense docs. Size limit preserved.
     match /businesses/{bizId}/expenses/{fileName} {
-      allow read: if isSignedIn() && request.auth.uid == bizId;
-      allow write: if isSignedIn() && request.auth.uid == bizId &&
-                      isImageUnder(10 * 1024 * 1024);
+      allow read: if isFinanceAuthorized(bizId);
+      allow write: if isFinanceAuthorized(bizId) && isImageUnder(10 * 1024 * 1024);
     }
 
     // Marketplace service listing photos (Services P1). A service is a public
