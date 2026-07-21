@@ -389,6 +389,33 @@ async function handleRentalPayment(paymentIntent) {
   }
   const rental = rentalSnap.data();
 
+  // ESCROW ledger (B3 §4/§5). Amounts come from the rental DOC (not the PI
+  // metadata). Payout host = businessOwnerUid || ownerId. Written before the
+  // payment doc for the same idempotency reasoning as events.
+  const escrow = require("./escrow");
+  const rentalHostUid = rental.businessOwnerUid || rental.ownerId || null;
+  const rHostSnap = rentalHostUid ?
+    await db.collection("users").doc(rentalHostUid).get() : null;
+  const rHostData = rHostSnap && rHostSnap.exists ? rHostSnap.data() : {};
+  const rRetention = await escrow.effectiveRetentionHours(db, rHostData);
+  const rReleaseAt = await escrow.writeHeldLedger(db, {
+    paymentIntentId,
+    type: "rental",
+    sourceId: rentalId,
+    deliveryEndAt: rental.endAt,
+    buyerUid: renterId || rental.renterId,
+    hostUid: rentalHostUid,
+    hostAccountId: rental.stripeAccountId ||
+      (rHostData.stripeConnect && rHostData.stripeConnect.accountId) || null,
+    grossAmount: rental.totalCentavos || amount,
+    hostAmount: rental.hostReceivesCentavos || 0,
+    platformFee: rental.platformFeeCentavos || 0,
+    stripeFee: rental.stripeFeeCentavos || 0,
+    currency,
+    retentionHours: rRetention,
+  });
+  console.log(`🔒 Rental ledger held: ${paymentIntentId} releaseAt=${rReleaseAt}`);
+
   // 1. Payment record
   await db.collection("payments").doc(paymentIntentId).set({
     paymentIntentId,
@@ -460,6 +487,32 @@ async function handleServiceBookingPayment(paymentIntent) {
     return;
   }
   const b = bSnap.data();
+
+  // ESCROW ledger (B3 §4/§5). Amounts from the booking DOC. host = ownerUid.
+  const escrow = require("./escrow");
+  const svcHostUid = b.ownerUid || null;
+  const sHostSnap = svcHostUid ?
+    await db.collection("users").doc(svcHostUid).get() : null;
+  const sHostData = sHostSnap && sHostSnap.exists ? sHostSnap.data() : {};
+  const sRetention = await escrow.effectiveRetentionHours(db, sHostData);
+  const sReleaseAt = await escrow.writeHeldLedger(db, {
+    paymentIntentId,
+    type: "service_booking",
+    sourceId: bookingId,
+    bizId,
+    deliveryEndAt: b.end,
+    buyerUid: buyerId || b.buyerUid,
+    hostUid: svcHostUid,
+    hostAccountId: b.stripeAccountId ||
+      (sHostData.stripeConnect && sHostData.stripeConnect.accountId) || null,
+    grossAmount: b.totalCentavos || amount,
+    hostAmount: b.hostReceivesCentavos || 0,
+    platformFee: b.platformFeeCentavos || 0,
+    stripeFee: b.stripeFeeCentavos || 0,
+    currency,
+    retentionHours: sRetention,
+  });
+  console.log(`🔒 Service ledger held: ${paymentIntentId} releaseAt=${sReleaseAt}`);
 
   // 1. Payment record (freezes the applied fee %, not just the amount).
   await db.collection("payments").doc(paymentIntentId).set({
@@ -553,30 +606,22 @@ async function handleEventTicketPurchase(paymentIntent) {
       eventEndAt = Number.isFinite(ms) ? new Date(ms).toISOString() : null;
     }
   }
-  const eventEndMs = eventEndAt ? new Date(eventEndAt).getTime() : NaN;
-  const releaseAt = Number.isFinite(eventEndMs) ?
-    escrow.computeReleaseAtISO(eventEndMs, retentionHours) : null;
-  await db.collection("paymentLedger").doc(paymentIntentId).set({
+  const releaseAt = await escrow.writeHeldLedger(db, {
     paymentIntentId,
-    eventId,
+    type: "event_ticket",
+    sourceId: eventId,
+    deliveryEndAt: eventEndAt,
+    buyerUid: userId,
+    hostUid: hostId,
     hostAccountId: metadata.hostAccountId ||
       (hostData.stripeConnect && hostData.stripeConnect.accountId) || null,
-    hostUid: hostId,
-    attendeeUid: userId,
     grossAmount: num(metadata.totalAmount) || amount,
     hostAmount: num(metadata.hostReceives),
     platformFee: num(metadata.platformFee),
     stripeFee: num(metadata.stripeFee),
     currency,
-    state: "held",
-    frozen: false,
-    hostPenaltyOwed: 0,
-    capturedAt: FieldValue.serverTimestamp(),
-    eventEndAt: eventEndAt,
-    releaseAt: releaseAt,
-    transferId: null,
-    refundId: null,
-  }, {merge: true});
+    retentionHours,
+  });
   console.log(`🔒 Ledger held: ${paymentIntentId} releaseAt=${releaseAt}`);
 
   // 1. Save payment record

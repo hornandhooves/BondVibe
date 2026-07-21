@@ -971,6 +971,12 @@ exports.createTipPaymentIntent = onRequest(
         currency: "mxn",
         receipt_email: tipperEmail || undefined,
         application_fee_amount: 0, // No platform fee on tips
+        // ESCROW B3 §6 — tips are NOT escrowed (instant gift to the host). But
+        // on_behalf_of makes the HOST the merchant of record, so a disputed tip
+        // is charged back to the host, not Kinlo (previously Kinlo, as MoR with
+        // application_fee 0, ate 100% of a disputed tip). Tips never touch the
+        // ledger or the release cron.
+        on_behalf_of: stripeAccountId,
         transfer_data: {
           destination: stripeAccountId, // 100% to host
         },
@@ -3420,11 +3426,13 @@ async function releaseVehicleRange(vehicleId, rentalId) {
 /**
  * Atomically reserve an available vehicle and open the payment.
  *
- * Marketplace stance: the rental payment is a Stripe Connect destination charge
- * with `on_behalf_of` the HOST, so the host is the merchant of record and bears
- * liability (disputes, refunds, damage/theft). BondVibe keeps only the
- * commission (application_fee_amount). Any security deposit is arranged directly
- * between renter and host on pickup — BondVibe never holds or captures it.
+ * Marketplace stance (ESCROW B3, docs/DISENO_escrow_rentas.md §1): the rental
+ * payment uses SEPARATE CHARGES + TRANSFERS — the charge lands in Kinlo's own
+ * balance (no on_behalf_of / transfer_data / application_fee), so Kinlo is the
+ * merchant of record and bears PAYMENT chargebacks only. The releaseHostPayouts
+ * cron transfers the host's cut after the return + retention window. Any security
+ * deposit and any damage/theft are settled OFF-PLATFORM directly between renter
+ * and host on pickup — Kinlo never holds or captures the deposit.
  *
  * data: { vehicleId, startAt (ISO), endAt (ISO), eventId? }
  * Returns { rentalId, clientSecret } (or { free:true } for free vehicles).
@@ -3521,6 +3529,9 @@ exports.reserveVehicle = onCall({secrets: [stripeSecretKey]}, async (request) =>
       vehicleId,
       providerId: v.providerId || null,
       ownerId: v.ownerId || null,
+      // ESCROW (B3 §4): the payout host is businessOwnerUid || ownerId. Store it
+      // so the webhook can key the ledger's hostUid without re-reading the vehicle.
+      businessOwnerUid: v.businessOwnerUid || null,
       renterId: uid,
       eventId: eventId || null,
       startAt,
@@ -3549,17 +3560,18 @@ exports.reserveVehicle = onCall({secrets: [stripeSecretKey]}, async (request) =>
     return {success: true, rentalId: reserved.rentalId, free: true};
   }
 
-  // 2) Rental-fee PaymentIntent — same as event tickets: destination charge to
-  //    the host (receives 100% of the fee), BondVibe keeps the platform fee via
-  //    application_fee. `on_behalf_of` makes the host the merchant of record and
-  //    liable for disputes; the deposit/damage/theft are settled off-platform.
+  // 2) Rental-fee PaymentIntent — ESCROW (B3 §3, docs/DISENO_escrow_rentas.md):
+  //    SEPARATE CHARGES AND TRANSFERS, identical to createEventPaymentIntent. No
+  //    on_behalf_of / transfer_data / application_fee — the funds land in Kinlo's
+  //    OWN balance; the releaseHostPayouts cron pays the host after the return +
+  //    retention. Kinlo becomes MoR for PAYMENT chargebacks only (§1); the
+  //    deposit/damage/theft stay off-platform. transfer_group links the future
+  //    transfer. Amounts live on the rental doc (read by the webhook).
   if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
   const fee = await stripe.paymentIntents.create({
     amount: pricing.totalAmount,
     currency: "mxn",
-    on_behalf_of: hostAccount,
-    application_fee_amount: pricing.platformFee + pricing.stripeFee,
-    transfer_data: {destination: hostAccount},
+    transfer_group: reserved.rentalId,
     metadata: {
       type: "rental",
       rentalId: reserved.rentalId,
@@ -3797,15 +3809,15 @@ exports.reserveServiceBooking = onCall({secrets: [stripeSecretKey]}, async (requ
   // Free service — confirmed server-side, no PaymentIntent.
   if (isFree) return {success: true, bookingId: reserved.bookingId, free: true};
 
-  // 2) PaymentIntent — destination charge to the host (100% of price), Kinlo keeps
-  //    platform + Stripe fee via application_fee; on_behalf_of = host is MoR.
+  // 2) PaymentIntent — ESCROW (B3 §3): separate charges + transfers, identical to
+  //    events. No on_behalf_of / transfer_data / application_fee → funds to Kinlo's
+  //    balance; the release cron pays the host after the slot + retention. Amounts
+  //    live on the booking doc (read by the webhook). transfer_group = bookingId.
   if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
   const pi = await stripe.paymentIntents.create({
     amount: pricing.totalAmount,
     currency: "mxn",
-    on_behalf_of: hostAccount,
-    application_fee_amount: pricing.platformFee + pricing.stripeFee,
-    transfer_data: {destination: hostAccount},
+    transfer_group: reserved.bookingId,
     metadata: {
       type: "service_booking",
       bizId,

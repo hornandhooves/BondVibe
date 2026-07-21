@@ -101,6 +101,62 @@ function computeReleaseAtISO(eventEndMs, retentionHours) {
 const {FieldValue} = require("firebase-admin/firestore");
 
 /**
+ * Write a HELD ledger row (§3, generalized in B3 §4). One schema for event
+ * tickets, rentals and slot service bookings. Idempotent (merge). Keeps the
+ * event-era fields (eventId/attendeeUid/eventEndAt) so #45 doesn't break.
+ * @param {FirebaseFirestore.Firestore} db admin Firestore
+ * @param {object} p ledger inputs
+ * @param {string} p.paymentIntentId Stripe PI id (ledger doc id)
+ * @param {string} p.type 'event_ticket' | 'rental' | 'service_booking'
+ * @param {string} p.sourceId eventId | rentalId | bookingId
+ * @param {string} [p.bizId] business id (service bookings live in a subcollection)
+ * @param {string} p.deliveryEndAt ISO end of delivery (event end / rental return / slot end)
+ * @param {string} p.buyerUid the payer
+ * @param {string} p.hostUid the payout host
+ * @param {string} p.hostAccountId the host's Stripe Connect account
+ * @param {number} p.grossAmount total charged (centavos)
+ * @param {number} p.hostAmount the host's cut (centavos)
+ * @param {number} p.platformFee platform fee (centavos)
+ * @param {number} p.stripeFee stripe fee (centavos)
+ * @param {string} p.currency currency
+ * @param {number} p.retentionHours effective retention (already resolved per host)
+ * @return {Promise<string|null>} the computed releaseAt (ISO) or null
+ */
+async function writeHeldLedger(db, p) {
+  const endMs = p.deliveryEndAt ? dateToMillis(p.deliveryEndAt) : NaN;
+  const releaseAt = Number.isFinite(endMs) ?
+    computeReleaseAtISO(endMs, p.retentionHours) : null;
+  const isEvent = p.type === "event_ticket";
+  await db.collection("paymentLedger").doc(p.paymentIntentId).set({
+    paymentIntentId: p.paymentIntentId,
+    type: p.type,
+    sourceId: p.sourceId,
+    bizId: p.bizId || null,
+    // Back-compat with #45 (event ledgers keyed these fields).
+    eventId: isEvent ? p.sourceId : null,
+    attendeeUid: isEvent ? p.buyerUid : null,
+    eventEndAt: isEvent ? (p.deliveryEndAt || null) : null,
+    hostAccountId: p.hostAccountId || null,
+    hostUid: p.hostUid,
+    buyerUid: p.buyerUid,
+    deliveryEndAt: p.deliveryEndAt || null,
+    grossAmount: p.grossAmount || 0,
+    hostAmount: p.hostAmount || 0,
+    platformFee: p.platformFee || 0,
+    stripeFee: p.stripeFee || 0,
+    currency: p.currency || "mxn",
+    state: "held",
+    frozen: false,
+    hostPenaltyOwed: 0,
+    capturedAt: FieldValue.serverTimestamp(),
+    releaseAt: releaseAt,
+    transferId: null,
+    refundId: null,
+  }, {merge: true});
+  return releaseAt;
+}
+
+/**
  * Notify host + admins that a payout is stuck (no Connect account or a failed
  * transfer at release time) — §8. The ledger stays 'held' and retries next run.
  * @param {FirebaseFirestore.Firestore} db admin Firestore
@@ -177,7 +233,9 @@ async function releaseOnePayout(stripe, db, ledgerDoc) {
         amount: transferAmount,
         currency: l.currency || "mxn",
         destination: hostAccountId,
-        transfer_group: l.eventId,
+        // B3 §7: transfer_group generalizes to sourceId; fall back to eventId for
+        // pre-B3 (#45) ledgers that only carry eventId.
+        transfer_group: l.sourceId || l.eventId,
         metadata: {paymentIntentId, hostUid: l.hostUid, netted: String(netted)},
       }, {idempotencyKey: "release_" + paymentIntentId});
       transferId = tr.id;
@@ -227,6 +285,7 @@ module.exports = {
   dateToMillis,
   eventEndAtMs,
   computeReleaseAtISO,
+  writeHeldLedger,
   notifyPayoutStuck,
   releaseOnePayout,
 };

@@ -628,3 +628,7 @@ exports.hostCancelEvent = functions.https.onCall(
 exports.REFUND_POLICY = REFUND_POLICY;
 exports.calculateRefundPercentage = calculateRefundPercentage;
 exports.calculateStripeFee = calculateStripeFee;
+// ESCROW B3 §7 — exported so the escrow tests can drive the ledger-aware refund
+// path directly (held → refund, released → reversal + refund) for rentals/services.
+// It keys the ledger by paymentIntentId, so it is source-type agnostic.
+exports.processRefund = processRefund;
