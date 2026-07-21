@@ -262,10 +262,13 @@ export default function MatchProfileViewScreen({ navigation }) {
           </Card>
         )}
 
-        {/* Big Five — all five, then the reading */}
-        <Card s={s} colors={colors} title={t("matching.profile.personalityLabel")}>
-          <BigFiveBars personality={personality} />
-        </Card>
+        {/* Big Five — all five, then the reading. testID for the Maestro smoke
+            that verifies personality reads from the gated subcollection (#52). */}
+        <View testID="match-bigfive">
+          <Card s={s} colors={colors} title={t("matching.profile.personalityLabel")}>
+            <BigFiveBars personality={personality} />
+          </Card>
+        </View>
         <BigFiveInterpretation personality={personality} />
       </ScrollView>
     </View>
