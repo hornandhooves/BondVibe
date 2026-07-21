@@ -140,9 +140,24 @@ dashboard). App scheme is `kinlo://`; the git repo is still `hornandhooves/BondV
 ---
 
 ## 5. Before you finish (verification)
-- `CI=true npx jest` → green.
-- Quick i18n parity check (en vs es key sets match).
-- Babel-transform touched files through the project config if unsure.
+- `CI=true npx jest` → green. **This is the syntax check.** Do NOT reach for
+  `npx babel --config-file ./babel.config.js <file>`: on
+  `src/navigation/AppNavigator.js` it fails with a **pre-existing**
+  `SyntaxError: Unexpected token (299:12)` that has nothing to do with your
+  change, while jest — which uses the real config — passes. Chasing it wastes an
+  hour; masking it produces a false green.
+- Quick i18n parity check (en vs es key sets match). **Never write the locale
+  files by parse→stringify.** They don't round-trip: `JSON.stringify(json, null, 2)`
+  differs from the on-disk formatting by ~1680 chars, so a "small" key addition
+  rewrites hundreds of untouched lines and buries the real change in the diff
+  (`json.dumps(indent=2)` in Python, same trap). Insert keys as TEXT — find the
+  section's opening brace and splice — then re-parse to prove you added exactly
+  what you meant to.
+- **Make the action depend on the check.** `node --check x && CI=true npx jest &&
+  git commit` — not `verify; commit`, which commits regardless, and not a check
+  followed by an unconditional `echo "✅"`. Watch pipes too: `grep … | sed || echo
+  "none"` never fires the fallback, because the exit code is sed's. A false green
+  is worse than a red: it ends the investigation.
 - **Screenshot-diff** new screens against the design mocks. The `design_handoff_*/`
   folders (gitignored, reference-only) hold the READMEs + captures + a
   `PIXEL-FIDELITY SPEC` — read that spec BEFORE building a screen and port its
