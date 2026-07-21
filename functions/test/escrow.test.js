@@ -149,6 +149,24 @@ test("ESC5 releaseAt = eventEnd + retention; eventEnd = start + durationMinutes"
   assert.strictEqual(escrow.computeReleaseAtISO(end, -10), new Date(end).toISOString());
 });
 
+test("ESC5b date parsing: eventEndAtMs handles Firestore Timestamp AND ISO", () => {
+  const start = new Date("2026-09-10T15:00:00.000Z").getTime();
+  const expectedEnd = start + 90 * 60000; // 90-min event
+  // ISO string (already covered) …
+  assert.strictEqual(
+    escrow.eventEndAtMs({date: new Date(start).toISOString(), durationMinutes: 90}),
+    expectedEnd);
+  // … a real Firestore Timestamp instance (.toDate()) — new Date(ts) would be NaN.
+  const ts = admin.firestore.Timestamp.fromMillis(start);
+  assert.strictEqual(escrow.eventEndAtMs({date: ts, durationMinutes: 90}), expectedEnd);
+  // … a serialized timestamp ({_seconds}) as it can arrive across boundaries.
+  assert.strictEqual(
+    escrow.eventEndAtMs({date: {_seconds: start / 1000, _nanoseconds: 0}, durationMinutes: 90}),
+    expectedEnd);
+  // Regression guard: a Timestamp must NOT collapse to NaN (→ null releaseAt).
+  assert.ok(Number.isFinite(escrow.dateToMillis(ts)));
+});
+
 // ===========================================================================
 // §2/§3 — ledger written 'held' on capture (signed webhook, no Stripe network)
 // ===========================================================================
@@ -191,6 +209,41 @@ test("ESC6 capture: webhook writes a HELD ledger with releaseAt = end + 24h", as
   assert.strictEqual(led.hostPenaltyOwed, 0);
   const expected = new Date(new Date(eventEndAt).getTime() + 24 * HOUR).toISOString();
   assert.strictEqual(led.releaseAt, expected);
+});
+
+test("ESC6b capture: a Firestore Timestamp `date` still yields a non-null releaseAt", async () => {
+  // The bug: eventEndAtMs did new Date(timestampObject) → NaN → releaseAt:null,
+  // breaking the release cron. Exercise the webhook FALLBACK (no eventEndAt in
+  // metadata → reads the event doc, whose date is a Timestamp).
+  const eventId = `evt_${nextId()}`;
+  const hostUid = `host_${nextId()}`;
+  const pi = `pi_${nextId()}`;
+  const startMs = Date.now() + 4 * 24 * HOUR;
+  await db.collection("events").doc(eventId).set({
+    creatorId: hostUid, title: "TS event", attendees: [],
+    date: admin.firestore.Timestamp.fromMillis(startMs),
+    durationMinutes: 120, maxAttendees: 50,
+  });
+  await db.collection("users").doc(hostUid).set({role: "host", payoutTier: "standard"});
+
+  const status = await sendWebhook("payment_intent.succeeded", {
+    id: pi, object: "payment_intent", amount: 27312, currency: "mxn",
+    metadata: {
+      type: "event_ticket", eventId, eventTitle: "TS event",
+      userId: `buyer_${nextId()}`, hostId: hostUid,
+      hostReceives: "25000", stripeFee: "1062", totalAmount: "27312",
+      hostAccountId: "acct_testhost",
+      // eventEndAt intentionally omitted → forces the Timestamp fallback.
+    },
+  });
+  assert.strictEqual(status, 200);
+
+  const led = await getLedger(pi);
+  const wantEnd = new Date(startMs + 120 * 60000).toISOString();
+  const wantRelease = new Date(startMs + 120 * 60000 + 24 * HOUR).toISOString();
+  assert.notStrictEqual(led.releaseAt, null, "releaseAt must NOT be null for a Timestamp date");
+  assert.strictEqual(led.eventEndAt, wantEnd);
+  assert.strictEqual(led.releaseAt, wantRelease);
 });
 
 test("ESC7 dispute: charge.dispute.created FREEZES the ledger (§8)", async () => {

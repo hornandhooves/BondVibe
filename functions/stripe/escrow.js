@@ -51,14 +51,35 @@ async function effectiveRetentionHours(db, hostData) {
 }
 
 /**
- * Event end time. Events store a start `date` (ISO) + `durationMinutes`
- * (default 180) — there is no eventEndAt field, so derive it.
+ * Parse an event `date` to epoch ms. The repo stores `date` as a Firestore
+ * Timestamp AND/OR an ISO string depending on the write path (mirrors
+ * eventStartDate in functions/index.js), so handle: a Timestamp instance
+ * (.toDate()), a serialized Timestamp ({_seconds}/{seconds}), an ISO string,
+ * or an epoch number. `new Date(timestampObject)` yields NaN — the bug this
+ * guards against (a null releaseAt breaks the release cron).
+ * @param {*} d a Firestore Timestamp, serialized timestamp, ISO string, or number
+ * @return {number} epoch ms, or NaN if unparseable
+ */
+function dateToMillis(d) {
+  if (d == null) return NaN;
+  if (typeof d.toDate === "function") return d.toDate().getTime();
+  if (typeof d._seconds === "number") {
+    return d._seconds * 1000 + Math.floor((d._nanoseconds || 0) / 1e6);
+  }
+  if (typeof d.seconds === "number") {
+    return d.seconds * 1000 + Math.floor((d.nanoseconds || 0) / 1e6);
+  }
+  return new Date(d).getTime(); // ISO string or epoch number
+}
+
+/**
+ * Event end time. Events store a start `date` + `durationMinutes` (default 180)
+ * — there is no eventEndAt field, so derive it. Robust to Timestamp/ISO dates.
  * @param {object} eventData events/{id} doc data
  * @return {number} epoch ms of the event end, or NaN if the start is unparseable
  */
 function eventEndAtMs(eventData) {
-  const start = eventData && eventData.date ?
-    new Date(eventData.date).getTime() : NaN;
+  const start = eventData ? dateToMillis(eventData.date) : NaN;
   if (!Number.isFinite(start)) return NaN;
   const durMin = Number(eventData.durationMinutes) || 180;
   return start + durMin * 60000;
@@ -203,6 +224,7 @@ module.exports = {
   clampRetentionHours,
   readRetentionHours,
   effectiveRetentionHours,
+  dateToMillis,
   eventEndAtMs,
   computeReleaseAtISO,
   notifyPayoutStuck,
