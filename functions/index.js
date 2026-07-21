@@ -15,6 +15,9 @@ const {detectProhibitedContent} = require("./contentGuard");
 // Define secrets
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
 const anthropicKey = defineSecret("ANTHROPIC_API_KEY");
+// Twilio account auth token — used to VERIFY inbound webhook signatures
+// (twilioSmsWebhook). Secret Manager, bound to the function; never hardcoded.
+const twilioAuthToken = defineSecret("TWILIO_AUTH_TOKEN");
 
 // Initialize Stripe (will be done inside functions)
 let stripe;
@@ -3881,7 +3884,13 @@ exports.businessRemindersCron = onSchedule(
   {schedule: "every day 09:00", timeZone: "America/Mexico_City"},
   bizAutomations.remindersCron,
 );
-exports.twilioSmsWebhook = onRequest({cors: false}, bizAutomations.twilioWebhook);
+// TWILIO_AUTH_TOKEN is bound so the handler can VERIFY the X-Twilio-Signature on
+// every inbound request (else STOP/START consent could be forged). SMS sending
+// stays inert; this only closes the inbound verification gate.
+exports.twilioSmsWebhook = onRequest(
+  {cors: false, secrets: [twilioAuthToken]},
+  bizAutomations.twilioWebhook,
+);
 
 /**
  * Invite a staff member to a business (owner-only). Looks up the user by email

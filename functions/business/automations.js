@@ -15,6 +15,7 @@
 const admin = require("firebase-admin");
 const {FieldValue} = require("firebase-admin/firestore");
 const {HttpsError} = require("firebase-functions/v2/https");
+const twilio = require("twilio");
 const {sendPushNotification} = require("../notifications/pushService");
 const {tPush, baseLang} = require("../i18n");
 
@@ -222,10 +223,59 @@ async function remindersCron() {
 }
 
 /**
+ * The exact PUBLIC URL(s) Twilio would have signed. Twilio computes the signature
+ * over the full URL configured in its console (scheme + host + path + query). Tras
+ * el proxy de Cloud Functions v2 (Cloud Run) el request interno llega por http y
+ * el host puede venir en X-Forwarded-Host, así que:
+ *  - forzamos https (Twilio solo llama https; el TLS termina en el proxy),
+ *  - preferimos X-Forwarded-Host sobre Host,
+ *  - conservamos la ruta+query original (req.originalUrl).
+ * Un override explícito (TWILIO_WEBHOOK_URL = la URL EXACTA del console) gana, para
+ * cuando la reconstrucción no coincide con lo que se configuró. Devolvemos varios
+ * candidatos y aceptamos si CUALQUIERA valida.
+ * @param {object} req the Express request
+ * @return {string[]} candidate public URLs
+ */
+function twilioPublicUrls(req) {
+  const urls = [];
+  if (process.env.TWILIO_WEBHOOK_URL) urls.push(process.env.TWILIO_WEBHOOK_URL);
+  const path = req.originalUrl || req.url || "/";
+  const hosts = [req.headers["x-forwarded-host"], req.headers.host];
+  for (const h of hosts) {
+    if (h) urls.push(`https://${h}${path}`);
+  }
+  return urls;
+}
+
+/**
+ * Verify the X-Twilio-Signature against the auth token. Returns false on a missing
+ * token/signature (so an UNCONFIGURED or UNSIGNED request is rejected, not trusted).
+ * @param {object} req the Express request (headers + parsed form body)
+ * @return {boolean} true iff a candidate URL validates the signature
+ */
+function isValidTwilioRequest(req) {
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const signature = req.headers["x-twilio-signature"];
+  if (!authToken || !signature) return false;
+  const params = (req.body && typeof req.body === "object") ? req.body : {};
+  return twilioPublicUrls(req).some((url) =>
+    twilio.validateRequest(authToken, signature, url, params));
+}
+
+/**
  * Twilio inbound webhook — handle STOP/START keywords (LFPDPPP opt-out).
  * Flips the member's smsConsent by matching the sender's phone.
+ *
+ * SECURITY: every request must carry a valid X-Twilio-Signature (verified with the
+ * account auth token). Without this, anyone could POST forged STOP/START and toggle
+ * a member's SMS consent. An invalid or absent signature → 403 (nothing processed).
  */
 async function twilioWebhook(req, res) {
+  if (!isValidTwilioRequest(req)) {
+    console.warn("twilioWebhook: rejected request with missing/invalid signature");
+    res.status(403).send("Forbidden");
+    return;
+  }
   try {
     const from = (req.body && (req.body.From || req.body.from)) || "";
     const text = String((req.body && (req.body.Body || req.body.body)) || "")
