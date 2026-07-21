@@ -938,6 +938,33 @@ service cloud.firestore {
     }
 
     // ============================================
+    // PAYMENTS ESCROW (feat/payments-escrow · docs/DISENO_escrow_pagos.md)
+    // ============================================
+    // The money ledger (§3) is the source of truth for the state of every held
+    // payment. It is written ONLY by the Admin SDK (charge webhook, release
+    // cron, refunds, admin freeze) — never by any client.
+    match /paymentLedger/{paymentIntentId} {
+      allow read, write: if false;
+    }
+    // hostPayoutAccounts/{hostUid}.penaltyOwed — per-host cancellation debt (§6/§7),
+    // netted from the host's next release. Server-only.
+    match /hostPayoutAccounts/{hostUid} {
+      allow read, write: if false;
+    }
+
+    // Admin-tunable payout settings (§7). settings/payouts.retentionHours: global
+    // retention window, default 24, HARD FLOOR 0 — the rule rejects a negative
+    // value (the server also clamps on use). Readable so the admin dashboard can
+    // show it; written only by an admin.
+    match /settings/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() &&
+                      (!('retentionHours' in request.resource.data) ||
+                       (request.resource.data.retentionHours is number &&
+                        request.resource.data.retentionHours >= 0));
+    }
+
+    // ============================================
     // KINLO FOR BUSINESS (host ERP/CRM) — Pro-gated in the app.
     // v1: one business per owner, so bizId == ownerUid. Access is staff-scoped:
     // a staff record at businesses/{bizId}/staff/{uid} grants access; the owner

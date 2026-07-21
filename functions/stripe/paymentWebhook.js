@@ -61,6 +61,12 @@ exports.stripePaymentWebhook = onRequest(
         await handlePlusSubscriptionChange(event.data.object);
         return res.json({received: true, handled: true});
       }
+      // ESCROW (§8): a dispute/chargeback auto-freezes the held payout so the
+      // release cron won't pay the host while the money is contested.
+      if (event.type === "charge.dispute.created") {
+        await handleDisputeCreated(event.data.object);
+        return res.json({received: true, handled: true});
+      }
       return res.json({received: true, handled: false});
     } catch (error) {
       console.error("❌ Error handling webhook:", error);
@@ -203,6 +209,61 @@ async function handlePaymentSuccess(paymentIntent) {
   }
 
   return handleEventTicketPurchase(paymentIntent);
+}
+
+/**
+ * ESCROW §8 — a Stripe dispute/chargeback FREEZES the held payout so the release
+ * cron skips it until an admin resolves it, and alerts admins.
+ * @param {Object} dispute - Stripe Dispute object (carries .payment_intent)
+ * @return {Promise<void>}
+ */
+async function handleDisputeCreated(dispute) {
+  const paymentIntentId = typeof dispute.payment_intent === "string" ?
+    dispute.payment_intent :
+    (dispute.payment_intent && dispute.payment_intent.id);
+  if (!paymentIntentId) {
+    console.log("⏭️ Dispute without a payment_intent, skipping");
+    return;
+  }
+  const ref = db.collection("paymentLedger").doc(paymentIntentId);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    console.log("⏭️ Dispute for a non-ledger payment, skipping:", paymentIntentId);
+    return;
+  }
+  await ref.set(
+    {frozen: true, disputedAt: FieldValue.serverTimestamp()},
+    {merge: true},
+  );
+  console.log("🧊 Ledger frozen by dispute:", paymentIntentId);
+
+  // Notify admins (the frozen state also surfaces in the admin payouts view).
+  try {
+    const admins = await db
+      .collection("users")
+      .where("role", "==", "admin")
+      .limit(10)
+      .get();
+    const eventId = snap.data().eventId || null;
+    await Promise.all(
+      admins.docs.map((a) =>
+        db.collection("notifications").add({
+          userId: a.id,
+          type: "payout_frozen_dispute",
+          title: "Payout congelado por disputa",
+          message:
+            `El pago ${paymentIntentId} entró en disputa/chargeback; ` +
+            "su payout quedó congelado.",
+          icon: "⚠️",
+          read: false,
+          createdAt: new Date().toISOString(),
+          metadata: {paymentIntentId, eventId},
+        }),
+      ),
+    );
+  } catch (e) {
+    console.warn("dispute admin-notify failed:", e.message);
+  }
 }
 
 /**
@@ -472,6 +533,51 @@ async function handleEventTicketPurchase(paymentIntent) {
     console.log("⏭️ Event ticket payment already processed, skipping");
     return;
   }
+
+  // 1a. ESCROW ledger (docs/DISENO_escrow_pagos.md §3) — the source of truth for
+  //     the state of this held payment. Funds are in Kinlo's balance now; the
+  //     releaseHostPayouts cron pays the host after eventEndAt + retention.
+  //     Written BEFORE the payment doc so the payments-doc idempotency guard
+  //     above always leaves a ledger row (a retry landing after this but before
+  //     the payment doc re-runs and re-sets it via merge).
+  const escrow = require("./escrow");
+  const num = (v) => parseInt(v, 10) || 0;
+  const hostSnap = await db.collection("users").doc(hostId).get();
+  const hostData = hostSnap.exists ? hostSnap.data() : {};
+  const retentionHours = await escrow.effectiveRetentionHours(db, hostData);
+  let eventEndAt = metadata.eventEndAt || null;
+  if (!eventEndAt) {
+    const evSnap = await db.collection("events").doc(eventId).get();
+    if (evSnap.exists) {
+      const ms = escrow.eventEndAtMs(evSnap.data());
+      eventEndAt = Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+    }
+  }
+  const eventEndMs = eventEndAt ? new Date(eventEndAt).getTime() : NaN;
+  const releaseAt = Number.isFinite(eventEndMs) ?
+    escrow.computeReleaseAtISO(eventEndMs, retentionHours) : null;
+  await db.collection("paymentLedger").doc(paymentIntentId).set({
+    paymentIntentId,
+    eventId,
+    hostAccountId: metadata.hostAccountId ||
+      (hostData.stripeConnect && hostData.stripeConnect.accountId) || null,
+    hostUid: hostId,
+    attendeeUid: userId,
+    grossAmount: num(metadata.totalAmount) || amount,
+    hostAmount: num(metadata.hostReceives),
+    platformFee: num(metadata.platformFee),
+    stripeFee: num(metadata.stripeFee),
+    currency,
+    state: "held",
+    frozen: false,
+    hostPenaltyOwed: 0,
+    capturedAt: FieldValue.serverTimestamp(),
+    eventEndAt: eventEndAt,
+    releaseAt: releaseAt,
+    transferId: null,
+    refundId: null,
+  }, {merge: true});
+  console.log(`🔒 Ledger held: ${paymentIntentId} releaseAt=${releaseAt}`);
 
   // 1. Save payment record
   console.log("💾 Saving payment record...");
