@@ -20,6 +20,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import MatchIntelCard from "../../components/ai/MatchIntelCard";
 import SignalBreakdown from "../../components/matching/SignalBreakdown";
 import { likeAttendee, MATCH_TYPE_COLORS } from "../../services/matchingService";
+import { friendlyCallableError } from "../../utils/callableError";
 
 export default function MatchPersonScreen({ route, navigation }) {
   const { colors } = useTheme();
@@ -55,9 +56,11 @@ export default function MatchPersonScreen({ route, navigation }) {
         { text: t("matching.person.keepBrowsing"), onPress: () => navigation.goBack() },
       ]);
     } catch (e) {
+      // Known callable codes (target_not_checked_in, not_checked_in, …) → friendly
+      // copy; matching_closed keeps its specific message; else a generic fallback.
       const msg = e?.message?.includes("matching_closed")
         ? t("matching.person.matchingClosedMsg")
-        : t("matching.person.couldntLikeMsg");
+        : friendlyCallableError(e, t, "matching.person.couldntLikeMsg");
       Alert.alert(t("matching.person.oopsTitle"), msg);
     } finally {
       setBusy(false);

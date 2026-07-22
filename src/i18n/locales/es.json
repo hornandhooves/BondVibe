@@ -298,7 +298,9 @@
       "joined": "Unido",
       "emptyWall": "Aún no hay publicaciones — sé el primero en compartir algo aquí.",
       "eventsSoon": "Los eventos de esta comunidad aparecerán aquí.",
-      "membersSoon": "La lista de miembros aparecerá aquí."
+      "membersSoon": "La lista de miembros aparecerá aquí.",
+      "joinToViewTitle": "Únete para ver esta comunidad",
+      "joinToViewBlurb": "El muro de esta comunidad es para miembros. Pide al anfitrión un código de invitación para unirte."
     },
     "hostPost": {
       "badge": "HOST",
@@ -4690,5 +4692,18 @@
       "deleteTitle": "¿Eliminar esta membresía?",
       "deleteMsg": "Quien ya la compró conserva sus créditos. Solo deja de ofrecerse."
     }
+  },
+  "errors": {
+    "generic": "Algo salió mal. Inténtalo de nuevo.",
+    "emailNotVerified": "Verifica tu correo para continuar.",
+    "targetNotCheckedIn": "Aún no ha hecho check-in en este evento.",
+    "notCheckedIn": "Primero haz check-in en el evento.",
+    "hostPayoutsNotReady": "Este anfitrión aún no puede aceptar pagos.",
+    "tooManyAttempts": "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
+    "carpoolFull": "Ese carpool está lleno.",
+    "alreadyEnrolled": "Ya estás inscrito.",
+    "slotFull": "Ese horario está lleno.",
+    "datesUnavailable": "Esas fechas ya no están disponibles.",
+    "notAParticipant": "Solo los asistentes pueden ver esto."
   }
 }

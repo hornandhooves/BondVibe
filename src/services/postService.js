@@ -128,12 +128,14 @@ export const getFeed = async (max = 50) => {
         )
       )
     );
-    // Recap posts route to ATTENDEES (not followers): you were there, you
-    // see the recap. No orderBy → no composite index; merged + sorted below.
+    // Recap posts route to ATTENDEES (not followers): you were there, you see the
+    // recap. RULES COMPAT (#59): recaps are personal posts (communityId:null);
+    // filter on it so the query is rule-provable (else #59 rejects it whole).
     const recapSnap = await getDocs(
       query(
         collection(db, "posts"),
         where("attendeeIds", "array-contains", me),
+        where("communityId", "==", null),
         qLimit(20)
       )
     ).catch(() => null);

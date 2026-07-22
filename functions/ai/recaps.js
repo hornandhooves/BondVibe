@@ -105,6 +105,11 @@ function buildOnRecapPhotoCreated(db, anthropicKey) {
         eventId,
         eventTitle: ev.title || "",
         authorId: ev.creatorId || photo.uid,
+        // RULES COMPAT (#59): recaps are personal (not community) posts. Stamp
+        // communityId:null EXPLICITLY so the attendee feed query can filter
+        // where('communityId','==',null) and stay rule-provable — otherwise the
+        // #59 read rule rejects the whole recaps query and recaps vanish.
+        communityId: null,
         text: caption,
         images: [photo.url],
         // Snapshot so the Wall can show "You were there ✓" and route the

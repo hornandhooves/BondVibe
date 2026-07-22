@@ -298,7 +298,9 @@
       "joined": "Joined",
       "emptyWall": "No posts yet — be the first to share something here.",
       "eventsSoon": "This community's events will show up here.",
-      "membersSoon": "The member list will show up here."
+      "membersSoon": "The member list will show up here.",
+      "joinToViewTitle": "Join to see this community",
+      "joinToViewBlurb": "This community's wall is for members. Ask the host for an invite code to join."
     },
     "hostPost": {
       "badge": "HOST",
@@ -4690,5 +4692,18 @@
       "deleteTitle": "Delete this plan?",
       "deleteMsg": "Members who already bought it keep their credits. It just stops being offered."
     }
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "emailNotVerified": "Verify your email to continue.",
+    "targetNotCheckedIn": "They haven't checked in to this event yet.",
+    "notCheckedIn": "Check in to the event first.",
+    "hostPayoutsNotReady": "This host can't accept payments yet.",
+    "tooManyAttempts": "Too many attempts. Please wait a bit and try again.",
+    "carpoolFull": "That car pool is full.",
+    "alreadyEnrolled": "You're already enrolled.",
+    "slotFull": "That time slot is full.",
+    "datesUnavailable": "Those dates are no longer available.",
+    "notAParticipant": "Only attendees can see this."
   }
 }

@@ -34,12 +34,25 @@ export default function CommunityWallScreen({ route, navigation }) {
   const [sub, setSub] = useState(0); // 0 Muro · 1 Eventos · 2 Miembros
   const [loading, setLoading] = useState(true);
 
+  const [denied, setDenied] = useState(false);
   const load = useCallback(async () => {
     setLoading(true);
-    const [c, p] = await Promise.all([getGroup(communityId), getCommunityPosts(communityId)]);
-    setCommunity(c);
-    setPosts(p);
-    setLoading(false);
+    try {
+      // RULES (#59): a non-member's community-wall query is denied, so the posts
+      // read can throw — catch it to [] so the screen still renders the header +
+      // a "join to view" state instead of hanging on the spinner.
+      const [c, p] = await Promise.all([
+        getGroup(communityId),
+        getCommunityPosts(communityId).catch(() => []),
+      ]);
+      setCommunity(c);
+      setPosts(p);
+      setDenied(!c); // getGroup denied / missing → not visible to this user
+    } catch (_e) {
+      setDenied(true);
+    } finally {
+      setLoading(false);
+    }
   }, [communityId]);
   React.useEffect(() => navigation.addListener("focus", load), [navigation, load]);
 
@@ -90,6 +103,25 @@ export default function CommunityWallScreen({ route, navigation }) {
       <View style={[s.container, { backgroundColor: colors.background }]}>
         <MatchHeader title={t("wall.community.title")} onBack={() => navigation.goBack()} />
         <ActivityIndicator style={{ marginTop: 48 }} color="#1F8A6E" />
+      </View>
+    );
+  }
+
+  // Not visible to this user (private community they haven't joined) → invite to
+  // join rather than a broken/empty wall.
+  if (denied || !community) {
+    return (
+      <View style={[s.container, { backgroundColor: colors.background }]}>
+        <MatchHeader title={t("wall.community.title")} onBack={() => navigation.goBack()} />
+        <View style={{ padding: 32, alignItems: "center", marginTop: 40 }}>
+          <Icon name="lock" size={28} color={colors.textTertiary} />
+          <Text style={[s.empty, { color: colors.text, marginTop: 12, fontFamily: FONTS.bodyBold }]}>
+            {t("wall.community.joinToViewTitle")}
+          </Text>
+          <Text style={[s.empty, { color: colors.textSecondary, marginTop: 4 }]}>
+            {t("wall.community.joinToViewBlurb")}
+          </Text>
+        </View>
       </View>
     );
   }

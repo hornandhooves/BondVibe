@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next";
 import Icon from "../../components/Icon";
 import GradientBackground from "../../components/GradientBackground";
 import { useTheme } from "../../contexts/ThemeContext";
-import { BUSINESS_AREAS } from "../../constants/businessRoles";
+import { BUSINESS_AREAS, roleAllows } from "../../constants/businessRoles";
 import { listRoles, saveRole, addRole, removeRole } from "../../services/businessStaffService";
 
 export default function RolesScreen({ navigation }) {
@@ -29,10 +29,19 @@ export default function RolesScreen({ navigation }) {
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const openEdit = (r) => setEdit({ ...r, perms: { ...(r.perms || {}) } });
-  const togglePerm = (a) => setEdit((e) => ({ ...e, perms: { ...e.perms, [a]: e.perms[a] === false ? true : false } }));
+  // Toggle by the RESOLVED value (roleAllows: finance is default-deny), and store
+  // an EXPLICIT boolean so the saved matrix never has undefined keys.
+  const togglePerm = (a) => setEdit((e) => ({ ...e, perms: { ...e.perms, [a]: !roleAllows(e.perms, a) } }));
 
   const saveEdit = async () => {
-    const patch = { perms: edit.perms };
+    // Write the FULL boolean matrix (every area explicit) so the client switches
+    // and the server rule can't disagree — a missing key used to read "on" on the
+    // client but the finance rule (#59) denies it. Owner keeps all-true.
+    const isOwner = edit.id === "owner";
+    const perms = Object.fromEntries(
+      BUSINESS_AREAS.map((a) => [a, isOwner ? true : roleAllows(edit.perms, a)])
+    );
+    const patch = { perms };
     if (edit.editableName) patch.name = (edit.name || "").trim() || edit.name;
     await saveRole(edit.id, patch);
     setEdit(null);
@@ -40,7 +49,9 @@ export default function RolesScreen({ navigation }) {
   };
 
   const onAddRole = async () => {
-    const created = await addRole({ name: t("business.roles.newRole"), perms: {} });
+    // New roles: everything on EXCEPT finance (default-deny, mirrors the server).
+    const perms = Object.fromEntries(BUSINESS_AREAS.map((a) => [a, a !== "finance"]));
+    const created = await addRole({ name: t("business.roles.newRole"), perms });
     load();
     if (created) openEdit(created);
   };
@@ -68,7 +79,7 @@ export default function RolesScreen({ navigation }) {
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={[styles.hint, { color: colors.textTertiary }]}>{t("business.roles.hint")}</Text>
           {roles.map((r) => {
-            const on = BUSINESS_AREAS.filter((a) => r.perms?.[a] !== false).length;
+            const on = BUSINESS_AREAS.filter((a) => roleAllows(r.perms, a)).length;
             return (
               <TouchableOpacity key={r.id} style={[styles.roleRow, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => openEdit(r)}>
                 <View style={{ flex: 1 }}>
@@ -108,7 +119,7 @@ export default function RolesScreen({ navigation }) {
                   <View key={a} style={[styles.permRow, { borderBottomColor: colors.border }]}>
                     <Text style={[styles.permLabel, { color: colors.text }]}>{t(`business.roles.area.${a}`)}</Text>
                     <Switch
-                      value={owner ? true : edit?.perms?.[a] !== false}
+                      value={owner ? true : roleAllows(edit?.perms, a)}
                       onValueChange={() => togglePerm(a)}
                       disabled={owner}
                       trackColor={{ true: colors.primary }}

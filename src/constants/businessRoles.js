@@ -32,8 +32,15 @@ export const DEFAULT_ROLES = [
   { id: "reception", name: "Reception", editableName: true, removable: true, perms: { ...allAreas(false), checkin: true, members: true } },
 ];
 
+// Areas that are DEFAULT-DENY: access requires perms[area] === true explicitly.
+// finance mirrors the server rule (fix/security-rules-4b #59): the capability
+// gate is perms.finance == true, so a missing/undefined key must read as DENIED
+// on the client too (else the UI shows a switch/KPI the server then denies).
+const DEFAULT_DENY_AREAS = new Set(["finance"]);
+
 /** Whether a role (by its perms map) may access an area. Owner/unknown → true. */
 export const roleAllows = (perms, area) => {
   if (!perms) return true;
+  if (DEFAULT_DENY_AREAS.has(area)) return perms[area] === true;
   return perms[area] !== false;
 };

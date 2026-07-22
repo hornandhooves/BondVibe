@@ -18,6 +18,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import { useFocusEffect } from "@react-navigation/native";
 import * as WebBrowser from "expo-web-browser";
+import { friendlyCallableError } from "../utils/callableError";
 import {
   createConnectAccount,
   getAccountLink,
@@ -122,9 +123,11 @@ export default function StripeConnectScreen({ navigation }) {
       await handleRefreshStatus({ silent: true });
     } catch (error) {
       console.error("❌ Error connecting Stripe:", error);
+      // Map known callable codes (e.g. email_not_verified from createConnectAccount)
+      // to friendly copy instead of surfacing the raw code.
       Alert.alert(
         t("stripeConnect.connectionErrorTitle"),
-        error.message || t("stripeConnect.couldNotConnect")
+        friendlyCallableError(error, t, "stripeConnect.couldNotConnect")
       );
     } finally {
       setConnecting(false);

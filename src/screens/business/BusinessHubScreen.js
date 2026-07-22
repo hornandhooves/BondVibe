@@ -105,18 +105,25 @@ export default function BusinessHubScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Overview is just the Dashboard entry now — the Whole business /
             Choose event scope control moved INTO the Dashboard screen (BUG 17). */}
-        <SectionHeader title={t("business.hub.overviewSection")} />
-        <View style={card}>
-          <ListRow
-            icon="chart"
-            iconColor={colors.primary}
-            iconBg={`${colors.primary}1A`}
-            title={t("business.hub.dashboardTitle")}
-            subtitle={t("business.hub.dashboardSubtitle")}
-            onPress={() => navigation.navigate("BusinessDashboard")}
-            divider={false}
-          />
-        </View>
+        {/* FINANCE CAPABILITY (#59): the dashboard leads with revenue/P&L, so the
+            overview row is finance-gated. (The dashboard screen also degrades
+            revenue KPIs to "—" for non-finance staff as defense-in-depth.) */}
+        {allows("finance") && (
+          <>
+            <SectionHeader title={t("business.hub.overviewSection")} />
+            <View style={card}>
+              <ListRow
+                icon="chart"
+                iconColor={colors.primary}
+                iconBg={`${colors.primary}1A`}
+                title={t("business.hub.dashboardTitle")}
+                subtitle={t("business.hub.dashboardSubtitle")}
+                onPress={() => navigation.navigate("BusinessDashboard")}
+                divider={false}
+              />
+            </View>
+          </>
+        )}
 
         <SectionHeader title={t("business.hub.peopleMoneySection")} />
         <View style={card}>
