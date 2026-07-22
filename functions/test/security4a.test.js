@@ -93,6 +93,18 @@ test("N3 title is server-derived and the message is link-stripped", async () => 
   assert.ok(!/evil\.com/.test(n.message), "email stripped");
 });
 
+test("N4 the business_session_* production types are accepted", async () => {
+  const t = await tokenFor(`biz_${nextId()}`);
+  const to = `mbr_${nextId()}`;
+  const r = await call("createNotification",
+    {toUserId: to, type: "business_session_confirmed",
+      body: "Your session is confirmed"}, t);
+  assert.strictEqual(r.status, 200);
+  const snap = await db.collection("notifications")
+    .where("userId", "==", to).limit(1).get();
+  assert.strictEqual(snap.docs[0].data().title, "Session confirmed");
+});
+
 // ── 2. approveOwnerTransfer ────────────────────────────────────────────────
 test("OT1 approve is idempotent — a re-call doesn't re-decide", async () => {
   const bizId = `biz_${nextId()}`;

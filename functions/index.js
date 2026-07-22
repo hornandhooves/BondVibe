@@ -413,6 +413,14 @@ const NOTIF_CATALOG = {
     bodyKey: "notifications.carpool.request.body", keyParams: ["name"], icon: "car"},
   carpool_approved: {gate: "open", titleKey: "notifications.carpool.approved.title",
     bodyKey: "notifications.carpool.approved.body", keyParams: ["driver"], icon: "car"},
+  // Business private sessions (businessSessionsService notifyAttendees) — the host
+  // confirms a booking / nudges a rating after a done session. "open" is enough:
+  // benign, rate-limited, link-stripped body. (A business-owner gate would be
+  // tighter but optional.)
+  business_session_confirmed: {gate: "open", title: "Session confirmed",
+    fromMsg: true, icon: "calendar"},
+  business_session_rate: {gate: "open", title: "Rate your session",
+    fromMsg: true, icon: "star"},
 };
 
 // Output guard: strip anything clickable a phishing body could carry.
