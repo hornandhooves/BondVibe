@@ -268,7 +268,11 @@
     "curatedForYou": "Curado para ti por Kinlo AI",
     "imIn": "Yo voy",
     "interested": "Interesado",
-    "tabs": { "forYou": "Para ti", "following": "Siguiendo", "discover": "Descubre" },
+    "tabs": {
+      "forYou": "Para ti",
+      "following": "Siguiendo",
+      "discover": "Descubre"
+    },
     "discover": {
       "soonTitle": "Descubrir está en camino",
       "soonBody": "Únete al matchmaking y te sugeriremos personas, comunidades y eventos por afinidad real — nunca un directorio global.",
@@ -299,9 +303,18 @@
     "hostPost": {
       "badge": "HOST",
       "reserve": "Reservar",
-      "ctaTitle": { "event": "Ver el evento", "service": "Ver el servicio", "community": "Abrir la comunidad" }
+      "ctaTitle": {
+        "event": "Ver el evento",
+        "service": "Ver el servicio",
+        "community": "Abrir la comunidad"
+      }
     },
-    "pro": { "badge": "PRO", "views": "Vistas", "taps": "Toques", "ctr": "CTR" },
+    "pro": {
+      "badge": "PRO",
+      "views": "Vistas",
+      "taps": "Toques",
+      "ctr": "CTR"
+    },
     "compose": {
       "postTo": "Publicando en {{name}}",
       "asHost": "Publicar como host",
@@ -950,7 +963,15 @@
       "underConstructionTitle": "Afinidad en construcción",
       "underConstructionBody": "Completen sus perfiles para ver una afinidad real — nunca mostramos un número inventado.",
       "building": "En construcción",
-      "signal": { "interests": "Intereses en común", "intention": "Misma intención", "bigfive": "Personalidad", "context": "Contexto en común", "format": "Cómo conocen", "industry": "Industria", "complement": "Complementarios" }
+      "signal": {
+        "interests": "Intereses en común",
+        "intention": "Misma intención",
+        "bigfive": "Personalidad",
+        "context": "Contexto en común",
+        "format": "Cómo conocen",
+        "industry": "Industria",
+        "complement": "Complementarios"
+      }
     },
     "curated": {
       "title": "Tu semana en Kinlo",
@@ -1004,13 +1025,86 @@
       "notInTitle": "No estás en matchmaking",
       "notInBody": "Únete para recibir cada semana un grupo curado de personas y grupos pequeños."
     },
-    "type": { "friend": "Amigos", "professional": "Profesional", "romantic": "Romántico", "brand": "Nuevo" },
-    "groupPref": { "one_on_one": "Uno a uno", "small_group": "Grupo pequeño", "group": "Grupo grande" },
-    "interest": { "music": "Música", "travel": "Viajes", "fitness": "Fitness", "food": "Comida", "art": "Arte", "gaming": "Videojuegos", "reading": "Lectura", "movies": "Cine", "photography": "Fotografía", "hiking": "Senderismo", "yoga": "Yoga", "tech": "Tecnología", "fashion": "Moda", "cooking": "Cocina", "sports": "Deportes", "dancing": "Baile", "coffee": "Café", "nature": "Naturaleza", "volunteering": "Voluntariado", "startups": "Startups" },
-    "funnyTag": { "trouble_junky": "Buscapleitos", "wild_runner": "Corredor salvaje", "infinite_meditator": "Meditador infinito", "coffee_addict": "Adicto al café", "night_owl": "Búho nocturno", "book_worm": "Ratón de biblioteca", "taco_hunter": "Cazador de tacos", "dance_floor_regular": "Rey de la pista", "cliff_chaser": "Trepa-acantilados", "dog_person": "Team perros" },
-    "language": { "es": "Español", "en": "Inglés", "pt": "Portugués", "fr": "Francés", "de": "Alemán", "it": "Italiano", "zh": "Chino", "ja": "Japonés", "ko": "Coreano" },
-    "learning": { "language": "Un idioma", "instrument": "Un instrumento", "coding": "Programación", "cooking": "Cocina", "art": "Arte", "sport": "Un deporte", "business": "Negocios", "mindfulness": "Mindfulness" },
-    "industry": { "tech": "Tecnología", "design": "Diseño", "finance": "Finanzas", "health": "Salud", "education": "Educación", "marketing": "Marketing", "hospitality": "Hospitalidad", "arts": "Arte", "legal": "Legal", "realestate": "Inmobiliaria", "nonprofit": "ONG", "other": "Otro" }
+    "type": {
+      "friend": "Amigos",
+      "professional": "Profesional",
+      "romantic": "Romántico",
+      "brand": "Nuevo"
+    },
+    "groupPref": {
+      "one_on_one": "Uno a uno",
+      "small_group": "Grupo pequeño",
+      "group": "Grupo grande"
+    },
+    "interest": {
+      "music": "Música",
+      "travel": "Viajes",
+      "fitness": "Fitness",
+      "food": "Comida",
+      "art": "Arte",
+      "gaming": "Videojuegos",
+      "reading": "Lectura",
+      "movies": "Cine",
+      "photography": "Fotografía",
+      "hiking": "Senderismo",
+      "yoga": "Yoga",
+      "tech": "Tecnología",
+      "fashion": "Moda",
+      "cooking": "Cocina",
+      "sports": "Deportes",
+      "dancing": "Baile",
+      "coffee": "Café",
+      "nature": "Naturaleza",
+      "volunteering": "Voluntariado",
+      "startups": "Startups"
+    },
+    "funnyTag": {
+      "trouble_junky": "Buscapleitos",
+      "wild_runner": "Corredor salvaje",
+      "infinite_meditator": "Meditador infinito",
+      "coffee_addict": "Adicto al café",
+      "night_owl": "Búho nocturno",
+      "book_worm": "Ratón de biblioteca",
+      "taco_hunter": "Cazador de tacos",
+      "dance_floor_regular": "Rey de la pista",
+      "cliff_chaser": "Trepa-acantilados",
+      "dog_person": "Team perros"
+    },
+    "language": {
+      "es": "Español",
+      "en": "Inglés",
+      "pt": "Portugués",
+      "fr": "Francés",
+      "de": "Alemán",
+      "it": "Italiano",
+      "zh": "Chino",
+      "ja": "Japonés",
+      "ko": "Coreano"
+    },
+    "learning": {
+      "language": "Un idioma",
+      "instrument": "Un instrumento",
+      "coding": "Programación",
+      "cooking": "Cocina",
+      "art": "Arte",
+      "sport": "Un deporte",
+      "business": "Negocios",
+      "mindfulness": "Mindfulness"
+    },
+    "industry": {
+      "tech": "Tecnología",
+      "design": "Diseño",
+      "finance": "Finanzas",
+      "health": "Salud",
+      "education": "Educación",
+      "marketing": "Marketing",
+      "hospitality": "Hospitalidad",
+      "arts": "Arte",
+      "legal": "Legal",
+      "realestate": "Inmobiliaria",
+      "nonprofit": "ONG",
+      "other": "Otro"
+    }
   },
   "matching": {
     "plusActivated": {
@@ -1317,7 +1411,10 @@
       "hostPayoutsNotReady": "Este anfitrión aún no ha terminado de configurar sus pagos. Intenta con otro vehículo.",
       "paymentFailedTitle": "Pago fallido",
       "errorTitle": "Error",
-      "errorMsg": "Hubo un problema al procesar tu renta."
+      "errorMsg": "Hubo un problema al procesar tu renta.",
+      "datesUnavailable": "Esas fechas ya no están disponibles. Elige otro rango.",
+      "outsideAvailability": "Ese rango está fuera de la disponibilidad del anfitrión.",
+      "emailNotVerified": "Verifica tu correo para reservar una renta."
     },
     "fleet": {
       "title": "Mi flotilla",
@@ -1481,7 +1578,8 @@
       "failedTitle": "No se pudo reservar",
       "failed": "Hubo un problema. Inténtalo de nuevo.",
       "booked": "¡Reservado!",
-      "bookedMsg": "Tu reserva está confirmada. El anfitrión fue notificado."
+      "bookedMsg": "Tu reserva está confirmada. El anfitrión fue notificado.",
+      "emailNotVerified": "Verifica tu correo para reservar este servicio."
     },
     "intake": {
       "title": "El anfitrión te pedirá",
@@ -1620,8 +1718,16 @@
     "createEventSub": "Redacta con IA · Copiloto anfitrión",
     "searchYourEvents": "Busca tus eventos…",
     "capacity": "{{going}} / {{max}} asistentes",
-    "action": { "checkIn": "Check-in", "roster": "Lista", "edit": "Editar" },
-    "empty": { "noUpcoming": "No hay eventos próximos", "noPast": "No hay eventos pasados", "text": "Crea un evento y aparecerá aquí." },
+    "action": {
+      "checkIn": "Check-in",
+      "roster": "Lista",
+      "edit": "Editar"
+    },
+    "empty": {
+      "noUpcoming": "No hay eventos próximos",
+      "noPast": "No hay eventos pasados",
+      "text": "Crea un evento y aparecerá aquí."
+    },
     "yourBusiness": "Tu negocio",
     "thisEvent": "Este evento",
     "switchBusiness": "Cambiar de negocio",
@@ -2778,7 +2884,11 @@
         "short": "Sensibilidad emocional"
       }
     },
-    "band": { "low": "Baja", "mid": "Equilibrada", "high": "Alta" },
+    "band": {
+      "low": "Baja",
+      "mid": "Equilibrada",
+      "high": "Alta"
+    },
     "summaryEyebrow": "Kinlo AI leyó tus resultados",
     "interpretTitle": "Qué significa",
     "interpretNote": "Lecturas fijas para tus puntajes — dos personas con el mismo puntaje leen lo mismo.",
@@ -3409,17 +3519,97 @@
       "inactive": "Inactivo"
     },
     "verticals": {
-      "dance": { "label": "Danza", "sessionNoun": "clase", "tags": ["Principiante", "Intermedio", "Avanzado", "Salsa", "Bachata"] },
-      "gym": { "label": "Gimnasio / Estudio", "sessionNoun": "sesión", "tags": ["Principiante", "Regular", "Entrenador", "Pesas"] },
-      "yoga": { "label": "Yoga / Pilates", "sessionNoun": "clase", "tags": ["Principiante", "Prenatal", "Avanzado"] },
-      "retreat": { "label": "Retiro", "sessionNoun": "sesión", "tags": ["VIP", "Recurrente"] },
-      "school": { "label": "Escuela", "sessionNoun": "clase", "tags": ["Nuevo", "Becado"] },
-      "coaching": { "label": "Coaching", "sessionNoun": "sesión", "tags": ["1:1", "Grupo"] },
-      "tours": { "label": "Tours", "sessionNoun": "tour", "tags": ["Privado", "Grupo"] },
-      "nightlife": { "label": "Vida nocturna", "sessionNoun": "evento", "tags": ["VIP", "Regular"] },
-      "community": { "label": "Comunidad", "sessionNoun": "sesión", "tags": ["Miembro", "Voluntario"] },
-      "events": { "label": "Eventos", "sessionNoun": "evento", "tags": ["VIP", "Ponente"] },
-      "other": { "label": "Otro", "sessionNoun": "sesión", "tags": [] }
+      "dance": {
+        "label": "Danza",
+        "sessionNoun": "clase",
+        "tags": [
+          "Principiante",
+          "Intermedio",
+          "Avanzado",
+          "Salsa",
+          "Bachata"
+        ]
+      },
+      "gym": {
+        "label": "Gimnasio / Estudio",
+        "sessionNoun": "sesión",
+        "tags": [
+          "Principiante",
+          "Regular",
+          "Entrenador",
+          "Pesas"
+        ]
+      },
+      "yoga": {
+        "label": "Yoga / Pilates",
+        "sessionNoun": "clase",
+        "tags": [
+          "Principiante",
+          "Prenatal",
+          "Avanzado"
+        ]
+      },
+      "retreat": {
+        "label": "Retiro",
+        "sessionNoun": "sesión",
+        "tags": [
+          "VIP",
+          "Recurrente"
+        ]
+      },
+      "school": {
+        "label": "Escuela",
+        "sessionNoun": "clase",
+        "tags": [
+          "Nuevo",
+          "Becado"
+        ]
+      },
+      "coaching": {
+        "label": "Coaching",
+        "sessionNoun": "sesión",
+        "tags": [
+          "1:1",
+          "Grupo"
+        ]
+      },
+      "tours": {
+        "label": "Tours",
+        "sessionNoun": "tour",
+        "tags": [
+          "Privado",
+          "Grupo"
+        ]
+      },
+      "nightlife": {
+        "label": "Vida nocturna",
+        "sessionNoun": "evento",
+        "tags": [
+          "VIP",
+          "Regular"
+        ]
+      },
+      "community": {
+        "label": "Comunidad",
+        "sessionNoun": "sesión",
+        "tags": [
+          "Miembro",
+          "Voluntario"
+        ]
+      },
+      "events": {
+        "label": "Eventos",
+        "sessionNoun": "evento",
+        "tags": [
+          "VIP",
+          "Ponente"
+        ]
+      },
+      "other": {
+        "label": "Otro",
+        "sessionNoun": "sesión",
+        "tags": []
+      }
     },
     "hub": {
       "title": "Kinlo para Negocios",
@@ -3687,7 +3877,12 @@
       "title": "Tarjeta de membresía",
       "classCredits": "Créditos de clase",
       "membership": "Membresía",
-      "state": { "active": "Activa", "expired": "Vencida", "depleted": "Sin créditos", "none": "Sin plan" },
+      "state": {
+        "active": "Activa",
+        "expired": "Vencida",
+        "depleted": "Sin créditos",
+        "none": "Sin plan"
+      },
       "expires": "Vence {{date}}",
       "showHint": "Muéstrala al hacer check-in",
       "loyalty": "Lealtad",
@@ -3771,14 +3966,34 @@
       "legendNew": "Nuevos",
       "bestDays": "Mejores días para programar",
       "bestDayNote": "{{day}} es tu día más concurrido — pon ahí tus mejores clases.",
-      "weekday": { "sun": "D", "mon": "L", "tue": "M", "wed": "X", "thu": "J", "fri": "V", "sat": "S" },
-      "weekdayFull": { "sun": "Domingo", "mon": "Lunes", "tue": "Martes", "wed": "Miércoles", "thu": "Jueves", "fri": "Viernes", "sat": "Sábado" },
+      "weekday": {
+        "sun": "D",
+        "mon": "L",
+        "tue": "M",
+        "wed": "X",
+        "thu": "J",
+        "fri": "V",
+        "sat": "S"
+      },
+      "weekdayFull": {
+        "sun": "Domingo",
+        "mon": "Lunes",
+        "tue": "Martes",
+        "wed": "Miércoles",
+        "thu": "Jueves",
+        "fri": "Viernes",
+        "sat": "Sábado"
+      },
       "pricingMix": "Local vs General · mezcla de tarifa",
       "tierLocal": "Tarifa local",
       "tierGeneral": "Tarifa general",
       "pricingMixNote": "Según la tarifa de cobro de cada miembro — es una división de precio, no de residencia.",
       "memberFlow": "Flujo de miembros",
-      "flow": { "joined": "Ingresaron", "churned": "Se perdieron", "recovered": "Recuperados" },
+      "flow": {
+        "joined": "Ingresaron",
+        "churned": "Se perdieron",
+        "recovered": "Recuperados"
+      },
       "retention": "Retención",
       "flowNote": "Bajas y recuperados vienen de los cambios de estado; retención = miembros activos del periodo anterior que regresaron.",
       "flowBuilding": "Retención = miembros activos del periodo anterior que regresaron. Las bajas y recuperados empiezan a contar conforme cambian de estado."
@@ -3807,7 +4022,11 @@
       "viaSms": "Mensaje (SMS)",
       "viaShare": "Compartir…",
       "wishMessage": "¡Feliz cumpleaños, {{name}}! 🎉 Te deseamos un día maravilloso de parte de todo el equipo.",
-      "kind": { "event": "Pase de evento", "class": "Paquete de clases", "session": "Paquete de sesiones" },
+      "kind": {
+        "event": "Pase de evento",
+        "class": "Paquete de clases",
+        "session": "Paquete de sesiones"
+      },
       "emptyTitle": "No hay cumpleaños esta semana",
       "emptyText": "Agrega un cumpleaños en el perfil de un miembro y aparecerá aquí el día que toca.",
       "privacyNote": "Mostramos solo el día y el mes — nunca el año ni la edad."
@@ -3990,7 +4209,12 @@
       "amountRequiredTitle": "Ingresa una meta",
       "amountRequiredMsg": "La meta anual debe ser mayor que cero.",
       "trackerTitle": "Seguimiento de meta",
-      "period": { "month": "Mes", "quarter": "Trimestre", "semester": "Semestre", "year": "Año" },
+      "period": {
+        "month": "Mes",
+        "quarter": "Trimestre",
+        "semester": "Semestre",
+        "year": "Año"
+      },
       "attainmentEyebrow": "Meta {{period}} · avance",
       "onPace": "ritmo {{n}}%",
       "ofGoal": "{{actual}} de {{target}}",
@@ -4001,7 +4225,11 @@
       "legendActual": "Real",
       "legendProjection": "Proyección",
       "rollupTitle": "Resumen",
-      "rollup": { "month": "Este mes · {{month}}", "semester": "Semestre", "year": "Año" },
+      "rollup": {
+        "month": "Este mes · {{month}}",
+        "semester": "Semestre",
+        "year": "Año"
+      },
       "ofGoalRow": "{{actual}} de {{target}} meta",
       "projAmount": "proy. {{amount}}",
       "projPct": "proy. {{n}}%",
@@ -4090,7 +4318,12 @@
       "free": "Libre",
       "nItems_one": "{{count}} elemento",
       "nItems_other": "{{count}} elementos",
-      "view": { "day": "Día", "week": "Semana", "month": "Mes", "year": "Año" },
+      "view": {
+        "day": "Día",
+        "week": "Semana",
+        "month": "Mes",
+        "year": "Año"
+      },
       "legendEvent": "Evento",
       "legendPrivate": "Privada",
       "duration": "Duración",
@@ -4120,7 +4353,11 @@
       "capacityHint": "Máx = personas por sesión (1 = 1:1, 2 = pareja, 3+ = grupo).",
       "descPlaceholder": "Descripción (opcional)",
       "creditOnly": "Crédito",
-      "kind": { "one": "1:1", "couple": "Pareja", "group": "Grupo" }
+      "kind": {
+        "one": "1:1",
+        "couple": "Pareja",
+        "group": "Grupo"
+      }
     },
     "availability": {
       "title": "Disponibilidad",

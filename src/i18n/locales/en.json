@@ -268,7 +268,11 @@
     "curatedForYou": "Curated for you by Kinlo AI",
     "imIn": "I'm in",
     "interested": "Interested",
-    "tabs": { "forYou": "For you", "following": "Following", "discover": "Discover" },
+    "tabs": {
+      "forYou": "For you",
+      "following": "Following",
+      "discover": "Discover"
+    },
     "discover": {
       "soonTitle": "Discovery is on its way",
       "soonBody": "Opt into matchmaking and we'll suggest people, communities and events by real affinity — never a global directory.",
@@ -299,9 +303,18 @@
     "hostPost": {
       "badge": "HOST",
       "reserve": "Reserve",
-      "ctaTitle": { "event": "View the event", "service": "View the service", "community": "Open the community" }
+      "ctaTitle": {
+        "event": "View the event",
+        "service": "View the service",
+        "community": "Open the community"
+      }
     },
-    "pro": { "badge": "PRO", "views": "Views", "taps": "Taps", "ctr": "CTR" },
+    "pro": {
+      "badge": "PRO",
+      "views": "Views",
+      "taps": "Taps",
+      "ctr": "CTR"
+    },
     "compose": {
       "postTo": "Posting to {{name}}",
       "asHost": "Post as host",
@@ -950,7 +963,15 @@
       "underConstructionTitle": "Affinity under construction",
       "underConstructionBody": "Fill in your profiles to see a real affinity — we never show a made-up number.",
       "building": "Building",
-      "signal": { "interests": "Shared interests", "intention": "Same intention", "bigfive": "Personality", "context": "Shared context", "format": "How you meet", "industry": "Industry", "complement": "Complementary" }
+      "signal": {
+        "interests": "Shared interests",
+        "intention": "Same intention",
+        "bigfive": "Personality",
+        "context": "Shared context",
+        "format": "How you meet",
+        "industry": "Industry",
+        "complement": "Complementary"
+      }
     },
     "curated": {
       "title": "Your week on Kinlo",
@@ -1004,13 +1025,86 @@
       "notInTitle": "You're not in matchmaking",
       "notInBody": "Opt in to get a weekly, curated set of people and small groups."
     },
-    "type": { "friend": "Friends", "professional": "Professional", "romantic": "Romantic", "brand": "New" },
-    "groupPref": { "one_on_one": "One-on-one", "small_group": "Small group", "group": "Big group" },
-    "interest": { "music": "Music", "travel": "Travel", "fitness": "Fitness", "food": "Food", "art": "Art", "gaming": "Gaming", "reading": "Reading", "movies": "Movies", "photography": "Photography", "hiking": "Hiking", "yoga": "Yoga", "tech": "Tech", "fashion": "Fashion", "cooking": "Cooking", "sports": "Sports", "dancing": "Dancing", "coffee": "Coffee", "nature": "Nature", "volunteering": "Volunteering", "startups": "Startups" },
-    "funnyTag": { "trouble_junky": "Trouble junky", "wild_runner": "Wild runner", "infinite_meditator": "Infinite meditator", "coffee_addict": "Coffee addict", "night_owl": "Night owl", "book_worm": "Book worm", "taco_hunter": "Taco hunter", "dance_floor_regular": "Dance floor regular", "cliff_chaser": "Cliff chaser", "dog_person": "Dog person" },
-    "language": { "es": "Spanish", "en": "English", "pt": "Portuguese", "fr": "French", "de": "German", "it": "Italian", "zh": "Chinese", "ja": "Japanese", "ko": "Korean" },
-    "learning": { "language": "A language", "instrument": "An instrument", "coding": "Coding", "cooking": "Cooking", "art": "Art", "sport": "A sport", "business": "Business", "mindfulness": "Mindfulness" },
-    "industry": { "tech": "Tech", "design": "Design", "finance": "Finance", "health": "Health", "education": "Education", "marketing": "Marketing", "hospitality": "Hospitality", "arts": "Arts", "legal": "Legal", "realestate": "Real estate", "nonprofit": "Nonprofit", "other": "Other" }
+    "type": {
+      "friend": "Friends",
+      "professional": "Professional",
+      "romantic": "Romantic",
+      "brand": "New"
+    },
+    "groupPref": {
+      "one_on_one": "One-on-one",
+      "small_group": "Small group",
+      "group": "Big group"
+    },
+    "interest": {
+      "music": "Music",
+      "travel": "Travel",
+      "fitness": "Fitness",
+      "food": "Food",
+      "art": "Art",
+      "gaming": "Gaming",
+      "reading": "Reading",
+      "movies": "Movies",
+      "photography": "Photography",
+      "hiking": "Hiking",
+      "yoga": "Yoga",
+      "tech": "Tech",
+      "fashion": "Fashion",
+      "cooking": "Cooking",
+      "sports": "Sports",
+      "dancing": "Dancing",
+      "coffee": "Coffee",
+      "nature": "Nature",
+      "volunteering": "Volunteering",
+      "startups": "Startups"
+    },
+    "funnyTag": {
+      "trouble_junky": "Trouble junky",
+      "wild_runner": "Wild runner",
+      "infinite_meditator": "Infinite meditator",
+      "coffee_addict": "Coffee addict",
+      "night_owl": "Night owl",
+      "book_worm": "Book worm",
+      "taco_hunter": "Taco hunter",
+      "dance_floor_regular": "Dance floor regular",
+      "cliff_chaser": "Cliff chaser",
+      "dog_person": "Dog person"
+    },
+    "language": {
+      "es": "Spanish",
+      "en": "English",
+      "pt": "Portuguese",
+      "fr": "French",
+      "de": "German",
+      "it": "Italian",
+      "zh": "Chinese",
+      "ja": "Japanese",
+      "ko": "Korean"
+    },
+    "learning": {
+      "language": "A language",
+      "instrument": "An instrument",
+      "coding": "Coding",
+      "cooking": "Cooking",
+      "art": "Art",
+      "sport": "A sport",
+      "business": "Business",
+      "mindfulness": "Mindfulness"
+    },
+    "industry": {
+      "tech": "Tech",
+      "design": "Design",
+      "finance": "Finance",
+      "health": "Health",
+      "education": "Education",
+      "marketing": "Marketing",
+      "hospitality": "Hospitality",
+      "arts": "Arts",
+      "legal": "Legal",
+      "realestate": "Real estate",
+      "nonprofit": "Nonprofit",
+      "other": "Other"
+    }
   },
   "matching": {
     "plusActivated": {
@@ -1317,7 +1411,10 @@
       "hostPayoutsNotReady": "This host hasn't finished payout setup yet. Try another vehicle.",
       "paymentFailedTitle": "Payment failed",
       "errorTitle": "Error",
-      "errorMsg": "There was a problem processing your rental."
+      "errorMsg": "There was a problem processing your rental.",
+      "datesUnavailable": "Those dates are no longer available. Pick another range.",
+      "outsideAvailability": "That range is outside the host's availability window.",
+      "emailNotVerified": "Verify your email to book a rental."
     },
     "fleet": {
       "title": "My fleet",
@@ -1481,7 +1578,8 @@
       "failedTitle": "Couldn't book",
       "failed": "There was a problem. Please try again.",
       "booked": "Booked!",
-      "bookedMsg": "Your booking is confirmed. The host has been notified."
+      "bookedMsg": "Your booking is confirmed. The host has been notified.",
+      "emailNotVerified": "Verify your email to book this service."
     },
     "intake": {
       "title": "The host will ask for",
@@ -1620,8 +1718,16 @@
     "createEventSub": "Draft with AI · Host Copilot",
     "searchYourEvents": "Search your events…",
     "capacity": "{{going}} / {{max}} guests",
-    "action": { "checkIn": "Check-in", "roster": "Roster", "edit": "Edit" },
-    "empty": { "noUpcoming": "No upcoming events", "noPast": "No past events", "text": "Create an event and it'll show up here." },
+    "action": {
+      "checkIn": "Check-in",
+      "roster": "Roster",
+      "edit": "Edit"
+    },
+    "empty": {
+      "noUpcoming": "No upcoming events",
+      "noPast": "No past events",
+      "text": "Create an event and it'll show up here."
+    },
     "yourBusiness": "Your business",
     "thisEvent": "This event",
     "switchBusiness": "Switch business",
@@ -2778,7 +2884,11 @@
         "short": "Emotional Sensitivity"
       }
     },
-    "band": { "low": "Low", "mid": "Balanced", "high": "High" },
+    "band": {
+      "low": "Low",
+      "mid": "Balanced",
+      "high": "High"
+    },
     "summaryEyebrow": "Kinlo AI read your results",
     "interpretTitle": "What this means",
     "interpretNote": "Fixed readings for your scores — no two people with the same score get different text.",
@@ -3409,17 +3519,97 @@
       "inactive": "Inactive"
     },
     "verticals": {
-      "dance": { "label": "Dance", "sessionNoun": "class", "tags": ["Beginner", "Intermediate", "Advanced", "Salsa", "Bachata"] },
-      "gym": { "label": "Gym / Studio", "sessionNoun": "session", "tags": ["Beginner", "Regular", "Trainer", "Weights"] },
-      "yoga": { "label": "Yoga / Pilates", "sessionNoun": "class", "tags": ["Beginner", "Prenatal", "Advanced"] },
-      "retreat": { "label": "Retreat", "sessionNoun": "session", "tags": ["VIP", "Returning"] },
-      "school": { "label": "School", "sessionNoun": "class", "tags": ["New", "Scholarship"] },
-      "coaching": { "label": "Coaching", "sessionNoun": "session", "tags": ["1:1", "Group"] },
-      "tours": { "label": "Tours", "sessionNoun": "tour", "tags": ["Private", "Group"] },
-      "nightlife": { "label": "Nightlife", "sessionNoun": "event", "tags": ["VIP", "Regular"] },
-      "community": { "label": "Community", "sessionNoun": "session", "tags": ["Member", "Volunteer"] },
-      "events": { "label": "Events", "sessionNoun": "event", "tags": ["VIP", "Speaker"] },
-      "other": { "label": "Other", "sessionNoun": "session", "tags": [] }
+      "dance": {
+        "label": "Dance",
+        "sessionNoun": "class",
+        "tags": [
+          "Beginner",
+          "Intermediate",
+          "Advanced",
+          "Salsa",
+          "Bachata"
+        ]
+      },
+      "gym": {
+        "label": "Gym / Studio",
+        "sessionNoun": "session",
+        "tags": [
+          "Beginner",
+          "Regular",
+          "Trainer",
+          "Weights"
+        ]
+      },
+      "yoga": {
+        "label": "Yoga / Pilates",
+        "sessionNoun": "class",
+        "tags": [
+          "Beginner",
+          "Prenatal",
+          "Advanced"
+        ]
+      },
+      "retreat": {
+        "label": "Retreat",
+        "sessionNoun": "session",
+        "tags": [
+          "VIP",
+          "Returning"
+        ]
+      },
+      "school": {
+        "label": "School",
+        "sessionNoun": "class",
+        "tags": [
+          "New",
+          "Scholarship"
+        ]
+      },
+      "coaching": {
+        "label": "Coaching",
+        "sessionNoun": "session",
+        "tags": [
+          "1:1",
+          "Group"
+        ]
+      },
+      "tours": {
+        "label": "Tours",
+        "sessionNoun": "tour",
+        "tags": [
+          "Private",
+          "Group"
+        ]
+      },
+      "nightlife": {
+        "label": "Nightlife",
+        "sessionNoun": "event",
+        "tags": [
+          "VIP",
+          "Regular"
+        ]
+      },
+      "community": {
+        "label": "Community",
+        "sessionNoun": "session",
+        "tags": [
+          "Member",
+          "Volunteer"
+        ]
+      },
+      "events": {
+        "label": "Events",
+        "sessionNoun": "event",
+        "tags": [
+          "VIP",
+          "Speaker"
+        ]
+      },
+      "other": {
+        "label": "Other",
+        "sessionNoun": "session",
+        "tags": []
+      }
     },
     "hub": {
       "title": "Kinlo for Business",
@@ -3687,7 +3877,12 @@
       "title": "Membership card",
       "classCredits": "Class credits",
       "membership": "Membership",
-      "state": { "active": "Active", "expired": "Expired", "depleted": "No credits", "none": "No plan" },
+      "state": {
+        "active": "Active",
+        "expired": "Expired",
+        "depleted": "No credits",
+        "none": "No plan"
+      },
       "expires": "Expires {{date}}",
       "showHint": "Show this at check-in",
       "loyalty": "Loyalty",
@@ -3771,14 +3966,34 @@
       "legendNew": "New",
       "bestDays": "Best days to schedule",
       "bestDayNote": "{{day}} is your busiest — put your best classes there.",
-      "weekday": { "sun": "S", "mon": "M", "tue": "T", "wed": "W", "thu": "T", "fri": "F", "sat": "S" },
-      "weekdayFull": { "sun": "Sunday", "mon": "Monday", "tue": "Tuesday", "wed": "Wednesday", "thu": "Thursday", "fri": "Friday", "sat": "Saturday" },
+      "weekday": {
+        "sun": "S",
+        "mon": "M",
+        "tue": "T",
+        "wed": "W",
+        "thu": "T",
+        "fri": "F",
+        "sat": "S"
+      },
+      "weekdayFull": {
+        "sun": "Sunday",
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday"
+      },
       "pricingMix": "Local vs General · pricing mix",
       "tierLocal": "Local rate",
       "tierGeneral": "General rate",
       "pricingMixNote": "Based on each member's checkout price tier — a pricing split, not residency.",
       "memberFlow": "Member flow",
-      "flow": { "joined": "Joined", "churned": "Churned", "recovered": "Recovered" },
+      "flow": {
+        "joined": "Joined",
+        "churned": "Churned",
+        "recovered": "Recovered"
+      },
       "retention": "Retention",
       "flowNote": "Churn & recovered come from status changes; retention = last period's active members who returned.",
       "flowBuilding": "Retention = last period's active members who returned. Churn & recovered start counting as members change status."
@@ -3807,7 +4022,11 @@
       "viaSms": "Text (SMS)",
       "viaShare": "Share…",
       "wishMessage": "Happy birthday, {{name}}! 🎉 Wishing you a wonderful day from all of us.",
-      "kind": { "event": "Event pass", "class": "Class pack", "session": "Session pack" },
+      "kind": {
+        "event": "Event pass",
+        "class": "Class pack",
+        "session": "Session pack"
+      },
       "emptyTitle": "No birthdays this week",
       "emptyText": "Add a birthday on a member's profile and they'll show up here on the day.",
       "privacyNote": "We show day & month only — never the year or age."
@@ -3990,7 +4209,12 @@
       "amountRequiredTitle": "Enter a goal",
       "amountRequiredMsg": "The annual goal must be greater than zero.",
       "trackerTitle": "Goal tracker",
-      "period": { "month": "Month", "quarter": "Quarter", "semester": "Semester", "year": "Year" },
+      "period": {
+        "month": "Month",
+        "quarter": "Quarter",
+        "semester": "Semester",
+        "year": "Year"
+      },
       "attainmentEyebrow": "{{period}} goal · attainment",
       "onPace": "on pace {{n}}%",
       "ofGoal": "{{actual}} of {{target}}",
@@ -4001,7 +4225,11 @@
       "legendActual": "Actual",
       "legendProjection": "Projection",
       "rollupTitle": "Roll-up",
-      "rollup": { "month": "This month · {{month}}", "semester": "Semester", "year": "Year" },
+      "rollup": {
+        "month": "This month · {{month}}",
+        "semester": "Semester",
+        "year": "Year"
+      },
       "ofGoalRow": "{{actual}} of {{target}} goal",
       "projAmount": "proj. {{amount}}",
       "projPct": "proj. {{n}}%",
@@ -4090,7 +4318,12 @@
       "free": "Free",
       "nItems_one": "{{count}} item",
       "nItems_other": "{{count}} items",
-      "view": { "day": "Day", "week": "Week", "month": "Month", "year": "Year" },
+      "view": {
+        "day": "Day",
+        "week": "Week",
+        "month": "Month",
+        "year": "Year"
+      },
       "legendEvent": "Event",
       "legendPrivate": "Private",
       "duration": "Duration",
@@ -4120,7 +4353,11 @@
       "capacityHint": "Max = people per session (1 = 1:1, 2 = couple, 3+ = group).",
       "descPlaceholder": "Description (optional)",
       "creditOnly": "Credit",
-      "kind": { "one": "1:1", "couple": "Couple", "group": "Group" }
+      "kind": {
+        "one": "1:1",
+        "couple": "Couple",
+        "group": "Group"
+      }
     },
     "availability": {
       "title": "Availability",

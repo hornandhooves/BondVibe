@@ -41,9 +41,39 @@ export default function RentalCheckoutScreen({ route, navigation }) {
 
   const [cardComplete, setCardComplete] = useState(false);
   const [processing, setProcessing] = useState(false);
+  // A hold that reserved OK but whose payment failed — retrying re-confirms the
+  // SAME PaymentIntent instead of re-reserving (which would double-book / orphan
+  // the first hold until the sweep). Cleared on success.
+  const [pendingPay, setPendingPay] = useState(null); // { rentalId, clientSecret }
 
   const goActive = (rentalId) =>
     navigation.replace("ActiveRental", { rentalId });
+
+  // Friendly copy per server error code (incl. the reservation-window / capacity
+  // codes the server can return).
+  const reserveErrorMsg = (code) => ({
+    vehicle_unavailable: t("rentals.checkout.vehicleUnavailable"),
+    dates_unavailable: t("rentals.checkout.datesUnavailable"),
+    outside_availability: t("rentals.checkout.outsideAvailability"),
+    host_payouts_not_ready: t("rentals.checkout.hostPayoutsNotReady"),
+    business_owner_stripe_incomplete: t("business.ownerStripeIncomplete"),
+    email_not_verified: t("rentals.checkout.emailNotVerified"),
+  }[code] || code || t("rentals.common.pleaseTryAgain"));
+
+  // Confirm (or re-confirm) a clientSecret; returns true on success.
+  const confirmAndFinish = async (rentalId, clientSecret) => {
+    const { error } = await confirmPayment(clientSecret, { paymentMethodType: "Card" });
+    if (error) {
+      setPendingPay({ rentalId, clientSecret }); // keep the hold for a retry
+      Alert.alert(t("rentals.checkout.paymentFailedTitle"), error.message || t("rentals.common.pleaseTryAgain"));
+      setProcessing(false);
+      return false;
+    }
+    setPendingPay(null);
+    await new Promise((r) => setTimeout(r, 1500)); // webhook flips rental → active
+    goActive(rentalId);
+    return true;
+  };
 
   const handlePay = async () => {
     if (!isFree && !cardComplete) {
@@ -53,14 +83,15 @@ export default function RentalCheckoutScreen({ route, navigation }) {
     Keyboard.dismiss();
     setProcessing(true);
     try {
+      // Retry path: the hold already exists — just re-confirm its PaymentIntent.
+      if (pendingPay) {
+        await confirmAndFinish(pendingPay.rentalId, pendingPay.clientSecret);
+        return;
+      }
+
       const res = await reserveVehicle({ vehicleId: vehicle.id, startAt, endAt, eventId });
       if (!res.success) {
-        const messages = {
-          vehicle_unavailable: t("rentals.checkout.vehicleUnavailable"),
-          host_payouts_not_ready: t("rentals.checkout.hostPayoutsNotReady"),
-          business_owner_stripe_incomplete: t("business.ownerStripeIncomplete"),
-        };
-        Alert.alert(t("rentals.checkout.couldntReserveTitle"), messages[res.error] || res.error || t("rentals.common.pleaseTryAgain"));
+        Alert.alert(t("rentals.checkout.couldntReserveTitle"), reserveErrorMsg(res.error));
         setProcessing(false);
         return;
       }
@@ -70,20 +101,15 @@ export default function RentalCheckoutScreen({ route, navigation }) {
         goActive(res.rentalId);
         return;
       }
-
-      // Charge the rental fee (paid directly to the host; Kinlo keeps a commission).
-      if (res.clientSecret) {
-        const { error } = await confirmPayment(res.clientSecret, { paymentMethodType: "Card" });
-        if (error) {
-          Alert.alert(t("rentals.checkout.paymentFailedTitle"), error.message || t("rentals.common.pleaseTryAgain"));
-          setProcessing(false);
-          return;
-        }
+      // Idempotent server response: the hold was already paid (webhook pending).
+      if (res.alreadyPaid) {
+        await new Promise((r) => setTimeout(r, 1500));
+        goActive(res.rentalId);
+        return;
       }
-
-      // Webhook flips the rental to active — give it a moment.
-      await new Promise((r) => setTimeout(r, 1500));
-      goActive(res.rentalId);
+      if (res.clientSecret) {
+        await confirmAndFinish(res.rentalId, res.clientSecret);
+      }
     } catch {
       Alert.alert(t("rentals.checkout.errorTitle"), t("rentals.checkout.errorMsg"));
       setProcessing(false);

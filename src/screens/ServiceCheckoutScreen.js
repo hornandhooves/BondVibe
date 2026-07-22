@@ -55,6 +55,28 @@ export default function ServiceCheckoutScreen({ route, navigation }) {
     return d.toISOString();
   };
 
+  // A booking that reserved OK but whose payment failed — a retry re-confirms the
+  // SAME PaymentIntent instead of re-reserving.
+  const [pendingPay, setPendingPay] = useState(null); // { clientSecret }
+
+  const bookedAlert = () =>
+    Alert.alert(t("marketplace.checkout.booked"), t("marketplace.checkout.bookedMsg"), [
+      { text: "OK", onPress: () => navigation.navigate("Marketplace") },
+    ]);
+
+  const confirmAndFinish = async (clientSecret) => {
+    const { error } = await confirmPayment(clientSecret, { paymentMethodType: "Card" });
+    if (error) {
+      setPendingPay({ clientSecret });
+      Alert.alert(t("marketplace.checkout.paymentFailed"), error.message || t("marketplace.checkout.failed"));
+      setProcessing(false);
+      return;
+    }
+    setPendingPay(null);
+    await new Promise((r) => setTimeout(r, 1500)); // webhook flips booking → confirmed
+    bookedAlert();
+  };
+
   const handlePay = async () => {
     const start = startAt();
     if (!start) {
@@ -67,6 +89,12 @@ export default function ServiceCheckoutScreen({ route, navigation }) {
     }
     setProcessing(true);
     try {
+      // Retry path: re-confirm the existing booking's PaymentIntent.
+      if (pendingPay) {
+        await confirmAndFinish(pendingPay.clientSecret);
+        return;
+      }
+
       const res = await reserveServiceBooking({ bizId, sessionTypeId: listingId, startAt: start });
       if (!res.success) {
         const messages = {
@@ -75,24 +103,24 @@ export default function ServiceCheckoutScreen({ route, navigation }) {
           business_owner_stripe_incomplete: t("marketplace.checkout.payoutsNotReady"),
           quote_only: t("marketplace.checkout.quoteOnly"),
           not_public: t("marketplace.checkout.failed"),
+          email_not_verified: t("marketplace.checkout.emailNotVerified"),
         };
         Alert.alert(t("marketplace.checkout.failedTitle"), messages[res.error] || t("marketplace.checkout.failed"));
         setProcessing(false);
         return;
       }
-      if (!res.free && res.clientSecret) {
-        const { error } = await confirmPayment(res.clientSecret, { paymentMethodType: "Card" });
-        if (error) {
-          Alert.alert(t("marketplace.checkout.paymentFailed"), error.message || t("marketplace.checkout.failed"));
-          setProcessing(false);
-          return;
-        }
-        // Webhook flips the booking to confirmed — give it a moment.
-        await new Promise((r) => setTimeout(r, 1500));
+      if (res.free) {
+        bookedAlert();
+        return;
       }
-      Alert.alert(t("marketplace.checkout.booked"), t("marketplace.checkout.bookedMsg"), [
-        { text: "OK", onPress: () => navigation.navigate("Marketplace") },
-      ]);
+      if (res.alreadyPaid) {
+        await new Promise((r) => setTimeout(r, 1500));
+        bookedAlert();
+        return;
+      }
+      if (res.clientSecret) {
+        await confirmAndFinish(res.clientSecret);
+      }
     } catch (e) {
       Alert.alert(t("marketplace.checkout.failedTitle"), t("marketplace.checkout.failed"));
       setProcessing(false);

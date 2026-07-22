@@ -50,6 +50,7 @@ const bizAutomations = require("./business/automations");
 // Import event helpers (attendee/creator normalization)
 const {getAttendeeIds, getEventCreatorId, getHostIdForPayout} = require("./utils/eventHelpers");
 const roster = require("./utils/roster");
+const {isSettlingPi} = require("./stripe/piGuard");
 
 // F2 gated-location derivation (pure helpers, unit-tested in lib/eventLocation.test.js)
 const {
@@ -4095,6 +4096,37 @@ exports.reserveVehicle = onCall({secrets: [stripeSecretKey]}, async (request) =>
   const deposit = pre.depositCentavos || (pre.specs && pre.specs.depositCentavos) || 0;
   const isFree = price === 0;
 
+  // IDEMPOTENCY (fix/rentals-services-money): if this renter already has an UNPAID
+  // 'reserved' hold for this vehicle that overlaps the requested range, return it
+  // (with its live clientSecret) instead of stacking a second hold. A retry after
+  // a failed confirmPayment then re-confirms the SAME PaymentIntent rather than
+  // re-reserving (which would double-book the renter against themselves + orphan
+  // the first hold until the sweep runs).
+  if (!isFree) {
+    const dupSnap = await db.collection("rentals")
+      .where("renterId", "==", uid)
+      .where("vehicleId", "==", vehicleId)
+      .where("status", "==", "reserved").get();
+    for (const d of dupSnap.docs) {
+      const ex = d.data();
+      if (!rentalRangesOverlap(startAt, endAt, ex.startAt, ex.endAt)) continue;
+      if (!ex.paymentIntentId) continue;
+      if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+      try {
+        const pi = await stripe.paymentIntents.retrieve(ex.paymentIntentId);
+        if (isSettlingPi(pi.status)) {
+          return {success: true, rentalId: d.id, alreadyPaid: true};
+        }
+        if (pi.client_secret) {
+          return {success: true, rentalId: d.id, clientSecret: pi.client_secret,
+            idempotent: true};
+        }
+      } catch (e) {
+        // stale/deleted PI — fall through and create a fresh hold
+      }
+    }
+  }
+
   // Resolve the payout account (reused from their host payouts). BUG 32.6: a
   // vehicle listed by staff pays the business OWNER (businessOwnerUid), else the
   // listing owner.
@@ -4274,10 +4306,23 @@ exports.expireVehicleReservations = onSchedule(
       if (!ms || ms > cutoff) continue;
       if (r.paymentIntentId) {
         if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+        // RACE (fix/rentals-services-money): retrieve the PI BEFORE cancelling.
+        // If the buyer paid just as the TTL elapsed, the charge may be
+        // succeeded/processing while the webhook hasn't confirmed the rental yet.
+        // Cancelling + freeing the range here would drop a paid booking (and could
+        // double-book the vehicle). Skip those; only expire genuinely-open PIs.
         try {
-          await stripe.paymentIntents.cancel(r.paymentIntentId);
+          const pi = await stripe.paymentIntents.retrieve(r.paymentIntentId);
+          if (isSettlingPi(pi.status)) {
+            continue; // let the webhook confirm it
+          }
+          if (pi.status !== "canceled") {
+            await stripe.paymentIntents.cancel(r.paymentIntentId).catch(() => {});
+          }
         } catch (e) {
-          // already captured/cancelled — ignore
+          // Can't verify the PI's state → be conservative and DON'T free a range
+          // that might be paid; try again next sweep.
+          continue;
         }
       }
       await docSnap.ref.update({
@@ -4355,6 +4400,35 @@ exports.reserveServiceBooking = onCall({secrets: [stripeSecretKey]}, async (requ
   const price = Math.max(0, parseInt(pre.priceCents, 10) || 0);
   const endAt = new Date(new Date(startAt).getTime() + durationMin * 60000).toISOString();
   const isFree = price === 0;
+
+  // IDEMPOTENCY (fix/rentals-services-money): if this buyer already has an UNPAID
+  // 'reserved' booking for this service that overlaps the requested slot, return
+  // it (with its live clientSecret) instead of stacking a second hold — a retry
+  // after a failed confirmPayment re-confirms the SAME PaymentIntent.
+  if (!isFree) {
+    const dupSnap = await db.collection("businesses").doc(bizId).collection("bookings")
+      .where("buyerUid", "==", uid)
+      .where("sessionTypeId", "==", sessionTypeId)
+      .where("status", "==", "reserved").get();
+    for (const d of dupSnap.docs) {
+      const ex = d.data();
+      if (!rentalRangesOverlap(startAt, endAt, ex.start, ex.end)) continue;
+      if (!ex.stripePaymentIntentId) continue;
+      if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+      try {
+        const pi = await stripe.paymentIntents.retrieve(ex.stripePaymentIntentId);
+        if (isSettlingPi(pi.status)) {
+          return {success: true, bookingId: d.id, alreadyPaid: true};
+        }
+        if (pi.client_secret) {
+          return {success: true, bookingId: d.id, clientSecret: pi.client_secret,
+            idempotent: true};
+        }
+      } catch (e) {
+        // stale/deleted PI — fall through and create a fresh hold
+      }
+    }
+  }
 
   // Resolve the payout account — the business owner's Stripe Connect (survives an
   // ownership transfer via businesses/{bizId}.ownerUid; falls back to bizId).
@@ -4489,10 +4563,20 @@ exports.expireServiceReservations = onSchedule(
       if (!ms || ms > cutoff) continue;
       if (b.stripePaymentIntentId) {
         if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+        // RACE (fix/rentals-services-money): retrieve BEFORE cancelling — a booking
+        // paid right at the TTL may be succeeded/processing while the webhook
+        // hasn't confirmed it yet. Cancelling + freeing the slot would drop a paid
+        // booking. Skip those; only expire genuinely-open PIs.
         try {
-          await stripe.paymentIntents.cancel(b.stripePaymentIntentId);
+          const pi = await stripe.paymentIntents.retrieve(b.stripePaymentIntentId);
+          if (isSettlingPi(pi.status)) {
+            continue; // let the webhook confirm it
+          }
+          if (pi.status !== "canceled") {
+            await stripe.paymentIntents.cancel(b.stripePaymentIntentId).catch(() => {});
+          }
         } catch (e) {
-          // already captured/cancelled — ignore
+          continue; // can't verify → don't free a possibly-paid slot this sweep
         }
       }
       await docSnap.ref.update({status: "cancelled", cancelledAt: FieldValue.serverTimestamp()});
