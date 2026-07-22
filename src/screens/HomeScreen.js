@@ -17,6 +17,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BRAND, ELEVATION } from "../constants/theme-tokens";
 import { useFocusEffect } from "@react-navigation/native";
 import EventsRow from "../components/EventsRow";
+import BirthdayReminders from "../components/BirthdayReminders";
 import MarketplaceRow from "../components/MarketplaceRow";
 import { EVENT_CATEGORIES } from "../utils/eventCategories";
 import Icon, { getCategoryIcon } from "../components/Icon";
@@ -137,6 +138,9 @@ export default function HomeScreen({ navigation }) {
             {t("home.searchPlaceholder")}
           </Text>
         </TouchableOpacity>
+
+        {/* Birthday reminders (social gifting Board 2a) — renders nothing if none */}
+        <BirthdayReminders navigation={navigation} />
 
         {/* Events near you (M0) — own loading/empty/error state */}
         <EventsRow navigation={navigation} />

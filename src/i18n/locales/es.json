@@ -268,7 +268,11 @@
     "curatedForYou": "Curado para ti por Kinlo AI",
     "imIn": "Yo voy",
     "interested": "Interesado",
-    "tabs": { "forYou": "Para ti", "following": "Siguiendo", "discover": "Descubre" },
+    "tabs": {
+      "forYou": "Para ti",
+      "following": "Siguiendo",
+      "discover": "Descubre"
+    },
     "discover": {
       "soonTitle": "Descubrir está en camino",
       "soonBody": "Únete al matchmaking y te sugeriremos personas, comunidades y eventos por afinidad real — nunca un directorio global.",
@@ -299,9 +303,18 @@
     "hostPost": {
       "badge": "HOST",
       "reserve": "Reservar",
-      "ctaTitle": { "event": "Ver el evento", "service": "Ver el servicio", "community": "Abrir la comunidad" }
+      "ctaTitle": {
+        "event": "Ver el evento",
+        "service": "Ver el servicio",
+        "community": "Abrir la comunidad"
+      }
     },
-    "pro": { "badge": "PRO", "views": "Vistas", "taps": "Toques", "ctr": "CTR" },
+    "pro": {
+      "badge": "PRO",
+      "views": "Vistas",
+      "taps": "Toques",
+      "ctr": "CTR"
+    },
     "compose": {
       "postTo": "Publicando en {{name}}",
       "asHost": "Publicar como host",
@@ -950,7 +963,15 @@
       "underConstructionTitle": "Afinidad en construcción",
       "underConstructionBody": "Completen sus perfiles para ver una afinidad real — nunca mostramos un número inventado.",
       "building": "En construcción",
-      "signal": { "interests": "Intereses en común", "intention": "Misma intención", "bigfive": "Personalidad", "context": "Contexto en común", "format": "Cómo conocen", "industry": "Industria", "complement": "Complementarios" }
+      "signal": {
+        "interests": "Intereses en común",
+        "intention": "Misma intención",
+        "bigfive": "Personalidad",
+        "context": "Contexto en común",
+        "format": "Cómo conocen",
+        "industry": "Industria",
+        "complement": "Complementarios"
+      }
     },
     "curated": {
       "title": "Tu semana en Kinlo",
@@ -1004,13 +1025,86 @@
       "notInTitle": "No estás en matchmaking",
       "notInBody": "Únete para recibir cada semana un grupo curado de personas y grupos pequeños."
     },
-    "type": { "friend": "Amigos", "professional": "Profesional", "romantic": "Romántico", "brand": "Nuevo" },
-    "groupPref": { "one_on_one": "Uno a uno", "small_group": "Grupo pequeño", "group": "Grupo grande" },
-    "interest": { "music": "Música", "travel": "Viajes", "fitness": "Fitness", "food": "Comida", "art": "Arte", "gaming": "Videojuegos", "reading": "Lectura", "movies": "Cine", "photography": "Fotografía", "hiking": "Senderismo", "yoga": "Yoga", "tech": "Tecnología", "fashion": "Moda", "cooking": "Cocina", "sports": "Deportes", "dancing": "Baile", "coffee": "Café", "nature": "Naturaleza", "volunteering": "Voluntariado", "startups": "Startups" },
-    "funnyTag": { "trouble_junky": "Buscapleitos", "wild_runner": "Corredor salvaje", "infinite_meditator": "Meditador infinito", "coffee_addict": "Adicto al café", "night_owl": "Búho nocturno", "book_worm": "Ratón de biblioteca", "taco_hunter": "Cazador de tacos", "dance_floor_regular": "Rey de la pista", "cliff_chaser": "Trepa-acantilados", "dog_person": "Team perros" },
-    "language": { "es": "Español", "en": "Inglés", "pt": "Portugués", "fr": "Francés", "de": "Alemán", "it": "Italiano", "zh": "Chino", "ja": "Japonés", "ko": "Coreano" },
-    "learning": { "language": "Un idioma", "instrument": "Un instrumento", "coding": "Programación", "cooking": "Cocina", "art": "Arte", "sport": "Un deporte", "business": "Negocios", "mindfulness": "Mindfulness" },
-    "industry": { "tech": "Tecnología", "design": "Diseño", "finance": "Finanzas", "health": "Salud", "education": "Educación", "marketing": "Marketing", "hospitality": "Hospitalidad", "arts": "Arte", "legal": "Legal", "realestate": "Inmobiliaria", "nonprofit": "ONG", "other": "Otro" }
+    "type": {
+      "friend": "Amigos",
+      "professional": "Profesional",
+      "romantic": "Romántico",
+      "brand": "Nuevo"
+    },
+    "groupPref": {
+      "one_on_one": "Uno a uno",
+      "small_group": "Grupo pequeño",
+      "group": "Grupo grande"
+    },
+    "interest": {
+      "music": "Música",
+      "travel": "Viajes",
+      "fitness": "Fitness",
+      "food": "Comida",
+      "art": "Arte",
+      "gaming": "Videojuegos",
+      "reading": "Lectura",
+      "movies": "Cine",
+      "photography": "Fotografía",
+      "hiking": "Senderismo",
+      "yoga": "Yoga",
+      "tech": "Tecnología",
+      "fashion": "Moda",
+      "cooking": "Cocina",
+      "sports": "Deportes",
+      "dancing": "Baile",
+      "coffee": "Café",
+      "nature": "Naturaleza",
+      "volunteering": "Voluntariado",
+      "startups": "Startups"
+    },
+    "funnyTag": {
+      "trouble_junky": "Buscapleitos",
+      "wild_runner": "Corredor salvaje",
+      "infinite_meditator": "Meditador infinito",
+      "coffee_addict": "Adicto al café",
+      "night_owl": "Búho nocturno",
+      "book_worm": "Ratón de biblioteca",
+      "taco_hunter": "Cazador de tacos",
+      "dance_floor_regular": "Rey de la pista",
+      "cliff_chaser": "Trepa-acantilados",
+      "dog_person": "Team perros"
+    },
+    "language": {
+      "es": "Español",
+      "en": "Inglés",
+      "pt": "Portugués",
+      "fr": "Francés",
+      "de": "Alemán",
+      "it": "Italiano",
+      "zh": "Chino",
+      "ja": "Japonés",
+      "ko": "Coreano"
+    },
+    "learning": {
+      "language": "Un idioma",
+      "instrument": "Un instrumento",
+      "coding": "Programación",
+      "cooking": "Cocina",
+      "art": "Arte",
+      "sport": "Un deporte",
+      "business": "Negocios",
+      "mindfulness": "Mindfulness"
+    },
+    "industry": {
+      "tech": "Tecnología",
+      "design": "Diseño",
+      "finance": "Finanzas",
+      "health": "Salud",
+      "education": "Educación",
+      "marketing": "Marketing",
+      "hospitality": "Hospitalidad",
+      "arts": "Arte",
+      "legal": "Legal",
+      "realestate": "Inmobiliaria",
+      "nonprofit": "ONG",
+      "other": "Otro"
+    }
   },
   "matching": {
     "plusActivated": {
@@ -1620,8 +1714,16 @@
     "createEventSub": "Redacta con IA · Copiloto anfitrión",
     "searchYourEvents": "Busca tus eventos…",
     "capacity": "{{going}} / {{max}} asistentes",
-    "action": { "checkIn": "Check-in", "roster": "Lista", "edit": "Editar" },
-    "empty": { "noUpcoming": "No hay eventos próximos", "noPast": "No hay eventos pasados", "text": "Crea un evento y aparecerá aquí." },
+    "action": {
+      "checkIn": "Check-in",
+      "roster": "Lista",
+      "edit": "Editar"
+    },
+    "empty": {
+      "noUpcoming": "No hay eventos próximos",
+      "noPast": "No hay eventos pasados",
+      "text": "Crea un evento y aparecerá aquí."
+    },
     "yourBusiness": "Tu negocio",
     "thisEvent": "Este evento",
     "switchBusiness": "Cambiar de negocio",
@@ -2778,7 +2880,11 @@
         "short": "Sensibilidad emocional"
       }
     },
-    "band": { "low": "Baja", "mid": "Equilibrada", "high": "Alta" },
+    "band": {
+      "low": "Baja",
+      "mid": "Equilibrada",
+      "high": "Alta"
+    },
     "summaryEyebrow": "Kinlo AI leyó tus resultados",
     "interpretTitle": "Qué significa",
     "interpretNote": "Lecturas fijas para tus puntajes — dos personas con el mismo puntaje leen lo mismo.",
@@ -3409,17 +3515,97 @@
       "inactive": "Inactivo"
     },
     "verticals": {
-      "dance": { "label": "Danza", "sessionNoun": "clase", "tags": ["Principiante", "Intermedio", "Avanzado", "Salsa", "Bachata"] },
-      "gym": { "label": "Gimnasio / Estudio", "sessionNoun": "sesión", "tags": ["Principiante", "Regular", "Entrenador", "Pesas"] },
-      "yoga": { "label": "Yoga / Pilates", "sessionNoun": "clase", "tags": ["Principiante", "Prenatal", "Avanzado"] },
-      "retreat": { "label": "Retiro", "sessionNoun": "sesión", "tags": ["VIP", "Recurrente"] },
-      "school": { "label": "Escuela", "sessionNoun": "clase", "tags": ["Nuevo", "Becado"] },
-      "coaching": { "label": "Coaching", "sessionNoun": "sesión", "tags": ["1:1", "Grupo"] },
-      "tours": { "label": "Tours", "sessionNoun": "tour", "tags": ["Privado", "Grupo"] },
-      "nightlife": { "label": "Vida nocturna", "sessionNoun": "evento", "tags": ["VIP", "Regular"] },
-      "community": { "label": "Comunidad", "sessionNoun": "sesión", "tags": ["Miembro", "Voluntario"] },
-      "events": { "label": "Eventos", "sessionNoun": "evento", "tags": ["VIP", "Ponente"] },
-      "other": { "label": "Otro", "sessionNoun": "sesión", "tags": [] }
+      "dance": {
+        "label": "Danza",
+        "sessionNoun": "clase",
+        "tags": [
+          "Principiante",
+          "Intermedio",
+          "Avanzado",
+          "Salsa",
+          "Bachata"
+        ]
+      },
+      "gym": {
+        "label": "Gimnasio / Estudio",
+        "sessionNoun": "sesión",
+        "tags": [
+          "Principiante",
+          "Regular",
+          "Entrenador",
+          "Pesas"
+        ]
+      },
+      "yoga": {
+        "label": "Yoga / Pilates",
+        "sessionNoun": "clase",
+        "tags": [
+          "Principiante",
+          "Prenatal",
+          "Avanzado"
+        ]
+      },
+      "retreat": {
+        "label": "Retiro",
+        "sessionNoun": "sesión",
+        "tags": [
+          "VIP",
+          "Recurrente"
+        ]
+      },
+      "school": {
+        "label": "Escuela",
+        "sessionNoun": "clase",
+        "tags": [
+          "Nuevo",
+          "Becado"
+        ]
+      },
+      "coaching": {
+        "label": "Coaching",
+        "sessionNoun": "sesión",
+        "tags": [
+          "1:1",
+          "Grupo"
+        ]
+      },
+      "tours": {
+        "label": "Tours",
+        "sessionNoun": "tour",
+        "tags": [
+          "Privado",
+          "Grupo"
+        ]
+      },
+      "nightlife": {
+        "label": "Vida nocturna",
+        "sessionNoun": "evento",
+        "tags": [
+          "VIP",
+          "Regular"
+        ]
+      },
+      "community": {
+        "label": "Comunidad",
+        "sessionNoun": "sesión",
+        "tags": [
+          "Miembro",
+          "Voluntario"
+        ]
+      },
+      "events": {
+        "label": "Eventos",
+        "sessionNoun": "evento",
+        "tags": [
+          "VIP",
+          "Ponente"
+        ]
+      },
+      "other": {
+        "label": "Otro",
+        "sessionNoun": "sesión",
+        "tags": []
+      }
     },
     "hub": {
       "title": "Kinlo para Negocios",
@@ -3687,7 +3873,12 @@
       "title": "Tarjeta de membresía",
       "classCredits": "Créditos de clase",
       "membership": "Membresía",
-      "state": { "active": "Activa", "expired": "Vencida", "depleted": "Sin créditos", "none": "Sin plan" },
+      "state": {
+        "active": "Activa",
+        "expired": "Vencida",
+        "depleted": "Sin créditos",
+        "none": "Sin plan"
+      },
       "expires": "Vence {{date}}",
       "showHint": "Muéstrala al hacer check-in",
       "loyalty": "Lealtad",
@@ -3771,14 +3962,34 @@
       "legendNew": "Nuevos",
       "bestDays": "Mejores días para programar",
       "bestDayNote": "{{day}} es tu día más concurrido — pon ahí tus mejores clases.",
-      "weekday": { "sun": "D", "mon": "L", "tue": "M", "wed": "X", "thu": "J", "fri": "V", "sat": "S" },
-      "weekdayFull": { "sun": "Domingo", "mon": "Lunes", "tue": "Martes", "wed": "Miércoles", "thu": "Jueves", "fri": "Viernes", "sat": "Sábado" },
+      "weekday": {
+        "sun": "D",
+        "mon": "L",
+        "tue": "M",
+        "wed": "X",
+        "thu": "J",
+        "fri": "V",
+        "sat": "S"
+      },
+      "weekdayFull": {
+        "sun": "Domingo",
+        "mon": "Lunes",
+        "tue": "Martes",
+        "wed": "Miércoles",
+        "thu": "Jueves",
+        "fri": "Viernes",
+        "sat": "Sábado"
+      },
       "pricingMix": "Local vs General · mezcla de tarifa",
       "tierLocal": "Tarifa local",
       "tierGeneral": "Tarifa general",
       "pricingMixNote": "Según la tarifa de cobro de cada miembro — es una división de precio, no de residencia.",
       "memberFlow": "Flujo de miembros",
-      "flow": { "joined": "Ingresaron", "churned": "Se perdieron", "recovered": "Recuperados" },
+      "flow": {
+        "joined": "Ingresaron",
+        "churned": "Se perdieron",
+        "recovered": "Recuperados"
+      },
       "retention": "Retención",
       "flowNote": "Bajas y recuperados vienen de los cambios de estado; retención = miembros activos del periodo anterior que regresaron.",
       "flowBuilding": "Retención = miembros activos del periodo anterior que regresaron. Las bajas y recuperados empiezan a contar conforme cambian de estado."
@@ -3807,7 +4018,11 @@
       "viaSms": "Mensaje (SMS)",
       "viaShare": "Compartir…",
       "wishMessage": "¡Feliz cumpleaños, {{name}}! 🎉 Te deseamos un día maravilloso de parte de todo el equipo.",
-      "kind": { "event": "Pase de evento", "class": "Paquete de clases", "session": "Paquete de sesiones" },
+      "kind": {
+        "event": "Pase de evento",
+        "class": "Paquete de clases",
+        "session": "Paquete de sesiones"
+      },
       "emptyTitle": "No hay cumpleaños esta semana",
       "emptyText": "Agrega un cumpleaños en el perfil de un miembro y aparecerá aquí el día que toca.",
       "privacyNote": "Mostramos solo el día y el mes — nunca el año ni la edad."
@@ -3990,7 +4205,12 @@
       "amountRequiredTitle": "Ingresa una meta",
       "amountRequiredMsg": "La meta anual debe ser mayor que cero.",
       "trackerTitle": "Seguimiento de meta",
-      "period": { "month": "Mes", "quarter": "Trimestre", "semester": "Semestre", "year": "Año" },
+      "period": {
+        "month": "Mes",
+        "quarter": "Trimestre",
+        "semester": "Semestre",
+        "year": "Año"
+      },
       "attainmentEyebrow": "Meta {{period}} · avance",
       "onPace": "ritmo {{n}}%",
       "ofGoal": "{{actual}} de {{target}}",
@@ -4001,7 +4221,11 @@
       "legendActual": "Real",
       "legendProjection": "Proyección",
       "rollupTitle": "Resumen",
-      "rollup": { "month": "Este mes · {{month}}", "semester": "Semestre", "year": "Año" },
+      "rollup": {
+        "month": "Este mes · {{month}}",
+        "semester": "Semestre",
+        "year": "Año"
+      },
       "ofGoalRow": "{{actual}} de {{target}} meta",
       "projAmount": "proy. {{amount}}",
       "projPct": "proy. {{n}}%",
@@ -4090,7 +4314,12 @@
       "free": "Libre",
       "nItems_one": "{{count}} elemento",
       "nItems_other": "{{count}} elementos",
-      "view": { "day": "Día", "week": "Semana", "month": "Mes", "year": "Año" },
+      "view": {
+        "day": "Día",
+        "week": "Semana",
+        "month": "Mes",
+        "year": "Año"
+      },
       "legendEvent": "Evento",
       "legendPrivate": "Privada",
       "duration": "Duración",
@@ -4120,7 +4349,11 @@
       "capacityHint": "Máx = personas por sesión (1 = 1:1, 2 = pareja, 3+ = grupo).",
       "descPlaceholder": "Descripción (opcional)",
       "creditOnly": "Crédito",
-      "kind": { "one": "1:1", "couple": "Pareja", "group": "Grupo" }
+      "kind": {
+        "one": "1:1",
+        "couple": "Pareja",
+        "group": "Grupo"
+      }
     },
     "availability": {
       "title": "Disponibilidad",
@@ -4452,6 +4685,159 @@
       "delete": "Eliminar membresía",
       "deleteTitle": "¿Eliminar esta membresía?",
       "deleteMsg": "Quien ya la compró conserva sus créditos. Solo deja de ofrecerse."
+    }
+  },
+  "gifting": {
+    "give": "Regalar",
+    "giveEvent": "Regala este evento",
+    "giveTo": "Regalar a {{name}}",
+    "months": {
+      "m1": "enero",
+      "m2": "febrero",
+      "m3": "marzo",
+      "m4": "abril",
+      "m5": "mayo",
+      "m6": "junio",
+      "m7": "julio",
+      "m8": "agosto",
+      "m9": "septiembre",
+      "m10": "octubre",
+      "m11": "noviembre",
+      "m12": "diciembre"
+    },
+    "birthday": {
+      "sectionTitle": "Tu cumpleaños",
+      "optional": "Opcional",
+      "emptyBlurb": "Deja que tu comunidad celebre tu día. Guardamos solo el día y el mes — nunca el año.",
+      "add": "Agregar cumpleaños",
+      "pickTitle": "¿Cuándo es tu cumpleaños?",
+      "pickBlurb": "Solo el día y el mes. No te pedimos el año.",
+      "day": "Día",
+      "month": "Mes",
+      "preview": "Guardamos {{date}} — nunca el año.",
+      "continue": "Continuar",
+      "consentTitle": "Deja que tu comunidad celebre tu día",
+      "consentBlurb": "Si lo activas, la gente que te sigue verá un recordatorio para felicitarte o regalarte un evento. Puedes quitarlo cuando quieras.",
+      "shareToggle": "Compartir con mi comunidad",
+      "shareToggleSub": "Solo día y mes, a quienes te siguen",
+      "noShareNote": "Sin este permiso, tu cumpleaños no se guarda ni se muestra a nadie.",
+      "save": "Guardar",
+      "saveNoShare": "Guardar sin compartir",
+      "sharedChip": "Compartido con tu comunidad",
+      "savedChip": "Guardado (privado)",
+      "edit": "Editar",
+      "remove": "Quitar",
+      "removeNote": "Al quitarlo dejará de mostrarse y no aparecerás en los recordatorios de tu comunidad."
+    },
+    "reminder": {
+      "today": "Hoy",
+      "tomorrow": "Mañana",
+      "inDays_one": "En {{count}} día",
+      "inDays_other": "En {{count}} días",
+      "birthdayOf": "El cumple de {{name}}",
+      "subtitle": "{{date}} · la sigues",
+      "cta": "Regálale un evento"
+    },
+    "suggest": {
+      "title": "Regalar a {{name}}",
+      "subtitleDays_one": "Su cumple es en {{count}} día",
+      "subtitleDays_other": "Su cumple es en {{count}} días",
+      "fromPublic": "Según sus intereses públicos — nunca datos privados.",
+      "affinity": "{{pct}}% afín",
+      "gift": "Regalar",
+      "emptyTitle": "Aún no conocemos sus gustos",
+      "emptyBlurb": "{{name}} no ha marcado intereses públicos. Mientras tanto, aquí van los más populares — o elige tú el evento.",
+      "popular": "Populares cerca de ti",
+      "exploreAll": "Explorar todos los eventos",
+      "loadError": "No se pudieron cargar las sugerencias."
+    },
+    "carpool": {
+      "thankTitle": "¿Le agradeces a {{name}} con un evento?",
+      "thankBlurb": "Un pequeño detalle por aventarte el viaje. Elige algo que le late y lo recibe al instante.",
+      "cta": "Regalarle un evento",
+      "later": "Ahora no",
+      "freeNote": "El carpool sigue siendo gratis. Solo pagas si decides regalar un evento."
+    },
+    "pick": {
+      "title": "¿A quién le regalas?",
+      "search": "Busca por nombre",
+      "upcomingBirthdays": "Cumpleaños próximos",
+      "birthdayInDays_one": "Cumple en {{count}} día",
+      "birthdayInDays_other": "Cumple en {{count}} días",
+      "following": "A quienes sigues",
+      "youFollow": "Lo sigues",
+      "empty": "Todavía no sigues a nadie."
+    },
+    "confirm": {
+      "title": "Confirmar regalo",
+      "forName": "para {{name}}",
+      "howYouAppear": "Cómo apareces",
+      "fromYou": "De {{name}}",
+      "anonymous": "Anónimo",
+      "messageLabel": "Mensaje (opcional)",
+      "messagePlaceholder": "¡Feliz cumple! Disfruta 🌊",
+      "event": "Evento",
+      "serviceFee": "Cargo de servicio",
+      "total": "Total",
+      "neverSees": "{{name}} nunca verá cuánto costó.",
+      "pay": "Pagar {{amount}}",
+      "processingTitle": "Procesando tu regalo…",
+      "processingBlurb": "Estamos apartando el lugar de {{name}}. No cierres la app.",
+      "cardLabel": "Tarjeta",
+      "payError": "El pago falló. Inténtalo de nuevo."
+    },
+    "receipt": {
+      "sentTitle": "¡Regalo enviado!",
+      "sentBlurb": "{{name}} ya recibió tu regalo",
+      "to": "Para",
+      "totalPaid": "Total pagado",
+      "status": "Estado",
+      "statusSent": "Sin redimir",
+      "statusRedeemed": "Redimido",
+      "statusCancelled": "Cancelado",
+      "statusExpired": "Expirado",
+      "statusDeclined": "Sin redimir",
+      "refundNote": "Te avisamos cuando {{name}} lo acepte. Si no lo redime, se te reembolsa a tu tarjeta.",
+      "cancel": "Cancelar regalo",
+      "cancelConfirmTitle": "¿Cancelar este regalo?",
+      "cancelConfirmBlurb": "{{name}} no podrá redimirlo y se te reembolsará a tu tarjeta.",
+      "cancelConfirmYes": "Cancelar y reembolsar",
+      "keep": "Conservarlo",
+      "cancelled": "Regalo cancelado y reembolsado."
+    },
+    "reveal": {
+      "fromNamed": "{{name}} te regaló",
+      "fromAnon": "Alguien te regaló",
+      "see": "Ver mi regalo",
+      "giftFrom": "Regalo de {{name}}",
+      "giftFromAnon": "Un regalo para ti",
+      "alreadyPaid": "Ya está pagado. Solo confirma que irás.",
+      "confirmSpot": "Confirmar mi lugar",
+      "cantMakeIt": "No puedo esa fecha",
+      "redeemedTitle": "Ya redimido",
+      "redeemedBlurb": "Ya estás inscrito.",
+      "cancelledTitle": "Evento cancelado",
+      "cancelledBlurb": "El anfitrión canceló este evento. Se le reembolsó al gifter.",
+      "expiredTitle": "Regalo expirado",
+      "expiredBlurb": "No se redimió en 30 días y se le reembolsó al gifter.",
+      "declinedTitle": "Regalo rechazado",
+      "declinedBlurb": "Se le reembolsó al gifter.",
+      "declineCta": "¿No lo quieres?",
+      "declineBlurb": "Puedes rechazarlo con discreción — al gifter se le reembolsa y no le decimos por qué.",
+      "decline": "Rechazar regalo",
+      "declineConfirm": "¿Rechazar este regalo?",
+      "redeemedOk": "¡Listo! Nos vemos ahí.",
+      "waitlistedOk": "El evento está lleno — quedaste en lista de espera. Si nunca se abre un lugar, le reembolsamos al gifter."
+    },
+    "err": {
+      "generic": "Algo salió mal. Inténtalo de nuevo.",
+      "selfGift": "No puedes regalarte a ti mismo.",
+      "notPaid": "Solo se pueden regalar eventos de pago.",
+      "expired": "Este regalo ya expiró.",
+      "alreadyEnrolled": "Ya estás inscrito en este evento.",
+      "serviceDeferred": "Los regalos de servicios llegan pronto.",
+      "emailNotVerified": "Verifica tu correo para continuar.",
+      "hostNotReady": "Este anfitrión aún no puede aceptar pagos."
     }
   }
 }

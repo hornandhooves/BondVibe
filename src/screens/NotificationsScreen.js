@@ -272,6 +272,13 @@ export default function NotificationsScreen({ navigation }) {
     }
 
     switch (notification.type) {
+      // Social gifting: open the reveal/redemption screen.
+      case "gift_received":
+        if (notification.metadata?.giftId) {
+          navigation.navigate("GiftReveal", { giftId: notification.metadata.giftId });
+        }
+        break;
+
       case "event_joined":
       case "event_paid_attendee":
       case "attendee_cancelled":

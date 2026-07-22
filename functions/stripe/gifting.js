@@ -285,14 +285,24 @@ async function handleGiftPurchase(paymentIntent) {
     currency: paymentIntent.currency || "mxn",
   });
 
+  const named = m.fromMode !== "anonymous";
+  // Denormalize the gifter's display name for the reveal — ONLY for named gifts,
+  // so the recipient's doc never carries the identity behind an anonymous gift.
+  let gifterName = null;
+  if (named) {
+    const gSnap = await db.collection("users").doc(m.gifterId).get();
+    gifterName = gSnap.exists ?
+      (gSnap.data().fullName || gSnap.data().name || null) : null;
+  }
   const gift = {
     giftId: m.giftId,
     gifterId: m.gifterId,
+    gifterName, // null for anonymous
     recipientId: m.recipientId,
     itemId: m.itemId,
     itemType: m.itemType || "event",
     itemTitle: m.itemTitle || "",
-    fromMode: m.fromMode === "anonymous" ? "anonymous" : "named",
+    fromMode: named ? "named" : "anonymous",
     message: m.message || null,
     status: "sent",
     paymentIntentId: pi,

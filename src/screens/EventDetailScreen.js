@@ -742,6 +742,29 @@ export default function EventDetailScreen({ route, navigation }) {
           </View>
         </TouchableOpacity>
         <View style={styles.headerActions}>
+          {/* Social gifting: gift THIS paid event to someone (Board 3b). */}
+          {(event?.price || 0) > 0 && !isCreator && (
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate("Gifting", {
+                  eventId: event.id,
+                  eventTitle,
+                  eventPrice: event.price || 0,
+                })
+              }
+              accessibilityRole="button"
+              accessibilityLabel={t("gifting.giveEvent")}
+            >
+              <View
+                style={[
+                  styles.headerButton,
+                  { backgroundColor: colors.surface, borderColor: colors.borderStrong },
+                ]}
+              >
+                <Icon name="gift" size={20} color={colors.primary} />
+              </View>
+            </TouchableOpacity>
+          )}
           {(isJoined || isCreator) && (
             <TouchableOpacity
               onPress={() =>
