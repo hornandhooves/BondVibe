@@ -771,9 +771,20 @@ service cloud.firestore {
         (isCommunityMember(cid) &&
          (hostPost == false || communityOf(cid).hostId == request.auth.uid));
     }
+    // READ gate (fix/security-rules-4b): a community post (communityId set) is
+    // private to that community's members — before, read was a flat isSignedIn(),
+    // so anyone could pull a private community's wall with
+    // where('communityId','==',cid). Personal posts (no communityId) stay public
+    // to signed-in users. NOTE: hostGroups have no "public" flag today; add a
+    // `|| communityOf(cid).get('visibility','private') == 'public'` branch here if
+    // public communities ship.
+    function postReadable(p) {
+      return p.get('communityId', null) == null ||
+             isCommunityMember(p.get('communityId', null));
+    }
 
     match /posts/{postId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && postReadable(resource.data);
       allow create: if isSignedIn() &&
                        request.resource.data.authorId == request.auth.uid &&
                        request.resource.data.get('likeCount', 0) == 0 &&
@@ -787,17 +798,20 @@ service cloud.firestore {
       allow delete: if isSignedIn() &&
                        (resource.data.authorId == request.auth.uid || isAdmin());
 
-      // Likes — one per user; you like/unlike only as yourself.
+      // Likes — one per user; you like/unlike only as yourself. Read follows the
+      // parent post's privacy (a private community post's likes aren't public).
       match /likes/{likeUid} {
-        allow read: if isSignedIn();
+        allow read: if isSignedIn() &&
+                       postReadable(get(/databases/$(database)/documents/posts/$(postId)).data);
         allow create, delete: if isSignedIn() && request.auth.uid == likeUid;
         allow update: if false;
       }
 
       // Comments — authored as yourself; deletable by the comment author, the
-      // post author, or an admin.
+      // post author, or an admin. Read follows the parent post's privacy.
       match /comments/{commentId} {
-        allow read: if isSignedIn();
+        allow read: if isSignedIn() &&
+                       postReadable(get(/databases/$(database)/documents/posts/$(postId)).data);
         allow create: if isSignedIn() &&
                          request.resource.data.authorId == request.auth.uid;
         allow update: if false;
@@ -827,10 +841,19 @@ service cloud.firestore {
     // other `items` collection and (b) let the purge sweep it.
     match /moments/{ownerId}/momentItems/{itemId} {
       allow read: if isSignedIn();
+      // expiresAt must be a timestamp AND land inside the ~24h ephemeral window.
+      // Before it only had to be A timestamp, so a client could set it years out
+      // → a permanent "moment" that the 24h purge (purgeExpiredMoments) never
+      // collects, defeating the ephemerality. Bound it to (now, now+25h] (1h of
+      // slack for clock skew / client-set create time).
+      // fix/security-rules-4b.
       allow create: if isSignedIn() &&
                        request.auth.uid == ownerId &&
                        request.resource.data.authorId == request.auth.uid &&
-                       request.resource.data.expiresAt is timestamp;
+                       request.resource.data.expiresAt is timestamp &&
+                       request.resource.data.expiresAt > request.time &&
+                       request.resource.data.expiresAt <
+                         request.time + duration.value(25, 'h');
       allow update: if false;
       allow delete: if isSignedIn() && request.auth.uid == ownerId;
     }
@@ -1099,6 +1122,21 @@ service cloud.firestore {
     function bizStaffRole(bizId) {
       return get(/databases/$(database)/documents/businesses/$(bizId)/staff/$(request.auth.uid)).data.role;
     }
+    // CAPABILITY finance gate (fix/security-rules-4b): finance (payments/expenses/
+    // goals) used to be gated by a blocklist — everyone EXCEPT the "reception"
+    // role. But the RBAC model (src/constants/businessRoles.js) only grants
+    // finance to roles whose perms.finance == true; by default that's OWNER only
+    // (manager/instructor/reception all seed finance:false). So the blocklist
+    // leaked finance to manager, instructor, and ANY custom role with perms:{}.
+    // Gate on the actual capability: the caller's role doc must say
+    // perms.finance == true. Missing role doc → deny (finance is sensitive; the
+    // only built-in with finance is owner, already covered by the owner branch).
+    function bizStaffHasFinance(bizId) {
+      return isBizStaff(bizId) &&
+             exists(/databases/$(database)/documents/businesses/$(bizId)/roles/$(bizStaffRole(bizId))) &&
+             get(/databases/$(database)/documents/businesses/$(bizId)/roles/$(bizStaffRole(bizId)))
+               .data.get('perms', {}).get('finance', false) == true;
+    }
     // Marketplace P3: a business may publish an AT-HOME (at_customer) service only
     // if it is both verified and insured (admin-granted flags). This is the
     // server-side guarantee behind the at-home publish gate.
@@ -1186,22 +1224,19 @@ service cloud.firestore {
         allow read, write: if isBizStaff(bizId) || isBizOwnerUid(bizId);
       }
 
-      // Finance ledger — owner + instructor only; reception can't read finance.
+      // Finance ledger — owner or a staff role with the finance capability.
       match /payments/{paymentId} {
-        allow read, write: if isBizOwnerUid(bizId) ||
-                              (isBizStaff(bizId) && bizStaffRole(bizId) != "reception");
+        allow read, write: if isBizOwnerUid(bizId) || bizStaffHasFinance(bizId);
       }
 
       // Expenses ledger (P&L) — same finance gate as payments.
       match /expenses/{expenseId} {
-        allow read, write: if isBizOwnerUid(bizId) ||
-                              (isBizStaff(bizId) && bizStaffRole(bizId) != "reception");
+        allow read, write: if isBizOwnerUid(bizId) || bizStaffHasFinance(bizId);
       }
 
       // Revenue Targets goal doc — finance data, same gate as payments/expenses.
       match /goals/{goalId} {
-        allow read, write: if isBizOwnerUid(bizId) ||
-                              (isBizStaff(bizId) && bizStaffRole(bizId) != "reception");
+        allow read, write: if isBizOwnerUid(bizId) || bizStaffHasFinance(bizId);
       }
 
       // Classes / schedule (roster + waitlist).
