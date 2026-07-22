@@ -19,10 +19,12 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
+  getDoc,
   getDocs,
   onSnapshot,
   serverTimestamp,
 } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
 import { createNotification } from "../utils/notificationService";
 
@@ -55,33 +57,47 @@ export const createCarpool = async (eventId, input) => {
     if (!seats || seats < 1) return { success: false, error: "Add at least one seat." };
     if (!input.from?.trim()) return { success: false, error: "Add a pickup area." };
 
-    const ref = await addDoc(collection(db, "events", eventId, "carpools"), {
-      driverId: uid,
-      driverName: input.driverName || "Driver",
+    // SECURITY (fix/security-carpool): creation goes through a callable so the
+    // sensitive pickup (fromAddress/fromCoords) lands in the GATED private subdoc,
+    // and driverId/seatsTotal are set server-side.
+    const fn = httpsCallable(getFunctions(), "createCarpoolOffer");
+    const res = await fn({
+      eventId,
       seatsTotal: seats,
       from: input.from.trim(),
-      // Full address + coords behind the pickup name, for tap-to-open-maps (BUG 19).
       fromAddress: input.fromAddress?.trim() || "",
       fromCoords: input.fromCoords || null,
       departureTime: input.departureTime?.trim() || "",
       notes: input.notes?.trim() || "",
-      status: "open",
-      createdAt: serverTimestamp(),
+      driverName: input.driverName || "Driver",
     });
+    const carpoolId = res.data.carpoolId;
 
     await addDoc(collection(db, "events", eventId, "messages"), {
       senderId: uid,
       type: "carpool",
       text: `Offering a ride · ${seats} seat${seats === 1 ? "" : "s"}`,
-      data: { carpoolId: ref.id },
+      data: { carpoolId },
       createdAt: new Date().toISOString(),
       deliveredTo: {},
       readBy: {},
     });
-    return { success: true, carpoolId: ref.id };
+    return { success: true, carpoolId };
   } catch (e) {
     console.error("❌ createCarpool:", e);
     return { success: false, error: e.message };
+  }
+};
+
+/** Pickup detail (address/coords) — readable only by the driver + approved riders. */
+export const getCarpoolPickup = async (eventId, carpoolId) => {
+  try {
+    const s = await getDoc(
+      doc(db, "events", eventId, "carpools", carpoolId, "private", "pickup")
+    );
+    return s.exists() ? s.data() : null;
+  } catch (e) {
+    return null; // gated: not the driver / not an approved rider
   }
 };
 
@@ -107,13 +123,14 @@ export const cancelSeat = async (eventId, carpoolId) => {
 };
 
 /**
- * Driver approves or declines a rider.
+ * Driver approves or declines a rider. SECURITY (fix/security-carpool): approval
+ * runs through the transactional respondToCarpoolRequest callable (anti-oversell);
+ * rules forbid setting status:"approved" from a client. Throws "carpool_full".
  */
 export const respondToRequest = async (eventId, carpoolId, riderId, approve) => {
-  await updateDoc(
-    doc(db, "events", eventId, "carpools", carpoolId, "riders", riderId),
-    { status: approve ? "approved" : "declined" }
-  );
+  const fn = httpsCallable(getFunctions(), "respondToCarpoolRequest");
+  const res = await fn({ eventId, carpoolId, riderId, approve });
+  return res.data;
 };
 
 /** Driver closes the car pool (no more requests; existing riders keep seats). */
@@ -168,11 +185,11 @@ export const removeRider = async (eventId, carpoolId, riderId) => {
 
 /** Driver edits the offer (seats / pickup / time / notes). */
 export const updateCarpool = async (eventId, carpoolId, updates = {}) => {
+  // SECURITY (fix/security-carpool): seatsTotal is immutable after creation (rule
+  // denylist — a bump would oversell + farm seatsShared); the pickup lives in the
+  // server-only private subdoc. So only from/departureTime/notes are editable here.
   const clean = {};
-  if (updates.seatsTotal != null) clean.seatsTotal = Math.max(1, parseInt(updates.seatsTotal, 10) || 1);
   if (updates.from != null) clean.from = String(updates.from).trim();
-  if (updates.fromAddress != null) clean.fromAddress = String(updates.fromAddress).trim();
-  if (updates.fromCoords !== undefined) clean.fromCoords = updates.fromCoords || null;
   if (updates.departureTime != null) clean.departureTime = String(updates.departureTime).trim();
   if (updates.notes != null) clean.notes = String(updates.notes).trim();
   if (Object.keys(clean).length === 0) return;
@@ -184,8 +201,19 @@ export const subscribeCarpool = (eventId, carpoolId, cb) =>
     cb(s.exists() ? { id: s.id, ...s.data() } : null)
   );
 
+// Full roster — DRIVER only (rules deny a list to riders/other participants).
 export const subscribeRiders = (eventId, carpoolId, cb) =>
   onSnapshot(
     collection(db, "events", eventId, "carpools", carpoolId, "riders"),
     (s) => cb(s.docs.map((d) => ({ userId: d.id, ...d.data() })))
   );
+
+// A rider's OWN request doc (what a non-driver can read of the roster).
+export const subscribeMyRider = (eventId, carpoolId, cb) => {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return () => {};
+  return onSnapshot(
+    doc(db, "events", eventId, "carpools", carpoolId, "riders", uid),
+    (s) => cb(s.exists() ? { userId: uid, ...s.data() } : null)
+  );
+};

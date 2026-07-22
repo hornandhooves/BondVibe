@@ -1992,6 +1992,19 @@ exports.onCarpoolRiderWritten = onDocumentWritten(
     const after = event.data.after.exists ? event.data.after.data() : null;
     const {eventId, carpoolId, riderId} = event.params;
 
+    // Keep approvedCount (client display) accurate whenever an approved rider
+    // joins/leaves by ANY path — the respond callable, a driver remove, or a rider
+    // self-cancel (delete). Idempotent recompute; anti-oversell itself uses the
+    // live query in the callable, so this is display-only.
+    const approvedChanged =
+      (before?.status === "approved") !== (after?.status === "approved");
+    if (approvedChanged) {
+      const n = (await db.collection(`events/${eventId}/carpools/${carpoolId}/riders`)
+        .where("status", "==", "approved").get()).size;
+      await db.doc(`events/${eventId}/carpools/${carpoolId}`)
+        .set({approvedCount: n}, {merge: true});
+    }
+
     const newRequest = !before && after && after.status === "requested";
     const justApproved =
       (before?.status !== "approved") && after?.status === "approved";
@@ -2130,6 +2143,108 @@ exports.creditCarpoolSeatsOnCompletion = onSchedule(
     );
   },
 );
+
+/**
+ * CARPOOL (fix/security-carpool) — the DRIVER creates an offer. Server-only so the
+ * sensitive pickup (fromAddress/fromCoords) lands in the GATED private subdoc
+ * (approved riders + driver only), not the world-of-participants carpool doc.
+ * Only the event's roster/creator may offer a ride. data:
+ * { eventId, seatsTotal, from, fromAddress?, fromCoords?, departureTime?, notes?, driverName? }
+ */
+exports.createCarpoolOffer = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const d = request.data || {};
+  const {eventId} = d;
+  const seatsTotal = parseInt(d.seatsTotal, 10);
+  if (!eventId) throw new HttpsError("invalid-argument", "Missing eventId.");
+  if (!seatsTotal || seatsTotal < 1) {
+    throw new HttpsError("invalid-argument", "At least one seat.");
+  }
+  if (!d.from || !String(d.from).trim()) {
+    throw new HttpsError("invalid-argument", "Missing pickup area.");
+  }
+  // The caller must be on the event (creator or an active roster member).
+  const evSnap = await db.collection("events").doc(eventId).get();
+  if (!evSnap.exists) throw new HttpsError("not-found", "Event not found.");
+  const isParticipant = getEventCreatorId(evSnap.data()) === uid ||
+    (await roster.isOnRoster(db, eventId, uid));
+  if (!isParticipant) {
+    throw new HttpsError("permission-denied", "Not an event participant.");
+  }
+
+  const cpRef = db.collection("events").doc(eventId).collection("carpools").doc();
+  const batch = db.batch();
+  batch.set(cpRef, {
+    driverId: uid,
+    driverName: String(d.driverName || "Driver").slice(0, 80),
+    seatsTotal,
+    approvedCount: 0,
+    from: String(d.from).trim().slice(0, 120),
+    departureTime: String(d.departureTime || "").trim().slice(0, 80),
+    notes: String(d.notes || "").trim().slice(0, 500),
+    status: "open",
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  // Sensitive pickup detail → gated subdoc.
+  batch.set(cpRef.collection("private").doc("pickup"), {
+    fromAddress: String(d.fromAddress || "").trim().slice(0, 300),
+    fromCoords: d.fromCoords || null,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  await batch.commit();
+  return {success: true, carpoolId: cpRef.id};
+});
+
+/**
+ * CARPOOL (fix/security-carpool) — the DRIVER approves/declines a rider request.
+ * TRANSACTIONAL anti-oversell: approving is rejected once approvedCount reaches
+ * seatsTotal. Rules forbid a client (rider OR driver) from ever setting
+ * status:"approved", so this Admin SDK path is the ONLY way to approve — a rider
+ * can no longer self-approve to farm the driver's seatsShared or unlock the pickup.
+ * data: { eventId, carpoolId, riderId, approve:boolean }
+ */
+exports.respondToCarpoolRequest = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const {eventId, carpoolId, riderId, approve} = request.data || {};
+  if (!eventId || !carpoolId || !riderId || typeof approve !== "boolean") {
+    throw new HttpsError("invalid-argument", "eventId, carpoolId, riderId, approve required.");
+  }
+  const cpRef = db.collection("events").doc(eventId).collection("carpools").doc(carpoolId);
+  const riderRef = cpRef.collection("riders").doc(riderId);
+
+  return db.runTransaction(async (tx) => {
+    // All reads before writes. The AUTHORITATIVE approved count is a live query
+    // (Admin SDK bypasses the gated roster read), so capacity can't be fooled by a
+    // stale approvedCount field — approvedCount is kept only for client display.
+    const cpSnap = await tx.get(cpRef);
+    if (!cpSnap.exists) throw new HttpsError("not-found", "Carpool not found.");
+    const cp = cpSnap.data();
+    if (cp.driverId !== uid) {
+      throw new HttpsError("permission-denied", "Only the driver responds.");
+    }
+    const riderSnap = await tx.get(riderRef);
+    if (!riderSnap.exists) throw new HttpsError("not-found", "Rider not found.");
+    const wasApproved = riderSnap.data().status === "approved";
+    const approvedNow = (await tx.get(
+      cpRef.collection("riders").where("status", "==", "approved"))).size;
+
+    if (approve) {
+      if (wasApproved) return {success: true, status: "approved", already: true};
+      if (approvedNow >= (cp.seatsTotal || 0)) {
+        throw new HttpsError("failed-precondition", "carpool_full");
+      }
+      tx.update(riderRef, {status: "approved"});
+      tx.update(cpRef, {approvedCount: approvedNow + 1});
+      return {success: true, status: "approved"};
+    }
+    // Decline — free the seat if they held one.
+    tx.update(riderRef, {status: "declined"});
+    tx.update(cpRef, {approvedCount: wasApproved ? Math.max(0, approvedNow - 1) : approvedNow});
+    return {success: true, status: "declined"};
+  });
+});
 
 // ============================================
 // HOST GROUP messages → notify members (in-app + push)
