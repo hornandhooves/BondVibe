@@ -115,6 +115,13 @@ export const getFeed = async (max = 50) => {
           query(
             collection(db, "posts"),
             where("authorId", "in", g),
+            // RULES COMPAT (fix/security-rules-4b #59): community posts
+            // (communityId set) are readable only by members, so an unfiltered
+            // feed query would be REJECTED whole the moment a followed author has
+            // one. The feed shows only PERSONAL posts; community posts live on
+            // their own wall (getCommunityPosts). Matches communityId:null only
+            // (createPost writes it explicitly for personal posts).
+            where("communityId", "==", null),
             orderBy("createdAt", "desc"),
             qLimit(max)
           )
@@ -155,6 +162,10 @@ export const getUserPosts = async (userId, max = 50) => {
       query(
         collection(db, "posts"),
         where("authorId", "==", userId),
+        // RULES COMPAT (#59): the profile grid shows only the user's PERSONAL
+        // posts; their community posts are private to those communities and would
+        // otherwise get the whole query rejected. communityId:null only.
+        where("communityId", "==", null),
         orderBy("createdAt", "desc"),
         qLimit(max)
       )
