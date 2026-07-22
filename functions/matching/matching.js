@@ -257,12 +257,20 @@ const createLikeAndMaybeMatch = onCall(async (request) => {
     throw new HttpsError("failed-precondition", "matching_closed");
   }
 
-  // Both people must have checked in to the event.
-  const meCheckedIn = await db
-    .collection("events").doc(eventId)
-    .collection("checkins").doc(from).get();
+  // Both people must have checked in to the event. SECURITY
+  // (fix/security-functions-4a): only the CALLER's check-in was verified despite
+  // the comment — so an attendee could like (and, on a reciprocal like, match +
+  // open a chat with) someone who was never at the event, e.g. by liking an
+  // uploaded/known uid. Require the TARGET's check-in too.
+  const [meCheckedIn, targetCheckedIn] = await Promise.all([
+    db.collection("events").doc(eventId).collection("checkins").doc(from).get(),
+    db.collection("events").doc(eventId).collection("checkins").doc(toUid).get(),
+  ]);
   if (!meCheckedIn.exists) {
     throw new HttpsError("failed-precondition", "not_checked_in");
+  }
+  if (!targetCheckedIn.exists) {
+    throw new HttpsError("failed-precondition", "target_not_checked_in");
   }
 
   const maxMatches = typeof m.maxMatches === "number" ? m.maxMatches : 20;

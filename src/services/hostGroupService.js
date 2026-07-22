@@ -31,13 +31,12 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
 import { reportUserBlock } from "./reportService";
 
-// Invite code: short, unambiguous (no 0/O/1/I).
-const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const genCode = () =>
-  Array.from(
-    { length: 6 },
-    () => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]
-  ).join("");
+// SECURITY (fix/security-functions-4a): invite codes are now minted SERVER-SIDE
+// with a CSPRNG (assignGroupInviteCode callable). The old client genCode used
+// Math.random — predictable, so codes for private groups were guessable.
+const assignCode = (groupId, regenerate = false) =>
+  httpsCallable(getFunctions(), "assignGroupInviteCode")({ groupId, regenerate })
+    .then((r) => r.data.code);
 
 /** Create a group owned by the current host. */
 export const createGroup = async (name, description, memberIds = []) => {
@@ -51,12 +50,18 @@ export const createGroup = async (name, description, memberIds = []) => {
       name: name.trim(),
       description: description?.trim() || "",
       memberIds: members,
-      inviteCode: genCode(),
       lastMessage: "",
       lastMessageAt: null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+    // Mint the invite code server-side (CSPRNG); best-effort — the host can also
+    // trigger it later via ensureInviteCode.
+    try {
+      await assignCode(ref.id);
+    } catch (e) {
+      console.warn("assignGroupInviteCode deferred:", e.message);
+    }
     return { success: true, groupId: ref.id };
   } catch (e) {
     console.error("❌ createGroup:", e);
@@ -251,17 +256,11 @@ export const markGroupMessagesRead = async (groupId, messages) => {
  */
 export const ensureInviteCode = async (group) => {
   if (group.inviteCode) return group.inviteCode;
-  const code = genCode();
-  await updateDoc(doc(db, "hostGroups", group.id), { inviteCode: code });
-  return code;
+  return assignCode(group.id);
 };
 
 /** Host regenerates the invite code (invalidates the old link). */
-export const regenerateInviteCode = async (groupId) => {
-  const code = genCode();
-  await updateDoc(doc(db, "hostGroups", groupId), { inviteCode: code });
-  return code;
-};
+export const regenerateInviteCode = async (groupId) => assignCode(groupId, true);
 
 /**
  * Join a group by its invite code (any signed-in user). Runs server-side

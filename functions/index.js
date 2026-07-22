@@ -360,77 +360,181 @@ exports.revokeAdmin = onCall(async (request) => {
 
 // Notifications are created ONLY here (Firestore rules deny direct client
 // create). The server stamps a trustworthy fromUserId + timestamp so a
-// notification's sender can't be spoofed, and privileged types (host
-// approval/rejection) are gated to admins so a random user can't phish a
-// victim with a fake "You're a Verified Host!" message.
-const ADMIN_ONLY_NOTIF_TYPES = new Set([
-  "host_approved",
-  "host_rejected",
-]);
+// notification's sender can't be spoofed.
+//
+// SECURITY (fix/security-functions-4a): before, the recipient (toUserId) AND
+// the title/message were free client text on almost any type string — a phishing
+// primitive (deliver "Your payout failed, tap here: evil.link" to any uid). Now:
+//  - `type` must be in a positive allowlist (NOTIF_CATALOG); anything else is
+//    rejected. Each type declares a GATE (admin | host | self | open) checked
+//    against the caller — a random user can't send an admin/host-authored type.
+//  - the TITLE is server-derived from the catalog per type; client title is
+//    ignored (kills spoofed titles like "You're a Verified Host!").
+//  - the MESSAGE is sanitized (URLs/markdown-links/emails stripped, capped) so
+//    even a legitimate free-text body (a host announcement, a rating reply) can't
+//    carry a clickable phishing payload.
+//  - a per-caller rate limit (notifAttempts, same shape as guestCodeAttempts)
+//    blunts spray/abuse.
+//  - App Check is env-gated (AI_ENFORCE_APP_CHECK, off until the native build).
+// The per-type relation is intentionally coarse (gift/host allowed by their
+// action, not a hard match requirement) — QA can tighten specific types later.
+const NOTIF_ENFORCE_APP_CHECK = process.env.AI_ENFORCE_APP_CHECK === "true";
+const NOTIF_RL_MAX = 200; // per caller per hour (accommodates host fan-out)
+const NOTIF_RL_WINDOW_MS = 60 * 60 * 1000;
 
-exports.createNotification = onCall(async (request) => {
-  const uid = request.auth && request.auth.uid;
-  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+// gate: who may send this type. "open" = any signed-in caller (rate-limited).
+// keys (titleKey/bodyKey) localize on the client (BUG 34); fromMsg = the body is
+// a sanitized client string (a preview/announcement); else a fixed catalog body.
+const NOTIF_CATALOG = {
+  welcome: {gate: "self", titleKey: "auth.profileSetup.welcomeNotification.title",
+    bodyKey: "auth.profileSetup.welcomeNotification.message", icon: "party"},
+  role_change: {gate: "admin", title: "Role updated", fromMsg: true, icon: "user"},
+  suspension: {gate: "admin", title: "Account suspended", fromMsg: true, icon: "block"},
+  unsuspension: {gate: "admin", title: "Account reactivated",
+    body: "Your account has been reactivated. Welcome back!", icon: "successCircle"},
+  host_approved: {gate: "admin", titleKey: "notifications.host.approved.title",
+    bodyKey: "notifications.host.approved.body", keyParams: ["message"], icon: "tent"},
+  host_rejected: {gate: "admin", titleKey: "notifications.host.rejected.title",
+    bodyKey: "notifications.host.rejected.body", keyParams: ["message"], icon: "clipboard"},
+  host_announcement: {gate: "host", title: "Announcement", fromMsg: true, icon: "broadcast"},
+  host_nudge: {gate: "host", title: "A note from your host", fromMsg: true, icon: "heart"},
+  event_joined: {gate: "open", title: "New attendee", fromMsg: true, icon: "users"},
+  event_reminder: {gate: "open", title: "Event reminder", fromMsg: true, icon: "clock"},
+  event_cancelled: {gate: "open", title: "Event cancelled", fromMsg: true, icon: "block"},
+  event_rating: {gate: "open", title: "New rating received", fromMsg: true, icon: "star"},
+  rating_reply: {gate: "open", title: "New message", fromMsg: true, icon: "chat"},
+  mention: {gate: "open", title: "You were mentioned", fromMsg: true, icon: "message"},
+  carpool: {gate: "open", title: "Car pool update", fromMsg: true, icon: "car"},
+  carpool_removed: {gate: "open", title: "Removed from a ride",
+    body: "The driver removed you from a car pool.", icon: "car"},
+  carpool_cancelled: {gate: "open", title: "Ride cancelled",
+    body: "A car pool you joined was cancelled by the driver.", icon: "car"},
+  carpool_request: {gate: "open", titleKey: "notifications.carpool.request.title",
+    bodyKey: "notifications.carpool.request.body", keyParams: ["name"], icon: "car"},
+  carpool_approved: {gate: "open", titleKey: "notifications.carpool.approved.title",
+    bodyKey: "notifications.carpool.approved.body", keyParams: ["driver"], icon: "car"},
+  // Business private sessions (businessSessionsService notifyAttendees) — the host
+  // confirms a booking / nudges a rating after a done session. "open" is enough:
+  // benign, rate-limited, link-stripped body. (A business-owner gate would be
+  // tighter but optional.)
+  business_session_confirmed: {gate: "open", title: "Session confirmed",
+    fromMsg: true, icon: "calendar"},
+  business_session_rate: {gate: "open", title: "Rate your session",
+    fromMsg: true, icon: "star"},
+};
 
-  const d = request.data || {};
-  const toUserId = d.toUserId;
-  const type = d.type;
-  if (!toUserId || typeof toUserId !== "string") {
-    throw new HttpsError("invalid-argument", "Missing toUserId.");
-  }
-  if (!type || typeof type !== "string" || type.length > 64) {
-    throw new HttpsError("invalid-argument", "Invalid type.");
-  }
-  if (ADMIN_ONLY_NOTIF_TYPES.has(type) && !(await isAdminUid(uid))) {
-    throw new HttpsError("permission-denied", "This notification is admin-only.");
-  }
+// Output guard: strip anything clickable a phishing body could carry.
+const stripLinks = (s) => String(s || "")
+  .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // markdown [text](url) → text
+  .replace(/\b(?:https?:\/\/|www\.)\S+/gi, "")
+  .replace(/\b[^\s@]+@[^\s@]+\.[^\s@]+\b/g, "")
+  .replace(/\s{2,}/g, " ").trim();
 
-  const str = (v, max) =>
-    v == null ? "" : String(v).slice(0, max);
-  const sanitizeScalars = (obj) => {
-    const out = {};
-    if (obj && typeof obj === "object" && !Array.isArray(obj)) {
-      for (const k of Object.keys(obj).slice(0, 20)) {
-        const val = obj[k];
-        if (val == null || typeof val === "object") continue;
-        out[String(k).slice(0, 64)] = str(val, 500);
+exports.createNotification = onCall(
+  {enforceAppCheck: NOTIF_ENFORCE_APP_CHECK},
+  async (request) => {
+    const uid = request.auth && request.auth.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+    const d = request.data || {};
+    const toUserId = d.toUserId;
+    const type = d.type;
+    if (!toUserId || typeof toUserId !== "string") {
+      throw new HttpsError("invalid-argument", "Missing toUserId.");
+    }
+    const spec = typeof type === "string" ? NOTIF_CATALOG[type] : null;
+    if (!spec) {
+      throw new HttpsError("invalid-argument", "Unknown notification type.");
+    }
+
+    // GATE — a random user can't author an admin/host type, nor send a "welcome"
+    // to anyone but themselves.
+    if (spec.gate === "admin") {
+      if (!(await isAdminUid(uid))) {
+        throw new HttpsError("permission-denied", "This notification is admin-only.");
+      }
+    } else if (spec.gate === "host") {
+      const meSnap = await db.collection("users").doc(uid).get();
+      const me = meSnap.exists ? meSnap.data() : {};
+      if (me.hostApproved !== true && me.role !== "host") {
+        throw new HttpsError("permission-denied", "This notification is host-only.");
+      }
+    } else if (spec.gate === "self") {
+      if (toUserId !== uid) {
+        throw new HttpsError("permission-denied", "This notification is self-only.");
       }
     }
-    return out;
-  };
-  const metadata = sanitizeScalars(d.metadata);
 
-  // BUG 34: a caller may pass i18n key + params instead of pre-rendered text, so
-  // the recipient's client renders it in THEIR language. Store the keys + params;
-  // the English title/message is generated from the catalog as the fallback.
-  const titleKey = d.titleKey ? str(d.titleKey, 200) : null;
-  const bodyKey = d.bodyKey ? str(d.bodyKey, 200) : null;
-  const params = sanitizeScalars(d.params);
-  const title = titleKey ?
-    tPush(titleKey, "en", params) :
-    (str(d.title, 200) || "Notification");
-  const message = bodyKey ?
-    tPush(bodyKey, "en", params) :
-    str(d.message != null ? d.message : d.body, 1000);
+    // Per-caller rate limit (same doc shape as guestCodeAttempts).
+    const rlRef = db.collection("notifAttempts").doc(uid);
+    await db.runTransaction(async (tx) => {
+      const s = await tx.get(rlRef);
+      const now = Date.now();
+      const p = s.exists ? s.data() : {};
+      const start = typeof p.windowStart === "number" ? p.windowStart : 0;
+      const within = now - start < NOTIF_RL_WINDOW_MS;
+      const count = within ? (p.count || 0) : 0;
+      if (within && count >= NOTIF_RL_MAX) {
+        throw new HttpsError("resource-exhausted", "too_many_notifications");
+      }
+      tx.set(rlRef, {
+        windowStart: within ? start : now,
+        count: count + 1,
+        updatedAt: FieldValue.serverTimestamp(),
+      }, {merge: true});
+    });
 
-  await db.collection("notifications").add({
-    userId: toUserId,
-    fromUserId: uid,
-    type,
-    title,
-    message,
-    ...(titleKey ? {titleKey} : {}),
-    ...(bodyKey ? {bodyKey} : {}),
-    ...(titleKey || bodyKey ? {params} : {}),
-    icon: str(d.icon, 40) || "bell",
-    read: false,
-    metadata,
-    relatedEventId: d.relatedEventId ? str(d.relatedEventId, 128) : null,
-    relatedUserId: d.relatedUserId ? str(d.relatedUserId, 128) : null,
-    createdAt: FieldValue.serverTimestamp(),
+    const str = (v, max) => v == null ? "" : String(v).slice(0, max);
+    const sanitizeScalars = (obj) => {
+      const out = {};
+      if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+        for (const k of Object.keys(obj).slice(0, 20)) {
+          const val = obj[k];
+          if (val == null || typeof val === "object") continue;
+          out[String(k).slice(0, 64)] = stripLinks(str(val, 500));
+        }
+      }
+      return out;
+    };
+    const metadata = sanitizeScalars(d.metadata);
+
+    // TITLE + MESSAGE come from the catalog, never raw client text. For key-based
+    // types we keep titleKey/bodyKey (+ whitelisted params) so the client still
+    // localizes; the English fallback is rendered here. `fromMsg` types keep a
+    // sanitized client body (a preview/announcement) but the title is fixed.
+    const params = {};
+    for (const name of (spec.keyParams || [])) {
+      if (d.params && d.params[name] != null) {
+        params[name] = stripLinks(str(d.params[name], 500));
+      }
+    }
+    const titleKey = spec.titleKey || null;
+    const bodyKey = spec.bodyKey || null;
+    const title = titleKey ? tPush(titleKey, "en", params) : spec.title;
+    const message = bodyKey ?
+      tPush(bodyKey, "en", params) :
+      (spec.fromMsg ?
+        stripLinks(str(d.message != null ? d.message : d.body, 1000)) :
+        (spec.body || ""));
+
+    await db.collection("notifications").add({
+      userId: toUserId,
+      fromUserId: uid,
+      type,
+      title,
+      message,
+      ...(titleKey ? {titleKey} : {}),
+      ...(bodyKey ? {bodyKey} : {}),
+      ...(titleKey || bodyKey ? {params} : {}),
+      icon: str(d.icon, 40) || spec.icon || "bell",
+      read: false,
+      metadata,
+      relatedEventId: d.relatedEventId ? str(d.relatedEventId, 128) : null,
+      relatedUserId: d.relatedUserId ? str(d.relatedUserId, 128) : null,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    return {ok: true};
   });
-  return {ok: true};
-});
 
 // AI Foundation — single gateway to Claude (kinlo_build/ai_features/02).
 const aiFoundation = require("./ai/foundation");
@@ -1665,49 +1769,58 @@ exports.releaseMembershipReservation = onCall(async (request) => {
   if (reservation.userId !== uid && reservation.hostId !== uid) {
     throw new HttpsError("permission-denied", "Not allowed.");
   }
-  if (reservation.status !== "reserved") {
-    return {success: true, alreadyProcessed: true};
-  }
 
+  // The cancellation window is derived from immutable event timing, so reading it
+  // outside the transaction is safe.
   const eventSnap = await db.collection("events").doc(reservation.eventId).get();
   const start = eventSnap.exists ? eventStartDate(eventSnap.data()) : null;
   const hoursUntil = start ? (start.getTime() - Date.now()) / 3600000 : 999;
   const forfeit = hoursUntil < CANCELLATION_WINDOW_HOURS;
 
-  if (forfeit) {
-    // Within the window: deduct the credit as a penalty.
-    await db.runTransaction(async (tx) => {
-      const memRef = db.collection("memberships").doc(reservation.membershipId);
-      const memSnap = await tx.get(memRef);
-      if (memSnap.exists) {
-        const membership = memSnap.data();
-        if (membership.type === "credits") {
-          const remaining = Math.max(
-            0,
-            (membership.creditsRemaining || 0) - (reservation.creditCost || 1),
-          );
-          const u = {
-            creditsRemaining: remaining,
-            updatedAt: FieldValue.serverTimestamp(),
-          };
-          if (remaining === 0) u.status = "depleted";
-          tx.update(memRef, u);
-        }
+  // SECURITY (fix/security-functions-4a): the `status == "reserved"` guard used
+  // to run OUTSIDE the transaction (and the forfeit tx re-read only the
+  // membership, never the reservation), so two concurrent releases both passed
+  // the guard and each deducted the credit — a double charge that could also
+  // drive creditsRemaining negative (floored at 0) / double-remove the roster
+  // seat. Re-read the reservation INSIDE the tx and compare-and-set the status
+  // so only the first caller processes it.
+  const processed = await db.runTransaction(async (tx) => {
+    const freshRes = await tx.get(resRef);
+    if (!freshRes.exists || freshRes.data().status !== "reserved") {
+      return false; // already released/forfeited by a concurrent call
+    }
+    // All reads before any writes.
+    const memRef = db.collection("memberships").doc(reservation.membershipId);
+    const memSnap = forfeit ? await tx.get(memRef) : null;
+
+    if (forfeit && memSnap && memSnap.exists) {
+      const membership = memSnap.data();
+      if (membership.type === "credits") {
+        const remaining = Math.max(
+          0,
+          (membership.creditsRemaining || 0) - (reservation.creditCost || 1),
+        );
+        const u = {
+          creditsRemaining: remaining,
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+        if (remaining === 0) u.status = "depleted";
+        tx.update(memRef, u);
       }
-      tx.update(resRef, {
-        status: "forfeited",
-        releasedAt: FieldValue.serverTimestamp(),
-      });
-    });
-  } else {
-    await resRef.update({
-      status: "released",
+    }
+    tx.update(resRef, {
+      status: forfeit ? "forfeited" : "released",
       releasedAt: FieldValue.serverTimestamp(),
     });
-  }
+    return true;
+  });
 
-  // Remove from the roster regardless (decrements participantCount if active); the
-  // roster trigger promotes the next waitlisted person into the freed spot.
+  if (!processed) return {success: true, alreadyProcessed: true};
+
+  // Remove from the roster (decrements participantCount if active); the roster
+  // trigger promotes the next waitlisted person into the freed spot. Only the
+  // caller that actually released the reservation reaches here, so the seat is
+  // freed exactly once.
   await roster.removeFromRoster(db, reservation.eventId, reservation.userId);
 
   return {success: true, forfeited: forfeit};
@@ -2353,8 +2466,35 @@ exports.onGroupMessage = onDocumentCreated(
 exports.joinGroupByCode = onCall(async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  // SECURITY (fix/security-functions-4a): mirror redeemBusinessGuestCode (#53) —
+  // require a verified email and rate-limit per caller. Without this, the 6-char
+  // invite-code space is brute-forceable (join arbitrary private groups) and a
+  // throwaway unverified account could spray attempts.
+  if (request.auth.token.email_verified !== true) {
+    throw new HttpsError("permission-denied", "email_not_verified");
+  }
   const code = (request.data?.code || "").trim().toUpperCase();
   if (!code) throw new HttpsError("invalid-argument", "Missing invite code.");
+
+  const RL_MAX = 12;
+  const RL_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+  const rlRef = db.collection("groupJoinAttempts").doc(uid);
+  await db.runTransaction(async (tx) => {
+    const s = await tx.get(rlRef);
+    const now = Date.now();
+    const p = s.exists ? s.data() : {};
+    const start = typeof p.windowStart === "number" ? p.windowStart : 0;
+    const within = now - start < RL_WINDOW_MS;
+    const count = within ? (p.count || 0) : 0;
+    if (within && count >= RL_MAX) {
+      throw new HttpsError("resource-exhausted", "too_many_attempts");
+    }
+    tx.set(rlRef, {
+      windowStart: within ? start : now,
+      count: count + 1,
+      updatedAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+  });
 
   const snap = await db
     .collection("hostGroups")
@@ -2377,6 +2517,42 @@ exports.joinGroupByCode = onCall(async (request) => {
     updatedAt: FieldValue.serverTimestamp(),
   });
   return {groupId: groupDoc.id, groupName: groupDoc.data().name || ""};
+});
+
+// Mint a host-group invite code SERVER-SIDE with a CSPRNG. The client used
+// Math.random (hostGroupService.js genCode) — predictable, so codes for private
+// groups were guessable. Host-only; used by create / ensure / regenerate.
+// SECURITY (fix/security-functions-4a).
+const GROUP_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I
+const mintGroupCode = () => {
+  const {randomInt} = require("crypto");
+  let out = "";
+  for (let i = 0; i < 6; i++) {
+    out += GROUP_CODE_ALPHABET[randomInt(0, GROUP_CODE_ALPHABET.length)];
+  }
+  return out;
+};
+
+exports.assignGroupInviteCode = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const groupId = String(request.data?.groupId || "").trim();
+  if (!groupId) throw new HttpsError("invalid-argument", "Missing groupId.");
+  const force = !!request.data?.regenerate;
+
+  const gRef = db.collection("hostGroups").doc(groupId);
+  const gSnap = await gRef.get();
+  if (!gSnap.exists) throw new HttpsError("not-found", "Group not found.");
+  if (gSnap.data().hostId !== uid) {
+    throw new HttpsError("permission-denied", "Host only.");
+  }
+  // ensure: keep the existing code unless regenerating.
+  const existing = gSnap.data().inviteCode;
+  if (existing && !force) return {code: existing};
+
+  const code = mintGroupCode();
+  await gRef.update({inviteCode: code, updatedAt: FieldValue.serverTimestamp()});
+  return {code};
 });
 
 /**
@@ -4742,20 +4918,65 @@ exports.approveOwnerTransfer = onCall(async (request) => {
   if (!transferId) throw new HttpsError("invalid-argument", "transferId required.");
 
   const tRef = db.collection("ownerTransfers").doc(transferId);
-  const tSnap = await tRef.get();
-  if (!tSnap.exists) throw new HttpsError("not-found", "Transfer not found.");
-  const tr = tSnap.data();
-  if (tr.status !== "pending_admin") {
-    return {ok: true, status: tr.status}; // already decided — idempotent
-  }
-  const {bizId, fromUid, toUid} = tr;
 
-  if (!approve) {
-    await tRef.update({
-      status: "rejected",
+  // SECURITY (fix/security-functions-4a): the read → guard → 4 ownership writes
+  // ran as sequential awaits, so two concurrent approvals both passed the
+  // `status == "pending_admin"` check and each ran the promote/demote/ownership
+  // moves (double-decided transfer, racey ownerUid). Do the whole decision as a
+  // compare-and-set transaction: the guard is re-read inside the tx, so the
+  // second caller sees the flipped status and no-ops. Notifications are sent
+  // AFTER the tx (side effects don't belong in a retryable transaction).
+  const outcome = await db.runTransaction(async (tx) => {
+    const tSnap = await tx.get(tRef);
+    if (!tSnap.exists) throw new HttpsError("not-found", "Transfer not found.");
+    const tr = tSnap.data();
+    if (tr.status !== "pending_admin") {
+      return {status: tr.status, decided: false, tr}; // lost the race — no-op
+    }
+    const {bizId, fromUid, toUid} = tr;
+
+    if (!approve) {
+      tx.update(tRef, {
+        status: "rejected",
+        decidedBy: uid,
+        decidedAt: FieldValue.serverTimestamp(),
+      });
+      return {status: "rejected", decided: true, tr, bizId, fromUid, toUid};
+    }
+
+    // Approve: promote recipient, demote old owner, move the ownership
+    // source-of-truth — all committed atomically with the status flip.
+    const staffCol = db.collection("businesses").doc(bizId).collection("staff");
+    tx.set(staffCol.doc(toUid), {
+      uid: toUid,
+      role: "owner",
+      status: "active",
+      branchIds: [],
+      ownerSince: FieldValue.serverTimestamp(),
+    }, {merge: true});
+    tx.set(staffCol.doc(fromUid), {
+      role: demoteRole,
+      status: "active",
+    }, {merge: true});
+    tx.update(db.collection("businesses").doc(bizId), {
+      ownerUid: toUid,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    tx.update(tRef, {
+      status: "approved",
       decidedBy: uid,
       decidedAt: FieldValue.serverTimestamp(),
     });
+    return {status: "approved", decided: true, tr, bizId, fromUid, toUid};
+  });
+
+  // Lost the CAS race (already decided by a concurrent call) — stay idempotent
+  // and don't re-send notifications.
+  if (!outcome.decided) return {ok: true, status: outcome.status};
+
+  const {bizId, fromUid, toUid, tr} = outcome;
+
+  if (outcome.status === "rejected") {
     // Recipient = the requesting OWNER (in-app only). BUG 34: key+params.
     await db.collection("notifications").add({
       userId: fromUid,
@@ -4772,29 +4993,6 @@ exports.approveOwnerTransfer = onCall(async (request) => {
     });
     return {ok: true, status: "rejected"};
   }
-
-  // Approve: promote recipient, demote old owner, move ownership source-of-truth.
-  const staffCol = db.collection("businesses").doc(bizId).collection("staff");
-  await staffCol.doc(toUid).set({
-    uid: toUid,
-    role: "owner",
-    status: "active",
-    branchIds: [],
-    ownerSince: FieldValue.serverTimestamp(),
-  }, {merge: true});
-  await staffCol.doc(fromUid).set({
-    role: demoteRole,
-    status: "active",
-  }, {merge: true});
-  await db.collection("businesses").doc(bizId).update({
-    ownerUid: toUid,
-    updatedAt: FieldValue.serverTimestamp(),
-  });
-  await tRef.update({
-    status: "approved",
-    decidedBy: uid,
-    decidedAt: FieldValue.serverTimestamp(),
-  });
 
   // Recipients = the NEW owner (toUid) and the demoted OLD owner (fromUid) — each
   // gets its own body key. BUG 34: key+params; English fallback from the catalog.
