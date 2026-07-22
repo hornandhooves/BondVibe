@@ -26,7 +26,7 @@ export default function AppHeader({ title, navigation }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { mode } = useMode();
+  const { mode, setMode } = useMode();
   const { isHost, avatar, fullName } = useUserRole();
   // BUG 32.5: accepted staff of a business (non-host) can also enter the hosting
   // view — a business membership is a first-class way in, riding the owner's Pro.
@@ -38,6 +38,15 @@ export default function AppHeader({ title, navigation }) {
   useEffect(() => {
     Notifications.setBadgeCountAsync(unread).catch(() => {});
   }, [unread]);
+
+  // Toggle Host Mode instantly (reuses ModeContext.setMode, which persists). No
+  // dialog, no navigation. A selection haptic would go here, but expo-haptics is
+  // a NATIVE module and the repo ships this change OTA-only (CLAUDE.md), so it's
+  // intentionally omitted rather than adding a native dep; wire Haptics in when a
+  // native build next includes it.
+  const handleToggleMode = () => {
+    setMode(mode === "hosting" ? "attending" : "hosting");
+  };
 
   return (
     <View
@@ -52,17 +61,30 @@ export default function AppHeader({ title, navigation }) {
         {title}
       </Text>
 
-      {/* T3: non-interactive mode tag (the toggle now lives in Profile). Shown
-          only for host-capable users; a pure attendee is always "attending". */}
+      {/* Tappable mode tag — toggles Host Mode instantly (no dialog, no nav; the
+          Events/Services tabs re-render from ModeContext). Shown only for
+          host-capable users; a pure attendee is always "attending" and sees no tag. */}
       {canHostView && (() => {
         const tint = mode === "hosting" ? colors.primary : colors.success;
+        const toHosting = mode !== "hosting";
         return (
-          <View style={[styles.tag, { backgroundColor: tint + "1A" }]} testID={`mode-tag-${mode}`}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleToggleMode}
+            hitSlop={hit}
+            style={[styles.tag, { backgroundColor: tint + "1A" }]}
+            testID={`mode-tag-${mode}`}
+            accessibilityRole="button"
+            accessibilityLabel={t(toHosting ?
+              "navigation.modeToggle.a11yToHosting" :
+              "navigation.modeToggle.a11yToAttending")}
+          >
             <View style={[styles.tagDot, { backgroundColor: tint }]} />
             <Text style={[TYPE.caption, styles.tagText, { color: tint }]}>
               {mode === "hosting" ? t("navigation.hosting") : t("navigation.attending")}
             </Text>
-          </View>
+            <Icon name="swap" size={13} color={tint} />
+          </TouchableOpacity>
         );
       })()}
 

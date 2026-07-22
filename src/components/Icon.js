@@ -80,6 +80,7 @@ import {
   Tag,
   DollarSign,
   Repeat,
+  ArrowLeftRight,
   Circle,
   Archive,
   BarChart3,
@@ -173,6 +174,7 @@ const UI_ICONS = {
   dollar: DollarSign,
   gift: Gift,
   repeat: Repeat,
+  swap: ArrowLeftRight, // ⇄ two opposite horizontal arrows (mode toggle)
   globe: Globe,
 };
 

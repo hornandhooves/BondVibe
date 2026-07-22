@@ -10,6 +10,10 @@
       "services": "Servicios",
       "profile": "Perfil",
       "business": "Negocio"
+    },
+    "modeToggle": {
+      "a11yToHosting": "Cambiar a modo Anfitrión",
+      "a11yToAttending": "Cambiar a modo Asistente"
     }
   },
   "common": {

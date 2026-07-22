@@ -10,6 +10,10 @@
       "services": "Services",
       "profile": "Profile",
       "business": "Business"
+    },
+    "modeToggle": {
+      "a11yToHosting": "Switch to Hosting mode",
+      "a11yToAttending": "Switch to Attending mode"
     }
   },
   "common": {
