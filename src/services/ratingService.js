@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
+import { getMyRosterEvents } from "./rosterService";
 import { createNotification } from "../utils/notificationService";
 import { getEventCreatorId } from "../utils/eventHelpers";
 
@@ -261,18 +262,12 @@ export const getPendingRatings = async () => {
     const userId = auth.currentUser?.uid;
     if (!userId) return [];
 
-    // Only the events this user attends (server-side), not the whole
-    // collection. attendees uses the canonical UID-string format.
-    const attendedSnapshot = await getDocs(
-      query(
-        collection(db, "events"),
-        where("attendees", "array-contains", userId)
-      )
-    );
+    // ROSTER (fix/privacy-event-roster): the events this user attends come from
+    // their gated roster docs (collectionGroup), not the array.
+    const attended = await getMyRosterEvents();
     const now = new Date();
 
-    const attendedPastEvents = attendedSnapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
+    const attendedPastEvents = attended
       .filter((event) => {
         const isNotCreator = getEventCreatorId(event) !== userId;
         const isPast = new Date(event.date) < now;

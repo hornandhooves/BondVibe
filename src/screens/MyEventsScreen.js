@@ -33,6 +33,7 @@ import { getEventCreatorId } from "../utils/eventHelpers";
 import { useFocusEffect } from "@react-navigation/native";
 import RatingModal from "../components/RatingModal";
 import { getUserRatingForEvent } from "../services/ratingService";
+import { getMyRosterEvents } from "../services/rosterService";
 import {
   getUserMemberships,
   getMembershipState,
@@ -172,16 +173,12 @@ export default function MyEventsScreen({ navigation, route }) {
   const loadMyEvents = async () => {
     setLoading(true);
     try {
-      // Only the events this user attends (server-side), not the whole
-      // collection. attendees uses the canonical UID-string format.
-      const joinedQuery = query(
-        collection(db, "events"),
-        where("attendees", "array-contains", auth.currentUser.uid)
-      );
-      const snapshot = await getDocs(joinedQuery);
+      // ROSTER (fix/privacy-event-roster): the events this user attends now come
+      // from their gated roster docs (collectionGroup), not the array.
+      const userEventDocs = await getMyRosterEvents();
 
-      const userEvents = snapshot.docs
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
+      const userEvents = userEventDocs
+        .map((event) => ({ ...event }))
         .filter(
           (event) =>
             event.status !== "cancelled" &&
@@ -341,7 +338,7 @@ export default function MyEventsScreen({ navigation, route }) {
               style={[styles.attendeesText, { color: colors.textSecondary }]}
             >
               {t("myEvents.peopleCount", {
-                count: Array.isArray(event.attendees) ? event.attendees.length : 0,
+                count: event.participantCount || 0,
                 max: event.maxPeople || event.maxAttendees || 0,
               })}
             </Text>

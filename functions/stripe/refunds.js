@@ -8,7 +8,7 @@ const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const {FieldValue} = require("firebase-admin/firestore");
 const {tPush} = require("../i18n"); // BUG 34: localized notification strings
-const {getAttendeeId} = require("../utils/eventHelpers");
+const roster = require("../utils/roster");
 const {isAdminUid} = require("../lib/auth");
 const db = admin.firestore();
 
@@ -296,17 +296,10 @@ exports.cancelEventAttendance = functions.https.onCall(
       }
 
       const eventData = eventDoc.data();
-      const attendees = eventData.attendees || [];
-      let attendeeIndex = -1;
-
-      for (let i = 0; i < attendees.length; i++) {
-        if (getAttendeeId(attendees[i]) === userId) {
-          attendeeIndex = i;
-          break;
-        }
-      }
-
-      if (attendeeIndex === -1) {
+      // ROSTER (fix/privacy-event-roster): membership is the existence of the
+      // caller's roster doc, not the (removed) attendees array.
+      const onRoster = await roster.isOnRoster(db, eventId, userId);
+      if (!onRoster) {
         throw new functions.https.HttpsError(
           "failed-precondition",
           "User is not attending this event",
@@ -322,8 +315,8 @@ exports.cancelEventAttendance = functions.https.onCall(
         .get();
 
       if (paymentsSnapshot.empty) {
-        attendees.splice(attendeeIndex, 1);
-        await eventRef.update({attendees: attendees});
+        // Free RSVP → just leave the roster (frees a spot; trigger promotes).
+        await roster.removeFromRoster(db, eventId, userId);
 
         console.log("✅ Removed from free event");
         return {
@@ -350,8 +343,8 @@ exports.cancelEventAttendance = functions.https.onCall(
         "requested_by_customer",
       );
 
-      attendees.splice(attendeeIndex, 1);
-      await eventRef.update({attendees: attendees});
+      // Paid cancel → leave the roster (decrements participantCount, frees a spot).
+      await roster.removeFromRoster(db, eventId, userId);
 
       // ✅ UPDATED: Save stripeFeeRetained in payment record
       await paymentDoc.ref.update({
@@ -465,7 +458,7 @@ exports.hostCancelEvent = functions.https.onCall(
       console.log("📋 Event data:", {
         title: eventData.title,
         creatorId: eventData.creatorId,
-        attendeesCount: eventData.attendees ? eventData.attendees.length : 0,
+        attendeesCount: eventData.participantCount || 0,
       });
 
       // Verify permission — admins are authorized via the claim-first helper

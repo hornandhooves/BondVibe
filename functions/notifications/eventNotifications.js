@@ -4,126 +4,109 @@
  * functions/notifications/eventNotifications.js
  */
 
-const {onDocumentUpdated} = require("firebase-functions/v2/firestore");
+const {onDocumentWritten} = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 const {FieldValue} = require("firebase-admin/firestore");
 const {sendBatchPushNotifications} = require("./pushService");
-const {getAttendeeIds, getEventCreatorId} = require("../utils/eventHelpers");
+const {getEventCreatorId} = require("../utils/eventHelpers");
 const {tPush, baseLang} = require("../i18n");
+const roster = require("../utils/roster");
 
 const db = admin.firestore();
 
 /**
- * TRIGGER: When event document is updated
- * Detects when attendees array changes and sends push notifications
+ * TRIGGER (fix/privacy-event-roster): the roster moved into
+ * events/{id}/roster/{uid}, so attendee changes are per-doc CREATE / DELETE here
+ * (no longer diffs on the event doc's attendees array).
+ *   CREATE(active)  → notify the host of the join.
+ *   DELETE(active)  → notify the host of the cancellation AND promote the OLDEST
+ *                     waitlisted person into the freed spot (FIFO), notifying them
+ *                     + the host of the new join.
+ * Waitlist CREATE / DELETE are silent (a waitlisted user isn't "attending" yet).
+ * A promotion is an UPDATE (status waitlist→active), intentionally NOT handled
+ * here, so there is no re-trigger loop.
  */
-exports.onEventAttendeesChanged = onDocumentUpdated(
-  "events/{eventId}",
+exports.onEventRosterChanged = onDocumentWritten(
+  "events/{eventId}/roster/{rosterUid}",
   async (event) => {
-    const beforeData = event.data.before.data();
-    const afterData = event.data.after.data();
     const eventId = event.params.eventId;
+    const rosterUid = event.params.rosterUid;
+    const before = event.data && event.data.before;
+    const after = event.data && event.data.after;
+    const created = (!before || !before.exists) && after && after.exists;
+    const deleted = before && before.exists && (!after || !after.exists);
+    if (!created && !deleted) return null; // UPDATE (e.g. a promotion) → ignore
 
-    // Skip if event is cancelled
-    if (afterData.status === "cancelled") {
-      console.log("⏭️ Event is cancelled, skipping notifications");
+    const evSnap = await db.collection("events").doc(eventId).get();
+    if (!evSnap.exists) return null;
+    const e = evSnap.data();
+    if (e.status === "cancelled") return null;
+    const creatorId = getEventCreatorId(e);
+
+    if (created && after.data().status === "active") {
+      // Skip migration backfill so migrateEventRosters doesn't spam the host with
+      // a "new attendee" push for every pre-existing attendee it relocates.
+      if (after.data().source === "backfill") return null;
+      await notifyHostOfNewAttendees(
+        creatorId, eventId, e.title, e.price, [rosterUid]);
       return null;
     }
 
-    // Get attendees arrays (normalized to UID strings)
-    const beforeAttendees = getAttendeeIds(beforeData.attendees);
-    const afterAttendees = getAttendeeIds(afterData.attendees);
-
-    // Detect new attendees (joined)
-    const newAttendees = afterAttendees.filter(
-      (id) => !beforeAttendees.includes(id),
-    );
-
-    // Detect removed attendees (cancelled)
-    const removedAttendees = beforeAttendees.filter(
-      (id) => !afterAttendees.includes(id),
-    );
-
-    console.log("👥 Attendee changes detected:", {
-      eventId: eventId,
-      eventTitle: afterData.title,
-      newAttendees: newAttendees.length,
-      removedAttendees: removedAttendees.length,
-    });
-
-    // Promote from the waitlist (FIFO) whenever a spot is open. The resulting
-    // update re-triggers this function, which then notifies the host of the join.
-    const max = afterData.maxAttendees || afterData.maxPeople || 0;
-    const waitlist = Array.isArray(afterData.waitlist) ? afterData.waitlist : [];
-    if (max && waitlist.length > 0 && afterAttendees.length < max) {
-      const promoted = waitlist.slice(0, max - afterAttendees.length);
-      if (promoted.length > 0) {
-        await db.doc(`events/${eventId}`).update({
-          attendees: FieldValue.arrayUnion(...promoted),
-          waitlist: FieldValue.arrayRemove(...promoted),
-        });
-        for (const uid of promoted) {
-          // BUG 34: store key+params (localized in-app + push per recipient);
-          // the English title/message fallback is generated from the catalog, so
-          // no English literal lives at the call site.
-          const eventTitle = afterData.title || "an event";
-          const params = {event: eventTitle};
-          const tk = "notifications.event.waitlistPromoted.title";
-          const bk = "notifications.event.waitlistPromoted.body";
-          await db.collection("notifications").add({
-            userId: uid,
-            type: "waitlist_promoted",
-            title: tPush(tk, "en", params),
-            message: tPush(bk, "en", params),
-            titleKey: tk,
-            bodyKey: bk,
-            params,
-            icon: "🎉",
-            read: false,
-            createdAt: FieldValue.serverTimestamp(),
-            metadata: {eventId, eventTitle: afterData.title || ""},
-          });
-          const u = await db.collection("users").doc(uid).get();
-          if (u.exists && u.data().pushToken) {
-            await sendBatchPushNotifications([{
-              pushToken: u.data().pushToken,
-              uid,
-              lang: baseLang(u.data().language), // recipient = promoted attendee
-              titleKey: "notifications.event.waitlistPromoted.title",
-              bodyKey: "notifications.event.waitlistPromoted.pushBody",
-              params,
-              data: {type: "waitlist_promoted", eventId},
-            }]);
-          }
-        }
-        console.log(`✅ Promoted ${promoted.length} from waitlist`);
+    if (deleted && before.data().status === "active") {
+      // A spot freed: tell the host, then LOOP-FILL the open spot(s) from the
+      // waitlist (FIFO) — notifying each promoted user + the host.
+      await notifyHostOfCancellations(creatorId, eventId, e.title, [rosterUid]);
+      const promotedUids = await roster.promoteOldestWaitlist(db, eventId);
+      for (const promotedUid of promotedUids) {
+        await notifyPromoted(eventId, promotedUid, e.title);
+        await notifyHostOfNewAttendees(
+          creatorId, eventId, e.title, e.price, [promotedUid]);
+      }
+      if (promotedUids.length) {
+        console.log(`✅ Promoted ${promotedUids.length} from the waitlist`);
       }
     }
-
-    // Process new attendees (someone joined)
-    if (newAttendees.length > 0) {
-      await notifyHostOfNewAttendees(
-        getEventCreatorId(afterData),
-        eventId,
-        afterData.title,
-        afterData.price,
-        newAttendees,
-      );
-    }
-
-    // Process cancelled attendees (someone left)
-    if (removedAttendees.length > 0) {
-      await notifyHostOfCancellations(
-        getEventCreatorId(afterData),
-        eventId,
-        afterData.title,
-        removedAttendees,
-      );
-    }
-
     return null;
   },
 );
+
+/**
+ * Notify a promoted waitlister — in-app bubble + push (localized per recipient).
+ * @param {string} eventId - Event ID
+ * @param {string} uid - the promoted user's uid (recipient)
+ * @param {string} eventTitle - Event title
+ * @return {Promise<void>}
+ */
+async function notifyPromoted(eventId, uid, eventTitle) {
+  const params = {event: eventTitle || "an event"};
+  const tk = "notifications.event.waitlistPromoted.title";
+  const bk = "notifications.event.waitlistPromoted.body";
+  await db.collection("notifications").add({
+    userId: uid,
+    type: "waitlist_promoted",
+    title: tPush(tk, "en", params),
+    message: tPush(bk, "en", params),
+    titleKey: tk,
+    bodyKey: bk,
+    params,
+    icon: "🎉",
+    read: false,
+    createdAt: FieldValue.serverTimestamp(),
+    metadata: {eventId, eventTitle: eventTitle || ""},
+  });
+  const u = await db.collection("users").doc(uid).get();
+  if (u.exists && u.data().pushToken) {
+    await sendBatchPushNotifications([{
+      pushToken: u.data().pushToken,
+      uid,
+      lang: baseLang(u.data().language), // recipient = promoted attendee
+      titleKey: tk,
+      bodyKey: "notifications.event.waitlistPromoted.pushBody",
+      params,
+      data: {type: "waitlist_promoted", eventId},
+    }]);
+  }
+}
 
 /**
  * Notify host when new attendees join

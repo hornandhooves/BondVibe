@@ -91,7 +91,7 @@ function buildAskKinloStream(db, anthropicKey) {
         const e = d.data();
         return {eventId: d.id, title: e.title || "", startsAt: e.date || null,
           category: e.category || null, city: e.city || null,
-          price: e.price || 0, going: (e.attendees || []).length};
+          price: e.price || 0, going: e.participantCount || 0}; // ROSTER: count
       });
       const validIds = new Set(events.map((e) => e.eventId));
       const question = String((req.body || {}).question || "").slice(0, 500);
