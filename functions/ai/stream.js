@@ -16,9 +16,16 @@
 
 const {onRequest} = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
-const {getAiConfig, consumeBudget} = require("./foundation");
+const {getAiConfig, consumeBudget, consumeGlobal} = require("./foundation");
 
 const MARKER = "###JSON###";
+
+// Mirror the callable's abuse ceiling: cap burst concurrency, and (once the
+// native App Check build ships — docs/APP_CHECK_SETUP.md) require a valid App
+// Check token. Env-gated so current beta clients, which don't attach one yet,
+// aren't locked out. This is an onRequest, so App Check is verified by hand.
+const AI_MAX_INSTANCES = 10;
+const ENFORCE_APP_CHECK = process.env.AI_ENFORCE_APP_CHECK === "true";
 
 /**
  * Build the streaming endpoint.
@@ -31,7 +38,7 @@ function buildAskKinloStream(db, anthropicKey) {
     // invoker public = anyone can reach the URL; real auth is the Firebase
     // ID token verified below (same trust model as onCall endpoints).
     {secrets: [anthropicKey], timeoutSeconds: 120, cors: true,
-      invoker: "public"},
+      invoker: "public", maxInstances: AI_MAX_INSTANCES},
     async (req, res) => {
       const started = Date.now();
       const log = async (outcome, extra = {}) => {
@@ -67,6 +74,17 @@ function buildAskKinloStream(db, anthropicKey) {
         return fail(401, "unauthenticated");
       }
 
+      // App Check: onCall enforces natively; here (onRequest) verify by hand.
+      if (ENFORCE_APP_CHECK) {
+        const acToken = req.header("X-Firebase-AppCheck");
+        if (!acToken) return fail(401, "app_check_required");
+        try {
+          await admin.appCheck().verifyToken(acToken);
+        } catch (e) {
+          return fail(401, "app_check_failed");
+        }
+      }
+
       const userSnap = await db.collection("users").doc(uid).get();
       const u = userSnap.exists ? userSnap.data() : {};
       if (u.aiOptIn !== true) {
@@ -80,6 +98,12 @@ function buildAskKinloStream(db, anthropicKey) {
         await log("denied", {uid, reason: budget.reason});
         return fail(429, budget.reason,
           budget.reason === "taste_limit" ? {needsPlus: true} : {});
+      }
+      // GLOBAL circuit breaker before the Anthropic round-trip (real money).
+      const g = await consumeGlobal(db, cfg, 1);
+      if (!g.allowed) {
+        await log("denied", {uid, reason: g.reason});
+        return fail(429, g.reason);
       }
 
       // Grounding pool — same loader shape as the callable path.

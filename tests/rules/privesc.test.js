@@ -495,3 +495,35 @@ describe("F6 · storage businesses/{bizId}/expenses — receipt leak", () => {
     });
   });
 });
+
+// ===========================================================================
+// R6 — stripeConnect on the users doc is server-owned (createConnectAccount +
+// Stripe webhooks via Admin SDK). A client that self-writes
+// stripeConnect.chargesEnabled=true could fake a payout-ready account and slip
+// past the canCreatePaidEvents gate. It must be in the users UPDATE denylist.
+// ===========================================================================
+describe("R6 · users.update — self-granted stripeConnect (payout spoof)", () => {
+  const seedMember = (env) =>
+    seed(env, (db) => setDoc(doc(db, "users", "mallory"),
+      { role: "user", plan: "free", displayName: "M" }));
+
+  test("FIX: a user cannot write stripeConnect on their own doc", async () => {
+    await seedMember(fixed);
+    const db = asUser(fixed, "mallory");
+    await assertFails(updateDoc(doc(db, "users", "mallory"),
+      { stripeConnect: { accountId: "acct_x", chargesEnabled: true } }));
+  });
+
+  test("NO OVER-BLOCK: the user still edits their own profile", async () => {
+    await seedMember(fixed);
+    const db = asUser(fixed, "mallory");
+    await assertSucceeds(updateDoc(doc(db, "users", "mallory"),
+      { displayName: "Mallory B" }));
+  });
+
+  test("NO OVER-BLOCK: the Admin SDK (server) still sets stripeConnect", async () => {
+    await assertSucceeds(seed(fixed, (db) => setDoc(doc(db, "users", "mallory"),
+      { role: "user", stripeConnect: { accountId: "acct_x", chargesEnabled: true } },
+      { merge: true })));
+  });
+});

@@ -168,7 +168,7 @@ service cloud.firestore {
                           .hasAny(['hostStats', 'carpoolStats', 'isPremium',
                                    'plan', 'matchCountByEvent', 'hostApproved',
                                    'handle', 'handleLower', 'role',
-                                   'hostConfig', 'suspended',
+                                   'hostConfig', 'suspended', 'stripeConnect',
                                    'personality', 'matchProfile']) &&
                         request.resource.data.get('matchmaking', {})
                           .get('freeTrialEndsAt', null) ==

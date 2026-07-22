@@ -35,6 +35,13 @@ exports.createConnectAccount = onRequest(
 
       const caller = await verifyBearer(req);
       if (!caller) return res.status(401).json({error: "unauthenticated"});
+      // A verified email is required to open a payout account (forgery-proof
+      // token claim) — mirrors the paid-event/host gates. Stops an attacker who
+      // signs up with someone else's unverified email from wiring a Stripe
+      // Connect payout destination to it.
+      if (!caller.email_verified) {
+        return res.status(403).json({error: "email_not_verified"});
+      }
       const userId = caller.uid; // act only on the caller's own account
       const {email} = req.body;
 

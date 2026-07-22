@@ -308,7 +308,10 @@ function bandOf(score) {
  * @return {Promise<object>} { scores: [{dimension, score, band}] }
  */
 async function loadPersonalitySummary(db, uid) {
-  const snap = await db.collection("users").doc(uid).get();
+  // PRIVACY (fix/privacy-*): personality lives in the gated
+  // users/{uid}/match/profile subdoc, no longer on the world-readable main doc.
+  const snap = await db.collection("users").doc(uid)
+    .collection("match").doc("profile").get();
   const p = (snap.exists && snap.data().personality) || null;
   if (!p || !BIG_FIVE_KEYS.every((k) => typeof p[k] === "number")) {
     throw new Error("personality quiz not complete");
@@ -355,6 +358,13 @@ async function loadMatchIntel(db, uid, cfg, input) {
   const them = theirsSnap.data() || {};
   if (them.available !== true || them.visibility === "hidden") {
     throw new Error("target profile is not discoverable");
+  }
+  // AI consent is per-person: even a discoverable match profile must NOT be fed
+  // to Claude unless that user opted their data into Kinlo AI. An opt-in match
+  // profile grants matching visibility, not AI processing of their personality.
+  const theirUser = await db.collection("users").doc(otherUid).get();
+  if (!theirUser.exists || theirUser.data().aiOptIn !== true) {
+    throw new Error("the other person has not opted into Kinlo AI");
   }
   const pick = (s) => {
     const p = s.data() || {};

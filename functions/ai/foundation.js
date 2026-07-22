@@ -23,11 +23,25 @@ const {onCall} = require("firebase-functions/v2/https");
 const p2 = require("./features");
 const roster = require("../utils/roster");
 
+// Abuse ceiling on the Anthropic bill. App Check binds calls to a genuine app
+// build (stops scripted key-farming); maxInstances caps burst concurrency so a
+// flood can't fan out to unbounded spend. App Check ENFORCEMENT is env-gated
+// (AI_ENFORCE_APP_CHECK=true) because the RN client only attaches App Check
+// tokens from the next native build (docs/APP_CHECK_SETUP.md) — flip it on with
+// that build so we don't lock out current beta testers. Tokens are still
+// verified when present regardless.
+const AI_MAX_INSTANCES = 10;
+const ENFORCE_APP_CHECK = process.env.AI_ENFORCE_APP_CHECK === "true";
+
 // ─── Tunables: defaults, overridable via Firestore config/ai ────────────────
 const AI_DEFAULTS = {
   model: "claude-sonnet-4-6",
   anthropicVersion: "2023-06-01",
   dailyCallLimit: 40, // per user, across AI features
+  // Circuit breaker across ALL users for one day — a stolen token / abuse spike
+  // trips this long before it becomes a large Anthropic invoice. Counts every
+  // Anthropic round-trip, retries included.
+  globalDailyCallLimit: 5000,
   features: {
     smart_wall: {maxTokens: 1400, candidateLimit: 20, cacheTtlMinutes: 90},
     ask_kinlo: {
@@ -125,6 +139,31 @@ async function consumeBudget(db, uid, feature, cfg, isPlus) {
   });
 }
 
+/**
+ * Charge `n` Anthropic round-trips against the GLOBAL daily circuit breaker.
+ * Denies (without incrementing) once the day is over budget, so a single
+ * runaway/abuse source can't run up an unbounded bill. Separate from the
+ * per-user budget: this is the last line before real money.
+ * @param {FirebaseFirestore.Firestore} db Firestore handle
+ * @param {object} cfg effective AI config
+ * @param {number} n calls to charge (1 for a first call, 1 more per retry)
+ * @return {Promise<object>} verdict {allowed, reason}
+ */
+async function consumeGlobal(db, cfg, n = 1) {
+  const ref = db.collection("aiUsage").doc("_global");
+  const dayKey = new Date().toISOString().slice(0, 10);
+  const limit = cfg.globalDailyCallLimit || AI_DEFAULTS.globalDailyCallLimit;
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const data = snap.exists ? snap.data() : {};
+    const calls = data.day === dayKey ? (data.calls || 0) : 0;
+    if (calls >= limit) return {allowed: false, reason: "global_rate_limited"};
+    tx.set(ref, {day: dayKey, calls: calls + n,
+      updatedAt: new Date().toISOString()}, {merge: false});
+    return {allowed: true};
+  });
+}
+
 // ─── Context loaders (least-privilege) ──────────────────────────────────────
 
 /**
@@ -137,8 +176,11 @@ async function consumeBudget(db, uid, feature, cfg, isPlus) {
  */
 async function loadSmartWallContext(db, uid, cfg) {
   const nowIso = new Date().toISOString();
-  const [userSnap, eventsSnap, followsSnap] = await Promise.all([
+  const [userSnap, matchSnap, eventsSnap, followsSnap] = await Promise.all([
     db.collection("users").doc(uid).get(),
+    // PRIVACY (fix/privacy-*): personality lives in the gated
+    // users/{uid}/match/profile subdoc, not the world-readable main doc.
+    db.collection("users").doc(uid).collection("match").doc("profile").get(),
     db.collection("events")
       .where("date", ">=", nowIso)
       .orderBy("date", "asc")
@@ -148,6 +190,7 @@ async function loadSmartWallContext(db, uid, cfg) {
       .where("followerId", "==", uid).limit(200).get(),
   ]);
   const u = userSnap.exists ? userSnap.data() : {};
+  const personality = (matchSnap.exists && matchSnap.data().personality) || null;
   const following = new Set(
     followsSnap.docs.map((d) => d.data().followeeId).filter(Boolean));
   // ROSTER (fix/privacy-event-roster): friendsGoing needs the LIST of attendees
@@ -176,7 +219,7 @@ async function loadSmartWallContext(db, uid, cfg) {
   return {
     user: {
       interests: u.interests || [],
-      personalityScores: u.personality || null,
+      personalityScores: personality,
       city: u.location || null,
     },
     candidates,
@@ -351,111 +394,125 @@ Object.assign(VALIDATORS, p2.VALIDATORS);
  * @return {object} the callable export
  */
 function buildCallClaude(db, anthropicKey) {
-  return onCall({secrets: [anthropicKey], timeoutSeconds: 60},
-    async (request) => {
-      const started = Date.now();
-      const uid = request.auth?.uid;
-      const feature = String(request.data?.feature || "");
-      const input = request.data?.input || {};
+  return onCall({secrets: [anthropicKey], timeoutSeconds: 60,
+    enforceAppCheck: ENFORCE_APP_CHECK, maxInstances: AI_MAX_INSTANCES},
+  async (request) => {
+    const started = Date.now();
+    const uid = request.auth?.uid;
+    const feature = String(request.data?.feature || "");
+    const input = request.data?.input || {};
 
-      /**
+    /**
          * Write one aiEvents log row (ids/counters only — no bodies).
          * @param {string} outcome ok|fallback|denied|error
          * @param {object} extra additional fields
          */
-      const log = async (outcome, extra = {}) => {
-        try {
-          await db.collection("aiEvents").add({
-            uid: uid || null,
-            feature,
-            outcome,
-            latencyMs: Date.now() - started,
-            createdAt: new Date().toISOString(),
-            ...extra,
-          });
-        } catch (e) {
-          console.error("aiEvents log failed:", e);
-        }
-      };
-
-      if (!uid) {
-        await log("denied", {reason: "unauthenticated"});
-        return {ok: false, error: "unauthenticated", fallback: true};
-      }
-      if (!CONTEXT_LOADERS[feature]) {
-        await log("denied", {reason: "unknown_feature"});
-        return {ok: false, error: "unknown_feature", fallback: true};
-      }
-
-      const cfg = await getAiConfig(db);
-
-      // Opt-in + subscription state.
-      const userSnap = await db.collection("users").doc(uid).get();
-      const u = userSnap.exists ? userSnap.data() : {};
-      if (u.aiOptIn !== true) {
-        await log("denied", {reason: "not_opted_in"});
-        return {ok: false, error: "not_opted_in", fallback: true};
-      }
-      const isPlus = u.plan === "kinlo_plus";
-
-      // Feature-specific access gate (Pro requirement / freemium taste).
-      if (p2.GATES[feature]) {
-        const denial = await p2.GATES[feature](db, uid, u, cfg);
-        if (denial) {
-          await log("denied", {reason: denial.error});
-          return {ok: false, fallback: true, ...denial};
-        }
-      }
-
-      const budget = await consumeBudget(db, uid, feature, cfg, isPlus);
-      if (!budget.allowed) {
-        await log("denied", {reason: budget.reason});
-        return {
-          ok: false,
-          error: budget.reason,
-          fallback: true,
-          ...(budget.reason === "taste_limit" ? {needsPlus: true} : {}),
-        };
-      }
-
+    const log = async (outcome, extra = {}) => {
       try {
-        const ctx = await CONTEXT_LOADERS[feature](db, uid, cfg, input);
-        const {system, user} = PROMPTS[feature](ctx, input);
-        const maxTokens = cfg.features[feature].maxTokens;
-
-        let attempt = await callAnthropic(
-          cfg, anthropicKey.value(), system, user, maxTokens);
-        let validationError = attempt.json ?
-          VALIDATORS[feature](attempt.json, ctx) : "no JSON";
-
-        if (validationError) {
-          // One retry, reminding the model of the contract.
-          attempt = await callAnthropic(cfg, anthropicKey.value(),
-            system + " Previous output was invalid (" + validationError +
-                "). Return ONLY the JSON object.", user, maxTokens);
-          validationError = attempt.json ?
-            VALIDATORS[feature](attempt.json, ctx) : "no JSON";
-        }
-
-        if (validationError) {
-          await log("fallback", {reason: validationError.slice(0, 120)});
-          return {ok: false, error: "invalid_output", fallback: true};
-        }
-
-        await log("ok", {
-          inputTokens: attempt.usage.input_tokens || 0,
-          outputTokens: attempt.usage.output_tokens || 0,
+        await db.collection("aiEvents").add({
+          uid: uid || null,
+          feature,
+          outcome,
+          latencyMs: Date.now() - started,
+          createdAt: new Date().toISOString(),
+          ...extra,
         });
-        // Server-side taste enforcement (§1.8) — clients can't bypass.
-        const data = p2.POSTPROCESS[feature] ?
-          p2.POSTPROCESS[feature](attempt.json, u) : attempt.json;
-        return {ok: true, data};
       } catch (e) {
-        console.error("callClaude error:", e);
-        await log("error", {reason: String(e.message || e).slice(0, 120)});
-        return {ok: false, error: "ai_unavailable", fallback: true};
+        console.error("aiEvents log failed:", e);
       }
-    });
+    };
+
+    if (!uid) {
+      await log("denied", {reason: "unauthenticated"});
+      return {ok: false, error: "unauthenticated", fallback: true};
+    }
+    if (!CONTEXT_LOADERS[feature]) {
+      await log("denied", {reason: "unknown_feature"});
+      return {ok: false, error: "unknown_feature", fallback: true};
+    }
+
+    const cfg = await getAiConfig(db);
+
+    // Opt-in + subscription state.
+    const userSnap = await db.collection("users").doc(uid).get();
+    const u = userSnap.exists ? userSnap.data() : {};
+    if (u.aiOptIn !== true) {
+      await log("denied", {reason: "not_opted_in"});
+      return {ok: false, error: "not_opted_in", fallback: true};
+    }
+    const isPlus = u.plan === "kinlo_plus";
+
+    // Feature-specific access gate (Pro requirement / freemium taste).
+    if (p2.GATES[feature]) {
+      const denial = await p2.GATES[feature](db, uid, u, cfg);
+      if (denial) {
+        await log("denied", {reason: denial.error});
+        return {ok: false, fallback: true, ...denial};
+      }
+    }
+
+    const budget = await consumeBudget(db, uid, feature, cfg, isPlus);
+    if (!budget.allowed) {
+      await log("denied", {reason: budget.reason});
+      return {
+        ok: false,
+        error: budget.reason,
+        fallback: true,
+        ...(budget.reason === "taste_limit" ? {needsPlus: true} : {}),
+      };
+    }
+
+    // GLOBAL circuit breaker — the per-user budget is spent; now charge the
+    // shared daily ceiling before touching Anthropic (real money starts here).
+    const g = await consumeGlobal(db, cfg, 1);
+    if (!g.allowed) {
+      await log("denied", {reason: g.reason});
+      return {ok: false, error: g.reason, fallback: true};
+    }
+
+    try {
+      const ctx = await CONTEXT_LOADERS[feature](db, uid, cfg, input);
+      const {system, user} = PROMPTS[feature](ctx, input);
+      const maxTokens = cfg.features[feature].maxTokens;
+
+      let attempt = await callAnthropic(
+        cfg, anthropicKey.value(), system, user, maxTokens);
+      let validationError = attempt.json ?
+        VALIDATORS[feature](attempt.json, ctx) : "no JSON";
+
+      if (validationError) {
+        // The retry is a SECOND Anthropic round-trip — charge it against both
+        // the user's daily budget and the global ceiling so a feature that
+        // always fails validation can't burn 2× spend uncounted.
+        await consumeGlobal(db, cfg, 1).catch(() => {});
+        await consumeBudget(db, uid, feature, cfg, isPlus).catch(() => {});
+        // One retry, reminding the model of the contract.
+        attempt = await callAnthropic(cfg, anthropicKey.value(),
+          system + " Previous output was invalid (" + validationError +
+                "). Return ONLY the JSON object.", user, maxTokens);
+        validationError = attempt.json ?
+          VALIDATORS[feature](attempt.json, ctx) : "no JSON";
+      }
+
+      if (validationError) {
+        await log("fallback", {reason: validationError.slice(0, 120)});
+        return {ok: false, error: "invalid_output", fallback: true};
+      }
+
+      await log("ok", {
+        inputTokens: attempt.usage.input_tokens || 0,
+        outputTokens: attempt.usage.output_tokens || 0,
+      });
+      // Server-side taste enforcement (§1.8) — clients can't bypass.
+      const data = p2.POSTPROCESS[feature] ?
+        p2.POSTPROCESS[feature](attempt.json, u) : attempt.json;
+      return {ok: true, data};
+    } catch (e) {
+      console.error("callClaude error:", e);
+      await log("error", {reason: String(e.message || e).slice(0, 120)});
+      return {ok: false, error: "ai_unavailable", fallback: true};
+    }
+  });
 }
 
 module.exports = {
@@ -464,6 +521,7 @@ module.exports = {
   // exported for unit tests
   getAiConfig,
   consumeBudget,
+  consumeGlobal,
   VALIDATORS,
   AI_DEFAULTS,
 };
