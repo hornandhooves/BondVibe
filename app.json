@@ -21,10 +21,24 @@
       "backgroundColor": "#7C3AED"
     },
     "plugins": [
+      "./plugins/withStorePermissions",
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow Kinlo to access your location to share it with your group."
+          "locationWhenInUsePermission": "Allow Kinlo to access your location to share it with your group."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "recordAudioAndroid": false,
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "microphonePermission": false
         }
       ],
       [
@@ -75,7 +89,6 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Kinlo needs access to your location to let you share it with your group.",
-        "NSLocationAlwaysUsageDescription": "Kinlo needs access to your location to let you share it with your group.",
         "NSCameraUsageDescription": "Kinlo needs camera access to let you take profile pictures and share photos in events.",
         "NSPhotoLibraryUsageDescription": "Kinlo needs photo library access to let you choose profile pictures and share event photos.",
         "NSPhotoLibraryAddUsageDescription": "Kinlo needs permission to save photos to your library.",
