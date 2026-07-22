@@ -8,6 +8,8 @@ import { auth, db } from "../services/firebase";
 import {
   subscribeCarpool,
   subscribeRiders,
+  subscribeMyRider,
+  getCarpoolPickup,
   requestSeat,
   cancelSeat,
   respondToRequest,
@@ -28,15 +30,32 @@ export default function CarpoolCard({ eventId, carpoolId, currentUserName }) {
   const [driverSeatsShared, setDriverSeatsShared] = useState(0);
   const uid = auth.currentUser?.uid;
 
+  const [mine, setMine] = useState(null); // this user's own rider request (non-driver)
+  const [pickup, setPickup] = useState(null); // gated pickup detail (driver/approved)
+
   useEffect(() => {
     if (!eventId || !carpoolId) return;
     const a = subscribeCarpool(eventId, carpoolId, setCarpool);
-    const b = subscribeRiders(eventId, carpoolId, setRiders);
-    return () => {
-      a();
-      b();
-    };
+    return () => a();
   }, [eventId, carpoolId]);
+
+  // SECURITY (fix/security-carpool): the roster is gated — only the DRIVER lists
+  // all riders; a rider reads just their own request. seatsLeft uses the
+  // server-maintained approvedCount so riders don't need the roster.
+  const amDriver = !!carpool && uid === carpool.driverId;
+  useEffect(() => {
+    if (!eventId || !carpoolId || !carpool) return undefined;
+    if (amDriver) return subscribeRiders(eventId, carpoolId, setRiders);
+    return subscribeMyRider(eventId, carpoolId, setMine);
+  }, [eventId, carpoolId, amDriver, carpool]);
+
+  // Pickup detail (address/coords) is gated to the driver + approved riders.
+  useEffect(() => {
+    if (!carpool) return;
+    const canSee = amDriver || mine?.status === "approved";
+    if (!canSee) { setPickup(null); return; }
+    getCarpoolPickup(eventId, carpoolId).then(setPickup);
+  }, [eventId, carpoolId, amDriver, mine?.status, carpool]);
 
   // Driver loyalty badge (server-maintained, can't be self-inflated).
   useEffect(() => {
@@ -55,20 +74,23 @@ export default function CarpoolCard({ eventId, carpoolId, currentUserName }) {
     );
   }
 
-  // Pickup can open in maps when it came from the place picker (BUG 19).
-  const mappable = !!(carpool.fromCoords || carpool.fromAddress);
+  // Pickup can open in maps when it came from the place picker (BUG 19). The
+  // address/coords live in the gated pickup subdoc (driver + approved riders).
+  const mappable = !!(pickup?.fromCoords || pickup?.fromAddress);
   const openPickupMaps = () => {
-    const q = carpool.fromCoords
-      ? `${carpool.fromCoords.latitude},${carpool.fromCoords.longitude}`
-      : carpool.fromAddress || carpool.from;
+    const q = pickup?.fromCoords
+      ? `${pickup.fromCoords.latitude},${pickup.fromCoords.longitude}`
+      : pickup?.fromAddress || carpool.from;
     if (q) Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`);
   };
 
-  const isDriver = uid === carpool.driverId;
-  const approved = riders.filter((r) => r.status === "approved");
-  const pending = riders.filter((r) => r.status === "requested");
-  const mine = riders.find((r) => r.userId === uid);
-  const seatsLeft = Math.max(0, carpool.seatsTotal - approved.length);
+  const isDriver = amDriver;
+  const approved = riders.filter((r) => r.status === "approved"); // driver-only list
+  const pending = riders.filter((r) => r.status === "requested"); // driver-only list
+  // seatsLeft from the server-maintained approvedCount so riders needn't (can't)
+  // count the gated roster.
+  const approvedCount = carpool.approvedCount ?? approved.length;
+  const seatsLeft = Math.max(0, carpool.seatsTotal - approvedCount);
   // Ride states (BUG 20): Open / Full / Closed / Cancelled.
   const cancelled = carpool.status === "cancelled";
   const isClosed = carpool.status === "closed";
@@ -169,13 +191,9 @@ export default function CarpoolCard({ eventId, carpoolId, currentUserName }) {
         </View>
       )}
 
-      {/* Approved riders — the driver can remove any of them (BUG 20) */}
-      {approved.length > 0 && !isDriver && (
-        <Text style={[styles.riders, { color: colors.textSecondary }]}>
-          <Icon name="successCircle" size={12} color={colors.success} />{" "}
-          {approved.map((r) => r.name).join(", ")}
-        </Text>
-      )}
+      {/* Approved riders — the driver can remove any of them (BUG 20). Riders no
+          longer see each other's identities (fix/security-carpool): the gated
+          roster means non-drivers only see the seats-left count above. */}
       {approved.length > 0 && isDriver && (
         <View style={styles.section}>
           {approved.map((r) => (

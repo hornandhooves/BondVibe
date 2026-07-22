@@ -356,23 +356,58 @@ service cloud.firestore {
         allow read: if isSignedIn() && isEventParticipant(eventId);
         allow create: if isSignedIn() && isEventParticipant(eventId) &&
                          request.resource.data.driverId == request.auth.uid;
-        // Only the driver edits/closes their offer.
+        // Only the driver edits/closes their offer, and NEVER the server-owned
+        // integrity fields (fix/security-carpool): seatsCredited (the loyalty
+        // sweep sets it), driverId (identity), seatsTotal (capacity — set once at
+        // create; a client bump would let the driver oversell + farm seatsShared).
+        // approvedCount is maintained by the respond callable (Admin SDK).
         allow update: if isSignedIn() &&
-                         resource.data.driverId == request.auth.uid;
+                         resource.data.driverId == request.auth.uid &&
+                         !request.resource.data.diff(resource.data).affectedKeys()
+                            .hasAny(['seatsCredited', 'driverId', 'seatsTotal',
+                                     'approvedCount']);
         allow delete: if false;
 
         match /riders/{userId} {
           function driverId() {
             return get(/databases/$(database)/documents/events/$(eventId)/carpools/$(carpoolId)).data.driverId;
           }
-          allow read: if isSignedIn() && isEventParticipant(eventId);
+          // Roster is NOT visible to every event participant (fix/security-carpool):
+          // only the driver (manages requests) and the rider themselves (own status).
+          allow read: if isSignedIn() &&
+                         (request.auth.uid == userId ||
+                          request.auth.uid == driverId());
+          // A rider requests a seat — status is FORCED to "requested"; they can
+          // never create themselves already "approved".
           allow create: if isSignedIn() && request.auth.uid == userId &&
-                           isEventParticipant(eventId);
-          // Rider can edit/cancel their own request; driver can approve/decline.
+                           isEventParticipant(eventId) &&
+                           request.resource.data.status == 'requested';
+          // Neither the rider NOR the driver may set status:"approved" from a
+          // client — approval runs through the transactional respondToCarpoolRequest
+          // callable (Admin SDK), which enforces capacity (anti-oversell). A rider
+          // can edit/cancel; the driver can decline/remove.
           allow update: if isSignedIn() &&
+                           request.resource.data.status != 'approved' &&
                            (request.auth.uid == userId ||
                             request.auth.uid == driverId());
           allow delete: if isSignedIn() && request.auth.uid == userId;
+        }
+
+        // Pickup address + coords — sensitive (a home/precise location). Behind the
+        // pickup NAME (on the public carpool doc), readable only by APPROVED riders
+        // and the driver (patrón events/{id}/private). Server-only writes.
+        match /private/{doc} {
+          function cpDriver() {
+            return get(/databases/$(database)/documents/events/$(eventId)/carpools/$(carpoolId)).data.driverId;
+          }
+          function myRiderStatus() {
+            return get(/databases/$(database)/documents/events/$(eventId)/carpools/$(carpoolId)/riders/$(request.auth.uid)).data.status;
+          }
+          allow read: if isSignedIn() &&
+                         (request.auth.uid == cpDriver() ||
+                          (exists(/databases/$(database)/documents/events/$(eventId)/carpools/$(carpoolId)/riders/$(request.auth.uid)) &&
+                           myRiderStatus() == 'approved'));
+          allow write: if false;
         }
       }
     }
