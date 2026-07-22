@@ -3172,6 +3172,15 @@ exports.createAccountLink = createAccountLink;
 exports.getAccountStatus = getAccountStatus;
 exports.stripeConnectWebhook = stripeConnectWebhook;
 
+// Social gifting (feat/social-gifting) — money backend v1. The gift charge is
+// routed through the SAME payment webhook (case 'gift' in handlePaymentSuccess).
+const gifting = require("./stripe/gifting");
+exports.createGiftPaymentIntent = gifting.createGiftPaymentIntent;
+exports.redeemGift = gifting.redeemGift;
+exports.cancelGift = gifting.cancelGift;
+exports.declineGift = gifting.declineGift;
+exports.expireGifts = gifting.expireGifts;
+
 // Import Event Notifications. ROSTER (fix/privacy-event-roster): the
 // attendees-array trigger was replaced by a per-roster-doc trigger.
 const {

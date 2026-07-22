@@ -143,6 +143,11 @@ import PostDetailScreen from "../screens/PostDetailScreen";
 import DMListScreen from "../screens/DMListScreen";
 import DMChatScreen from "../screens/DMChatScreen";
 import UserProfileScreen from "../screens/UserProfileScreen";
+// Social gifting (feat/social-gifting)
+import GiftingScreen from "../screens/gifting/GiftingScreen";
+import GiftConfirmScreen from "../screens/gifting/GiftConfirmScreen";
+import GiftReceiptScreen from "../screens/gifting/GiftReceiptScreen";
+import GiftRevealScreen from "../screens/gifting/GiftRevealScreen";
 import FollowListScreen from "../screens/FollowListScreen";
 // Community Matching (A1–E4)
 import MatchOptInScreen from "../screens/matching/MatchOptInScreen";
@@ -871,6 +876,10 @@ const AppNavigator = forwardRef((props, ref) => {
           <Stack.Screen name="DMList" component={DMListScreen} />
           <Stack.Screen name="DMChat" component={DMChatScreen} />
           <Stack.Screen name="UserProfile" component={UserProfileScreen} />
+          <Stack.Screen name="Gifting" component={GiftingScreen} />
+          <Stack.Screen name="GiftConfirm" component={GiftConfirmScreen} />
+          <Stack.Screen name="GiftReceipt" component={GiftReceiptScreen} />
+          <Stack.Screen name="GiftReveal" component={GiftRevealScreen} />
           <Stack.Screen name="FollowList" component={FollowListScreen} />
           {/* Community Matching (A1–E4) */}
           <Stack.Screen name="MatchOptIn" component={MatchOptInScreen} />

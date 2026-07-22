@@ -203,6 +203,12 @@ async function handlePaymentSuccess(paymentIntent) {
     return handleServiceBookingPayment(paymentIntent);
   }
 
+  // Social gifting (feat/social-gifting): a gift charge writes the held gift
+  // ledger (releaseAt:null) + the gifts doc, and notifies the recipient.
+  if (type === "gift") {
+    return require("./gifting").handleGiftPurchase(paymentIntent);
+  }
+
   if (type !== "event_ticket") {
     console.log("⏭️ Skipping unhandled payment type:", type);
     return;

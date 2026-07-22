@@ -195,6 +195,11 @@ function App() {
     console.log("🧭 Handling notification navigation:", data.type);
 
     switch (data.type) {
+      // Social gifting: a gift arrived → open the reveal/redemption screen.
+      case "gift_received":
+        if (data.giftId) navigate("GiftReveal", { giftId: data.giftId });
+        break;
+
       case "event_message":
       case "event_messages":
         // Navigate to EventChat

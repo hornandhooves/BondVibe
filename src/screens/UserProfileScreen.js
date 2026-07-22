@@ -175,30 +175,47 @@ export default function UserProfileScreen({ route, navigation }) {
               </TouchableOpacity>
             </View>
 
-            {/* Follow button (hidden on own profile) */}
+            {/* Follow + Gift buttons (hidden on own profile) */}
             {!isOwnProfile && (
-              <TouchableOpacity
-                style={[
-                  styles.followBtn,
-                  {
-                    backgroundColor: following
-                      ? colors.surface
-                      : colors.primary,
-                    borderColor: following ? colors.borderStrong : colors.primary,
-                  },
-                ]}
-                onPress={toggleFollow}
-                activeOpacity={0.8}
-              >
-                <Text
+              <View style={{ flexDirection: "row", gap: 8, alignSelf: "center" }}>
+                <TouchableOpacity
                   style={[
-                    styles.followBtnText,
-                    { color: following ? colors.text : colors.onPrimary || "#fff" },
+                    styles.followBtn,
+                    {
+                      backgroundColor: following
+                        ? colors.surface
+                        : colors.primary,
+                      borderColor: following ? colors.borderStrong : colors.primary,
+                    },
                   ]}
+                  onPress={toggleFollow}
+                  activeOpacity={0.8}
                 >
-                  {following ? t("userProfile.following") : t("userProfile.follow")}
-                </Text>
-              </TouchableOpacity>
+                  <Text
+                    style={[
+                      styles.followBtnText,
+                      { color: following ? colors.text : colors.onPrimary || "#fff" },
+                    ]}
+                  >
+                    {following ? t("userProfile.following") : t("userProfile.follow")}
+                  </Text>
+                </TouchableOpacity>
+                {/* Social gifting: gift this person an event (Board 3a). */}
+                <TouchableOpacity
+                  style={[styles.followBtn, { backgroundColor: colors.surface, borderColor: colors.borderStrong, flexDirection: "row", alignItems: "center", gap: 6 }]}
+                  onPress={() => navigation.navigate("Gifting", {
+                    recipientId: userId,
+                    recipientName: profile?.fullName || profile?.name || "",
+                  })}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                >
+                  <Icon name="gift" size={16} color={colors.primary} />
+                  <Text style={[styles.followBtnText, { color: colors.text }]}>
+                    {t("gifting.give")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             )}
 
             <Text style={[styles.postsLabel, { color: colors.textSecondary }]}>

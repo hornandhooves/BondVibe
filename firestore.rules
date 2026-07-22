@@ -107,6 +107,21 @@ service cloud.firestore {
       return oldL.hasAll(newL) && newL.size() == oldL.size() - 1 &&
              (request.auth.uid in oldL) && !(request.auth.uid in newL);
     }
+
+    // Social gifting (feat/social-gifting Fase 0): the birthday shared with your
+    // community is DAY + MONTH ONLY — never the year (a birth year is PII we
+    // deliberately don't collect; this is NOT the CRM DOB). Enforce it in rules:
+    // any *_year field is rejected, and day/month/consent must be well-typed and
+    // in range when present. Absent keys pass (this runs on every profile write).
+    function validBirthday(d) {
+      return !d.keys().hasAny(['birthYear', 'birthdayYear', 'birthdate', 'birthDate']) &&
+             (!d.keys().hasAny(['birthDay']) ||
+              (d.birthDay is int && d.birthDay >= 1 && d.birthDay <= 31)) &&
+             (!d.keys().hasAny(['birthMonth']) ||
+              (d.birthMonth is int && d.birthMonth >= 1 && d.birthMonth <= 12)) &&
+             (!d.keys().hasAny(['birthdayShareConsent']) ||
+              d.birthdayShareConsent is bool);
+    }
     
     // ============================================
     // USERS COLLECTION
@@ -130,7 +145,8 @@ service cloud.firestore {
                                    'handle', 'handleLower',
                                    'hostApproved', 'hostConfig',
                                    'personality', 'matchProfile']) &&
-                       request.resource.data.get('role', 'user') == 'user';
+                       request.resource.data.get('role', 'user') == 'user' &&
+                       validBirthday(request.resource.data);
 
       // The owner can edit their profile but NOT hostStats/carpoolStats (host
       // ratings + loyalty are computed server-side), nor isPremium/plan (the
@@ -173,7 +189,8 @@ service cloud.firestore {
                         request.resource.data.get('matchmaking', {})
                           .get('freeTrialEndsAt', null) ==
                         resource.data.get('matchmaking', {})
-                          .get('freeTrialEndsAt', null)) ||
+                          .get('freeTrialEndsAt', null) &&
+                        validBirthday(request.resource.data)) ||
                        // Cross-account push-token de-dup: any user may CLEAR a
                        // stale token (set null) on any doc, but cannot point
                        // another user's token at their own device (hijack).
@@ -220,6 +237,18 @@ service cloud.firestore {
         allow read: if isSignedIn() &&
                        (isOwner(userId) || isAdmin() || matchmakingActive(userId));
         allow write: if isSignedIn() && isOwner(userId);
+      }
+
+      // Social birthday, SERVER-GATED by consent (feat/social-gifting review D).
+      // The community birthday (day + month only) lives here, not on the
+      // world-readable user doc. Others may read it ONLY while the owner's
+      // birthdayShareConsent flag (on the main doc) is true; the owner always can.
+      // Owner writes; validBirthday keeps it day+month-only (never a year).
+      match /social/{doc} {
+        allow read: if isSignedIn() && (isOwner(userId) ||
+                       get(/databases/$(database)/documents/users/$(userId))
+                         .data.get('birthdayShareConsent', false) == true);
+        allow write: if isOwner(userId) && validBirthday(request.resource.data);
       }
     }
     
@@ -1064,6 +1093,30 @@ service cloud.firestore {
     // payment. It is written ONLY by the Admin SDK (charge webhook, release
     // cron, refunds, admin freeze) — never by any client.
     match /paymentLedger/{paymentIntentId} {
+      allow read, write: if false;
+    }
+
+    // SOCIAL GIFTING (feat/social-gifting · design_handoff_gifting/DISENO_gifting_dinero.md)
+    // A gift is charged to the gifter at purchase but not paid to the host until
+    // the recipient redeems and the event happens. Written ONLY by the Admin SDK
+    // (createGiftPaymentIntent / webhook / redeem / refund). ANONYMITY: two VIEWS
+    // (projection pattern like #55) so an anonymous gift's sender stays hidden —
+    //  - gifts/{giftId}: the GIFTER's view (has gifterId) → readable by the gifter
+    //    ONLY. It also carries no amount (that's in giftLedger).
+    //  - giftReveals/{giftId}: the RECIPIENT's view → readable by the recipient
+    //    ONLY. Carries gifterName (null when anonymous) but NEVER gifterId or the
+    //    amount, so the recipient of an anonymous gift can't recover who sent it.
+    //  - giftLedger/{paymentIntentId}: the money mirror — deny-all like paymentLedger.
+    // (v1 has NO credit wallet — expiry/decline/cancel refund the gifter's card.)
+    match /gifts/{giftId} {
+      allow read: if isSignedIn() && resource.data.gifterId == request.auth.uid;
+      allow write: if false;
+    }
+    match /giftReveals/{giftId} {
+      allow read: if isSignedIn() && resource.data.recipientId == request.auth.uid;
+      allow write: if false;
+    }
+    match /giftLedger/{paymentIntentId} {
       allow read, write: if false;
     }
     // hostPayoutAccounts/{hostUid}.penaltyOwed — per-host cancellation debt (§6/§7),

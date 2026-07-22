@@ -11,10 +11,14 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
+import { TYPE, SPACING } from "../constants/theme-tokens";
 import {
   doc,
   getDoc,
+  setDoc,
+  deleteDoc,
   updateDoc,
+  deleteField,
   collection,
   query,
   where,
@@ -32,6 +36,13 @@ import { AvatarFrame } from "../components/CategoryIcon";
 import { usePremium } from "../hooks/usePremium";
 import { getFollowers, getFollowing } from "../services/followService";
 import { getMyFleet } from "../services/rentalService";
+
+// Parse a positive int in [1, max] or null (birthday day/month inputs).
+const clampInt = (v, max) => {
+  const n = parseInt(String(v).replace(/[^0-9]/g, ""), 10);
+  if (!Number.isFinite(n) || n < 1) return null;
+  return Math.min(n, max);
+};
 
 export default function ProfileScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -54,6 +65,9 @@ export default function ProfileScreen({ navigation }) {
     fullName: "",
     avatar: null,
     location: "",
+    birthDay: null,
+    birthMonth: null,
+    birthdayShareConsent: false,
   });
 
   useFocusEffect(
@@ -95,10 +109,25 @@ export default function ProfileScreen({ navigation }) {
           catch { avatarData = null; }
         }
         if (avatarData && avatarData.type !== "photo") avatarData = null;
+        // Birthday lives in the gated subdoc (review D); fall back to any legacy
+        // day/month still on the main doc so old profiles still populate the form.
+        let bDay = typeof data.birthDay === "number" ? data.birthDay : null;
+        let bMonth = typeof data.birthMonth === "number" ? data.birthMonth : null;
+        try {
+          const bSnap = await getDoc(doc(db, "users", uid, "social", "birthday"));
+          if (bSnap.exists()) {
+            const bd = bSnap.data();
+            if (typeof bd.birthDay === "number") bDay = bd.birthDay;
+            if (typeof bd.birthMonth === "number") bMonth = bd.birthMonth;
+          }
+        } catch (e) { /* no subdoc yet */ }
         setEditForm({
           fullName: data.fullName || "",
           avatar: avatarData,
           location: data.location || "",
+          birthDay: bDay,
+          birthMonth: bMonth,
+          birthdayShareConsent: data.birthdayShareConsent === true,
         });
       }
     } catch (error) {
@@ -110,10 +139,29 @@ export default function ProfileScreen({ navigation }) {
     setSaving(true);
     try {
       const avatar = await resolveAvatarForSave(editForm.avatar, auth.currentUser.uid);
-      await updateDoc(doc(db, "users", auth.currentUser.uid), {
+      const uid = auth.currentUser.uid;
+      // Social birthday (day+month only, opt-in). PRIVACY (review D): the date
+      // lives in the consent-gated users/{uid}/social/birthday subdoc; only the
+      // birthdayShareConsent FLAG stays on the main user doc (the subdoc read rule
+      // gates on it). Consent off keeps the date private ("save without sharing").
+      const hasBday =
+        typeof editForm.birthDay === "number" && editForm.birthDay >= 1 && editForm.birthDay <= 31 &&
+        typeof editForm.birthMonth === "number" && editForm.birthMonth >= 1 && editForm.birthMonth <= 12;
+      const bdayRef = doc(db, "users", uid, "social", "birthday");
+      if (hasBday) {
+        await setDoc(bdayRef, { birthDay: editForm.birthDay, birthMonth: editForm.birthMonth });
+      } else {
+        await deleteDoc(bdayRef).catch(() => {});
+      }
+      await updateDoc(doc(db, "users", uid), {
         fullName: editForm.fullName.trim(),
         avatar,
         location: editForm.location.trim(),
+        birthdayShareConsent: hasBday ? !!editForm.birthdayShareConsent : deleteField(),
+        // Clean up any legacy day/month left on the main doc from the pre-subdoc
+        // version so it isn't world-readable.
+        birthDay: deleteField(),
+        birthMonth: deleteField(),
         updatedAt: new Date().toISOString(),
       });
       await loadProfile();
@@ -224,6 +272,60 @@ export default function ProfileScreen({ navigation }) {
                 maxLength={50}
               />
             </View>
+            {/* Social birthday (day+month only, opt-in) — gifting Board 1 */}
+            <View style={s.formGroup}>
+              <Text style={[s.inputLabel, { color: colors.textSecondary }]}>
+                {t("gifting.birthday.sectionTitle")} · {t("gifting.birthday.optional")}
+              </Text>
+              <Text style={[TYPE.caption, { color: colors.textTertiary, marginBottom: SPACING.sm }]}>
+                {t("gifting.birthday.emptyBlurb")}
+              </Text>
+              <View style={{ flexDirection: "row", gap: SPACING.sm }}>
+                <TextInput
+                  style={[s.input, { flex: 1, backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
+                  value={editForm.birthDay ? String(editForm.birthDay) : ""}
+                  onChangeText={(v) => setEditForm({ ...editForm, birthDay: clampInt(v, 31) })}
+                  placeholder={t("gifting.birthday.day")}
+                  placeholderTextColor={colors.textTertiary}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                />
+                <TextInput
+                  style={[s.input, { flex: 1, backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
+                  value={editForm.birthMonth ? String(editForm.birthMonth) : ""}
+                  onChangeText={(v) => setEditForm({ ...editForm, birthMonth: clampInt(v, 12) })}
+                  placeholder={t("gifting.birthday.month")}
+                  placeholderTextColor={colors.textTertiary}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                />
+              </View>
+              {editForm.birthDay && editForm.birthMonth ? (
+                <>
+                  <Text style={[TYPE.caption, { color: colors.textTertiary, marginTop: SPACING.sm }]}>
+                    {t("gifting.birthday.preview", { date: `${editForm.birthDay} ${t(`gifting.months.m${editForm.birthMonth}`)}` })}
+                  </Text>
+                  <TouchableOpacity
+                    style={[s.consentRow, { borderColor: colors.border }]}
+                    onPress={() => setEditForm({ ...editForm, birthdayShareConsent: !editForm.birthdayShareConsent })}
+                    accessibilityRole="switch"
+                    accessibilityState={{ checked: editForm.birthdayShareConsent }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[TYPE.bodySemibold, { color: colors.text }]}>{t("gifting.birthday.shareToggle")}</Text>
+                      <Text style={[TYPE.caption, { color: colors.textSecondary }]}>{t("gifting.birthday.shareToggleSub")}</Text>
+                    </View>
+                    <View style={[s.toggle, { backgroundColor: editForm.birthdayShareConsent ? colors.primary : colors.border }]}>
+                      <View style={[s.knob, { alignSelf: editForm.birthdayShareConsent ? "flex-end" : "flex-start" }]} />
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setEditForm({ ...editForm, birthDay: null, birthMonth: null, birthdayShareConsent: false })}>
+                    <Text style={[TYPE.caption, { color: colors.error, marginTop: SPACING.sm }]}>{t("gifting.birthday.remove")}</Text>
+                  </TouchableOpacity>
+                </>
+              ) : null}
+            </View>
+
             <TouchableOpacity
               style={[s.cancelRow]}
               onPress={() => { setEditing(false); loadProfile(); }}
@@ -470,6 +572,11 @@ export default function ProfileScreen({ navigation }) {
 function createStyles(colors, isDark) {
   return StyleSheet.create({
     loader: { flex: 1, justifyContent: "center", alignItems: "center" },
+
+    // Social birthday consent toggle (gifting Board 1c)
+    consentRow: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 14, padding: 14, marginTop: 12 },
+    toggle: { width: 44, height: 26, borderRadius: 13, padding: 3, justifyContent: "center" },
+    knob: { width: 20, height: 20, borderRadius: 10, backgroundColor: "#fff" },
 
     // Header
     header: {
