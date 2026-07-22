@@ -14,7 +14,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { TYPE, SPACING, RADII } from "../../constants/theme-tokens";
 import Icon from "../../components/Icon";
 import GradientButton from "../../components/GradientButton";
-import { subscribeGift, redeemGift, declineGift } from "../../services/giftService";
+import { subscribeGiftReveal, redeemGift, declineGift } from "../../services/giftService";
 
 export default function GiftRevealScreen({ route, navigation }) {
   const { colors } = useTheme();
@@ -24,7 +24,7 @@ export default function GiftRevealScreen({ route, navigation }) {
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => subscribeGift(giftId, (g) => { setGift(g); setLoaded(true); }), [giftId]);
+  useEffect(() => subscribeGiftReveal(giftId, (g) => { setGift(g); setLoaded(true); }), [giftId]);
 
   const gifter = gift?.fromMode === "anonymous"
     ? t("gifting.reveal.fromAnon")

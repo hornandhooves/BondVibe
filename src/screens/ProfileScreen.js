@@ -15,6 +15,8 @@ import { TYPE, SPACING } from "../constants/theme-tokens";
 import {
   doc,
   getDoc,
+  setDoc,
+  deleteDoc,
   updateDoc,
   deleteField,
   collection,
@@ -107,12 +109,24 @@ export default function ProfileScreen({ navigation }) {
           catch { avatarData = null; }
         }
         if (avatarData && avatarData.type !== "photo") avatarData = null;
+        // Birthday lives in the gated subdoc (review D); fall back to any legacy
+        // day/month still on the main doc so old profiles still populate the form.
+        let bDay = typeof data.birthDay === "number" ? data.birthDay : null;
+        let bMonth = typeof data.birthMonth === "number" ? data.birthMonth : null;
+        try {
+          const bSnap = await getDoc(doc(db, "users", uid, "social", "birthday"));
+          if (bSnap.exists()) {
+            const bd = bSnap.data();
+            if (typeof bd.birthDay === "number") bDay = bd.birthDay;
+            if (typeof bd.birthMonth === "number") bMonth = bd.birthMonth;
+          }
+        } catch (e) { /* no subdoc yet */ }
         setEditForm({
           fullName: data.fullName || "",
           avatar: avatarData,
           location: data.location || "",
-          birthDay: typeof data.birthDay === "number" ? data.birthDay : null,
-          birthMonth: typeof data.birthMonth === "number" ? data.birthMonth : null,
+          birthDay: bDay,
+          birthMonth: bMonth,
           birthdayShareConsent: data.birthdayShareConsent === true,
         });
       }
@@ -125,28 +139,29 @@ export default function ProfileScreen({ navigation }) {
     setSaving(true);
     try {
       const avatar = await resolveAvatarForSave(editForm.avatar, auth.currentUser.uid);
-      // Social birthday (day+month only, opt-in). A cleared birthday DELETES the
-      // fields — writing null would fail the validBirthday rule (key present but
-      // not an int). Consent off keeps the date private ("save without sharing").
+      const uid = auth.currentUser.uid;
+      // Social birthday (day+month only, opt-in). PRIVACY (review D): the date
+      // lives in the consent-gated users/{uid}/social/birthday subdoc; only the
+      // birthdayShareConsent FLAG stays on the main user doc (the subdoc read rule
+      // gates on it). Consent off keeps the date private ("save without sharing").
       const hasBday =
         typeof editForm.birthDay === "number" && editForm.birthDay >= 1 && editForm.birthDay <= 31 &&
         typeof editForm.birthMonth === "number" && editForm.birthMonth >= 1 && editForm.birthMonth <= 12;
-      const birthdayFields = hasBday
-        ? {
-            birthDay: editForm.birthDay,
-            birthMonth: editForm.birthMonth,
-            birthdayShareConsent: !!editForm.birthdayShareConsent,
-          }
-        : {
-            birthDay: deleteField(),
-            birthMonth: deleteField(),
-            birthdayShareConsent: deleteField(),
-          };
-      await updateDoc(doc(db, "users", auth.currentUser.uid), {
+      const bdayRef = doc(db, "users", uid, "social", "birthday");
+      if (hasBday) {
+        await setDoc(bdayRef, { birthDay: editForm.birthDay, birthMonth: editForm.birthMonth });
+      } else {
+        await deleteDoc(bdayRef).catch(() => {});
+      }
+      await updateDoc(doc(db, "users", uid), {
         fullName: editForm.fullName.trim(),
         avatar,
         location: editForm.location.trim(),
-        ...birthdayFields,
+        birthdayShareConsent: hasBday ? !!editForm.birthdayShareConsent : deleteField(),
+        // Clean up any legacy day/month left on the main doc from the pre-subdoc
+        // version so it isn't world-readable.
+        birthDay: deleteField(),
+        birthMonth: deleteField(),
         updatedAt: new Date().toISOString(),
       });
       await loadProfile();

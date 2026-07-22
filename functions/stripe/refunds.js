@@ -591,6 +591,17 @@ exports.hostCancelEvent = functions.https.onCall(
         cancelledBy: userId,
       });
 
+      // SOCIAL GIFTING (gate E): gift money lives in the separate giftLedger, so
+      // the payments-refund loop above never touched it. Refund every live gift
+      // on this event to its gifter and mark both views 'event_cancelled'.
+      let giftsRefunded = 0;
+      try {
+        giftsRefunded = await require("./gifting").refundEventGiftsOnCancel(eventId);
+      } catch (e) {
+        console.error("gift refund on cancel failed:", e.message);
+      }
+      if (giftsRefunded) console.log(`↩️ refunded ${giftsRefunded} gifts`);
+
       const logMsg =
         "✅ Event cancelled, " +
         refundResults.length +

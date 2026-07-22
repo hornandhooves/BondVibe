@@ -238,6 +238,18 @@ service cloud.firestore {
                        (isOwner(userId) || isAdmin() || matchmakingActive(userId));
         allow write: if isSignedIn() && isOwner(userId);
       }
+
+      // Social birthday, SERVER-GATED by consent (feat/social-gifting review D).
+      // The community birthday (day + month only) lives here, not on the
+      // world-readable user doc. Others may read it ONLY while the owner's
+      // birthdayShareConsent flag (on the main doc) is true; the owner always can.
+      // Owner writes; validBirthday keeps it day+month-only (never a year).
+      match /social/{doc} {
+        allow read: if isSignedIn() && (isOwner(userId) ||
+                       get(/databases/$(database)/documents/users/$(userId))
+                         .data.get('birthdayShareConsent', false) == true);
+        allow write: if isOwner(userId) && validBirthday(request.resource.data);
+      }
     }
     
     // ============================================
@@ -1086,18 +1098,22 @@ service cloud.firestore {
 
     // SOCIAL GIFTING (feat/social-gifting · design_handoff_gifting/DISENO_gifting_dinero.md)
     // A gift is charged to the gifter at purchase but not paid to the host until
-    // the recipient redeems and the event happens. Two collections, both written
-    // ONLY by the Admin SDK (createGiftPaymentIntent / webhook / redeem / refund):
-    //  - gifts/{giftId}: the recipient-facing view. It carries NO amount (the
-    //    recipient must never see what it cost) — only the gifter + recipient may
-    //    read it; the money lives in giftLedger below.
-    //  - giftLedger/{paymentIntentId}: the money mirror of paymentLedger — the
-    //    amount + escrow state. Deny-all, like paymentLedger.
+    // the recipient redeems and the event happens. Written ONLY by the Admin SDK
+    // (createGiftPaymentIntent / webhook / redeem / refund). ANONYMITY: two VIEWS
+    // (projection pattern like #55) so an anonymous gift's sender stays hidden —
+    //  - gifts/{giftId}: the GIFTER's view (has gifterId) → readable by the gifter
+    //    ONLY. It also carries no amount (that's in giftLedger).
+    //  - giftReveals/{giftId}: the RECIPIENT's view → readable by the recipient
+    //    ONLY. Carries gifterName (null when anonymous) but NEVER gifterId or the
+    //    amount, so the recipient of an anonymous gift can't recover who sent it.
+    //  - giftLedger/{paymentIntentId}: the money mirror — deny-all like paymentLedger.
     // (v1 has NO credit wallet — expiry/decline/cancel refund the gifter's card.)
     match /gifts/{giftId} {
-      allow read: if isSignedIn() &&
-                     (resource.data.recipientId == request.auth.uid ||
-                      resource.data.gifterId == request.auth.uid);
+      allow read: if isSignedIn() && resource.data.gifterId == request.auth.uid;
+      allow write: if false;
+    }
+    match /giftReveals/{giftId} {
+      allow read: if isSignedIn() && resource.data.recipientId == request.auth.uid;
       allow write: if false;
     }
     match /giftLedger/{paymentIntentId} {

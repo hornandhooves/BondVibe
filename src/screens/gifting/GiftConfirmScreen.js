@@ -23,6 +23,10 @@ import { createGiftPaymentIntent } from "../../services/giftService";
 import { doc, getDoc } from "firebase/firestore";
 import { db, auth } from "../../services/firebase";
 
+// Minimal-beta flag: hide the anonymous option (default = named) until the
+// end-to-end anonymity projection is signed off. The code path is preserved.
+const SHOW_ANON = false;
+
 export default function GiftConfirmScreen({ route, navigation }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -119,28 +123,34 @@ export default function GiftConfirmScreen({ route, navigation }) {
             </Text>
           </View>
 
-          {/* Named / anonymous */}
-          <Text style={[TYPE.eyebrow, st.eyebrow, { color: colors.textSecondary }]}>
-            {t("gifting.confirm.howYouAppear")}
-          </Text>
-          <View style={st.segment}>
-            {[
-              { k: false, label: t("gifting.confirm.fromYou", { name: myName || "—" }) },
-              { k: true, label: t("gifting.confirm.anonymous") },
-            ].map((o) => (
-              <TouchableOpacity key={String(o.k)}
-                onPress={() => setAnonymous(o.k)}
-                style={[st.segBtn, {
-                  backgroundColor: anonymous === o.k ? colors.primary : colors.surface,
-                  borderColor: anonymous === o.k ? colors.primary : colors.border,
-                }]}
-                accessibilityRole="button" accessibilityState={{ selected: anonymous === o.k }}>
-                <Text style={[TYPE.label, { color: anonymous === o.k ? colors.onPrimary : colors.text }]}>
-                  {o.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          {/* Named / anonymous. SHOW_ANON gates the toggle off for the minimal
+              beta (default = named) until the anonymity projection is fully
+              verified end-to-end; the code path stays intact. */}
+          {SHOW_ANON && (
+            <>
+              <Text style={[TYPE.eyebrow, st.eyebrow, { color: colors.textSecondary }]}>
+                {t("gifting.confirm.howYouAppear")}
+              </Text>
+              <View style={st.segment}>
+                {[
+                  { k: false, label: t("gifting.confirm.fromYou", { name: myName || "—" }) },
+                  { k: true, label: t("gifting.confirm.anonymous") },
+                ].map((o) => (
+                  <TouchableOpacity key={String(o.k)}
+                    onPress={() => setAnonymous(o.k)}
+                    style={[st.segBtn, {
+                      backgroundColor: anonymous === o.k ? colors.primary : colors.surface,
+                      borderColor: anonymous === o.k ? colors.primary : colors.border,
+                    }]}
+                    accessibilityRole="button" accessibilityState={{ selected: anonymous === o.k }}>
+                    <Text style={[TYPE.label, { color: anonymous === o.k ? colors.onPrimary : colors.text }]}>
+                      {o.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
 
           {/* Message */}
           <Text style={[TYPE.eyebrow, st.eyebrow, { color: colors.textSecondary }]}>

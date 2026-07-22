@@ -36,8 +36,45 @@ const db = admin.firestore();
 const GIFT_EXPIRY_DAYS = 30; // decision C
 
 const giftRef = (id) => db.collection("gifts").doc(id);
+const revealRef = (id) => db.collection("giftReveals").doc(id);
 const ledgerRef = (pi) => db.collection("giftLedger").doc(pi);
 const num = (v) => parseInt(v, 10) || 0;
+
+// ANONYMITY (fix/gifting-review C): the recipient reads a PROJECTION that never
+// carries gifterId. gifts/{id} is the GIFTER's view (has gifterId, read
+// gifter-only by rules); giftReveals/{id} is the RECIPIENT's view (read
+// recipient-only) — same status, but only gifterName (null when anonymous), so an
+// anonymous gift's sender can't be recovered by the recipient.
+const buildReveal = (gift) => ({
+  giftId: gift.giftId,
+  recipientId: gift.recipientId,
+  itemId: gift.itemId,
+  itemType: gift.itemType,
+  itemTitle: gift.itemTitle || "",
+  message: gift.message || null,
+  fromMode: gift.fromMode,
+  gifterName: gift.fromMode === "anonymous" ? null : (gift.gifterName || null),
+  status: gift.status,
+  expiresAt: gift.expiresAt || null,
+  redeemedAt: gift.redeemedAt || null,
+  waitlisted: gift.waitlisted || false,
+  // NO gifterId, NO amount — deliberately absent.
+});
+
+/**
+ * Mirror a status change onto BOTH the gifter doc and the recipient reveal so the
+ * two views never drift. `giftExtra` lands only on gifts/{id}; status is synced.
+ * @param {string} giftId the gift id
+ * @param {string} status new status
+ * @param {object} [giftExtra] extra fields for gifts/{id} only
+ * @return {Promise<void>}
+ */
+async function syncGiftStatus(giftId, status, giftExtra = {}) {
+  await Promise.all([
+    giftRef(giftId).set({status, ...giftExtra}, {merge: true}),
+    revealRef(giftId).set({status}, {merge: true}),
+  ]);
+}
 
 /**
  * Write a HELD gift ledger row — the money mirror of paymentLedger, but in
@@ -89,24 +126,42 @@ async function writeGiftLedger(p) {
  * @return {Promise<{refunded:number}>}
  */
 async function refundGiftToGifter(sdk, ledger, reason = "requested_by_customer") {
-  if (ledger.state !== "held") {
-    // Already refunded/credited/released — idempotent no-op.
-    return {refunded: 0, skipped: ledger.state};
-  }
-  const refundable = Math.max(0, (ledger.grossAmount || 0) - (ledger.stripeFee || 0));
-  const refund = await sdk.refunds.create({
-    payment_intent: ledger.paymentIntentId,
-    amount: refundable,
-    reason,
-    metadata: {giftId: ledger.giftId, kind: "gift_refund"},
+  const ref = ledgerRef(ledger.paymentIntentId);
+  // ANTI DOUBLE-REFUND (gate G): CLAIM the refund transactionally — only the
+  // caller that flips held→refunding proceeds to Stripe. Concurrent
+  // cancel/decline/expire/event-cancel paths that lose the race no-op, so a gift
+  // can never be refunded twice.
+  const claimed = await db.runTransaction(async (tx) => {
+    const s = await tx.get(ref);
+    if (!s.exists || s.data().state !== "held") return false;
+    tx.update(ref, {state: "refunding"});
+    return true;
   });
-  await ledgerRef(ledger.paymentIntentId).set({
-    state: "refunded",
-    refundId: refund.id,
-    refundAmount: refundable,
-    refundedAt: FieldValue.serverTimestamp(),
-  }, {merge: true});
-  return {refunded: refundable, refundId: refund.id};
+  if (!claimed) {
+    const st = (await ref.get()).data()?.state;
+    return {refunded: 0, skipped: st || "gone"};
+  }
+  const fresh = (await ref.get()).data();
+  const refundable = Math.max(0, (fresh.grossAmount || 0) - (fresh.stripeFee || 0));
+  try {
+    const refund = await sdk.refunds.create({
+      payment_intent: fresh.paymentIntentId,
+      amount: refundable,
+      reason,
+      metadata: {giftId: fresh.giftId, kind: "gift_refund"},
+    });
+    await ref.set({
+      state: "refunded",
+      refundId: refund.id,
+      refundAmount: refundable,
+      refundedAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+    return {refunded: refundable, refundId: refund.id};
+  } catch (e) {
+    // Roll the claim back so a later sweep can retry (never strand at "refunding").
+    await ref.set({state: "held"}, {merge: true}).catch(() => {});
+    throw e;
+  }
 }
 
 /**
@@ -166,6 +221,17 @@ exports.createGiftPaymentIntent = onRequest(
       const eventDoc = await db.collection("events").doc(itemId).get();
       if (!eventDoc.exists) return res.status(404).json({error: "Event not found"});
       const eventData = eventDoc.data();
+
+      // Gate G: don't sell a gift for an event that's cancelled or already over —
+      // there's nothing to redeem, and it would just have to be refunded.
+      if (eventData.status === "cancelled") {
+        return res.status(400).json({error: "event_cancelled"});
+      }
+      const {eventEndAtMs: endMsFn} = require("./escrow");
+      const endedMs = endMsFn(eventData);
+      if (Number.isFinite(endedMs) && endedMs <= Date.now()) {
+        return res.status(400).json({error: "event_over"});
+      }
 
       // PRICE is authoritative from the event doc — never the client. Only PAID
       // events can be gifted (nothing to gift on a free event, §7).
@@ -311,7 +377,11 @@ async function handleGiftPurchase(paymentIntent) {
     redeemedAt: null,
     slotId: null,
   };
-  await giftRef(m.giftId).set(gift, {merge: true});
+  // Write BOTH views: the gifter doc (full) + the recipient reveal (no gifterId).
+  await Promise.all([
+    giftRef(m.giftId).set(gift, {merge: true}),
+    revealRef(m.giftId).set(buildReveal(gift), {merge: true}),
+  ]);
   await notifyGiftRecipient(gift);
 }
 exports.handleGiftPurchase = handleGiftPurchase;
@@ -377,10 +447,16 @@ exports.redeemGift = onCall(async (request) => {
         computeReleaseAtISO(endMs, retentionHours) : null,
     };
     tx.set(ledgerRef(g.paymentIntentId), patch, {merge: true});
-    tx.set(giftRef(giftId), {
+    const giftPatch = {
       status: "redeemed",
       redeemedAt: FieldValue.serverTimestamp(),
       waitlisted: placement === "waitlist",
+    };
+    tx.set(giftRef(giftId), giftPatch, {merge: true});
+    // Keep the recipient's reveal in sync (no gifterId ever written here).
+    tx.set(revealRef(giftId), {
+      status: "redeemed", waitlisted: placement === "waitlist",
+      redeemedAt: FieldValue.serverTimestamp(),
     }, {merge: true});
     void ledger;
     return {ok: true, placement};
@@ -412,7 +488,7 @@ exports.cancelGift = onCall({secrets: [stripeSecretKey]}, async (request) => {
 
   const ledger = (await ledgerRef(g.paymentIntentId).get()).data();
   const out = await refundGiftToGifter(getStripe(), ledger, "requested_by_customer");
-  await giftRef(giftId).set({status: "cancelled"}, {merge: true});
+  await syncGiftStatus(giftId, "cancelled");
   return {success: true, ...out};
 });
 
@@ -431,7 +507,7 @@ exports.declineGift = onCall({secrets: [stripeSecretKey]}, async (request) => {
   const ledger = (await ledgerRef(g.paymentIntentId).get()).data();
   const out = await refundGiftToGifter(getStripe(), ledger, "requested_by_customer");
   // Discreet: the gifter only sees "not redeemed", never a reason.
-  await giftRef(giftId).set({status: "declined"}, {merge: true});
+  await syncGiftStatus(giftId, "declined");
   return {success: true, ...out};
 });
 
@@ -443,26 +519,95 @@ exports.expireGifts = onSchedule(
   async () => {
     const sdk = getStripe();
     const now = Timestamp.now();
+    let refunded = 0;
+
+    // (1) 30-day expiry: never-redeemed gifts → refund the gifter.
     const due = await db.collection("gifts")
       .where("status", "==", "sent")
       .where("expiresAt", "<=", now)
       .limit(200)
       .get();
-    let refunded = 0;
     for (const d of due.docs) {
       const g = d.data();
       try {
         const ledger = (await ledgerRef(g.paymentIntentId).get()).data();
         if (ledger) await refundGiftToGifter(sdk, ledger, "requested_by_customer");
-        await d.ref.set({status: "expired"}, {merge: true});
+        await syncGiftStatus(g.giftId, "expired");
         refunded++;
       } catch (e) {
-        console.error("expireGifts failed for", d.id, e.message);
+        console.error("expireGifts sent failed for", d.id, e.message);
       }
     }
-    console.log(`expireGifts: ${refunded}/${due.size} refunded`);
+
+    // (2) STUCK-WAITLIST sweep (gate F): a gift redeemed onto the WAITLIST whose
+    // event has now ENDED without the recipient being promoted to an active seat
+    // → the host was never paid (releaseAt stayed null), so refund the gifter.
+    const {eventEndAtMs} = require("./escrow");
+    const roster = require("../utils/roster");
+    const waitlisted = await db.collection("gifts")
+      .where("status", "==", "redeemed")
+      .limit(300)
+      .get();
+    for (const d of waitlisted.docs) {
+      const g = d.data();
+      if (!g.waitlisted) continue;
+      try {
+        const evSnap = await db.collection("events").doc(g.itemId).get();
+        const endMs = evSnap.exists ? eventEndAtMs(evSnap.data()) : NaN;
+        if (!Number.isFinite(endMs) || endMs > Date.now()) continue; // not ended yet
+        // Promoted to an active seat before the event? Then they attended — leave
+        // it (host-payment for promoted waitlist is a separate follow-up).
+        const onRoster = await roster.isOnRoster(db, g.itemId, g.recipientId);
+        const rDoc = onRoster ? await db.collection("events").doc(g.itemId)
+          .collection("roster").doc(g.recipientId).get() : null;
+        if (rDoc && rDoc.exists && rDoc.data().status === "active") continue;
+        const ledger = (await ledgerRef(g.paymentIntentId).get()).data();
+        if (ledger) await refundGiftToGifter(sdk, ledger, "requested_by_customer");
+        await roster.removeFromRoster(db, g.itemId, g.recipientId).catch(() => {});
+        await syncGiftStatus(g.giftId, "expired", {waitlistRefunded: true});
+        refunded++;
+      } catch (e) {
+        console.error("expireGifts waitlist failed for", d.id, e.message);
+      }
+    }
+    console.log(`expireGifts: ${refunded} refunded`);
   },
 );
 
+/**
+ * Gate E: when a host cancels an event, refund every live gift on it (sent OR
+ * redeemed) to the gifter and mark both views 'event_cancelled'. Called from
+ * hostCancelEvent AFTER it refunds the direct `payments` — gift money lives in the
+ * separate giftLedger, so the payments refund path never touched it.
+ * @param {string} eventId cancelled event
+ * @return {Promise<number>} how many gifts were refunded
+ */
+async function refundEventGiftsOnCancel(eventId) {
+  const sdk = getStripe();
+  const roster = require("../utils/roster");
+  const snap = await db.collection("gifts").where("itemId", "==", eventId).get();
+  let n = 0;
+  for (const d of snap.docs) {
+    const g = d.data();
+    if (g.status !== "sent" && g.status !== "redeemed") continue;
+    try {
+      const ledger = (await ledgerRef(g.paymentIntentId).get()).data();
+      if (ledger) await refundGiftToGifter(sdk, ledger, "requested_by_customer");
+      if (g.status === "redeemed") {
+        await roster.removeFromRoster(db, eventId, g.recipientId).catch(() => {});
+      }
+      await syncGiftStatus(g.giftId, "event_cancelled");
+      n++;
+    } catch (e) {
+      console.error("refundEventGiftsOnCancel failed for", d.id, e.message);
+    }
+  }
+  return n;
+}
+exports.refundEventGiftsOnCancel = refundEventGiftsOnCancel;
+
 // Exported for unit/emulator tests.
-exports._internal = {writeGiftLedger, refundGiftToGifter, GIFT_EXPIRY_DAYS};
+exports._internal = {
+  writeGiftLedger, refundGiftToGifter, buildReveal, syncGiftStatus,
+  refundEventGiftsOnCancel, GIFT_EXPIRY_DAYS,
+};

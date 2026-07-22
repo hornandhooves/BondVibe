@@ -75,29 +75,51 @@ export const getGift = async (giftId) => {
   return s.exists() ? { id: s.id, ...s.data() } : null;
 };
 
-/** Live gift doc (drives the receipt / reveal status). */
+/** Live GIFTER view (the receipt) — gifts/{id}, readable by the gifter only. */
 export const subscribeGift = (giftId, cb) =>
   onSnapshot(doc(db, "gifts", giftId), (s) =>
     cb(s.exists() ? { id: s.id, ...s.data() } : null)
   );
 
 /**
+ * Live RECIPIENT view (the reveal) — giftReveals/{id}, readable by the recipient
+ * only. ANONYMITY (review C): this projection never carries gifterId, so an
+ * anonymous gift's sender can't be recovered client-side.
+ */
+export const subscribeGiftReveal = (giftId, cb) =>
+  onSnapshot(doc(db, "giftReveals", giftId), (s) =>
+    cb(s.exists() ? { id: s.id, ...s.data() } : null)
+  );
+
+/**
  * A recipient's public profile for the gifting flow — ONLY public, consented
- * fields (Decision D: never personality / matchmaking signals).
+ * fields (Decision D: never personality / matchmaking signals). The birthday
+ * (day+month) lives in the consent-gated users/{uid}/social/birthday subdoc
+ * (review D); reading it succeeds only when that user shared it.
  */
 export const getGiftRecipient = async (uid) => {
   const s = await getDoc(doc(db, "users", uid));
   if (!s.exists()) return null;
   const u = s.data();
-  const shares = u.birthdayShareConsent === true &&
-    typeof u.birthDay === "number" && typeof u.birthMonth === "number";
+  let birthday = null;
+  if (u.birthdayShareConsent === true) {
+    try {
+      const b = await getDoc(doc(db, "users", uid, "social", "birthday"));
+      if (b.exists() && typeof b.data().birthDay === "number" &&
+          typeof b.data().birthMonth === "number") {
+        birthday = { day: b.data().birthDay, month: b.data().birthMonth };
+      }
+    } catch (e) {
+      birthday = null; // gated / not shared
+    }
+  }
   return {
     id: uid,
     name: u.fullName || u.name || "",
     avatar: u.avatar ?? null,
     location: u.location ?? null,
     publicInterests: Array.isArray(u.publicInterests) ? u.publicInterests : [],
-    birthday: shares ? { day: u.birthDay, month: u.birthMonth } : null,
+    birthday,
   };
 };
 

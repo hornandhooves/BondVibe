@@ -234,3 +234,38 @@ test("GC1 a non-gifter cannot cancel; a non-recipient cannot decline", async () 
   const d = await call("declineGift", {giftId: pi.metadata.giftId}, stranger);
   assert.strictEqual(d.status, 403);
 });
+
+// ── review C/G: anonymity projection + anti-double-refund ───────────────────
+test("GP3 the recipient reveal carries NO gifterId (anonymity projection)", async () => {
+  const pi = fakeGiftPI({fromMode: "anonymous"});
+  await gifting.handleGiftPurchase(pi);
+  const reveal = (await db.collection("giftReveals").doc(pi.metadata.giftId).get()).data();
+  assert.ok(reveal, "reveal doc written");
+  assert.strictEqual(reveal.gifterId, undefined, "no gifterId in the recipient view");
+  assert.strictEqual(reveal.gifterName, null, "anonymous → no name");
+  assert.strictEqual(reveal.status, "sent");
+  assert.strictEqual(reveal.itemTitle, pi.metadata.itemTitle);
+  // The gifter doc keeps the id.
+  const gift = (await db.collection("gifts").doc(pi.metadata.giftId).get()).data();
+  assert.strictEqual(gift.gifterId, pi.metadata.gifterId);
+});
+
+test("GF3 concurrent refunds settle only ONCE (CAS claim)", async () => {
+  const pi = fakeGiftPI();
+  await gifting.handleGiftPurchase(pi);
+  const ledger = (await db.collection("giftLedger").doc(pi.id).get()).data();
+  let calls = 0;
+  const mockStripe = {refunds: {create: async (a) => {
+    calls++; return {id: `re_${calls}`, status: "succeeded"};
+  }}};
+  // Fire two refunds against the SAME held ledger at once.
+  const [a, b] = await Promise.all([
+    gifting._internal.refundGiftToGifter(mockStripe, ledger),
+    gifting._internal.refundGiftToGifter(mockStripe, ledger),
+  ]);
+  assert.strictEqual(calls, 1, "Stripe refund created exactly once");
+  const refundedCount = [a, b].filter((x) => x.refunded > 0).length;
+  assert.strictEqual(refundedCount, 1, "only one path actually refunds");
+  const after = (await db.collection("giftLedger").doc(pi.id).get()).data();
+  assert.strictEqual(after.state, "refunded");
+});
