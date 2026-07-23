@@ -10,7 +10,7 @@ jest.mock("firebase/functions", () => ({
   httpsCallable: (...a) => mockHttpsCallable(...a),
 }));
 
-import { listPayouts, releasePayout, refundPayout } from "../adminPayoutsService";
+import { listPayouts, releasePayout, refundPayout, setFrozen } from "../adminPayoutsService";
 
 beforeEach(() => { mockHttpsCallable.mockClear(); mockFn.mockClear(); });
 
@@ -33,6 +33,12 @@ describe("adminPayoutsService — only the live callables", () => {
     await refundPayout("pi_2", "admin_refund");
     expect(mockHttpsCallable).toHaveBeenCalledWith(expect.anything(), "adminRefundPayout");
     expect(mockFn).toHaveBeenCalledWith({ paymentIntentId: "pi_2", reason: "admin_refund" });
+  });
+
+  it("setFrozen calls setPayoutFrozen with {paymentIntentId, frozen}", async () => {
+    await setFrozen("pi_3", true);
+    expect(mockHttpsCallable).toHaveBeenCalledWith(expect.anything(), "setPayoutFrozen");
+    expect(mockFn).toHaveBeenCalledWith({ paymentIntentId: "pi_3", frozen: true });
   });
 
   it("does NOT touch Firestore directly (callables only, ledger is deny-all)", () => {

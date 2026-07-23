@@ -26,3 +26,10 @@ export const refundPayout = async (paymentIntentId, reason) => {
   const fn = httpsCallable(getFunctions(), "adminRefundPayout");
   return (await fn({ paymentIntentId, reason })).data;
 };
+
+/** Freeze / unfreeze a payout (§7). A frozen payout is skipped by the release
+ * cron until it is unfrozen. Admin-gated server-side in setPayoutFrozen. */
+export const setFrozen = async (paymentIntentId, frozen) => {
+  const fn = httpsCallable(getFunctions(), "setPayoutFrozen");
+  return (await fn({ paymentIntentId, frozen: !!frozen })).data;
+};
