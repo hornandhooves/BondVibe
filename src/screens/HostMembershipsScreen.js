@@ -101,7 +101,7 @@ export default function HostMembershipsScreen({ route, navigation }) {
           <Text style={[styles.intro, { color: colors.textSecondary }]}>
             {t("hostMemberships.introText")}
           </Text>
-          {plans.map((plan) => {
+          {plans.map((plan, index) => {
             return (
               <View key={plan.id} style={styles.card}>
                 <View style={styles.cardHeader}>
@@ -139,6 +139,7 @@ export default function HostMembershipsScreen({ route, navigation }) {
                   </>
                 )}
                 <TouchableOpacity
+                  testID={`hostmemberships-buy-${index}`}
                   style={styles.buyButton}
                   onPress={() => navigation.navigate("MembershipCheckout", { plan })}
                   activeOpacity={0.85}

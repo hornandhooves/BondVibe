@@ -64,6 +64,7 @@ export default function UserSearchField({ onSelect, placeholder, autoFocus, maxH
           {results.map((u) => (
             <TouchableOpacity
               key={u.uid}
+              testID="user-search-result"
               style={[styles.row, { borderBottomColor: colors.border }]}
               onPress={() => onSelect && onSelect(u)}
               activeOpacity={0.8}

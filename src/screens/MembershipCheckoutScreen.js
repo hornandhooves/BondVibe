@@ -154,6 +154,7 @@ export default function MembershipCheckoutScreen({ route, navigation }) {
               {t("membershipCheckout.cardDetails")}
             </Text>
             <CardField
+              testID="membership-card-field"
               postalCodeEnabled={false}
               placeholders={{ number: "4242 4242 4242 4242" }}
               cardStyle={{
@@ -167,6 +168,7 @@ export default function MembershipCheckoutScreen({ route, navigation }) {
 
             <TouchableOpacity
               style={styles.payButton}
+              testID="membership-pay-button"
               onPress={handlePay}
               disabled={processing}
               activeOpacity={0.85}

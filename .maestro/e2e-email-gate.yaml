@@ -1,0 +1,118 @@
+# E2E — Email verification gate: an UNVERIFIED account is blocked from the app
+# (and therefore from every gated money/host action) until it verifies.
+#
+# ⚠️ REALITY CHECK (read before trusting this flow):
+# The polished per-action "EmailGate" UI (Diseño 1 — an in-app sheet shown when
+# an unverified user taps Create event / Join / Pay) is **NOT built yet**. Today
+# the gate is enforced entirely at the **auth boundary**, in TWO places:
+#   1. Signup (src/screens/SignupScreen.js ~L128): right after creating the
+#      account it calls signOut(auth) — a brand-new user is NEVER in the app
+#      unverified.
+#   2. Login (src/navigation/AppNavigator.js ~L398): the auth-state listener
+#      checks `!user.emailVerified`, then does
+#         setShowVerificationModal(true); navigateToRoute("Login"); auth.signOut()
+#      i.e. it signs the user straight back out and shows the
+#      SuccessModal titled "Verify Your Email".
+# The Cloud Functions (createEvent / joinEvent / createEventPaymentIntent, and
+# ~13 others) ALSO throw permission-denied / "email_not_verified"
+# (functions/index.js) as a server-side backstop — but a normal client never
+# reaches a screen with those buttons, because the login bounce keeps the
+# unverified user out. There is NO client code that catches "email_not_verified"
+# and renders a friendly gate (grep: zero hits in src/).
+#
+# So this flow verifies the gate that ACTUALLY exists today: an unverified login
+# is bounced with the "Verify Your Email" modal and never reaches Home. The
+# "…continues after verifying" half is DOCUMENTED (not executed) at the bottom,
+# because verifying requires clicking the email link out-of-band.
+#
+# See TESTIDS_TO_ADD.md → e2e-email-gate for what the real EmailGate UI would
+# need to make an in-app, per-action version of this test meaningful.
+#
+# SEED: a real UNVERIFIED account (created but email link never clicked). Pass
+# its credentials via env:
+#   maestro test -e KINLO_UNVERIFIED_EMAIL=… -e KINLO_UNVERIFIED_PASSWORD=… \
+#       e2e-email-gate.yaml
+#
+# NEW testIDs this flow needs: none (uses existing login-email / login-password).
+appId: com.kinlo.app
+---
+# Start signed OUT so we can drive the login gate deterministically.
+- launchApp:
+    clearState: true
+# Dev-client server launcher / permission alert / first-run sheet (mirrors
+# .maestro/p0-login.yaml), all optional.
+- tapOn:
+    text: ".*(localhost|10\\.0\\.2\\.2):8081.*"
+    optional: true
+- tapOn:
+    text: "Allow|Permitir"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+- repeat:
+    while:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+
+# --- Welcome (logged out) → Login ---
+- extendedWaitUntil:
+    visible: "I already have an account|Get started"   # welcome.haveAccount / getStarted
+    timeout: 60000
+- tapOn:
+    text: "I already have an account|I have an account" # → LoginScreen
+- extendedWaitUntil:
+    visible:
+      id: "login-email"                                 # LoginScreen painted
+    timeout: 20000
+
+# --- Attempt login with the UNVERIFIED account ---
+- tapOn:
+    id: "login-email"
+- inputText: ${KINLO_UNVERIFIED_EMAIL}
+- tapOn:
+    id: "login-password"
+- inputText: ${KINLO_UNVERIFIED_PASSWORD}
+- hideKeyboard:
+    optional: true
+- tapOn:
+    text: "Log In"                                      # auth.login.logIn
+
+# --- THE GATE: the auth listener signs the unverified user back out and shows
+#     the "Verify Your Email" modal. The app must NOT reach the authed shell. ---
+- extendedWaitUntil:
+    visible: "Verify Your Email|verify your email address"  # SuccessModal (AppNavigator ~L911)
+    timeout: 45000
+# Proof the gate held: the 5-tab shell never painted.
+- assertNotVisible:
+    id: "tab-home"
+
+# --- Dismiss the modal → still signed out, back on Welcome/Login ---
+- tapOn:
+    text: "Got it!|OK|Aceptar"                          # successModal.gotIt
+    optional: true
+- extendedWaitUntil:
+    visible: "I already have an account|Log In"
+    timeout: 20000
+    optional: true
+
+# =========================================================================
+# DOCUMENTED — NOT executed (requires clicking the verification link in the
+# inbox, which is out-of-band for Maestro):
+#
+# 1. VERIFY: open the email Kinlo sent (sendVerificationEmail) and click the
+#    link → the account's Firebase Auth token flips email_verified:true.
+# 2. RE-LOGIN: repeat the login steps above with the SAME credentials. This
+#    time the AppNavigator gate passes and the app reaches Home:
+#      - extendedWaitUntil: { visible: { id: "tab-home" }, timeout: 120000 }
+# 3. GATED ACTION now succeeds (create event / join / pay) — the server-side
+#    "email_not_verified" backstop no longer fires.
+#
+# WHEN THE POLISHED EmailGate (Diseño 1) IS BUILT: this flow should be split so
+# a VERIFIED-but-testing session can (a) be a signed-in unverified user (only
+# possible once the login bounce is relaxed for that state) and (b) tap
+# Create event / Pay and assert the in-app EmailGate sheet appears with a
+# "Resend verification" CTA — then this file's assertions move from the login
+# modal to that sheet's testIDs (see TESTIDS_TO_ADD.md).
+# =========================================================================

@@ -188,6 +188,7 @@ export default function UserProfileScreen({ route, navigation }) {
                       borderColor: following ? colors.borderStrong : colors.primary,
                     },
                   ]}
+                  testID="profile-follow-btn"
                   onPress={toggleFollow}
                   activeOpacity={0.8}
                 >

@@ -213,11 +213,12 @@ export default function RentalHubScreen({ route, navigation }) {
               </Text>
             </View>
           ) : (
-            vehicles.map((v) => (
+            vehicles.map((v, index) => (
               <TouchableOpacity
                 key={v.id}
                 style={[styles.card, { borderColor: colors.border }]}
                 activeOpacity={0.85}
+                testID={`rental-vehicle-card-${index}`}
                 onPress={() => navigation.navigate("VehicleDetail", { vehicleId: v.id, eventId, eventTitle, ...bookingDates })}
               >
                 <View style={styles.thumb}>

@@ -107,8 +107,9 @@ export default function HowToAttendScreen({ route, navigation }) {
   const hasActiveMembership = state === "active";
   const expiry = membership ? getMembershipExpiryDate(membership) : null;
 
-  const Option = ({ icon, iconColor, title, subtitle, onPress, primary }) => (
+  const Option = ({ icon, iconColor, title, subtitle, onPress, primary, testID }) => (
     <TouchableOpacity
+      testID={testID}
       style={[
         styles.option,
         primary && { borderColor: colors.primary, backgroundColor: `${colors.primary}14` },
@@ -175,6 +176,7 @@ export default function HowToAttendScreen({ route, navigation }) {
                 count: membership.creditsRemaining,
                 date: expiry ? formatDate(expiry) : "—",
               })}
+              testID="howtoattend-use-credit"
               onPress={handleUseCredit}
             />
           )}
@@ -194,6 +196,7 @@ export default function HowToAttendScreen({ route, navigation }) {
                     : t("howToAttend.outOfCredits")
                   : t("howToAttend.buyPack")
               }
+              testID="howtoattend-get-membership"
               onPress={() =>
                 navigation.navigate("HostMemberships", { hostId, hostName })
               }

@@ -14,9 +14,9 @@ appId: com.kinlo.app
 - assertVisible:
     id: "tab-events"
 - assertVisible:
-    id: "tab-rentals"
+    id: "tab-services"
 - assertVisible:
-    id: "tab-profile"
+    id: "header-profile"
 # --- Home: search + digest + browse, NO quick-actions grid (Fix 2) ---
 - assertVisible:
     id: "home-search"
@@ -38,17 +38,20 @@ appId: com.kinlo.app
 - back
 # --- Notifications reachable from header bell ---
 - tapOn:
-    id: "header-notifications"
+    id: "header-messages"
+- tapOn:
+    text: "Notifications"
+- back
 - back
 # --- Rentals tab (un-buried pillar) ---
 - tapOn:
-    id: "tab-rentals"
+    id: "tab-services"
 - extendedWaitUntil:
-    visible: "Get around"
+    visible: "Marketplace|Services near you"
     timeout: 20000
 # --- Profile: slim hub with Settings, NO 'Host tools moved' (Fix 3) ---
 - tapOn:
-    id: "tab-profile"
+    id: "header-profile"
 - extendedWaitUntil:
     visible: "Settings"
     timeout: 15000

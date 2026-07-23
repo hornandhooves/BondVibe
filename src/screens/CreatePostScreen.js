@@ -119,6 +119,7 @@ export default function CreatePostScreen({ navigation, route }) {
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.text }]}>{t("createPost.title")}</Text>
         <TouchableOpacity
+          testID="create-post-submit"
           onPress={submit}
           disabled={!canPost}
           style={[styles.postBtn, { backgroundColor: colors.primary, opacity: canPost ? 1 : 0.5 }]}
@@ -172,6 +173,7 @@ export default function CreatePostScreen({ navigation, route }) {
           style={[styles.input, { color: colors.text }]}
           placeholder={t("createPost.textPlaceholder")}
           placeholderTextColor={colors.textTertiary}
+          testID="create-post-input"
           value={text}
           onChangeText={setText}
           multiline

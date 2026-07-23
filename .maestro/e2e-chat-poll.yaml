@@ -1,0 +1,85 @@
+# E2E — Poll: in an event chat, create a poll (host-only) and vote on it.
+#
+# WHERE POLLS LIVE: the poll composer is the chart icon in the EVENT CHAT
+# composer, and it renders ONLY for the event HOST. Voting happens on the live
+# PollCard message. Reached via
+#   header-messages → Inbox → "Event chats" → an event chat → chart icon.
+# (GroupChatScreen has the identical host-only poll flow if you prefer a group.)
+#
+# Assumes a signed-in, verified session (run .maestro/p0-login.yaml first).
+#
+# SEED: the test user must be the HOST of the event whose chat is opened (the
+# poll button is host-only). Easiest seed: run e2e-create-event, then open that
+# event's chat.
+#
+# NEW testIDs this flow needs (see TESTIDS_TO_ADD.md):
+#   event-chat-row-0 · event-chat-poll-btn · poll-question-input ·
+#   poll-option-0 · poll-option-1 · poll-create-submit
+appId: com.kinlo.app
+---
+- launchApp:
+    clearState: false
+- repeat:
+    while:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 120000
+- extendedWaitUntil:
+    notVisible: "Error registering push token"
+    timeout: 15000
+    optional: true
+
+# --- Header inbox → Event chats → open a hosted event's chat ---
+- tapOn:
+    id: "header-messages"
+- extendedWaitUntil:
+    visible: "Messages"
+    timeout: 20000
+- tapOn:
+    text: "Event chats"
+- extendedWaitUntil:
+    visible: "Event chats|Upcoming"
+    timeout: 20000
+- tapOn:
+    id: "event-chat-row-0"              # NEW — first event chat (must be one you host)
+- extendedWaitUntil:
+    visible: "Type a message..."        # eventChat.messagePlaceholder
+    timeout: 20000
+
+# --- Open the poll composer (host-only chart icon) ---
+- tapOn:
+    id: "event-chat-poll-btn"           # NEW
+- extendedWaitUntil:
+    visible: "Create a poll"            # eventChat.poll.createTitle
+    timeout: 20000
+
+# --- Fill the poll ---
+- tapOn:
+    id: "poll-question-input"           # NEW
+- inputText: "Where should we meet?"
+- tapOn:
+    id: "poll-option-0"                 # NEW — placeholder "Option 1"
+- inputText: "Beach"
+- tapOn:
+    id: "poll-option-1"                 # NEW — placeholder "Option 2"
+- inputText: "Plaza"
+- hideKeyboard:
+    optional: true
+- tapOn:
+    id: "poll-create-submit"            # NEW — "Create poll"
+
+# --- The live PollCard renders in the chat; vote by tapping an option ---
+- extendedWaitUntil:
+    visible: "Where should we meet?"    # the poll question on the card
+    timeout: 20000
+- tapOn:
+    text: "Beach"                       # my option text = a vote
+# Footer confirms the vote registered (non-anonymous polls show "tap to change").
+- extendedWaitUntil:
+    visible: "tap to change|Final|vote"  # pollCard.tapToChange / voteCount
+    timeout: 20000
+    optional: true

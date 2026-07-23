@@ -418,6 +418,7 @@ export default function CheckoutScreen({ route, navigation }) {
                     {t("paymentCheckout.cardDetails")}
                   </Text>
                   <CardField
+                    testID="checkout-card-field"
                     postalCodeEnabled={false}
                     placeholders={{
                       number: "4242 4242 4242 4242",
@@ -446,6 +447,7 @@ export default function CheckoutScreen({ route, navigation }) {
 
                 {/* Pay Button */}
                 <TouchableOpacity
+                  testID="checkout-pay-button"
                   style={[
                     styles.payButton,
                     {

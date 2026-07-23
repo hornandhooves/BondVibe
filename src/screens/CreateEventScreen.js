@@ -1131,6 +1131,7 @@ export default function CreateEventScreen({ navigation, route }) {
               style={[styles.input, { color: colors.text }]}
               placeholder={t("createEvent.titlePlaceholder")}
               placeholderTextColor={colors.textTertiary}
+              testID="create-event-title"
               value={title}
               onChangeText={setTitle}
             />
@@ -1161,6 +1162,7 @@ export default function CreateEventScreen({ navigation, route }) {
               style={[styles.textArea, { color: colors.text }]}
               placeholder={t("createEvent.descriptionPlaceholder")}
               placeholderTextColor={colors.textTertiary}
+              testID="create-event-desc"
               value={description}
               onChangeText={setDescription}
               multiline
@@ -1668,7 +1670,8 @@ export default function CreateEventScreen({ navigation, route }) {
                 style={[styles.input, { color: colors.text }]}
                 placeholder="20"
                 placeholderTextColor={colors.textTertiary}
-                value={maxPeople}
+                testID="create-event-max-people"
+              value={maxPeople}
                 onChangeText={setMaxPeople}
                 keyboardType="numeric"
                 returnKeyType="done"
@@ -1780,6 +1783,7 @@ export default function CreateEventScreen({ navigation, route }) {
 
         {/* Create Button */}
         <TouchableOpacity
+          testID="create-event-submit"
           style={[styles.createButton, { opacity: loading ? 0.7 : 1 }]}
           onPress={handleCreateEvent}
           disabled={loading}

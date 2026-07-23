@@ -1,0 +1,78 @@
+# E2E — Wall: create a post, then follow another user from their profile.
+#
+# Assumes a signed-in, verified session (run .maestro/p0-login.yaml first).
+#
+# SEED: at least one OTHER user must be findable via Find people (search matches
+# @handle or name) so the follow step has a profile to open.
+#
+# NEW testIDs this flow needs (see TESTIDS_TO_ADD.md):
+#   wall-compose-fab · create-post-input · create-post-submit ·
+#   user-search-result · profile-follow-btn
+appId: com.kinlo.app
+---
+- launchApp:
+    clearState: false
+- repeat:
+    while:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 120000
+- extendedWaitUntil:
+    notVisible: "Error registering push token"
+    timeout: 15000
+    optional: true
+
+# --- Wall tab ---
+- tapOn:
+    id: "tab-wall"
+- extendedWaitUntil:
+    visible: "Ask Kinlo|For you|Create a post"
+    timeout: 20000
+
+# --- Compose a post ---
+- tapOn:
+    id: "wall-compose-fab"          # NEW — the "+" in the Wall header
+- extendedWaitUntil:
+    visible: "New post"             # createPost.title
+    timeout: 20000
+- tapOn:
+    id: "create-post-input"         # NEW (also auto-focused)
+- inputText: "Hello from Maestro e2e"
+- tapOn:
+    id: "create-post-submit"        # NEW — "Post"
+# Back on the Wall; the new post surfaces in the feed (may need a refresh cycle).
+- extendedWaitUntil:
+    visible: "Hello from Maestro e2e"
+    timeout: 25000
+    optional: true
+
+# --- Follow another user: Find people → open profile → Follow ---
+- tapOn:
+    id: "header-messages"
+- extendedWaitUntil:
+    visible: "Messages"
+    timeout: 20000
+- tapOn:
+    id: "inbox-find-people"
+- extendedWaitUntil:
+    visible: "Find people"          # findPeople.title
+    timeout: 20000
+- tapOn:
+    text: "Search @handle or name"  # userSearch.placeholder
+- inputText: "a"
+- tapOn:
+    id: "user-search-result"        # NEW — first result row
+- extendedWaitUntil:
+    visible: "Profile"              # userProfile.title (public profile opened)
+    timeout: 20000
+- tapOn:
+    id: "profile-follow-btn"        # NEW — the Follow/Following button
+# Button flips to "Following" (scoped to the profile action button).
+- extendedWaitUntil:
+    visible: "Following"            # userProfile.following
+    timeout: 20000
+    optional: true

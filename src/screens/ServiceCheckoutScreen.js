@@ -199,6 +199,7 @@ export default function ServiceCheckoutScreen({ route, navigation }) {
           <>
             <Text style={[s.label, { color: colors.textSecondary }]}>{t("marketplace.checkout.cardDetails")}</Text>
             <CardField
+              testID="service-card-field"
               postalCodeEnabled={false}
               placeholders={{ number: "4242 4242 4242 4242" }}
               cardStyle={{ backgroundColor: isDark ? "#1C1C2E" : "#FFFFFF", textColor: colors.text, placeholderColor: colors.textTertiary }}
@@ -210,6 +211,7 @@ export default function ServiceCheckoutScreen({ route, navigation }) {
 
         <TouchableOpacity
           style={[s.payBtn, { backgroundColor: colors.primary, opacity: processing ? 0.6 : 1 }]}
+          testID="service-pay-button"
           onPress={handlePay}
           disabled={processing}
           activeOpacity={0.85}
