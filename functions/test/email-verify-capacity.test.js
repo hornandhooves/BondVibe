@@ -94,24 +94,12 @@ test("EV2 verified caller passes the email gate (reaches business logic)", async
   assert.strictEqual(res.status, 404);
 });
 
-test("EV3 activateHost (onCall) rejects an unverified email", async () => {
-  const uid = `u_${nextId()}`;
-  const token = await tokenFor(uid, {verified: false});
-  await db.collection("users").doc(uid).set({role: "user"});
-  const res = await post("activateHost", {data: {type: "free"}}, token);
-  assert.strictEqual(res.status, 403); // permission-denied → 403
-  assert.match(JSON.stringify(res.body), /email_not_verified/);
-});
-
-test("EV4 activateHost succeeds for a verified caller", async () => {
-  const uid = `u_${nextId()}`;
-  const token = await tokenFor(uid, {verified: true});
-  await db.collection("users").doc(uid).set({role: "user"});
-  const res = await post("activateHost", {data: {type: "free"}}, token);
-  assert.strictEqual(res.status, 200);
-  const after = (await db.collection("users").doc(uid).get()).data();
-  assert.strictEqual(after.role, "host");
-});
+// EV3/EV4 (activateHost email gate) were removed with feat/host-approval-gate:
+// activateHost is now ADMIN-ONLY, so a normal caller is rejected by the admin
+// gate before any email check. Coverage moved to functions/test/host-approval.
+// test.js — HA-e (normal user → permission-denied), HA-e2 (admin → success), and
+// the email invariant now lives on the host GRANT (approveHostRequest rejects an
+// unverified applicant: HA-f) which is the only path to role:"host".
 
 test("EV5 reserveMembershipCredit (onCall) rejects an unverified email", async () => {
   const token = await tokenFor(`u_${nextId()}`, {verified: false});

@@ -372,6 +372,21 @@ exports.approveHostRequest = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Account suspended.");
   }
 
+  // INVARIANT (fix/host-email-gate): becoming a host requires a verified email.
+  // The old activateHost enforced this on the caller's own token; now that the
+  // grant happens here (the only path to role:"host"), enforce it on the
+  // APPLICANT's Auth record — the forgery-proof source, read server-side. An
+  // unverified (or missing) Auth account can't be approved.
+  let applicantAuth;
+  try {
+    applicantAuth = await admin.auth().getUser(targetUid);
+  } catch (e) {
+    throw new HttpsError("failed-precondition", "email_not_verified");
+  }
+  if (applicantAuth.emailVerified !== true) {
+    throw new HttpsError("failed-precondition", "email_not_verified");
+  }
+
   // Grant hosting (free) — server-side, respecting an existing admin.
   await applyHostGrant(userRef, userData, "free");
 

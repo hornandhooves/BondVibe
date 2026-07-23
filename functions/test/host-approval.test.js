@@ -64,11 +64,24 @@ const callFn = (name, data, token) =>
     body: JSON.stringify({data}),
   }).then(async (r) => ({status: r.status, body: await r.json().catch(() => ({}))}));
 
-// Seed an applicant user (role "user") + a pending host request; returns ids.
+// Seed an applicant: a real Auth user (verified by default — approveHostRequest
+// re-checks the applicant's Auth record) + a Firestore user doc + a pending host
+// request. Pass {verified: false} to seed an unverified applicant.
 const seedApplicant = async (over = {}) => {
   const applicantUid = `applicant_${nextId()}`;
+  const verified = over.verified !== false;
+  try {
+    await admin.auth().createUser({
+      uid: applicantUid,
+      email: `${applicantUid}@kinlo.test`,
+      password: "Test123456!",
+      emailVerified: verified,
+    });
+  } catch (e) {
+    await admin.auth().updateUser(applicantUid, {emailVerified: verified});
+  }
   await db.collection("users").doc(applicantUid).set({
-    role: "user", emailVerified: true, ...(over.user || {}),
+    role: "user", emailVerified: verified, ...(over.user || {}),
   });
   const reqRef = await db.collection("hostRequests").add({
     userId: applicantUid,
@@ -178,6 +191,21 @@ test("HA-d2: approve preserves an admin applicant's role (no degrade)", async ()
   const doc = await userDoc(applicantUid);
   assert.strictEqual(doc.role, "admin"); // not downgraded to host
   assert.strictEqual(doc.hostApproved, true);
+});
+
+// ===========================================================================
+// (f) INVARIANT: an unverified applicant can't be granted host (email gate).
+// ===========================================================================
+test("HA-f: approveHostRequest rejects an applicant with an unverified email", async () => {
+  const {applicantUid, requestId} = await seedApplicant({verified: false});
+  const adminToken = await tokenFor(`admin_${nextId()}`, {isAdmin: true});
+  const res = await callFn("approveHostRequest", {requestId}, adminToken);
+  assert.strictEqual(res.status, 400); // failed-precondition → 400
+  assert.match(JSON.stringify(res.body), /email_not_verified/);
+  // No grant happened — still a plain user, request still pending.
+  assert.strictEqual(await roleOf(applicantUid), "user");
+  const req = (await db.collection("hostRequests").doc(requestId).get()).data();
+  assert.strictEqual(req.status, "pending");
 });
 
 // ===========================================================================
