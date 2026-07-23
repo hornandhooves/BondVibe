@@ -4862,5 +4862,56 @@
       "emailNotVerified": "Verify your email to continue.",
       "hostNotReady": "This host can't accept payments yet."
     }
+  },
+  "adminPayouts": {
+    "title": "Payouts",
+    "subtitle": "Escrow ledger — release, refund, monitor",
+    "filterState": "State",
+    "filterType": "Type",
+    "all": "All",
+    "state": {
+      "held": "Held",
+      "released": "Released",
+      "refunded": "Refunded",
+      "reversed": "Reversed",
+      "frozen": "Frozen"
+    },
+    "type": {
+      "event": "Event",
+      "rental": "Rental",
+      "service": "Service",
+      "tip": "Tip",
+      "membership": "Membership",
+      "promotion": "Promotion",
+      "gift": "Gift"
+    },
+    "host": "Host",
+    "gross": "Gross",
+    "hostGets": "Host gets",
+    "debt": "Host debt",
+    "releasesOn": "Releases",
+    "onHold": "On redemption / hold",
+    "release": "Release now",
+    "refund": "Refund",
+    "releasing": "Releasing…",
+    "refunding": "Refunding…",
+    "releaseTitle": "Release this payout now?",
+    "releaseBody": "This pays the host {{amount}} immediately and can't be undone.",
+    "releaseYes": "Release",
+    "refundTitle": "Refund this payout?",
+    "refundBody": "This refunds the full charge ({{amount}}) to the buyer and can't be undone.",
+    "refundYes": "Refund",
+    "cancel": "Cancel",
+    "releasedOk": "Payout released.",
+    "refundedOk": "Payout refunded.",
+    "loadMore": "Load more",
+    "empty": "No payouts match this filter.",
+    "loadError": "Couldn't load payouts.",
+    "notAdmin": "Admins only.",
+    "errFrozen": "This payout is frozen (disputed / held for review).",
+    "errNotReleasable": "Only a held payout can be released.",
+    "errRefundFailed": "The refund couldn't be processed.",
+    "errNotFound": "Payout not found.",
+    "errGeneric": "Something went wrong. Try again."
   }
 }
