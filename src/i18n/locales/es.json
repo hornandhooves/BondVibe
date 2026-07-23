@@ -4862,5 +4862,56 @@
       "emailNotVerified": "Verifica tu correo para continuar.",
       "hostNotReady": "Este anfitrión aún no puede aceptar pagos."
     }
+  },
+  "adminPayouts": {
+    "title": "Pagos a hosts",
+    "subtitle": "Ledger de escrow — liberar, reembolsar, monitorear",
+    "filterState": "Estado",
+    "filterType": "Tipo",
+    "all": "Todos",
+    "state": {
+      "held": "Retenido",
+      "released": "Liberado",
+      "refunded": "Reembolsado",
+      "reversed": "Revertido",
+      "frozen": "Congelado"
+    },
+    "type": {
+      "event": "Evento",
+      "rental": "Renta",
+      "service": "Servicio",
+      "tip": "Propina",
+      "membership": "Membresía",
+      "promotion": "Promoción",
+      "gift": "Regalo"
+    },
+    "host": "Host",
+    "gross": "Bruto",
+    "hostGets": "El host recibe",
+    "debt": "Deuda del host",
+    "releasesOn": "Libera",
+    "onHold": "Al redimir / retenido",
+    "release": "Liberar ahora",
+    "refund": "Reembolsar",
+    "releasing": "Liberando…",
+    "refunding": "Reembolsando…",
+    "releaseTitle": "¿Liberar este pago ahora?",
+    "releaseBody": "Esto paga al host {{amount}} de inmediato y no se puede deshacer.",
+    "releaseYes": "Liberar",
+    "refundTitle": "¿Reembolsar este pago?",
+    "refundBody": "Esto reembolsa el cargo completo ({{amount}}) al comprador y no se puede deshacer.",
+    "refundYes": "Reembolsar",
+    "cancel": "Cancelar",
+    "releasedOk": "Pago liberado.",
+    "refundedOk": "Pago reembolsado.",
+    "loadMore": "Cargar más",
+    "empty": "Ningún pago coincide con el filtro.",
+    "loadError": "No se pudieron cargar los pagos.",
+    "notAdmin": "Solo administradores.",
+    "errFrozen": "Este pago está congelado (en disputa / en revisión).",
+    "errNotReleasable": "Solo un pago retenido puede liberarse.",
+    "errRefundFailed": "No se pudo procesar el reembolso.",
+    "errNotFound": "Pago no encontrado.",
+    "errGeneric": "Algo salió mal. Inténtalo de nuevo."
   }
 }

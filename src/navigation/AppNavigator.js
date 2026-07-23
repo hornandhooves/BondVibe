@@ -88,6 +88,7 @@ import EventChatsScreen from "../screens/EventChatsScreen";
 import CommunityChatsScreen from "../screens/CommunityChatsScreen";
 import RequestHostScreen from "../screens/RequestHostScreen";
 import AdminDashboardScreen from "../screens/AdminDashboardScreen";
+import AdminPayoutsScreen from "../screens/AdminPayoutsScreen";
 
 // Payment Screens
 import CheckoutScreen from "../screens/payment/CheckoutScreen";
@@ -801,6 +802,7 @@ const AppNavigator = forwardRef((props, ref) => {
             name="AdminDashboard"
             component={AdminDashboardScreen}
           />
+          <Stack.Screen name="AdminPayouts" component={AdminPayoutsScreen} />
           <Stack.Screen name="Checkout" component={CheckoutScreen} />
           <Stack.Screen name="StripeConnect" component={StripeConnectScreen} />
           {/* MembershipPlans (the old host-side plan list + form) is retired:

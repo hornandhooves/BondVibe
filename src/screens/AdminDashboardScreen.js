@@ -965,7 +965,16 @@ export default function AdminDashboardScreen({ navigation }) {
         <Text style={[styles.headerTitle, { color: colors.text }]}>
           {t("adminDashboard.title")}
         </Text>
-        <View style={{ width: 28 }} />
+        {/* Admin-only entry to the payouts (escrow) ledger. This whole screen is
+            already admin-gated, so it's not exposed to normal users. */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate("AdminPayouts")}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel={t("adminPayouts.title")}
+        >
+          <Icon name="dollar" size={24} color={colors.primary} />
+        </TouchableOpacity>
       </View>
 
       {/* Tabs */}
