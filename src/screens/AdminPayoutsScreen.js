@@ -14,7 +14,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, Alert,
-  ActivityIndicator, StyleSheet, SafeAreaView,
+  ActivityIndicator, StyleSheet, SafeAreaView, TextInput,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
@@ -22,7 +22,8 @@ import { TYPE, SPACING, RADII } from "../constants/theme-tokens";
 import Icon from "../components/Icon";
 import { formatCentavos } from "../utils/pricing";
 import useUserRole from "../hooks/useUserRole";
-import { listPayouts, releasePayout, refundPayout } from "../services/adminPayoutsService";
+import { listPayouts, releasePayout, refundPayout, setFrozen } from "../services/adminPayoutsService";
+import { getRetentionHours, setRetentionHours, DEFAULT_RETENTION_HOURS } from "../services/payoutSettingsService";
 
 const STATES = ["held", "released", "refunded", "reversed"];
 const TYPES = ["event", "rental", "service", "tip", "membership", "gift"];
@@ -103,6 +104,32 @@ export default function AdminPayoutsScreen({ navigation }) {
     );
   };
 
+  const doFreeze = (row) => {
+    const freeze = !row.frozen;
+    Alert.alert(
+      t(freeze ? "adminPayouts.freezeTitle" : "adminPayouts.unfreezeTitle"),
+      t(freeze ? "adminPayouts.freezeBody" : "adminPayouts.unfreezeBody"),
+      [
+        { text: t("adminPayouts.cancel"), style: "cancel" },
+        {
+          text: t(freeze ? "adminPayouts.freezeYes" : "adminPayouts.unfreezeYes"),
+          onPress: async () => {
+            setBusyId(row.paymentIntentId);
+            try {
+              await setFrozen(row.paymentIntentId, freeze);
+              Alert.alert(t(freeze ? "adminPayouts.frozeOk" : "adminPayouts.unfrozeOk"));
+              await load(true);
+            } catch (e) {
+              Alert.alert(t("adminPayouts.title"), mapErr(e?.message, t));
+            } finally {
+              setBusyId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (!roleLoading && !isAdmin) {
     return (
       <SafeAreaView style={[st.fill, st.center, { backgroundColor: colors.background }]}>
@@ -157,6 +184,8 @@ export default function AdminPayoutsScreen({ navigation }) {
         </ScrollView>
       </View>
 
+      <RetentionCard t={t} colors={colors} />
+
       {loading ? (
         <ActivityIndicator style={{ marginTop: 60 }} color={colors.primary} />
       ) : error ? (
@@ -176,6 +205,8 @@ export default function AdminPayoutsScreen({ navigation }) {
             const tint = stateTint(r.state, r.frozen);
             const canRelease = r.state === "held" && !r.frozen;
             const canRefund = r.state === "held" || r.state === "released";
+            const showFreeze = r.state === "held" && !r.frozen;
+            const showUnfreeze = r.frozen === true;
             const busy = busyId === r.paymentIntentId;
             return (
               <View key={r.paymentIntentId} style={[st.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -205,7 +236,7 @@ export default function AdminPayoutsScreen({ navigation }) {
                   {t("adminPayouts.releasesOn")}: {r.releaseAt ? new Date(r.releaseAt).toLocaleDateString() : t("adminPayouts.onHold")}
                 </Text>
 
-                {(canRelease || canRefund) && (
+                {(canRelease || canRefund || showFreeze || showUnfreeze) && (
                   <View style={st.actions}>
                     {canRelease && (
                       <TouchableOpacity
@@ -224,6 +255,16 @@ export default function AdminPayoutsScreen({ navigation }) {
                         accessibilityRole="button">
                         <Text style={[TYPE.label, { color: colors.error }]}>
                           {busy ? t("adminPayouts.refunding") : t("adminPayouts.refund")}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    {(showFreeze || showUnfreeze) && (
+                      <TouchableOpacity
+                        style={[st.btn, st.btnGhost, { borderColor: colors.warning, opacity: busy ? 0.6 : 1 }]}
+                        onPress={() => doFreeze(r)} disabled={busy}
+                        accessibilityRole="button">
+                        <Text style={[TYPE.label, { color: colors.warning }]}>
+                          {showUnfreeze ? t("adminPayouts.unfreeze") : t("adminPayouts.freeze")}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -247,6 +288,96 @@ export default function AdminPayoutsScreen({ navigation }) {
         </ScrollView>
       )}
     </SafeAreaView>
+  );
+}
+
+function RetentionCard({ t, colors }) {
+  const [hours, setHours] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [input, setInput] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const loadRetention = useCallback(async () => {
+    try { setHours(await getRetentionHours()); } catch (_e) { setHours("err"); }
+  }, []);
+  useEffect(() => { loadRetention(); }, [loadRetention]);
+
+  const startEdit = () => {
+    setInput(String(typeof hours === "number" ? hours : DEFAULT_RETENTION_HOURS));
+    setEditing(true);
+  };
+
+  const save = async () => {
+    const n = Number(input);
+    if (!Number.isFinite(n) || n < 0) {
+      Alert.alert(t("adminPayouts.retentionTitle"), t("adminPayouts.retentionInvalid"));
+      return;
+    }
+    setSaving(true);
+    try {
+      const saved = await setRetentionHours(n);
+      setHours(saved);
+      setEditing(false);
+      Alert.alert(t("adminPayouts.retentionSavedOk"));
+    } catch (_e) {
+      Alert.alert(t("adminPayouts.retentionTitle"), t("adminPayouts.retentionSaveError"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <View style={[st.retCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View style={st.retTop}>
+        <View style={{ flex: 1, paddingRight: SPACING.md }}>
+          <Text style={[TYPE.label, { color: colors.text }]}>{t("adminPayouts.retentionTitle")}</Text>
+          <Text style={[TYPE.caption, { color: colors.textSecondary, marginTop: 2 }]}>
+            {hours === "err"
+              ? t("adminPayouts.retentionLoadError")
+              : hours === null
+                ? t("adminPayouts.retentionLoading")
+                : t("adminPayouts.retentionCurrent", { hours })}
+          </Text>
+        </View>
+        {!editing && typeof hours === "number" && (
+          <TouchableOpacity onPress={startEdit} accessibilityRole="button">
+            <Text style={[TYPE.label, { color: colors.primary }]}>{t("adminPayouts.retentionEdit")}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {editing && (
+        <View style={{ marginTop: SPACING.sm }}>
+          <View style={st.retEditRow}>
+            <TextInput
+              value={input}
+              onChangeText={setInput}
+              keyboardType="decimal-pad"
+              editable={!saving}
+              style={[st.retInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]}
+              accessibilityLabel={t("adminPayouts.retentionLabel")}
+              placeholder={t("adminPayouts.retentionLabel")}
+              placeholderTextColor={colors.textTertiary}
+            />
+            <TouchableOpacity
+              style={[st.btn, { backgroundColor: colors.primary, opacity: saving ? 0.6 : 1, flex: 0, paddingHorizontal: SPACING.lg }]}
+              onPress={save} disabled={saving} accessibilityRole="button">
+              <Text style={[TYPE.label, { color: colors.onPrimary }]}>
+                {saving ? t("adminPayouts.retentionSaving") : t("adminPayouts.retentionSave")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[st.btn, st.btnGhost, { borderColor: colors.border, flex: 0, paddingHorizontal: SPACING.md }]}
+              onPress={() => setEditing(false)} disabled={saving} accessibilityRole="button">
+              <Text style={[TYPE.label, { color: colors.textSecondary }]}>{t("adminPayouts.cancel")}</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={[TYPE.caption, { color: colors.warning, marginTop: SPACING.sm }]}>
+            {t("adminPayouts.retentionRisk")}
+          </Text>
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -275,4 +406,8 @@ const st = StyleSheet.create({
   btn: { flex: 1, borderRadius: RADII.pill, paddingVertical: SPACING.sm, alignItems: "center" },
   btnGhost: { backgroundColor: "transparent", borderWidth: 1 },
   loadMore: { borderWidth: 1, borderRadius: RADII.pill, paddingVertical: SPACING.md, alignItems: "center", marginTop: SPACING.sm },
+  retCard: { borderWidth: 1, borderRadius: RADII.card, padding: SPACING.lg, marginHorizontal: SPACING.screen, marginBottom: SPACING.md },
+  retTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  retEditRow: { flexDirection: "row", alignItems: "center", gap: SPACING.sm },
+  retInput: { flex: 1, borderWidth: 1, borderRadius: RADII.pill, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, fontSize: 15 },
 });
