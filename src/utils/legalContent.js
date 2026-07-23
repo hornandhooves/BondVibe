@@ -338,26 +338,26 @@ You may not assign your rights under these Terms. We may assign our rights at an
 
 export const PRIVACY_POLICY = `# Privacy Policy
 
-**Last Updated: January 4, 2026**
+**Last Updated: July 22, 2026**
 
-Kinlo ("we," "us," or "our") operates the Kinlo mobile application. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our app.
+Kinlo Technologies Inc. ("Kinlo," "we," "us," or "our") operates the Kinlo mobile application. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our app.
 
 ## 1. Information We Collect
 
 ### 1.1 Information You Provide Directly:
 
-- **Account Information:** Email address, full name, age, location
-- **Profile Information:** Bio, avatar/photo, personality quiz responses
+- **Account & Profile:** Email address, full name, age, phone number (optional), gender, birthday (day and month only — never the year), profile photo, bio, and interests
+- **Personality:** Big Five personality-quiz results
 - **Event Information:** Events you create, join, or attend
-- **Communications:** Messages in event group chats, support requests
+- **Communications:** Messages in group, event, and match chats; support requests
 - **Payment Information:** When you purchase event tickets, payment is processed by Stripe. We do not store your credit card numbers.
 
 ### 1.2 Information Collected Automatically:
 
 - **Device Information:** Device type, operating system, unique device identifiers
 - **Usage Data:** Features used, events viewed, time spent in app
-- **Location Data:** City/region for event matching (we do not track precise GPS location continuously)
-- **Push Notification Tokens:** To send you notifications about events and messages
+- **Location Data:** Precise device location, used for events, carpool, and maps, and shared with the groups and events you join. You control it through your device's location permissions.
+- **Technical Identifiers:** Your user ID and a push-notification token
 
 ### 1.3 Information from Third Parties:
 
@@ -382,13 +382,15 @@ We use your information to:
 
 We may share information with:
 
-| Recipient         | What We Share                        | Why                                             |
-| ----------------- | ------------------------------------ | ----------------------------------------------- |
-| Other Users       | Name, avatar, bio, personality type  | To facilitate event connections                 |
-| Event Hosts       | Your name when you join their event  | To manage event attendance                      |
-| Stripe            | Payment details (directly to Stripe) | To process payments securely                    |
-| Firebase (Google) | Account data, app usage              | To provide authentication and database services |
-| Law Enforcement   | Account information                  | Only when legally required                      |
+| Recipient          | What We Share                        | Why                                             |
+| ------------------ | ------------------------------------ | ----------------------------------------------- |
+| Other Users        | Name, avatar, bio, personality type  | To facilitate event connections                 |
+| Event Hosts        | Your name when you join their event  | To manage event attendance                      |
+| Stripe             | Payment details (directly to Stripe) | To process payments securely                    |
+| Firebase (Google)  | Account data, app usage              | To provide authentication and database services |
+| Google / Apple     | Sign-in tokens                       | To let you log in with Google or Apple          |
+| Expo / FCM / APNs  | Push token                           | To deliver push notifications                   |
+| Law Enforcement    | Account information                  | Only when legally required                      |
 
 ## 4. Payment Processing & Refunds
 
@@ -407,7 +409,7 @@ You have the right to:
 - **Access:** View your personal data in Profile settings
 - **Correct:** Update your information anytime
 - **Delete:** Delete your account (Settings → Delete Account). This removes your data within 30 days.
-- **Export:** Request a copy of your data via support@kinlo.org
+- **Export:** Request a copy of your data via admin@kinlo.org
 - **Opt-Out:** Disable push notifications in your device settings
 - **Withdraw Consent:** Stop using the app at any time
 
@@ -451,10 +453,9 @@ Kinlo is strictly for users 18 years and older. We do not knowingly collect info
 
 ## 9. Location Information
 
-- **What We Collect:** City/region you select for event matching
-- **What We DON'T Collect:** Continuous GPS tracking
-- **Location Sharing in Chat:** Optional feature you control
-- **How to Disable:** Don't share location in chats; we don't track otherwise
+- **What We Collect:** Precise device location, used for events, carpool, and maps
+- **Sharing:** Your location is shared with the groups and events you join, according to your settings
+- **How to Disable:** Turn location off in your device settings at any time; some features (maps, carpool) then won't work
 
 ## 10. Push Notifications
 
@@ -510,7 +511,7 @@ If you opt in to Community Matching (an event feature), we process additional da
 
 For users in Mexico, processing is governed by the **Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP)** and its Spanish **Aviso de Privacidad** (below). In summary:
 
-- **Data controller (responsable):** [LEGAL NAME], [ADDRESS], [RFC]. Contact for privacy/ARCO: [ARCO EMAIL].
+- **Data controller (responsable):** Kinlo Technologies Inc. Contact for privacy/ARCO: admin@kinlo.org.
 - **ARCO rights:** you may request **Access, Rectification, Cancellation, or Opposition** to the processing of your data, and revoke consent, by writing to the ARCO contact above. We respond within the statutory term.
 - **Sensitive data:** if you use Community Matching, some data may be considered sensitive; it is processed only with your express opt-in consent (§14).
 - **Transfers:** your data may be transferred to the service providers listed in §11 (including Anthropic for AI features), located in the United States.
@@ -520,8 +521,9 @@ For users in Mexico, processing is governed by the **Ley Federal de Protección 
 
 **For privacy questions, data requests, or concerns:**
 
-- **Email:** privacy@kinlo.org
-- **ARCO / Mexico:** [ARCO EMAIL]
+- **Entity:** Kinlo Technologies Inc.
+- **Email:** admin@kinlo.org
+- **ARCO / Mexico:** admin@kinlo.org
 - **In-App:** Settings → Help & Support
 - **Response Time:** Within 30 days
 
@@ -534,23 +536,23 @@ For users in Mexico, processing is governed by the **Ley Federal de Protección 
 
 export const PRIVACY_POLICY_ES = `# Aviso de Privacidad
 
-**Última actualización: 7 de julio de 2026**
+**Última actualización: 22 de julio de 2026**
 
 En cumplimiento de la **Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP)**, su Reglamento y demás normativa aplicable, ponemos a tu disposición el presente Aviso de Privacidad.
 
 ## 1. Responsable
 
-**[RAZÓN SOCIAL]** (el "Responsable"), con domicilio en **[DOMICILIO EN MÉXICO]** y RFC **[RFC]**, operador de la aplicación móvil Kinlo, es responsable del tratamiento de tus datos personales.
+**Kinlo Technologies Inc.** (el "Responsable"), operador de la aplicación móvil Kinlo, es responsable del tratamiento de tus datos personales.
 
-Para cualquier tema de privacidad o para ejercer tus derechos ARCO: **[CORREO ARCO]**.
+Para cualquier tema de privacidad o para ejercer tus derechos ARCO: **admin@kinlo.org**.
 
 ## 2. Datos personales que recabamos
 
-- **De identificación y contacto:** nombre completo, correo electrónico, teléfono (guardado de forma privada), fotografía de perfil, edad.
-- **De perfil y actividad:** biografía, respuestas del test de personalidad, eventos que creas o a los que asistes, mensajes en chats de eventos.
-- **De ubicación:** ciudad/región que eliges para eventos; ubicación puntual **solo** cuando decides compartirla en un chat.
+- **De identificación y contacto:** nombre completo, correo electrónico, teléfono (opcional, guardado de forma privada), género, cumpleaños (solo día y mes — nunca el año), fotografía de perfil, edad.
+- **De perfil y actividad:** biografía, intereses, respuestas del test de personalidad, eventos que creas o a los que asistes, mensajes en chats de grupo, evento y match.
+- **De ubicación:** ubicación **precisa** del dispositivo, usada para eventos, carpool y mapas, y compartida con los grupos y eventos a los que te unes. La controlas en los permisos de ubicación de tu dispositivo.
 - **De pago:** los pagos se procesan por Stripe; **no** almacenamos números de tarjeta.
-- **Técnicos:** tipo de dispositivo, identificadores, uso de la app, tokens de notificaciones.
+- **Técnicos:** tipo de dispositivo, identificadores, uso de la app, tu ID de usuario y un token de notificaciones push.
 
 ## 3. Datos sensibles
 
@@ -560,11 +562,11 @@ Si participas en **Community Matching** (función opcional), podríamos tratar d
 
 **Primarias (necesarias para el servicio):** crear y administrar tu cuenta; conectarte con eventos y personas; habilitar chats; procesar pagos; seguridad y prevención de fraude; cumplimiento legal.
 
-**Secundarias (puedes oponerte):** mejora de la app y analítica; envío de comunicaciones no esenciales. Para oponerte a las finalidades secundarias, escribe a **[CORREO ARCO]**.
+**Secundarias (puedes oponerte):** mejora de la app y analítica; envío de comunicaciones no esenciales. Para oponerte a las finalidades secundarias, escribe a **admin@kinlo.org**.
 
 ## 5. Transferencias
 
-Tus datos pueden transferirse a los proveedores necesarios para operar el servicio, ubicados en Estados Unidos: **Firebase/Google** (autenticación, base de datos, almacenamiento), **Stripe** (pagos), **Expo** (notificaciones), **Anthropic** (funciones de IA: Ask Kinlo, redacción y **traducción** — solo se envía el texto necesario para la solicitud) y **Google Places** (búsqueda de lugares). No vendemos tus datos personales.
+Tus datos pueden transferirse a los proveedores necesarios para operar el servicio, ubicados en Estados Unidos: **Firebase/Google** (autenticación, base de datos, almacenamiento), **Google / Apple** (inicio de sesión), **Stripe** (pagos), **Expo / FCM / APNs** (notificaciones push), **Anthropic** (funciones de IA: Ask Kinlo, redacción y **traducción** — solo se envía el texto necesario para la solicitud) y **Google Places** (búsqueda de lugares). No vendemos tus datos personales.
 
 ## 6. Derechos ARCO y revocación del consentimiento
 
@@ -572,7 +574,7 @@ Tienes derecho a **Acceder, Rectificar, Cancelar u Oponerte (ARCO)** al tratamie
 
 - **Rectificación:** edita tu perfil en la app.
 - **Cancelación:** elimina tu cuenta en Ajustes → Eliminar cuenta (borramos tus datos personales, salvo los que debamos conservar por obligación legal).
-- **Acceso y Oposición:** escribe a **[CORREO ARCO]** indicando tu solicitud y acreditando tu identidad.
+- **Acceso y Oposición:** escribe a **admin@kinlo.org** indicando tu solicitud y acreditando tu identidad.
 
 Responderemos en los plazos que marca la ley.
 
@@ -598,7 +600,7 @@ Si consideras que tu derecho a la protección de datos ha sido vulnerado, puedes
 
 ---
 
-**Contacto / ARCO:** [CORREO ARCO]
+**Contacto / ARCO:** admin@kinlo.org
 
 © 2026 Kinlo. Todos los derechos reservados.
 `;
