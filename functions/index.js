@@ -15,6 +15,9 @@ const {detectProhibitedContent} = require("./contentGuard");
 // Define secrets
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
 const anthropicKey = defineSecret("ANTHROPIC_API_KEY");
+const twilioSid = defineSecret("TWILIO_ACCOUNT_SID");
+const twilioToken = defineSecret("TWILIO_AUTH_TOKEN");
+const twilioMg = defineSecret("TWILIO_MESSAGING_SERVICE_SID");
 
 // Initialize Stripe (will be done inside functions)
 let stripe;
@@ -4786,9 +4789,16 @@ exports.expireServiceReservations = onSchedule(
 // SMS/email are inert until credentials are configured (see business/
 // automations.js). To activate SMS: set the TWILIO_* secrets, then bind them
 // here — {secrets: [twilioSid, twilioToken, twilioMg]} — and redeploy.
-exports.sendBusinessMessage = onCall(bizAutomations.sendBusinessMessage);
+exports.sendBusinessMessage = onCall(
+  {secrets: [twilioSid, twilioToken, twilioMg]},
+  bizAutomations.sendBusinessMessage,
+);
 exports.businessRemindersCron = onSchedule(
-  {schedule: "every day 09:00", timeZone: "America/Mexico_City"},
+  {
+    schedule: "every day 09:00",
+    timeZone: "America/Mexico_City",
+    secrets: [twilioSid, twilioToken, twilioMg],
+  },
   bizAutomations.remindersCron,
 );
 exports.twilioSmsWebhook = onRequest({cors: false}, bizAutomations.twilioWebhook);
