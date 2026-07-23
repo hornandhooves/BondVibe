@@ -29,6 +29,15 @@ service firebase.storage {
                ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic'];
     }
 
+    // Host-application attachments may also be a PDF portfolio — same size cap,
+    // same raster whitelist plus application/pdf (no SVG).
+    function isImageOrPdfUnder(maxBytes) {
+      return request.resource.size < maxBytes &&
+             request.resource.contentType in
+               ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic',
+                'application/pdf'];
+    }
+
     // ── Business finance authorization (cross-service, mirrors firestore.rules) ──
     // The CURRENT owner of a business, read from Firestore. bizId is only the v1
     // default; ownership can move (requestOwnerTransfer/approveOwnerTransfer rewrite
@@ -135,13 +144,13 @@ service firebase.storage {
     }
 
     // Host application attachments (feat/host-approval-gate). The applicant
-    // uploads portfolio/value-content images under their OWN namespace; the
-    // owner and an admin may read them (the admin reviews the application).
-    // Images only, size-capped — mirrors the expenses rule.
+    // uploads portfolio/value-content images or a PDF under their OWN namespace;
+    // the owner and an admin may read them (the admin reviews the application).
+    // Size-capped, image-or-pdf content types only.
     match /hostRequests/{uid}/{fileName} {
       allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
       allow write: if isSignedIn() && request.auth.uid == uid &&
-                      isImageUnder(10 * 1024 * 1024);
+                      isImageOrPdfUnder(10 * 1024 * 1024);
     }
 
     // Everything else is denied by default.

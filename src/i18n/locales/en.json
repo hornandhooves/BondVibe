@@ -2733,10 +2733,14 @@
     "instagramPlaceholder": "Instagram (@handle or URL)",
     "webPlaceholder": "Website",
     "attachmentsLabel": "Photos / portfolio",
-    "attachmentsHint": "Add at least one photo, or one link above.",
+    "attachmentsHint": "Add at least one photo or PDF, or one link above.",
     "step2Hint": "Add a description (120+ characters) and at least one photo or link.",
     "permissionNeededTitle": "Permission needed",
-    "permissionNeededMessage": "Allow photo access to add attachments."
+    "permissionNeededMessage": "Allow photo access to add attachments.",
+    "attachChooseTitle": "Add attachment",
+    "attachPhoto": "Photo",
+    "attachPdf": "PDF",
+    "cancel": "Cancel"
   },
   "howToAttend": {
     "headerTitle": "How to attend",

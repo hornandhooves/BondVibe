@@ -2733,10 +2733,14 @@
     "instagramPlaceholder": "Instagram (@usuario o URL)",
     "webPlaceholder": "Sitio web",
     "attachmentsLabel": "Fotos / portafolio",
-    "attachmentsHint": "Agrega al menos una foto, o un enlace arriba.",
+    "attachmentsHint": "Agrega al menos una foto o PDF, o un enlace arriba.",
     "step2Hint": "Agrega una descripción (120+ caracteres) y al menos una foto o enlace.",
     "permissionNeededTitle": "Permiso necesario",
-    "permissionNeededMessage": "Permite el acceso a fotos para agregar adjuntos."
+    "permissionNeededMessage": "Permite el acceso a fotos para agregar adjuntos.",
+    "attachChooseTitle": "Agregar adjunto",
+    "attachPhoto": "Foto",
+    "attachPdf": "PDF",
+    "cancel": "Cancelar"
   },
   "howToAttend": {
     "headerTitle": "Cómo asistir",

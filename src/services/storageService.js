@@ -107,20 +107,35 @@ export const uploadExpenseReceipt = async (bizId, imageUri) => {
 
 /**
  * Upload a host-application attachment (portfolio/value content) to
- * `hostRequests/{userId}/…` — owner writes, admin reads (storage.rules). Images
- * only for now (compressed to jpg); PDF/document attachments would need
- * expo-document-picker, a native module deferred to a native build. Returns the
+ * `hostRequests/{userId}/…` — owner writes, admin reads (storage.rules).
+ * Supports images (compressed to jpg) and PDFs (uploaded as-is). Returns the
  * download URL.
+ * @param {string} userId owner uid
+ * @param {string} uri local file uri
+ * @param {number} [index] disambiguates files uploaded in the same ms
+ * @param {"image"|"pdf"} [kind] "pdf" uploads the raw file; anything else
+ *   compresses it as an image
  */
-export const uploadHostRequestAttachment = async (userId, imageUri, index = 0) => {
-  const compressedUri = await compressImage(imageUri);
-  const response = await fetch(compressedUri);
+export const uploadHostRequestAttachment = async (
+  userId,
+  uri,
+  index = 0,
+  kind = "image"
+) => {
+  const isPdf = kind === "pdf";
+  const sourceUri = isPdf ? uri : await compressImage(uri);
+  const response = await fetch(sourceUri);
   const blob = await response.blob();
+  const ext = isPdf ? "pdf" : "jpg";
   const attRef = ref(
     storage,
-    `hostRequests/${userId}/${Date.now()}_${index}.jpg`
+    `hostRequests/${userId}/${Date.now()}_${index}.${ext}`
   );
-  await uploadBytes(attRef, blob);
+  await uploadBytes(
+    attRef,
+    blob,
+    isPdf ? { contentType: "application/pdf" } : undefined
+  );
   return getDownloadURL(attRef);
 };
 

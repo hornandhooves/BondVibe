@@ -26,9 +26,27 @@ jest.mock("expo-image-picker", () => ({
     Promise.resolve({ canceled: false, assets: [{ uri: "file:///a.jpg" }] })
   ),
 }));
-jest.mock("../../services/storageService", () => ({
-  uploadHostRequestAttachment: jest.fn(() => Promise.resolve("https://cdn/a.jpg")),
+jest.mock("expo-document-picker", () => ({
+  getDocumentAsync: jest.fn(() =>
+    Promise.resolve({
+      canceled: false,
+      assets: [{ uri: "file:///doc.pdf", name: "portfolio.pdf" }],
+    })
+  ),
 }));
+jest.mock("../../services/storageService", () => ({
+  uploadHostRequestAttachment: jest.fn((uid, uri, i, kind) =>
+    Promise.resolve(kind === "pdf" ? "https://cdn/doc.pdf" : "https://cdn/a.jpg")
+  ),
+}));
+// The "Attach" button opens an action sheet; the test picks which button fires.
+let alertChoice = "requestHost.attachPhoto";
+jest.spyOn(require("react-native").Alert, "alert").mockImplementation(
+  (title, msg, buttons) => {
+    const b = (buttons || []).find((x) => x.text === alertChoice);
+    if (b && b.onPress) b.onPress();
+  }
+);
 jest.mock("../../components/Icon", () => () => null);
 jest.mock("../../components/SuccessModal", () => () => null);
 jest.mock("react-native-safe-area-context", () => ({
@@ -84,6 +102,7 @@ describe("RequestHostScreen", () => {
     jest.clearAllMocks();
     getDocs.mockResolvedValue({ empty: true });
     addDoc.mockResolvedValue({ id: "req1" });
+    alertChoice = "requestHost.attachPhoto";
   });
 
   describe("step 1", () => {
@@ -202,6 +221,39 @@ describe("RequestHostScreen", () => {
       expect(addDoc.mock.calls[0][1].attachments[0]).toMatchObject({
         url: "https://cdn/a.jpg",
         type: "image",
+      });
+    });
+
+    it("a PDF attachment passes validation, uploads as pdf, and is recorded", async () => {
+      const {
+        uploadHostRequestAttachment,
+      } = require("../../services/storageService");
+      alertChoice = "requestHost.attachPdf";
+      const utils = setup();
+      fillStep1(utils);
+      fireEvent.press(cta(utils));
+      // Description + one PDF (no link) qualifies to submit (Decision B).
+      fireEvent.changeText(
+        utils.getByPlaceholderText("requestHost.descriptionPlaceholder"),
+        LONG_DESC
+      );
+      fireEvent.press(utils.getByTestId("requestHost-add-attachment"));
+      await waitFor(() =>
+        expect(utils.getByTestId("requestHost-submit")).toBeTruthy()
+      );
+      fireEvent.press(cta(utils, 2));
+      await waitFor(() => expect(addDoc).toHaveBeenCalled());
+      // Uploaded with kind "pdf".
+      expect(uploadHostRequestAttachment).toHaveBeenCalledWith(
+        "u1",
+        "file:///doc.pdf",
+        0,
+        "pdf"
+      );
+      expect(addDoc.mock.calls[0][1].attachments[0]).toEqual({
+        url: "https://cdn/doc.pdf",
+        type: "pdf",
+        name: "portfolio.pdf",
       });
     });
 

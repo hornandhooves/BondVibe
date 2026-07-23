@@ -15,6 +15,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
 import { collection, addDoc, query, where, getDocs } from "firebase/firestore";
 import { useTranslation } from "react-i18next";
 import { db, auth } from "../services/firebase";
@@ -84,8 +85,10 @@ export default function RequestHostScreen({ navigation }) {
     descriptionValid &&
     (attachments.length > 0 || hasLink);
 
-  const pickAttachment = async () => {
-    if (attachments.length >= MAX_HOST_ATTACHMENTS) return;
+  const addAttachment = (att) =>
+    setAttachments((cur) => [...cur, att].slice(0, MAX_HOST_ATTACHMENTS));
+
+  const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert(
@@ -99,10 +102,35 @@ export default function RequestHostScreen({ navigation }) {
       quality: 0.8,
     });
     if (!res.canceled && res.assets?.[0]) {
-      setAttachments((cur) =>
-        [...cur, { uri: res.assets[0].uri }].slice(0, MAX_HOST_ATTACHMENTS)
-      );
+      addAttachment({ uri: res.assets[0].uri, kind: "image" });
     }
+  };
+
+  const pickPdf = async () => {
+    const res = await DocumentPicker.getDocumentAsync({
+      type: ["application/pdf"],
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+    if (!res.canceled && res.assets?.[0]) {
+      const f = res.assets[0];
+      addAttachment({ uri: f.uri, kind: "pdf", name: f.name });
+    }
+  };
+
+  // One "Attach" button offering either source (Board 3 value content).
+  const pickAttachment = () => {
+    if (attachments.length >= MAX_HOST_ATTACHMENTS) return;
+    Alert.alert(
+      t("requestHost.attachChooseTitle"),
+      undefined,
+      [
+        { text: t("requestHost.attachPhoto"), onPress: pickImage },
+        { text: t("requestHost.attachPdf"), onPress: pickPdf },
+        { text: t("requestHost.cancel"), style: "cancel" },
+      ],
+      { cancelable: true }
+    );
   };
 
   const removeAttachment = (i) =>
@@ -133,12 +161,23 @@ export default function RequestHostScreen({ navigation }) {
         return;
       }
 
-      // Upload attachments first (images → Storage under hostRequests/{uid}/…).
+      // Upload attachments first (images + PDFs → hostRequests/{uid}/…).
       const uid = auth.currentUser.uid;
       const uploaded = [];
       for (let i = 0; i < attachments.length; i++) {
-        const url = await uploadHostRequestAttachment(uid, attachments[i].uri, i);
-        uploaded.push({ url, type: "image", name: `attachment_${i + 1}` });
+        const att = attachments[i];
+        const isPdf = att.kind === "pdf";
+        const url = await uploadHostRequestAttachment(
+          uid,
+          att.uri,
+          i,
+          isPdf ? "pdf" : "image"
+        );
+        uploaded.push({
+          url,
+          type: isPdf ? "pdf" : "image",
+          name: att.name || `attachment_${i + 1}`,
+        });
       }
 
       const trimmedTagline = tagline.trim();
@@ -430,8 +469,9 @@ export default function RequestHostScreen({ navigation }) {
               </View>
             </View>
 
-            {/* Attachments — images (portfolio/value content). ≥1 attachment OR
-                ≥1 link is required to submit (Decision B). */}
+            {/* Attachments — images OR PDF (portfolio/value content). ≥1
+                attachment OR ≥1 link is required to submit (Decision B). PDFs
+                render as an icon + filename card, not a thumbnail. */}
             <View style={s.field}>
               <Text style={[s.fieldLabel, { color: colors.textSecondary }]}>
                 {t("requestHost.attachmentsLabel")}
@@ -439,7 +479,24 @@ export default function RequestHostScreen({ navigation }) {
               <View style={s.attachmentsRow}>
                 {attachments.map((a, i) => (
                   <View key={a.uri} style={s.thumbWrap}>
-                    <Image source={{ uri: a.uri }} style={s.thumb} />
+                    {a.kind === "pdf" ? (
+                      <View
+                        style={[
+                          s.pdfThumb,
+                          { borderColor: colors.border, backgroundColor: colors.surface },
+                        ]}
+                      >
+                        <Icon name="clipboard" size={24} color={colors.primary} />
+                        <Text
+                          style={[s.pdfName, { color: colors.textSecondary }]}
+                          numberOfLines={1}
+                        >
+                          {a.name || "PDF"}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Image source={{ uri: a.uri }} style={s.thumb} />
+                    )}
                     <TouchableOpacity
                       onPress={() => removeAttachment(i)}
                       style={[s.thumbRemove, { backgroundColor: colors.text }]}
@@ -592,6 +649,17 @@ function createStyles(colors) {
     attachmentsRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
     thumbWrap: { width: 72, height: 72 },
     thumb: { width: 72, height: 72, borderRadius: 12 },
+    pdfThumb: {
+      width: 72,
+      height: 72,
+      borderRadius: 12,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 4,
+      gap: 4,
+    },
+    pdfName: { fontFamily: FONTS.body, fontSize: 9, textAlign: "center" },
     thumbRemove: {
       position: "absolute",
       top: -6,
