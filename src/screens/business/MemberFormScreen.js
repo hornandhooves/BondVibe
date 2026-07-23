@@ -25,7 +25,7 @@ import GradientBackground from "../../components/GradientBackground";
 import DateField from "../../components/DateField";
 import { useTheme } from "../../contexts/ThemeContext";
 import { getBusiness, listBranches } from "../../services/businessService";
-import { createMember, updateMember, getMember, buildSmsConsent } from "../../services/businessMembersService";
+import { createMember, updateMember, getMember, buildSmsConsent, buildWaConsent } from "../../services/businessMembersService";
 import { verticalTagsKey } from "../../constants/businessVerticals";
 
 // Persist a birthday as UTC-midnight of the LOCAL calendar day the host picked,
@@ -55,6 +55,7 @@ export default function MemberFormScreen({ route, navigation }) {
   const [tagDraft, setTagDraft] = useState("");
   const [notes, setNotes] = useState("");
   const [smsConsent, setSmsConsent] = useState(false);
+  const [waConsent, setWaConsent] = useState(false);
   const [dob, setDob] = useState(null);
   const [balanceOwed, setBalanceOwed] = useState("");
   const [branches, setBranches] = useState([]);
@@ -73,6 +74,7 @@ export default function MemberFormScreen({ route, navigation }) {
           setEmail(m.email || "");
           setTags(Array.isArray(m.tags) ? m.tags : []);
           setSmsConsent(m.smsConsent?.granted === true);
+          setWaConsent(m.waConsent?.granted === true);
           setDob(m.dob ? isoToLocalDob(m.dob) : null);
           setBalanceOwed(m.balanceOwedCents ? String(m.balanceOwedCents / 100) : "");
           setBranchId(m.branchId || null);
@@ -118,6 +120,7 @@ export default function MemberFormScreen({ route, navigation }) {
           branchId: branchId || null,
           balanceOwedCents: owedCents,
           smsConsent: buildSmsConsent(smsConsent, "edit"),
+          waConsent: buildWaConsent(waConsent, "edit"),
           ...(notes.trim() ? { appendNote: notes.trim() } : {}),
         });
       } else {
@@ -132,6 +135,7 @@ export default function MemberFormScreen({ route, navigation }) {
             branchId: branchId || null,
             balanceOwedCents: owedCents,
             smsConsentGranted: smsConsent,
+            waConsentGranted: waConsent,
             source: "manual",
           },
           business?.name || ""
@@ -319,6 +323,19 @@ export default function MemberFormScreen({ route, navigation }) {
                 </Text>
               </View>
               <Switch value={smsConsent} onValueChange={setSmsConsent} trackColor={{ true: colors.primary }} />
+            </View>
+          </View>
+
+          {/* WhatsApp consent - LFPDPPP explicit opt-in, off by default. */}
+          <View style={[styles.consentCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.consentRow}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={[styles.consentTitle, { color: colors.text }]}>{t("business.form.waConsentTitle")}</Text>
+                <Text style={[styles.consentSub, { color: colors.textTertiary }]}>
+                  {t("business.form.waConsentSub")}
+                </Text>
+              </View>
+              <Switch value={waConsent} onValueChange={setWaConsent} trackColor={{ true: colors.primary }} />
             </View>
           </View>
         </ScrollView>

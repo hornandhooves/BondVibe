@@ -24,7 +24,7 @@ import { getMyBizId } from "./businessService";
 
 export const TRIGGERS = ["welcome", "reminder", "expiring_credit", "renewal", "no_show", "birthday", "winback"];
 export const AUDIENCE_TYPES = ["all", "active", "at_risk", "inactive", "tag"];
-export const CHANNELS = ["push", "inapp", "sms", "email"];
+export const CHANNELS = ["push", "inapp", "whatsapp", "sms", "email"];
 // Which triggers the scheduler runs automatically today (others are send-now).
 export const SCHEDULED_TRIGGERS = ["expiring_credit"];
 

@@ -3762,6 +3762,8 @@
       "branch": "Branch",
       "smsConsentTitle": "SMS reminders",
       "smsConsentSub": "The member agrees to receive class and account texts. Off by default; they can opt out anytime (STOP). See the Privacy Notice.",
+      "waConsentTitle": "WhatsApp reminders",
+      "waConsentSub": "The member agrees to receive class and account messages on WhatsApp. Off by default; they can opt out anytime (STOP). See the Privacy Notice.",
       "save": "Save member",
       "autoLinkNote": "Links automatically if they later join Kinlo.",
       "nameRequiredTitle": "Name required",
@@ -4467,6 +4469,7 @@
         "push": "Push",
         "inapp": "In-app",
         "sms": "SMS",
+        "whatsapp": "WhatsApp",
         "email": "Email",
         "none": "—"
       },
