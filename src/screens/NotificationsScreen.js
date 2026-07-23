@@ -381,7 +381,7 @@ export default function NotificationsScreen({ navigation }) {
 
   const styles = createStyles(colors);
 
-  const NotificationCard = ({ notification }) => {
+  const NotificationCard = ({ notification, index }) => {
     try {
       // Sanitize ALL values before using
       const safeIcon = String(notification.icon || "bell");
@@ -408,6 +408,7 @@ export default function NotificationsScreen({ navigation }) {
 
       return (
         <TouchableOpacity
+          testID={`notification-card-${index}`}
           style={styles.notificationCard}
           onPress={() => handleNotificationAction(notification)}
           activeOpacity={0.8}
@@ -599,10 +600,11 @@ export default function NotificationsScreen({ navigation }) {
               </Text>
             </View>
           ) : (
-            notifications.map((notification) => (
+            notifications.map((notification, index) => (
               <NotificationCard
                 key={notification.id}
                 notification={notification}
+                index={index}
               />
             ))
           )}

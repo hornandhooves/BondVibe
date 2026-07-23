@@ -1,0 +1,115 @@
+# E2E — HOST creates an event.
+#   Hosting mode → Create event → fill required fields → publish →
+#   verify it lands in "Your events".
+#
+# Assumes a signed-in, VERIFIED, HOST-CAPABLE session (run .maestro/p0-login.yaml
+# first with a host account). The single mode control lives on the Profile screen
+# (T3), reached via header-profile — the `mode-hosting` id used by older flows
+# does NOT exist in the app.
+#
+# NEW testIDs this flow needs (see TESTIDS_TO_ADD.md):
+#   create-event-title · create-event-desc · create-event-max-people ·
+#   create-event-submit
+# The Venue field is the shared PlaceAutocomplete modal and is driven by text
+# (placeholder + the "Use typed" fallback row), so it needs no testID.
+appId: com.kinlo.app
+---
+- launchApp:
+    clearState: false
+# Dev-only LogBox overlay (expo-notifications keychain) — dismiss if shown.
+- repeat:
+    while:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+# Authed 5-tab shell painted.
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 120000
+# Let the transient push-token toast clear so it can't intercept taps.
+- extendedWaitUntil:
+    notVisible: "Error registering push token"
+    timeout: 15000
+    optional: true
+
+# --- Switch to Hosting mode via Profile (single mode control, T3) ---
+- tapOn:
+    id: "header-profile"
+- extendedWaitUntil:
+    visible:
+      id: "profile-mode-hosting"
+    timeout: 20000
+    optional: true
+- tapOn:
+    id: "profile-mode-hosting"
+    optional: true
+- tapOn:
+    id: "profile-back"
+    optional: true
+
+# --- Events tab root is now "Your events" (Manage) ---
+- tapOn:
+    id: "tab-events"
+- extendedWaitUntil:
+    visible: "Create event|Your events"
+    timeout: 20000
+
+# --- Open Create Event (testID already exists on the Manage CTA) ---
+- tapOn:
+    id: "manage-create-event"
+- extendedWaitUntil:
+    visible: "Create Event"          # createEvent.headerTitle
+    timeout: 20000
+
+# --- Required field: Title ---
+- tapOn:
+    id: "create-event-title"         # NEW
+- inputText: "Maestro Test Meetup"
+
+# --- Required field: Description ---
+- tapOn:
+    id: "create-event-desc"          # NEW
+- inputText: "Automated e2e test event — safe to ignore."
+
+# --- Required field: Venue (shared PlaceAutocomplete modal → free-text row) ---
+# Tapping the field opens a full-screen search modal with an auto-focused input.
+- tapOn:
+    text: "Search a place.*"         # createEvent.venuePlaceholder (field trigger)
+- inputText: "Tulum Centro"
+# The "Use "<typed>"" footer row always renders once the query is non-empty and
+# works whether or not the Google Places key is configured in the build.
+- tapOn:
+    text: "Use .*"                   # placeAutocomplete.useTyped
+- extendedWaitUntil:
+    visible: "Create Event"          # back on the form
+    timeout: 15000
+
+# --- Required field: Max people ---
+- tapOn:
+    id: "create-event-max-people"    # NEW
+- inputText: "20"
+- hideKeyboard:
+    optional: true
+
+# Category (social), City (Tulum), Date (tomorrow 7PM) and Free are pre-filled
+# defaults, so the four fields above are all that's required. Publish:
+- scrollUntilVisible:
+    element:
+      id: "create-event-submit"      # NEW
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "create-event-submit"
+
+# --- Success modal → dismiss → back on "Your events" ---
+- extendedWaitUntil:
+    visible: "Event Created!"        # eventCreatedModal.eventCreatedTitle
+    timeout: 30000
+- tapOn:
+    text: "Got it!|View My Events"   # eventCreatedModal.gotIt / viewMyEvents
+
+# --- The newly created event now shows in the hosted list ---
+- extendedWaitUntil:
+    visible: "Maestro Test Meetup"
+    timeout: 20000

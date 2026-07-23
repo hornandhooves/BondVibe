@@ -115,6 +115,7 @@ export default function DMChatScreen({ route, navigation }) {
         <View style={[styles.inputBar, { borderTopColor: colors.border }]}>
           <TextInput
             style={[styles.input, { color: colors.text, backgroundColor: colors.surfaceGlass }]}
+            testID="dm-composer-input"
             placeholder={t("dmChat.messagePlaceholder")}
             placeholderTextColor={colors.textTertiary}
             value={text}
@@ -123,6 +124,7 @@ export default function DMChatScreen({ route, navigation }) {
           />
           <TouchableOpacity
             style={[styles.sendBtn, { backgroundColor: colors.primary }]}
+            testID="dm-send-button"
             onPress={send}
           >
             <Icon name="send" size={20} color="#fff" />

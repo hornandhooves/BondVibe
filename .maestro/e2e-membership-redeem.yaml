@@ -1,0 +1,137 @@
+# E2E — Membership credit: an attendee who HOLDS an active class-credit
+# membership with a host reserves a credit to attend that host's event. The
+# "buy a membership" half and the HOST-side redemption are DOCUMENTED because
+# neither can be executed from the attendee session (payment = Stripe CardField;
+# redeem = host-only callable).
+#
+# WHY THIS SPLIT (read the code, not the wish):
+#   • reserveMembershipCredit(eventId)  → USER-drivable. Fired by the
+#     "Use 1 class credit" option in HowToAttendScreen (~L64). Fully executable.
+#   • redeemMembershipCredit(reservationId) → HOST-ONLY (membershipService.js
+#     ~L342). The host confirms the reservation at check-in, which deducts the
+#     credit. An attendee cannot call it — so it is DOCUMENTED, not faked.
+#   • Buying a membership goes through MembershipCheckout's Stripe <CardField>
+#     (native, can't be filled reliably) — so the buy path is DOCUMENTED up to
+#     the card, like every other paid flow here.
+#
+# ENTRY: EventDetail routes to HowToAttend when the event is paid OR accepts a
+# membership the host sells (EventDetailScreen handleJoinLeave ~L408). For a
+# membership event the CTA reads "Attend this event".
+#
+# Assumes a signed-in, VERIFIED session (run .maestro/p0-login.yaml first).
+#
+# SEED (for the executed reserve path):
+#   1. A host who sells an ACTIVE class-credit membership plan.
+#   2. The test user HOLDS an active membership (credits remaining) with that host.
+#   3. An upcoming event by that host with acceptsMembership !== false, and it is
+#      the first result in Events → Discover search (mirrors e2e-join-event; if
+#      your seed can't guarantee ordering, open the event another way and keep
+#      the steps from "Attend this event" onward).
+# With (2) present, HowToAttend shows "Use 1 class credit"; without it, it shows
+# "Get a membership" instead (the documented buy branch).
+#
+# NEW testIDs this flow needs (see TESTIDS_TO_ADD.md):
+#   howtoattend-use-credit · howtoattend-get-membership  (options are tapped by
+#   text today; ids make them robust). Reuses event-search-result from e2e-join-event.
+appId: com.kinlo.app
+---
+- launchApp:
+    clearState: false
+- repeat:
+    while:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 120000
+- extendedWaitUntil:
+    notVisible: "Error registering push token"
+    timeout: 15000
+    optional: true
+
+# --- Ensure Attending mode (Events tab root becomes discover/MyEvents) ---
+- tapOn:
+    id: "header-profile"
+- tapOn:
+    id: "profile-mode-attending"
+    optional: true
+- tapOn:
+    id: "profile-back"
+    optional: true
+
+# --- Discover → Search → open the seeded membership event ---
+- tapOn:
+    id: "tab-events"
+- extendedWaitUntil:
+    visible:
+      id: "discover-bar"
+    timeout: 20000
+- tapOn:
+    id: "discover-bar"
+- extendedWaitUntil:
+    visible: "event.*found|Search|Events"
+    timeout: 20000
+    optional: true
+- tapOn:
+    id: "event-search-result"                     # first result (reused from e2e-join-event)
+- extendedWaitUntil:
+    visible: "Attend this event|Join Event"       # eventDetail CTA (membership → "Attend this event")
+    timeout: 30000
+
+# --- Open "How to attend" ---
+- tapOn:
+    text: "Attend this event"                      # eventDetail.buttonAttendThisEvent
+- extendedWaitUntil:
+    visible: "How to attend"                        # howToAttend.headerTitle
+    timeout: 20000
+
+# --- Redeem a credit (reserveMembershipCredit) — the USER-drivable redemption ---
+# Present only when the user holds an ACTIVE membership with this host.
+- extendedWaitUntil:
+    visible: "Use 1 class credit"                   # howToAttend.useOneCredit
+    timeout: 15000
+    optional: true
+- tapOn:
+    id: "howtoattend-use-credit"                    # NEW — falls back to text below
+    optional: true
+- tapOn:
+    text: "Use 1 class credit"
+    optional: true
+# Success: server placed the hold; the host will deduct it at check-in.
+- extendedWaitUntil:
+    visible: "Spot reserved!|You're booked"         # howToAttend.spotReserved{Title,Message}
+    timeout: 20000
+    optional: true
+- tapOn:
+    text: "Done"                                    # howToAttend.done
+    optional: true
+
+# =========================================================================
+# DOCUMENTED — BUY a membership (shown when the user has NO active membership;
+# HowToAttend renders "Get a membership" instead of "Use 1 class credit"). The
+# navigation is drivable up to the Stripe card; the card itself is not.
+#
+#   - tapOn: { text: "Get a membership" }           # howToAttend.getMembership
+#   - extendedWaitUntil: { visible: "Memberships|.*'s Plans", timeout: 20000 } # HostMemberships
+#   - tapOn: { text: "Buy" }                         # hostMemberships.buy → MembershipCheckout
+#   - extendedWaitUntil: { visible: "Card details", timeout: 20000 } # membershipCheckout.cardDetails
+#
+#   >>> INLINE native Stripe <CardField> (placeholder "4242 4242 4242 4242") —
+#       Maestro can't reliably fill it. type 4242 4242 4242 4242 · future expiry
+#       · any CVC, then:
+#   - tapOn: { text: "Pay .*" }                      # membershipCheckout.pay
+#   → "Membership active!" (membershipCheckout.membershipActiveTitle) →
+#     navigation.replace("MyMemberships"). After this the user HOLDS a credit, so
+#     the reserve path above ("Use 1 class credit") becomes available.
+#   Recommended testIDs: membership-card-field, membership-pay-button,
+#   hostmemberships-buy-0 (see TESTIDS_TO_ADD.md).
+#
+# DOCUMENTED — HOST-side redeem (cannot run from this attendee session):
+#   redeemMembershipCredit(reservationId) is HOST-ONLY. At the event the HOST
+#   opens check-in (EventCheckIn / CheckInScanner) and confirms the attendee's
+#   reservation, which deducts the credit (creates a membershipRedemptions
+#   record). To test it end-to-end you need a second, host session and the
+#   reservationId produced by the reserve step above.
+# =========================================================================

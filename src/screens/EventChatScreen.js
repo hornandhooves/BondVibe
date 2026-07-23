@@ -964,7 +964,7 @@ export default function EventChatScreen({ route, navigation }) {
           </TouchableOpacity>
 
           {isHost && (
-            <TouchableOpacity style={styles.locationButton} onPress={openPollModal}>
+            <TouchableOpacity testID="event-chat-poll-btn" style={styles.locationButton} onPress={openPollModal}>
               <Icon name="chart" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
@@ -1023,6 +1023,7 @@ export default function EventChatScreen({ route, navigation }) {
             </Text>
             <TextInput
               style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
+              testID="poll-question-input"
               placeholder={t("eventChat.poll.questionPlaceholder")}
               placeholderTextColor={colors.textTertiary}
               value={pollQuestion}
@@ -1032,6 +1033,7 @@ export default function EventChatScreen({ route, navigation }) {
             {pollOptions.map((opt, i) => (
               <TextInput
                 key={i}
+                testID={`poll-option-${i}`}
                 style={[styles.pollInput, { color: colors.text, borderColor: colors.border }]}
                 placeholder={t("eventChat.poll.optionPlaceholder", { num: i + 1 })}
                 placeholderTextColor={colors.textTertiary}
@@ -1066,7 +1068,7 @@ export default function EventChatScreen({ route, navigation }) {
                   {t("eventChat.cancel")}
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleCreatePoll} disabled={creatingPoll}>
+              <TouchableOpacity testID="poll-create-submit" onPress={handleCreatePoll} disabled={creatingPoll}>
                 <Text style={{ color: colors.primary, fontWeight: "700" }}>
                   {creatingPoll ? t("eventChat.poll.creating") : t("eventChat.poll.createPoll")}
                 </Text>

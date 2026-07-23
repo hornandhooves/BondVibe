@@ -1,0 +1,101 @@
+# E2E — ATTENDEE joins a FREE event; it then appears in the attending list.
+#
+# Assumes a signed-in, verified session (run .maestro/p0-login.yaml first).
+#
+# SEED: at least one FREE, upcoming event the test user has NOT joined must be
+# discoverable in Search (Events tab → Discover). The paid variant is documented
+# (not executed) at the bottom and needs a seeded PAID event.
+#
+# NEW testID this flow needs (see TESTIDS_TO_ADD.md): event-search-result
+# (on the SearchEvents result card — tap the first one).
+appId: com.kinlo.app
+---
+- launchApp:
+    clearState: false
+- repeat:
+    while:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 120000
+- extendedWaitUntil:
+    notVisible: "Error registering push token"
+    timeout: 15000
+    optional: true
+
+# --- Ensure Attending mode so the Events tab root is MyEvents (not Manage).
+#     Harmless no-op for pure attendees (always attending) and non-host accounts
+#     (mode control hidden). ---
+- tapOn:
+    id: "header-profile"
+- tapOn:
+    id: "profile-mode-attending"
+    optional: true
+- tapOn:
+    id: "profile-back"
+    optional: true
+
+# --- Discover → Search → open the first event ---
+- tapOn:
+    id: "tab-events"
+- extendedWaitUntil:
+    visible:
+      id: "discover-bar"
+    timeout: 20000
+- tapOn:
+    id: "discover-bar"
+- extendedWaitUntil:
+    visible: "event.*found|Search|Events"   # searchEvents header/results painted
+    timeout: 20000
+    optional: true
+- tapOn:
+    id: "event-search-result"               # NEW — first result card
+- extendedWaitUntil:
+    visible: "Join Event (Free)"            # eventDetail.buttonJoinFree
+    timeout: 30000
+
+# --- Join the free event ---
+- tapOn:
+    text: "Join Event (Free)"
+# "Joined!" confirmation alert (system OK button).
+- tapOn:
+    text: "OK|Aceptar"
+    optional: true
+# CTA flips to "Leave Event" → proof the join succeeded.
+- extendedWaitUntil:
+    visible: "Leave Event"                  # eventDetail.buttonLeaveEvent
+    timeout: 20000
+
+# --- Back to the attending root; the event now sits under Upcoming ---
+- tapOn:
+    id: "tab-events"
+- extendedWaitUntil:
+    visible: "Discover events near you|Upcoming"
+    timeout: 20000
+# With a KNOWN seed title you would assert the specific card here, e.g.:
+# - assertVisible: "<seed free event title>"
+
+# =========================================================================
+# PAID EVENT VARIANT — documented, NOT executed (a paid event diverges to a
+# separate screen and requires a seeded paid event).
+#
+# On a PAID event the CTA reads "Attend this event" and the path is:
+#   - tapOn:  { text: "Attend this event" }   # eventDetail.buttonAttendThisEvent
+#   - extendedWaitUntil: { visible: "How to attend", timeout: 20000 }
+#   - tapOn:  { text: "Pay .*" }               # howToAttend.payAmount → replace→Checkout
+#   - extendedWaitUntil: { visible: "Card Details", timeout: 20000 }   # Checkout
+#
+#   >>> STRIPE TEST CARD 4242 4242 4242 4242 IS ENTERED HERE <<<
+#   IMPORTANT: this is NOT a system webview. It is Stripe's INLINE native
+#   <CardField> (@stripe/stripe-react-native); the number placeholder already
+#   reads "4242 4242 4242 4242". Maestro cannot reliably fill the fused native
+#   CardField by id or text — driving it needs point taps / the real keyboard,
+#   and is environment-specific. After a valid card the pay button
+#   ("Pay MX$…", paymentCheckout.pay) enables:
+#     - tapOn: { text: "Pay .*" }
+#   Recommended testIDs to make this drivable: checkout-card-field,
+#   checkout-pay-button (see TESTIDS_TO_ADD.md).
+# =========================================================================

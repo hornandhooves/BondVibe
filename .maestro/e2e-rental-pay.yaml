@@ -1,0 +1,90 @@
+# E2E — Vehicle rental: reach the Rentals hub (NOT a tab — it's a category
+# inside the Services marketplace), pick a vehicle, reserve it, and land on the
+# Checkout screen. The Stripe card step is DOCUMENTED (not executed), exactly
+# like the paid path in e2e-join-event.
+#
+# WHERE RENTALS LIVE: there is no `tab-rentals`. The 4th tab is Services
+# (`tab-services` → MarketplaceExploreScreen). Its vertical grid has a "Rentals"
+# tile that navigates to RentalHub ("Get around"). Path:
+#   tab-services → "Rentals" tile → RentalHub → vehicle card → VehicleDetail →
+#   "Rent now" → RentalCheckout.
+#
+# Assumes a signed-in, VERIFIED session (run .maestro/p0-login.yaml first).
+#
+# SEED: at least one AVAILABLE vehicle with a NON-ZERO daily price
+# (pricePerDayCentavos > 0) discoverable in the Rentals hub. A price is required
+# so RentalCheckout renders the Stripe <CardField> (a free vehicle shows
+# "Reserve for free" and no card — see the documented branch at the bottom).
+#
+# NEW testID this flow needs (see TESTIDS_TO_ADD.md): rental-vehicle-card-0.
+appId: com.kinlo.app
+---
+- launchApp:
+    clearState: false
+- repeat:
+    while:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 120000
+- extendedWaitUntil:
+    notVisible: "Error registering push token"
+    timeout: 15000
+    optional: true
+
+# --- Services marketplace tab ---
+- tapOn:
+    id: "tab-services"
+- extendedWaitUntil:
+    visible: "What do you need?|Services near you"   # marketplace.searchPh / nearYou
+    timeout: 20000
+
+# --- Open the Rentals category (grid tile → navigate RentalHub) ---
+- tapOn:
+    text: "Rentals"                                  # marketplace.vertical.rentals tile
+- extendedWaitUntil:
+    visible: "Get around|My rentals"                 # rentals.hub.title / myRentals
+    timeout: 20000
+
+# --- Pick the first available vehicle ---
+- tapOn:
+    id: "rental-vehicle-card-0"                      # NEW — first vehicle card
+- extendedWaitUntil:
+    visible: "Choose your dates|Availability|Rent now"  # VehicleDetail painted
+    timeout: 20000
+
+# --- Reserve → Checkout (dates default to today→tomorrow, so "Rent now" is
+#     enabled for an available vehicle) ---
+- tapOn:
+    text: "Rent now"                                 # vehicleDetail.rentNow
+- extendedWaitUntil:
+    visible: "Charged now|Card details"              # RentalCheckout (rentals.checkout.*)
+    timeout: 20000
+# "Charged now" is unique to the rental checkout breakdown — proof we're on the
+# right Checkout (the header title "Checkout" is shared with event/membership).
+- assertVisible: "Card details"                      # rentals.checkout.cardDetails
+
+# =========================================================================
+# STRIPE CARD STEP — documented, NOT executed (same limitation as
+# e2e-join-event's paid path).
+#
+# The card entry here is Stripe's INLINE native <CardField>
+# (@stripe/stripe-react-native) — its number placeholder already reads
+# "4242 4242 4242 4242". Maestro cannot reliably fill the fused native CardField
+# by id or text; driving it needs point taps / the real keyboard and is
+# environment-specific. reserveVehicle() runs on the pay tap (RentalCheckoutScreen
+# ~L56), so the reservation + charge only happen AFTER a valid card is entered:
+#   >>> type 4242 4242 4242 4242 · any future expiry · any CVC into the CardField
+#   - tapOn: { text: "Pay .*" }        # rentals.checkout.pay ("Pay MX$…")
+#   → webhook flips the rental to active → navigation.replace("ActiveRental")
+# Recommended testIDs to make this drivable: rental-card-field,
+# rental-pay-button (see TESTIDS_TO_ADD.md).
+#
+# FREE-VEHICLE BRANCH (no card): a vehicle with pricePerDayCentavos === 0 shows
+# no <CardField>; the button reads "Reserve for free" (rentals.checkout.reserveForFree)
+# and tapping it reserves server-side and goes straight to ActiveRental. That
+# path IS fully executable but does not exercise Stripe — hence the paid seed above.
+# =========================================================================

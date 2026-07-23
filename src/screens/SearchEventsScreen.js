@@ -357,6 +357,7 @@ export default function SearchEventsScreen({ navigation, route }) {
 
     return (
       <TouchableOpacity
+        testID="event-search-result"
         style={styles.eventCard}
         onPress={() =>
           navigation.navigate("EventDetail", { eventId: event.id })

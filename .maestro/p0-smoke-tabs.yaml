@@ -32,22 +32,27 @@ appId: com.kinlo.app
 - extendedWaitUntil:
     visible: "Joined|Hosting|My Events|Events"
     timeout: 15000
-# Rentals (un-buried, tab pillar)
+# Services (Marketplace) — the real 4th tab (id: tab-services, not tab-rentals).
 - tapOn:
-    id: "tab-rentals"
-- assertVisible: "Get around 🛴"
-# Profile (slim hub with Settings entry)
+    id: "tab-services"
+- extendedWaitUntil:
+    visible: "Marketplace|Services near you"
+    timeout: 15000
+# Profile is a pushed Stack screen reached from the header, NOT a tab.
 - tapOn:
-    id: "tab-profile"
+    id: "header-profile"
 - extendedWaitUntil:
     visible: "ACCOUNT"
     timeout: 15000
 # Account card rows (Settings entry verified visually; Touchable label
 # grouping makes exact text matching flaky on iOS)
 - assertVisible: "My memberships"
-# Host Mode (§1.3): toggle swaps the Events tab root to Manage and back
+# Host Mode (§1.3): the single mode control is on ProfileScreen (host-capable
+# accounts). Toggle to Hosting → Events root becomes Manage → back.
 - tapOn:
-    id: "mode-hosting"
+    id: "profile-mode-hosting"
+- tapOn:
+    id: "profile-back"
 - tapOn:
     id: "tab-events"
 - extendedWaitUntil:
@@ -55,10 +60,19 @@ appId: com.kinlo.app
     timeout: 15000
 - assertVisible: "Your events"
 - tapOn:
-    id: "mode-attending"
+    id: "header-profile"
+- tapOn:
+    id: "profile-mode-attending"
+- tapOn:
+    id: "profile-back"
+- tapOn:
+    id: "tab-events"
 - extendedWaitUntil:
     visible: "Joined|Hosting|My Events"
     timeout: 15000
-# Header bell → Notifications (un-orphaned, reachable from any tab)
+# Notifications live INSIDE the Messages/Inbox hub (BUG 13) — no header bell.
+# header-messages → Inbox → tap the Notifications row.
 - tapOn:
-    id: "header-notifications"
+    id: "header-messages"
+- tapOn:
+    text: "Notifications"

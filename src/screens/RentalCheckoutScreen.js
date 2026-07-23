@@ -181,6 +181,7 @@ export default function RentalCheckoutScreen({ route, navigation }) {
               <>
                 <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>{t("rentals.checkout.cardDetails")}</Text>
                 <CardField
+                  testID="rental-card-field"
                   postalCodeEnabled={false}
                   placeholders={{ number: "4242 4242 4242 4242" }}
                   cardStyle={{
@@ -196,6 +197,7 @@ export default function RentalCheckoutScreen({ route, navigation }) {
 
             <TouchableOpacity
               style={[styles.payButton, { backgroundColor: colors.primary, opacity: processing ? 0.6 : 1 }]}
+              testID="rental-pay-button"
               onPress={handlePay}
               disabled={processing}
               activeOpacity={0.85}

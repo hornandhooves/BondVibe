@@ -207,6 +207,7 @@ export default function InboxScreen({ navigation }) {
           right={rowRight(badges.communityChats)}
         />
         <ListRow
+          testID="inbox-notifications-row"
           icon="bell"
           title={t("inbox.notifications")}
           subtitle={t("inbox.notificationsSub")}
@@ -241,8 +242,9 @@ export default function InboxScreen({ navigation }) {
           keyExtractor={(r) => r.id}
           ListHeaderComponent={header}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <TouchableOpacity
+              testID={`inbox-dm-row-${index}`}
               style={[styles.dmRow, ELEVATION.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
               onPress={() => navigation.navigate("DMChat", { threadId: item.id, otherUid: item.otherUid })}
               activeOpacity={0.8}

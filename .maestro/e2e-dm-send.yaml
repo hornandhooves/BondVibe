@@ -1,0 +1,55 @@
+# E2E — DM: open an existing thread from the inbox, send a message, assert it
+# shows in the thread.
+#
+# Assumes a signed-in, verified session (run .maestro/p0-login.yaml first).
+#
+# SEED: the test user must already have at least one 1:1 DM thread (the inbox
+# lists existing threads; there is no "start a brand-new DM" entry from the
+# header path — a fresh DM is only started from ConnectScreen / a match).
+#
+# NEW testIDs this flow needs (see TESTIDS_TO_ADD.md):
+#   inbox-dm-row-0 · dm-composer-input · dm-send-button
+appId: com.kinlo.app
+---
+- launchApp:
+    clearState: false
+- repeat:
+    while:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 120000
+- extendedWaitUntil:
+    notVisible: "Error registering push token"
+    timeout: 15000
+    optional: true
+
+# --- Header inbox (Messages) ---
+- tapOn:
+    id: "header-messages"
+- extendedWaitUntil:
+    visible: "Messages"             # inbox.title
+    timeout: 20000
+
+# --- Open the first existing DM thread ---
+- tapOn:
+    id: "inbox-dm-row-0"            # NEW — first row under "Direct messages"
+- extendedWaitUntil:
+    visible:
+      id: "dm-composer-input"       # NEW
+    timeout: 20000
+
+# --- Send a message ---
+- tapOn:
+    id: "dm-composer-input"         # NEW — placeholder "Message…"
+- inputText: "e2e ping 12345"
+- tapOn:
+    id: "dm-send-button"            # NEW
+
+# --- The message appears in the thread ---
+- extendedWaitUntil:
+    visible: "e2e ping 12345"
+    timeout: 20000

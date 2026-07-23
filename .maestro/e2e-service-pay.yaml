@@ -1,0 +1,89 @@
+# E2E — Services marketplace: pick a slot-based service, open its detail, start
+# a booking, and land on the Checkout screen. The Stripe card step is DOCUMENTED
+# (not executed), exactly like the paid path in e2e-join-event.
+#
+# PATH: tab-services → service listing card → ServiceDetail → "Book a slot" →
+# ServiceCheckout ("Confirm booking") → pick date + time → card.
+#
+# Assumes a signed-in, VERIFIED session (run .maestro/p0-login.yaml first).
+#
+# SEED: at least one PAID, SLOT-based marketplace listing that is the FIRST card
+# in the Services list — i.e. bookingMode !== "quote", priceCents > 0, and NOT
+# linked to a membership plan (no planPackageId). Those three conditions make
+# the detail CTA read "Book a slot" and make ServiceCheckout render the Stripe
+# <CardField>:
+#   - a QUOTE / free listing → CTA "Request a quote" → BusinessRequestSession (no card)
+#   - a PLAN-linked listing  → CTA "View plan"      → MembershipCheckout (see e2e-membership-redeem)
+#
+# NEW testIDs this flow needs (see TESTIDS_TO_ADD.md):
+#   service-listing-card-0 · service-date-field (optional hardening for the date field)
+appId: com.kinlo.app
+---
+- launchApp:
+    clearState: false
+- repeat:
+    while:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 120000
+- extendedWaitUntil:
+    notVisible: "Error registering push token"
+    timeout: 15000
+    optional: true
+
+# --- Services marketplace tab ---
+- tapOn:
+    id: "tab-services"
+- extendedWaitUntil:
+    visible: "What do you need?|Services near you"   # marketplace.searchPh / nearYou
+    timeout: 20000
+
+# --- Open the first service listing ---
+- tapOn:
+    id: "service-listing-card-0"                     # NEW — first listing card
+- extendedWaitUntil:
+    visible: "Book a slot|Request a quote|View plan" # ServiceDetail sticky book bar
+    timeout: 20000
+
+# --- Start a paid slot booking → ServiceCheckout ---
+- tapOn:
+    text: "Book a slot"                              # marketplace.detail.bookSlot (paid slot only)
+- extendedWaitUntil:
+    visible: "Confirm booking|Pick a date"           # marketplace.checkout.title / pickDate
+    timeout: 20000
+
+# --- Pick a date + time. The date field is a NATIVE spinner (DateField →
+#     DateTimePicker); tapping the field then "Done" commits today's date
+#     (temp defaults to minimumDate = today). Best-effort + optional because the
+#     native spinner is environment-specific, just like the CardField below. ---
+- tapOn:
+    id: "service-date-field"                         # NEW (optional) — else tap the "Pick a date" field
+    optional: true
+- tapOn:
+    text: "Done"                                     # dateField.done — commits the date
+    optional: true
+- tapOn:
+    text: "10:00"                                    # a TIME_SLOTS chip
+    optional: true
+# We've reached the transactional checkout for a paid slot — the card block is here.
+- assertVisible: "Card details"                      # marketplace.checkout.cardDetails
+
+# =========================================================================
+# STRIPE CARD STEP — documented, NOT executed (same limitation as
+# e2e-join-event's paid path).
+#
+# The card entry is Stripe's INLINE native <CardField> (placeholder already
+# "4242 4242 4242 4242"). Maestro cannot reliably fill the fused native
+# CardField. reserveServiceBooking() runs first on the pay tap
+# (ServiceCheckoutScreen ~L70), then the card is confirmed:
+#   >>> pick a date + time (above), then type 4242 4242 4242 4242 · future
+#       expiry · any CVC into the CardField
+#   - tapOn: { text: "Confirm & pay .*" }   # marketplace.checkout.pay
+#   → "Booked!" alert (marketplace.checkout.booked) → navigate "Marketplace"
+# Recommended testIDs to make this drivable: service-card-field,
+# service-pay-button (see TESTIDS_TO_ADD.md).
+# =========================================================================

@@ -190,10 +190,11 @@ export default function EventChatsScreen({ navigation }) {
           data={filtered}
           keyExtractor={(e) => e.id}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             const unread = unreadByEvent[item.id] || 0;
             return (
             <TouchableOpacity
+              testID={`event-chat-row-${index}`}
               style={[
                 styles.row,
                 ELEVATION.card,

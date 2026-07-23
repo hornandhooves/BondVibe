@@ -1,0 +1,52 @@
+# E2E — Notifications: reach the notifications list and open one.
+#
+# NOTE ON ENTRY POINT: there is NO `header-notifications` bell in the app.
+# AppHeader exposes only `header-messages`; notifications live INSIDE the
+# Messages/Inbox hub (code comment "BUG 13"). So the real path is
+#   header-messages → Inbox → "Notifications" row → NotificationsScreen.
+# (The `header-notifications` id used by older flows is stale — see
+# TESTIDS_TO_ADD.md.)
+#
+# Assumes a signed-in, verified session (run .maestro/p0-login.yaml first).
+#
+# NEW testIDs this flow COULD use (see TESTIDS_TO_ADD.md):
+#   inbox-notifications-row (row is tapped by text today) · notification-card-0
+appId: com.kinlo.app
+---
+- launchApp:
+    clearState: false
+- repeat:
+    while:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 120000
+- extendedWaitUntil:
+    notVisible: "Error registering push token"
+    timeout: 15000
+    optional: true
+
+# --- Header inbox (Messages) ---
+- tapOn:
+    id: "header-messages"
+- extendedWaitUntil:
+    visible: "Messages"                 # inbox.title
+    timeout: 20000
+
+# --- Open Notifications from the inbox hub (ListRow title text) ---
+- tapOn:
+    text: "Notifications"               # inbox.notifications row
+- extendedWaitUntil:
+    visible: "Notifications"            # notifications.headerTitle
+    timeout: 20000
+# The screen always renders its section headings.
+- assertVisible: "NOTIFICATIONS|GROUPS"
+
+# --- Open the first notification (optional: list may be "You're all caught up!").
+#     Needs a testID on the notification card (index-based) — see TESTIDS_TO_ADD.md.
+- tapOn:
+    id: "notification-card-0"           # NEW
+    optional: true

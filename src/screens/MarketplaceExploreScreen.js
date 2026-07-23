@@ -183,13 +183,14 @@ export default function MarketplaceExploreScreen({ navigation, route }) {
         ) : filtered.length === 0 ? (
           <EmptyState colors={colors} s={s} t={t} />
         ) : (
-          filtered.map((l) => {
+          filtered.map((l, index) => {
             const meta = VERTICAL_META[l.vertical] || VERTICAL_META.wellness;
             return (
               <TouchableOpacity
                 key={`${l.bizId}_${l.id}`}
                 style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 activeOpacity={0.85}
+                testID={`service-listing-card-${index}`}
                 onPress={() => navigation.navigate("ServiceDetail", { bizId: l.bizId, listingId: l.id })}
               >
                 <View style={[s.thumb, { backgroundColor: meta.bg }]}>

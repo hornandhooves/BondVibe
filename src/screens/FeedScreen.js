@@ -277,7 +277,7 @@ export default function FeedScreen({ navigation }) {
           <Icon name="ai" size={14} color={colors.primary} />
           <Text style={[styles.askPillText, { color: colors.primary }]}>{t("wall.askKinlo")}</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate("CreatePost")} hitSlop={hit}>
+        <TouchableOpacity testID="wall-compose-fab" onPress={() => navigation.navigate("CreatePost")} hitSlop={hit}>
           <Icon name="add" size={26} color={colors.text} />
         </TouchableOpacity>
       </View>

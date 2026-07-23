@@ -1,0 +1,67 @@
+# E2E — Carpool: open an event chat that has a live carpool card and request a
+# seat on the ride.
+#
+# WHERE CARPOOL LIVES: a carpool is a message CARD inside the EVENT CHAT
+# (CarpoolCard), not a screen on EventDetail. It is reached via
+#   header-messages → Inbox → "Event chats" → an event chat → the carpool card.
+#
+# Assumes a signed-in, verified session (run .maestro/p0-login.yaml first).
+#
+# SEED: an event whose chat the test user can open (they're an attendee/host)
+# AND that already contains a carpool OFFERED BY ANOTHER user with a free seat
+# (you can't request a seat on your own ride). Create one via the car icon in an
+# event chat from a second account to seed it.
+#
+# NEW testID this flow needs (see TESTIDS_TO_ADD.md): event-chat-row-0.
+appId: com.kinlo.app
+---
+- launchApp:
+    clearState: false
+- repeat:
+    while:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 120000
+- extendedWaitUntil:
+    notVisible: "Error registering push token"
+    timeout: 15000
+    optional: true
+
+# --- Header inbox → Event chats ---
+- tapOn:
+    id: "header-messages"
+- extendedWaitUntil:
+    visible: "Messages"
+    timeout: 20000
+- tapOn:
+    text: "Event chats"                 # inbox.eventChats row → EventChats
+- extendedWaitUntil:
+    visible: "Event chats|Upcoming"     # eventChats.title / tab
+    timeout: 20000
+
+# --- Open the first event chat ---
+- tapOn:
+    id: "event-chat-row-0"              # NEW — first event chat in the list
+- extendedWaitUntil:
+    visible: "Type a message..."        # eventChat.messagePlaceholder (chat loaded)
+    timeout: 20000
+
+# --- Find the live carpool card and request a seat ---
+- scrollUntilVisible:
+    element:
+      text: "CAR POOL|Request a seat"   # carpoolCard.carPool / requestSeat
+    direction: UP
+    timeout: 20000
+    optional: true
+- tapOn:
+    text: "Request a seat"              # carpoolCard.requestSeat
+# Rider state updates to "Requested · tap to cancel" (or "You're in" if the
+# driver auto-approves) — proof the request registered.
+- extendedWaitUntil:
+    visible: "Requested.*|You're in.*"  # carpoolCard.requestedTapToCancel / youreIn
+    timeout: 20000
+    optional: true
