@@ -3762,6 +3762,8 @@
       "branch": "Sucursal",
       "smsConsentTitle": "Recordatorios por SMS",
       "smsConsentSub": "El miembro acepta recibir mensajes de clases y de su cuenta. Apagado por defecto; puede darse de baja cuando quiera (STOP). Consulta el Aviso de Privacidad.",
+      "waConsentTitle": "Recordatorios por WhatsApp",
+      "waConsentSub": "El miembro acepta recibir mensajes de clases y de su cuenta por WhatsApp. Apagado por defecto; puede darse de baja cuando quiera (STOP). Consulta el Aviso de Privacidad.",
       "save": "Guardar miembro",
       "autoLinkNote": "Se vincula automáticamente si luego se une a Kinlo.",
       "nameRequiredTitle": "Falta el nombre",
@@ -4467,6 +4469,7 @@
         "push": "Push",
         "inapp": "In-app",
         "sms": "SMS",
+        "whatsapp": "WhatsApp",
         "email": "Correo",
         "none": "—"
       },

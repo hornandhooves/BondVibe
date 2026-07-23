@@ -51,6 +51,53 @@ async function sendSms(to, body) {
   }
 }
 
+// WhatsApp "From" (e.g. "whatsapp:+14155238886" sandbox -> your prod sender),
+// kept in settings/notifConfig so it swaps sandbox->prod with no redeploy.
+let _waFrom;
+async function getWaFrom() {
+  if (_waFrom !== undefined) return _waFrom;
+  try {
+    const s = await db().collection("settings").doc("notifConfig").get();
+    _waFrom = s.exists && s.data().whatsappFrom ? s.data().whatsappFrom : null;
+  } catch (e) {
+    _waFrom = null;
+  }
+  return _waFrom;
+}
+
+/**
+ * Send a WhatsApp message via Twilio, reusing the SMS TWILIO_* creds. Inert
+ * until TWILIO_* are bound AND settings/notifConfig.whatsappFrom is set. v1
+ * sends free-form Body (fine in the sandbox and inside the 24h session window);
+ * production business-initiated messages need approved templates (ContentSid).
+ */
+async function sendWhatsApp(to, body) {
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  const from = await getWaFrom();
+  if (!sid || !token || !from || !to) {
+    return {status: "skipped", reason: "whatsapp_not_configured"};
+  }
+  try {
+    const auth = Buffer.from(`${sid}:${token}`).toString("base64");
+    const params = new URLSearchParams({
+      From: from, To: `whatsapp:${to}`, Body: body,
+    });
+    const res = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
+      {method: "POST",
+        headers: {
+          "Authorization": `Basic ${auth}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params.toString()});
+    if (res.ok) return {status: "sent"};
+    return {status: "failed", reason: `twilio_${res.status}`};
+  } catch (e) {
+    return {status: "failed", reason: String(e.message || e).slice(0, 60)};
+  }
+}
+
 /** Send an email. Inert until an email provider key is configured. */
 async function sendEmail() {
   return {status: "skipped", reason: "email_not_configured"};
@@ -130,6 +177,9 @@ async function sendToMember(bizId, member, body, channels, hostName, ruleId, quo
         result = await sendSms(member.phone, smsBody);
         if (result.status === "sent" && quota) quota.count += 1;
       }
+    } else if (ch === "whatsapp" && member.phone &&
+               member.waConsent && member.waConsent.granted === true) {
+      result = await sendWhatsApp(member.phone, smsBody);
     } else if (ch === "email" && member.email) {
       result = await sendEmail(member.email, hostName, body);
     } else {
@@ -227,7 +277,9 @@ async function remindersCron() {
  */
 async function twilioWebhook(req, res) {
   try {
-    const from = (req.body && (req.body.From || req.body.from)) || "";
+    const rawFrom = (req.body && (req.body.From || req.body.from)) || "";
+    const isWa = rawFrom.startsWith("whatsapp:");
+    const from = rawFrom.replace(/^whatsapp:/, "");
     const text = String((req.body && (req.body.Body || req.body.body)) || "")
       .trim().toUpperCase();
     const stop = ["STOP", "CANCEL", "UNSUBSCRIBE", "BAJA"].includes(text);
@@ -235,12 +287,13 @@ async function twilioWebhook(req, res) {
     if (from && (stop || start)) {
       const snap = await db().collectionGroup("members")
         .where("phone", "==", from).limit(20).get();
+      const field = isWa ? "waConsent" : "smsConsent";
       const batch = db().batch();
       snap.docs.forEach((d) => batch.set(d.ref, {
-        smsConsent: {
+        [field]: {
           granted: start,
           at: new Date().toISOString(),
-          purpose: "sms_keyword",
+          purpose: isWa ? "wa_keyword" : "sms_keyword",
           source: stop ? "stop" : "start",
         },
       }, {merge: true}));

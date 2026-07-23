@@ -122,6 +122,15 @@ export function buildSmsConsent(granted, source = "enrollment") {
   };
 }
 
+export function buildWaConsent(granted, source = "enrollment") {
+  return {
+    granted: granted === true,
+    at: granted === true ? new Date().toISOString() : null,
+    purpose: "class_and_account_notifications",
+    source,
+  };
+}
+
 /** Whether we're allowed to SMS this member (Block 8 send-gate honors this). */
 export const canSms = (member) =>
   !!(member && member.smsConsent && member.smsConsent.granted === true && member.phone);
@@ -217,6 +226,7 @@ export async function createMember(data = {}, businessName = "", bizId = getMyBi
     redeemedAt: null,
     qrPassId: null,
     smsConsent: buildSmsConsent(data.smsConsentGranted, source),
+    waConsent: buildWaConsent(data.waConsentGranted, source),
     source,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
