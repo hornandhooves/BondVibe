@@ -3,6 +3,12 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 
+# Maestro E2E — takeScreenshot escribe <name>.png en el cwd al correr desde la raíz
+/publish-photo-success.png
+/service-deleted.png
+/kqa-s02-*.png
+/probe-*.png
+
 # Expo / React Native
 .expo/
 .expo-shared/
