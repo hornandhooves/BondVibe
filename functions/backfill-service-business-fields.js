@@ -26,7 +26,7 @@ const db = admin.firestore();
     const biz = bizCache.get(bizId);
     await docSnap.ref.set(
       {businessName: biz.name || "", businessVerified: biz.verified === true},
-      {merge: true}
+      {merge: true},
     );
     patched++;
   }
