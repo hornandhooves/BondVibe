@@ -1,4 +1,7 @@
 {
+  "auth.profileSetup.welcomeNotification.title": "¡Bienvenido a Kinlo!",
+  "auth.profileSetup.welcomeNotification.message": "¡Hola! Nos emociona mucho que estés aquí. Esta app se hizo con mucho cariño para personas como tú que buscan conexiones reales, no solo likes. Explora eventos, conoce gente increíble y hagamos recuerdos juntos. ¡Tú puedes!",
+
   "notifications.creditUsed.title": "Check-in confirmado",
   "notifications.creditUsed.body": "Se usó 1 crédito en {{event}}. Te quedan {{remaining}} en {{plan}}.",
   "notifications.checkedIn.body": "Ya tienes check-in en {{event}}.",

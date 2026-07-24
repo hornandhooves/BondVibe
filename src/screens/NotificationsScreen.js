@@ -66,6 +66,21 @@ const KNOWN_ICONS = new Set([
 const resolveIconName = (raw) =>
   LEGACY_ICON[raw] || (KNOWN_ICONS.has(raw) ? raw : "bell");
 
+// KIN-93: the stored title/message is only a write-time fallback (BUG 34) —
+// the source of truth for the CURRENT app language is titleKey/bodyKey. The
+// list card already re-resolved from the key; the "welcome" tap-through alert
+// didn't, so it kept showing the stale/broken stored text (in one real case, a
+// server-side i18n catalog miss meant the stored text was the raw key itself).
+// One shared resolver so every render path is guarded the same way: prefer
+// the key, and never surface stored text that still looks like an unresolved
+// dotted i18n key.
+const RAW_I18N_KEY_RE = /^[a-z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9]*)+$/;
+const localizedNotifText = (t, key, params, stored) => {
+  if (key) return t(key, params);
+  if (stored && RAW_I18N_KEY_RE.test(stored)) return null;
+  return stored || null;
+};
+
 export default function NotificationsScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
@@ -364,13 +379,20 @@ export default function NotificationsScreen({ navigation }) {
         }
         break;
 
-      case "welcome":
-        Alert.alert(
-          notification.title || t("notifications.welcomeTitle"),
-          notification.message || notification.body,
-          [{ text: t("notifications.letsGo"), onPress: () => navigation.navigate("SearchEvents") }]
-        );
+      case "welcome": {
+        const params = notification.params || {};
+        const title =
+          localizedNotifText(t, notification.titleKey, params, notification.title) ||
+          t("notifications.welcomeTitle");
+        const message =
+          localizedNotifText(t, notification.bodyKey, params, notification.message) ||
+          notification.body ||
+          "";
+        Alert.alert(title, message, [
+          { text: t("notifications.letsGo"), onPress: () => navigation.navigate("SearchEvents") },
+        ]);
         break;
+      }
 
       default:
         break;
@@ -402,12 +424,14 @@ export default function NotificationsScreen({ navigation }) {
       // BUG 34: render system notifications from their i18n key + params so the
       // durable Inbox card follows the CURRENT app language (the stored
       // title/message is only an English fallback for old clients). Falls back to
-      // the stored text for anything not yet keyed.
-      let displayTitle = safeTitle;
-      let displayMessage = safeMessage;
+      // the stored text for anything not yet keyed (KIN-93: unless that stored
+      // text is itself an unresolved raw key — see localizedNotifText above).
       const params = notification.params || {};
-      if (notification.titleKey) displayTitle = t(notification.titleKey, params);
-      if (notification.bodyKey) displayMessage = t(notification.bodyKey, params);
+      const displayTitle =
+        localizedNotifText(t, notification.titleKey, params, safeTitle) ||
+        t("notifications.defaultTitle");
+      const displayMessage =
+        localizedNotifText(t, notification.bodyKey, params, safeMessage) || "";
 
       return (
         <TouchableOpacity
