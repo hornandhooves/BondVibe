@@ -26,7 +26,8 @@
     "nodemailer": "^9.0.3",
     "react": "19.1.0",
     "react-native": "0.81.5",
-    "stripe": "^20.0.0"
+    "stripe": "^20.0.0",
+    "twilio": "^6.0.2"
   },
   "devDependencies": {
     "eslint": "^8.15.0",
