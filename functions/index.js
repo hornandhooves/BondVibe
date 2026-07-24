@@ -4801,7 +4801,12 @@ exports.businessRemindersCron = onSchedule(
   },
   bizAutomations.remindersCron,
 );
-exports.twilioSmsWebhook = onRequest({cors: false}, bizAutomations.twilioWebhook);
+// TWILIO_AUTH_TOKEN is bound so the handler VERIFIES the X-Twilio-Signature on every
+// inbound request (else STOP/START consent could be forged). SMS sending stays inert.
+exports.twilioSmsWebhook = onRequest(
+  {cors: false, secrets: [twilioToken]},
+  bizAutomations.twilioWebhook,
+);
 
 // Staff roles an owner may ASSIGN via an invite. Derived from DEFAULT_ROLES
 // (src/constants/businessRoles.js) minus "owner": owner is never granted by an
