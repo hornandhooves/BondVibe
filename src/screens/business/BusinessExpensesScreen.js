@@ -38,6 +38,7 @@ import { RANGE_IDS, DEFAULT_RANGE, rangeBounds, rangeLabelKey } from "../../cons
 import { formatCentavos, formatCentavosCompact } from "../../utils/pricing";
 import { FONTS } from "../../constants/theme-tokens";
 import { formatDate } from "../../utils/formatDate";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
 const PL_GRADIENT = ["#0E3D33", "#155C4B"]; // P&L summary card (135°)
 const PL_EYEBROW = "#9FDCC7";
@@ -53,22 +54,24 @@ export default function BusinessExpensesScreen({ navigation }) {
   const [tab, setTab] = useState("income"); // income | expenses
   const [payments, setPayments] = useState([]);
   const [expenses, setExpenses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
 
   // Compute bounds fresh at load time (not memoized to mount) so the "to = now"
   // upper bound advances — otherwise a just-added expense dated after mount is
   // filtered out until the screen is remounted. Re-runs on focus + range change.
-  const load = useCallback(async () => {
-    const b = rangeBounds(rangeId, { from: customFrom, to: customTo });
-    setLoading(true);
-    const [pays, exps] = await Promise.all([
-      listPaymentsInRange(b.from.toISOString(), b.to.toISOString()),
-      listExpensesInRange(b.from.toISOString(), b.to.toISOString()),
-    ]);
-    setPayments(pays);
-    setExpenses(exps);
-    setLoading(false);
-  }, [rangeId, customFrom, customTo]);
+  const load = useCallback(
+    () =>
+      run(async () => {
+        const b = rangeBounds(rangeId, { from: customFrom, to: customTo });
+        const [pays, exps] = await Promise.all([
+          listPaymentsInRange(b.from.toISOString(), b.to.toISOString()),
+          listExpensesInRange(b.from.toISOString(), b.to.toISOString()),
+        ]);
+        setPayments(pays);
+        setExpenses(exps);
+      }),
+    [rangeId, customFrom, customTo, run]
+  );
 
   useFocusEffect(
     useCallback(() => {
