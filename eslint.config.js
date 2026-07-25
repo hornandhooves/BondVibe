@@ -1,6 +1,7 @@
 // https://docs.expo.dev/guides/using-eslint/
 const { defineConfig } = require('eslint/config');
 const expoConfig = require("eslint-config-expo/flat");
+const noUnguardedAsyncState = require("./eslint-rules/no-unguarded-async-state");
 
 module.exports = defineConfig([
   expoConfig,
@@ -14,6 +15,23 @@ module.exports = defineConfig([
     rules: {
       "react/no-unescaped-entities": "warn",
       "react/display-name": "warn",
+    },
+  },
+  {
+    // KIN-92/94/95: setLoading(true) -> unguarded await/Promise.all/.then ->
+    // setLoading(false), no try/catch, leaves the UI stuck forever on any
+    // rejection. See eslint-rules/no-unguarded-async-state.js for exactly
+    // what this does and does not catch. "warn" for now — there's an existing
+    // backlog (KIN-94/95) to clear before promoting this to "error".
+    plugins: {
+      local: {
+        rules: {
+          "no-unguarded-async-state": noUnguardedAsyncState,
+        },
+      },
+    },
+    rules: {
+      "local/no-unguarded-async-state": "warn",
     },
   },
   {
