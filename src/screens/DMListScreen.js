@@ -22,6 +22,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { db, auth } from "../services/firebase";
 import { getMyThreads } from "../services/dmService";
 import { getBlockedIds } from "../services/blockService";
+import { useAsyncLoad } from "../hooks/useAsyncLoad";
 
 const normAvatar = (a) =>
   !a ? null : typeof a === "string" ? { type: "emoji", value: a } : a;
@@ -30,32 +31,40 @@ export default function DMListScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
   const me = auth.currentUser?.uid;
 
   useFocusEffect(
     useCallback(() => {
-      (async () => {
+      run(async () => {
         const [threads, blocked] = await Promise.all([getMyThreads(), getBlockedIds()]);
         const resolved = await Promise.all(
           threads.map(async (thread) => {
-            const otherUid = (thread.users || []).find((u) => u !== me);
-            if (!otherUid || blocked.includes(otherUid)) return null;
-            const s = await getDoc(doc(db, "users", otherUid));
-            const u = s.exists() ? s.data() : {};
-            return {
-              id: thread.id,
-              otherUid,
-              name: u.fullName || u.name || t("inbox.defaultUserName"),
-              avatar: u.avatar,
-              lastMessage: thread.lastMessage || "",
-            };
+            // KIN-94: one unreadable thread partner (permission-denied, a
+            // deleted user doc) must not blank the ENTIRE inbox for every
+            // user — resolve each thread independently and drop only the
+            // broken one.
+            try {
+              const otherUid = (thread.users || []).find((u) => u !== me);
+              if (!otherUid || blocked.includes(otherUid)) return null;
+              const s = await getDoc(doc(db, "users", otherUid));
+              const u = s.exists() ? s.data() : {};
+              return {
+                id: thread.id,
+                otherUid,
+                name: u.fullName || u.name || t("inbox.defaultUserName"),
+                avatar: u.avatar,
+                lastMessage: thread.lastMessage || "",
+              };
+            } catch (e) {
+              console.error("DMListScreen: thread resolve failed", thread.id, e);
+              return null;
+            }
           })
         );
         setRows(resolved.filter(Boolean));
-        setLoading(false);
-      })();
-    }, [])
+      });
+    }, [run])
   );
 
   const styles = createStyles(colors);

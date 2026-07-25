@@ -17,6 +17,7 @@ import DateField from "../../components/DateField";
 import { useTheme } from "../../contexts/ThemeContext";
 import { listAvailability, createAvailability, deleteAvailability, listSessionTypes } from "../../services/businessSessionsService";
 import { formatDate } from "../../utils/formatDate";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
 const weekdayShort = (i, lang) => new Date(2024, 0, 7 + i).toLocaleDateString(lang || "en", { weekday: "short" });
 
@@ -25,14 +26,18 @@ export default function AvailabilityScreen({ navigation }) {
   const { t, i18n } = useTranslation();
   const [slots, setSlots] = useState([]);
   const [types, setTypes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState(null);
 
-  const load = useCallback(async () => {
-    const [s, ty] = await Promise.all([listAvailability(), listSessionTypes()]);
-    setSlots(s); setTypes(ty); setLoading(false);
-  }, []);
+  const load = useCallback(
+    () =>
+      run(async () => {
+        const [s, ty] = await Promise.all([listAvailability(), listSessionTypes()]);
+        setSlots(s); setTypes(ty);
+      }),
+    [run]
+  );
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const openNew = () => setForm({ sessionTypeId: types[0]?.id || null, weekdays: [], date: null, time: "10:00", durationMin: String(types[0]?.durationMin || 60), location: "", capacity: "1" }) || setAdding(true);

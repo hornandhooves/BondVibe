@@ -27,6 +27,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { getBusiness, listBranches } from "../../services/businessService";
 import { createMember, updateMember, getMember, buildSmsConsent, buildWaConsent } from "../../services/businessMembersService";
 import { verticalTagsKey } from "../../constants/businessVerticals";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
 // Persist a birthday as UTC-midnight of the LOCAL calendar day the host picked,
 // so the UTC MM-DD read path (birthdayMMDD/birthdayLabel) reports exactly that
@@ -45,7 +46,7 @@ export default function MemberFormScreen({ route, navigation }) {
   const editing = !!memberId;
 
   const [business, setBusiness] = useState(null);
-  const [loading, setLoading] = useState(editing);
+  const { loading, run } = useAsyncLoad(editing);
   const [saving, setSaving] = useState(false);
 
   const [name, setName] = useState("");
@@ -62,7 +63,7 @@ export default function MemberFormScreen({ route, navigation }) {
   const [branchId, setBranchId] = useState(null);
 
   useEffect(() => {
-    (async () => {
+    run(async () => {
       const [biz, brs] = await Promise.all([getBusiness(), listBranches()]);
       setBusiness(biz);
       setBranches(brs);
@@ -79,9 +80,9 @@ export default function MemberFormScreen({ route, navigation }) {
           setBalanceOwed(m.balanceOwedCents ? String(m.balanceOwedCents / 100) : "");
           setBranchId(m.branchId || null);
         }
-        setLoading(false);
       }
-    })();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memberId]);
 
   const suggested = (() => {

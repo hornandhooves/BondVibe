@@ -17,6 +17,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { listSessionTypes, createBooking, updateBooking, getBooking, PAID_WITH } from "../../services/businessSessionsService";
 import { checkInstructorAvailability, AGENDA_ITEM_KIND } from "../../services/businessAgendaService";
 import { listMembers } from "../../services/businessMembersService";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
 export default function BookingFormScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
@@ -27,7 +28,7 @@ export default function BookingFormScreen({ navigation, route }) {
   const editing = !!params.bookingId;
   const [types, setTypes] = useState([]);
   const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
   const [saving, setSaving] = useState(false);
   const [typeId, setTypeId] = useState(null);
   const [selected, setSelected] = useState([]); // [{memberId,name}]
@@ -38,7 +39,7 @@ export default function BookingFormScreen({ navigation, route }) {
   const [paidWith, setPaidWith] = useState("credit");
 
   useEffect(() => {
-    (async () => {
+    run(async () => {
       const [ty, ms] = await Promise.all([listSessionTypes(), listMembers()]);
       setTypes(ty); setMembers(ms);
       if (editing) {
@@ -55,8 +56,7 @@ export default function BookingFormScreen({ navigation, route }) {
       } else if (ty[0]) {
         setTypeId(ty[0].id); setLocation("");
       }
-      setLoading(false);
-    })();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

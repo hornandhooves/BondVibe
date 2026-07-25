@@ -16,30 +16,33 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { getMember } from "../../services/businessMembersService";
 import { getBusiness } from "../../services/businessService";
 import { FONTS } from "../../constants/theme-tokens";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
 export default function MembershipCardScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const memberId = route.params?.memberId;
   const [pass, setPass] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const [m, biz] = await Promise.all([getMember(memberId), getBusiness()]);
-    if (m && biz) {
-      setPass({
-        bizId: biz.id,
-        memberId,
-        businessName: biz.name || "",
-        memberName: m.name || "",
-        activePackage: m.activePackage || null,
-        creditBalance: m.creditBalance || 0,
-        visitsTotal: m.visitsTotal || 0,
-      });
-    }
-    setLoading(false);
-  }, [memberId]);
+  const load = useCallback(
+    () =>
+      run(async () => {
+        const [m, biz] = await Promise.all([getMember(memberId), getBusiness()]);
+        if (m && biz) {
+          setPass({
+            bizId: biz.id,
+            memberId,
+            businessName: biz.name || "",
+            memberName: m.name || "",
+            activePackage: m.activePackage || null,
+            creditBalance: m.creditBalance || 0,
+            visitsTotal: m.visitsTotal || 0,
+          });
+        }
+      }),
+    [memberId, run]
+  );
 
   useFocusEffect(
     useCallback(() => {

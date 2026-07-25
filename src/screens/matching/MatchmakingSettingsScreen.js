@@ -33,6 +33,7 @@ import {
   leaveMatchmaking,
 } from "../../services/matchingService";
 import { getExclusions, clearExclusions } from "../../services/curatedService";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
 export default function MatchmakingSettingsScreen({ navigation }) {
   const { colors } = useTheme();
@@ -40,16 +41,18 @@ export default function MatchmakingSettingsScreen({ navigation }) {
   const { isPlus } = useSubscriptions();
   const [mm, setMm] = useState(null);
   const [excluded, setExcluded] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { loading, run } = useAsyncLoad();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const [m, ex] = await Promise.all([getMatchmaking(), getExclusions()]);
-    setMm(m || {});
-    setExcluded(ex.length);
-    setLoading(false);
-  }, []);
+  const load = useCallback(
+    () =>
+      run(async () => {
+        const [m, ex] = await Promise.all([getMatchmaking(), getExclusions()]);
+        setMm(m || {});
+        setExcluded(ex.length);
+      }),
+    [run]
+  );
   React.useEffect(() => navigation.addListener("focus", load), [navigation, load]);
 
   const wrap = async (fn) => {
