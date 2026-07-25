@@ -37,6 +37,7 @@ import {
   blockUserInGroup,
 } from "../services/hostGroupService";
 import { uploadReportEvidence } from "../services/storageService";
+import { useAsyncLoad } from "../hooks/useAsyncLoad";
 
 const normAvatar = (a) =>
   !a ? null : typeof a === "string" ? { type: "emoji", value: a } : a;
@@ -50,7 +51,7 @@ export default function GroupManageScreen({ route, navigation }) {
   const [name, setName] = useState("");
   const [spotifyUrl, setSpotifyUrl] = useState("");
   const [savingSpotify, setSavingSpotify] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
   const [saving, setSaving] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [email, setEmail] = useState("");
@@ -75,7 +76,7 @@ export default function GroupManageScreen({ route, navigation }) {
   };
 
   useEffect(() => {
-    (async () => {
+    run(async () => {
       const [g, c] = await Promise.all([
         getGroup(groupId),
         getHostAttendeeCandidates(),
@@ -85,8 +86,8 @@ export default function GroupManageScreen({ route, navigation }) {
       setSpotifyUrl(g?.spotifyUrl || "");
       setCandidates(c);
       if (g) setInviteCode(await ensureInviteCode(g));
-      setLoading(false);
-    })();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupId]);
 
   const inviteLink = (code) => `kinlo://join-group/${code}`;
@@ -177,27 +178,32 @@ export default function GroupManageScreen({ route, navigation }) {
     const target = email.trim().toLowerCase();
     if (!target) return;
     setAddingEmail(true);
-    const user = await findUserByEmail(target);
-    setAddingEmail(false);
-    if (!user) {
-      Alert.alert(
-        t("groupManage.notOnKinloYet"),
-        t("groupManage.notOnKinloYetMessage", { target }),
-        [
-          { text: t("groupManage.cancel"), style: "cancel" },
-          { text: t("groupManage.sendInvite"), onPress: () => handleShareInvite(target) },
-        ]
-      );
-      return;
+    try {
+      const user = await findUserByEmail(target);
+      if (!user) {
+        Alert.alert(
+          t("groupManage.notOnKinloYet"),
+          t("groupManage.notOnKinloYetMessage", { target }),
+          [
+            { text: t("groupManage.cancel"), style: "cancel" },
+            { text: t("groupManage.sendInvite"), onPress: () => handleShareInvite(target) },
+          ]
+        );
+        return;
+      }
+      if ((group.memberIds || []).includes(user.id)) {
+        Alert.alert(t("groupManage.alreadyAMember"), t("groupManage.alreadyAMemberMessage", { name: user.fullName || target }));
+        return;
+      }
+      await addMembers(groupId, [user.id]);
+      setGroup((g) => ({ ...g, memberIds: [...(g.memberIds || []), user.id] }));
+      setEmail("");
+      Alert.alert(t("groupManage.added"), t("groupManage.addedMessage", { name: user.fullName || target }));
+    } catch (e) {
+      Alert.alert(t("groupManage.couldntUpdate"), t("groupManage.pleaseTryAgain"));
+    } finally {
+      setAddingEmail(false);
     }
-    if ((group.memberIds || []).includes(user.id)) {
-      Alert.alert(t("groupManage.alreadyAMember"), t("groupManage.alreadyAMemberMessage", { name: user.fullName || target }));
-      return;
-    }
-    await addMembers(groupId, [user.id]);
-    setGroup((g) => ({ ...g, memberIds: [...(g.memberIds || []), user.id] }));
-    setEmail("");
-    Alert.alert(t("groupManage.added"), t("groupManage.addedMessage", { name: user.fullName || target }));
   };
 
   const [blockTarget, setBlockTarget] = useState(null);
@@ -256,27 +262,32 @@ export default function GroupManageScreen({ route, navigation }) {
     const target = phone.trim();
     if (!target) return;
     setAddingPhone(true);
-    const user = await findUserByPhone(target);
-    setAddingPhone(false);
-    if (!user) {
-      Alert.alert(
-        t("groupManage.notOnKinloYet"),
-        t("groupManage.notOnKinloYetMessage", { target }),
-        [
-          { text: t("groupManage.cancel"), style: "cancel" },
-          { text: t("groupManage.sendInvite"), onPress: () => handleShareInvite(target) },
-        ]
-      );
-      return;
+    try {
+      const user = await findUserByPhone(target);
+      if (!user) {
+        Alert.alert(
+          t("groupManage.notOnKinloYet"),
+          t("groupManage.notOnKinloYetMessage", { target }),
+          [
+            { text: t("groupManage.cancel"), style: "cancel" },
+            { text: t("groupManage.sendInvite"), onPress: () => handleShareInvite(target) },
+          ]
+        );
+        return;
+      }
+      if ((group.memberIds || []).includes(user.id)) {
+        Alert.alert(t("groupManage.alreadyAMember"), t("groupManage.alreadyAMemberMessage", { name: user.fullName || target }));
+        return;
+      }
+      await addMembers(groupId, [user.id]);
+      setGroup((g) => ({ ...g, memberIds: [...(g.memberIds || []), user.id] }));
+      setPhone("");
+      Alert.alert(t("groupManage.added"), t("groupManage.addedMessage", { name: user.fullName || target }));
+    } catch (e) {
+      Alert.alert(t("groupManage.couldntUpdate"), t("groupManage.pleaseTryAgain"));
+    } finally {
+      setAddingPhone(false);
     }
-    if ((group.memberIds || []).includes(user.id)) {
-      Alert.alert(t("groupManage.alreadyAMember"), t("groupManage.alreadyAMemberMessage", { name: user.fullName || target }));
-      return;
-    }
-    await addMembers(groupId, [user.id]);
-    setGroup((g) => ({ ...g, memberIds: [...(g.memberIds || []), user.id] }));
-    setPhone("");
-    Alert.alert(t("groupManage.added"), t("groupManage.addedMessage", { name: user.fullName || target }));
   };
 
   const memberIds = group?.memberIds || [];
@@ -294,9 +305,18 @@ export default function GroupManageScreen({ route, navigation }) {
   const handleSaveName = async () => {
     if (!name.trim()) return;
     setSaving(true);
-    await updateGroup(groupId, { name: name.trim() });
-    setSaving(false);
-    setGroup((g) => ({ ...g, name: name.trim() }));
+    try {
+      // KIN-95 #1: updateGroup() is a bare updateDoc with no internal
+      // try/catch (unlike createGroup right above it in the same service
+      // file) — this handler was the one place in this screen that forgot
+      // to guard it, leaving Save permanently stuck on rejection.
+      await updateGroup(groupId, { name: name.trim() });
+      setGroup((g) => ({ ...g, name: name.trim() }));
+    } catch (e) {
+      Alert.alert(t("groupManage.couldntUpdate"), t("groupManage.pleaseTryAgain"));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = () => {

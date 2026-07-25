@@ -16,16 +16,17 @@ import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import { getHostRatings } from "../services/ratingService";
 import { getHostRatingsByEvent, extractKeywords } from "../services/hostInsightsService";
+import { useAsyncLoad } from "../hooks/useAsyncLoad";
 
 export default function RatingsOverviewScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const [reviews, setReviews] = useState([]);
   const [byEvent, setByEvent] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
 
   useEffect(() => {
-    (async () => {
+    run(async () => {
       const uid = auth.currentUser?.uid;
       const [r, e] = await Promise.all([
         uid ? getHostRatings(uid) : Promise.resolve([]),
@@ -33,9 +34,8 @@ export default function RatingsOverviewScreen({ navigation }) {
       ]);
       setReviews(r);
       setByEvent(e);
-      setLoading(false);
-    })();
-  }, []);
+    });
+  }, [run]);
 
   const styles = createStyles(colors, isDark);
   const withComments = reviews.filter((r) => (r.comment || "").trim());
