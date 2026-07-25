@@ -89,5 +89,9 @@
   "notifications.event.reminder.h2Title": "Starting soon ⏰",
   "notifications.event.reminder.h2Body": "\"{{event}}\" starts in about 2 hours.",
   "notifications.event.reminder.h24Title": "Event tomorrow ⏰",
-  "notifications.event.reminder.h24Body": "\"{{event}}\" is happening within 24 hours."
+  "notifications.event.reminder.h24Body": "\"{{event}}\" is happening within 24 hours.",
+
+  "notif.eventCancelled.title": "Event Cancelled",
+  "notif.eventCancelled.body": "\"{{title}}\" has been cancelled. Reason: {{reason}}",
+  "notif.eventCancelledNoReason.body": "\"{{title}}\" has been cancelled."
 }

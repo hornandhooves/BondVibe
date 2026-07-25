@@ -598,17 +598,29 @@ export default function EventDetailScreen({ route, navigation }) {
       // ROSTER (#55): notify everyone on the roster (the caller is the host, so
       // the host-only roster list is allowed) — not the stripped attendees array.
       const uniqueParticipants = await getEventRosterUids(event.id);
-      const reason =
-        cancellationReason !== "No reason provided"
-          ? t("eventDetail.alerts.reasonPrefix", { reason: cancellationReason })
-          : t("eventDetail.alerts.noReasonProvided");
+      // KIN-96: decide by truthiness, not by comparing against a hardcoded
+      // English literal — cancellationReason is now null/"" when the host left
+      // it blank (CancelEventModal no longer fills in a localized placeholder),
+      // so a plain truthy check works regardless of the canceller's language.
+      // Two catalog entries (with/without a reason) stand in for the
+      // conditional a flat i18n template can't express — the client no longer
+      // builds any part of the sentence itself.
+      const hasReason = !!cancellationReason;
       for (const participantId of uniqueParticipants) {
         if (participantId !== auth.currentUser.uid) {
           try {
+            // KIN-96: forward the i18n key + params (BUG 34) instead of a
+            // pre-rendered message, so each recipient reads this in THEIR OWN
+            // language, not the canceller's.
             await createNotification(participantId, {
-              type: "event_cancelled",
-              title: t("eventDetail.alerts.notifCancelledTitle"),
-              message: t("eventDetail.alerts.notifCancelledMsg", { title: event.title, reason }),
+              type: hasReason ? "event_cancelled" : "event_cancelled_no_reason",
+              titleKey: "notif.eventCancelled.title",
+              bodyKey: hasReason
+                ? "notif.eventCancelled.body"
+                : "notif.eventCancelledNoReason.body",
+              params: hasReason
+                ? { title: event.title, reason: cancellationReason }
+                : { title: event.title },
               icon: "block",
               metadata: {
                 eventId: event.id,

@@ -28,7 +28,14 @@ export default function CancelEventModal({
     Keyboard.dismiss(); // Dismiss keyboard before confirming
     setLoading(true);
     try {
-      await onConfirm(reason.trim() || t("cancelEventModal.noReasonProvided"));
+      // KIN-96: send the raw reason (or null when none was given) — NOT a
+      // client-localized placeholder. onConfirm forwards this straight into
+      // the cancellation notification's params; a translated fallback here
+      // would freeze "No reason provided"/"No se proporcionó motivo" (whatever
+      // the CANCELLER's language happens to be) into every recipient's
+      // notification regardless of THEIR language. The recipient-facing
+      // "no reason given" copy is now a separate server-rendered bodyKey.
+      await onConfirm(reason.trim() || null);
       setReason("");
     } catch (e) {
       // KIN-95: this component's only current caller (EventDetailScreen)

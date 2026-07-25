@@ -553,7 +553,16 @@ const NOTIF_CATALOG = {
   host_nudge: {gate: "host", title: "A note from your host", fromMsg: true, icon: "heart"},
   event_joined: {gate: "open", title: "New attendee", fromMsg: true, icon: "users"},
   event_reminder: {gate: "open", title: "Event reminder", fromMsg: true, icon: "clock"},
-  event_cancelled: {gate: "open", title: "Event cancelled", fromMsg: true, icon: "block"},
+  // KIN-96: was fromMsg (client-frozen text in the CANCELLER's language, read
+  // by every attendee) — same BUG 34 class as KIN-93. reason is free-text, not
+  // translated, so it's a keyParam interpolated as-is, same as {{message}} on
+  // host_approved/host_rejected above. Two entries (with/without a reason)
+  // because a flat i18n template has no conditional — the client picks the
+  // type by truthiness instead of pre-building the sentence itself.
+  event_cancelled: {gate: "open", titleKey: "notif.eventCancelled.title",
+    bodyKey: "notif.eventCancelled.body", keyParams: ["title", "reason"], icon: "block"},
+  event_cancelled_no_reason: {gate: "open", titleKey: "notif.eventCancelled.title",
+    bodyKey: "notif.eventCancelledNoReason.body", keyParams: ["title"], icon: "block"},
   event_rating: {gate: "open", title: "New rating received", fromMsg: true, icon: "star"},
   rating_reply: {gate: "open", title: "New message", fromMsg: true, icon: "chat"},
   mention: {gate: "open", title: "You were mentioned", fromMsg: true, icon: "message"},
