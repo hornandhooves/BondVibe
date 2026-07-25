@@ -22,6 +22,7 @@ import {
 } from "../services/membershipService";
 import { listOnlinePlans } from "../services/plansService";
 import { getMyPricingTierForHost } from "../services/businessMembersService";
+import { useAsyncLoad } from "../hooks/useAsyncLoad";
 
 export default function HostMembershipsScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
@@ -29,12 +30,13 @@ export default function HostMembershipsScreen({ route, navigation }) {
   const { hostId, hostName: hostNameParam } = route.params || {};
   const [plans, setPlans] = useState([]);
   const [hostName, setHostName] = useState(hostNameParam || "");
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
 
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [hostId])
+      run(load);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hostId, run])
   );
 
   const load = async () => {
@@ -64,7 +66,6 @@ export default function HostMembershipsScreen({ route, navigation }) {
       const d = hostSnap.data();
       setHostName(d.fullName || d.name || hostNameParam || t("hostMemberships.host"));
     }
-    setLoading(false);
   };
 
   const styles = createStyles(colors, isDark);

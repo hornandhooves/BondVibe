@@ -12,6 +12,7 @@ import {
   Alert,
   TextInput,
   Share,
+  Linking,
 } from "react-native";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { StatusBar } from "expo-status-bar";
@@ -27,6 +28,7 @@ import { setDoc,
 } from "firebase/firestore";
 import { db, auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
+import { FONTS, RADII } from "../constants/theme-tokens";
 import { slugifyCity } from "../hooks/useCities";
 import { LOCATIONS } from "../utils/locations";
 import {
@@ -962,13 +964,9 @@ export default function AdminDashboardScreen({ navigation }) {
               styles.tabGlass,
               {
                 backgroundColor:
-                  activeTab === "requests"
-                    ? `${colors.primary}33`
-                    : colors.surfaceGlass,
+                  activeTab === "requests" ? colors.brandSoft : colors.surface,
                 borderColor:
-                  activeTab === "requests"
-                    ? `${colors.primary}66`
-                    : colors.border,
+                  activeTab === "requests" ? colors.primary : colors.border,
               },
             ]}
           >
@@ -1002,11 +1000,9 @@ export default function AdminDashboardScreen({ navigation }) {
               styles.tabGlass,
               {
                 backgroundColor:
-                  activeTab === "users"
-                    ? `${colors.primary}33`
-                    : colors.surfaceGlass,
+                  activeTab === "users" ? colors.brandSoft : colors.surface,
                 borderColor:
-                  activeTab === "users" ? `${colors.primary}66` : colors.border,
+                  activeTab === "users" ? colors.primary : colors.border,
               },
             ]}
           >
@@ -1032,9 +1028,9 @@ export default function AdminDashboardScreen({ navigation }) {
               styles.tabGlass,
               {
                 backgroundColor:
-                  activeTab === "crashes" ? `${colors.primary}33` : colors.surfaceGlass,
+                  activeTab === "crashes" ? colors.brandSoft : colors.surface,
                 borderColor:
-                  activeTab === "crashes" ? `${colors.primary}66` : colors.border,
+                  activeTab === "crashes" ? colors.primary : colors.border,
               },
             ]}
           >
@@ -1055,9 +1051,9 @@ export default function AdminDashboardScreen({ navigation }) {
               styles.tabGlass,
               {
                 backgroundColor:
-                  activeTab === "pricing" ? `${colors.primary}33` : colors.surfaceGlass,
+                  activeTab === "pricing" ? colors.brandSoft : colors.surface,
                 borderColor:
-                  activeTab === "pricing" ? `${colors.primary}66` : colors.border,
+                  activeTab === "pricing" ? colors.primary : colors.border,
               },
             ]}
           >
@@ -1078,9 +1074,9 @@ export default function AdminDashboardScreen({ navigation }) {
               styles.tabGlass,
               {
                 backgroundColor:
-                  activeTab === "transfers" ? `${colors.primary}33` : colors.surfaceGlass,
+                  activeTab === "transfers" ? colors.brandSoft : colors.surface,
                 borderColor:
-                  activeTab === "transfers" ? `${colors.primary}66` : colors.border,
+                  activeTab === "transfers" ? colors.primary : colors.border,
               },
             ]}
           >
@@ -1367,13 +1363,18 @@ export default function AdminDashboardScreen({ navigation }) {
                             })}
                           </Text>
                           {request.attachments.map((a, i) => (
-                            <Text
+                            <TouchableOpacity
                               key={a?.url || i}
-                              style={[styles.detailValue, { color: colors.primary }]}
-                              numberOfLines={1}
+                              disabled={!a?.url}
+                              onPress={() => Linking.openURL(a.url).catch(() => {})}
                             >
-                              {a?.name || a?.url || `#${i + 1}`}
-                            </Text>
+                              <Text
+                                style={[styles.detailValue, { color: colors.primary }]}
+                                numberOfLines={1}
+                              >
+                                {a?.name || a?.url || `#${i + 1}`}
+                              </Text>
+                            </TouchableOpacity>
                           ))}
                         </View>
                       )}
@@ -1836,14 +1837,14 @@ function createStyles(colors) {
       paddingTop: 60,
       paddingBottom: 20,
     },
-    headerTitle: { fontSize: 20, fontWeight: "700", letterSpacing: -0.3 },
+    headerTitle: { fontFamily: FONTS.display, fontSize: 20, letterSpacing: -0.3 },
     tabsContainer: {
       flexDirection: "row",
       paddingHorizontal: 24,
       marginBottom: 20,
       gap: 12,
     },
-    tab: { flex: 1, borderRadius: 12, overflow: "hidden" },
+    tab: { flex: 1, borderRadius: RADII.tile, overflow: "hidden" },
     tabGlass: {
       borderWidth: 1,
       paddingVertical: 12,
@@ -1852,7 +1853,7 @@ function createStyles(colors) {
       justifyContent: "center",
       gap: 8,
     },
-    tabText: { fontSize: 15, fontWeight: "600" },
+    tabText: { fontFamily: FONTS.bodySemibold, fontSize: 15 },
     badge: {
       backgroundColor: colors.error,
       borderRadius: 10,
@@ -1864,8 +1865,8 @@ function createStyles(colors) {
     },
     badgeText: {
       color: "#FFFFFF",
+      fontFamily: FONTS.bodyBold,
       fontSize: 11,
-      fontWeight: "700",
     },
     scrollView: { flex: 1 },
     scrollContent: { paddingHorizontal: 24, paddingBottom: 40 },

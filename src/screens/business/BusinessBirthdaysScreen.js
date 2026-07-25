@@ -33,6 +33,7 @@ import { listPackages } from "../../services/businessPackagesService";
 import { birthdayLabel, canSms, PRICING_TIER } from "../../services/businessMembersService";
 import { formatCentavos } from "../../utils/pricing";
 import { FONTS } from "../../constants/theme-tokens";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
 const BANNER_GRADIENT = ["#E8A33D", "#F97316"]; // Birthday "today" banner (135°)
 const BRAND_GRADIENT = ["#7C3AED", "#C026D3"];
@@ -52,19 +53,21 @@ const firstName = (name = "") => name.trim().split(/\s+/)[0] || name;
 export default function BusinessBirthdaysScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t, i18n } = useTranslation();
-  const [loading, setLoading] = useState(true);
   const [data, setData] = useState({ today: [], week: [] });
   const [suggestions, setSuggestions] = useState({}); // memberId -> giftSuggestions result
+  const { loading, run } = useAsyncLoad();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const { today, week } = await listUpcomingBirthdays();
-    const packages = await listPackages({ activeOnly: true });
-    const entries = await Promise.all(today.map((m) => giftSuggestions(m, packages).then((s) => [m.id, s])));
-    setSuggestions(Object.fromEntries(entries));
-    setData({ today, week });
-    setLoading(false);
-  }, []);
+  const load = useCallback(
+    () =>
+      run(async () => {
+        const { today, week } = await listUpcomingBirthdays();
+        const packages = await listPackages({ activeOnly: true });
+        const entries = await Promise.all(today.map((m) => giftSuggestions(m, packages).then((s) => [m.id, s])));
+        setSuggestions(Object.fromEntries(entries));
+        setData({ today, week });
+      }),
+    [run]
+  );
 
   useFocusEffect(
     useCallback(() => {

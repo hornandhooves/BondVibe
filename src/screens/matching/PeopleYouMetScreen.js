@@ -19,36 +19,45 @@ import { db, auth } from "../../services/firebase";
 import { useTheme } from "../../contexts/ThemeContext";
 import { MatchHeader } from "./matchUi";
 import { getMyMatches, getAllMyMatches } from "../../services/matchingService";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
 export default function PeopleYouMetScreen({ route, navigation }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const { eventId } = route.params || {};
   const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
   const me = auth.currentUser?.uid;
 
   useEffect(() => {
-    (async () => {
+    run(async () => {
       const matches = eventId ? await getMyMatches(eventId) : await getAllMyMatches();
       const resolved = await Promise.all(
         matches.map(async (m) => {
-          const otherUid = (m.users || []).find((u) => u !== me);
-          const evId = m.eventId || eventId;
-          let profile = {};
-          if (otherUid && evId) {
-            const s = await getDoc(
-              doc(db, "matchProfiles", evId, "attendees", otherUid)
-            );
-            if (s.exists()) profile = s.data();
+          // KIN-94: this doc is "commonly rule-gated" per the audit — one
+          // match whose attendee profile isn't readable must not blank the
+          // whole screen. Resolve each match independently.
+          try {
+            const otherUid = (m.users || []).find((u) => u !== me);
+            const evId = m.eventId || eventId;
+            let profile = {};
+            if (otherUid && evId) {
+              const s = await getDoc(
+                doc(db, "matchProfiles", evId, "attendees", otherUid)
+              );
+              if (s.exists()) profile = s.data();
+            }
+            return { matchId: m.id, otherUid, profile };
+          } catch (e) {
+            console.error("PeopleYouMetScreen: match resolve failed", m.id, e);
+            return null;
           }
-          return { matchId: m.id, otherUid, profile };
         })
       );
-      setRows(resolved);
-      setLoading(false);
-    })();
-  }, [eventId]);
+      setRows(resolved.filter(Boolean));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId, run]);
 
   const styles = createStyles(colors);
   return (
