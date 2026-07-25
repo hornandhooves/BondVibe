@@ -25,6 +25,7 @@ import {
   getMembershipState,
   getMembershipExpiryDate,
 } from "../services/membershipService";
+import { useAsyncLoad } from "../hooks/useAsyncLoad";
 
 export default function HowToAttendScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
@@ -38,15 +39,16 @@ export default function HowToAttendScreen({ route, navigation }) {
     acceptsMembership = false,
   } = route.params || {};
 
-  const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [membership, setMembership] = useState(null);
   const [hostHasPlans, setHostHasPlans] = useState(false);
+  const { loading, run } = useAsyncLoad();
 
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [hostId])
+      run(load);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hostId, run])
   );
 
   const load = async () => {
@@ -56,21 +58,25 @@ export default function HowToAttendScreen({ route, navigation }) {
     ]);
     setMembership(m);
     setHostHasPlans(plans.length > 0);
-    setLoading(false);
   };
 
   const handleUseCredit = async () => {
     setWorking(true);
-    const r = await reserveMembershipCredit(eventId);
-    setWorking(false);
-    if (r.success) {
-      Alert.alert(
-        t("howToAttend.spotReservedTitle"),
-        t("howToAttend.spotReservedMessage"),
-        [{ text: t("howToAttend.done"), onPress: () => navigation.goBack() }]
-      );
-    } else {
-      Alert.alert(t("howToAttend.couldntUseMembershipTitle"), r.error || t("howToAttend.tryAgain"));
+    try {
+      const r = await reserveMembershipCredit(eventId);
+      if (r.success) {
+        Alert.alert(
+          t("howToAttend.spotReservedTitle"),
+          t("howToAttend.spotReservedMessage"),
+          [{ text: t("howToAttend.done"), onPress: () => navigation.goBack() }]
+        );
+      } else {
+        Alert.alert(t("howToAttend.couldntUseMembershipTitle"), r.error || t("howToAttend.tryAgain"));
+      }
+    } catch (e) {
+      Alert.alert(t("howToAttend.couldntUseMembershipTitle"), t("howToAttend.tryAgain"));
+    } finally {
+      setWorking(false);
     }
   };
 

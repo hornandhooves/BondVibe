@@ -17,6 +17,7 @@ import GradientBackground from "../../components/GradientBackground";
 import { useTheme } from "../../contexts/ThemeContext";
 import { listStaff, inviteStaff, inviteStaffByHandle, updateStaffRole, setStaffName, removeStaff, getWorkingHours, setWorkingHours, listRoles, listStaffInvites, isValidHM, staffDisplayName, requestOwnerTransfer } from "../../services/businessStaffService";
 import UserSearchField from "../../components/UserSearchField";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
 const weekdayShort = (i, lang) => new Date(2024, 0, 7 + i).toLocaleDateString(lang || "en", { weekday: "narrow" });
 
@@ -24,7 +25,7 @@ export default function StaffScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t, i18n } = useTranslation();
   const [staff, setStaff] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
   const [inviting, setInviting] = useState(false);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("reception");
@@ -72,14 +73,17 @@ export default function StaffScreen({ navigation }) {
     load();
   };
 
-  const load = useCallback(async () => {
-    const [st, rl, iv] = await Promise.all([listStaff(), listRoles(), listStaffInvites()]);
-    setStaff(st);
-    setRoles(rl);
-    setInvites(iv);
-    setRole((cur) => (rl.some((r) => r.id === cur && r.id !== "owner") ? cur : (rl.find((r) => r.id !== "owner")?.id || "reception")));
-    setLoading(false);
-  }, []);
+  const load = useCallback(
+    () =>
+      run(async () => {
+        const [st, rl, iv] = await Promise.all([listStaff(), listRoles(), listStaffInvites()]);
+        setStaff(st);
+        setRoles(rl);
+        setInvites(iv);
+        setRole((cur) => (rl.some((r) => r.id === cur && r.id !== "owner") ? cur : (rl.find((r) => r.id !== "owner")?.id || "reception")));
+      }),
+    [run]
+  );
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const roleName = (id) => roles.find((r) => r.id === id)?.name || t(`business.staff.role.${id}`, { defaultValue: id });

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import Icon from "../components/Icon";
 import {
   View,
@@ -22,6 +22,8 @@ import {
   collection,
   query,
   where,
+  limit,
+  onSnapshot,
   getCountFromServer,
 } from "firebase/firestore";
 import { auth, db } from "../services/firebase";
@@ -60,6 +62,27 @@ export default function ProfileScreen({ navigation }) {
   const [editing, setEditing] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  // KIN-98: is there already a host application in flight? Mirrors
+  // BecomeHostGate's pending-check so "Switch to hosting" resumes an
+  // in-progress request instead of sending them back to the intake form.
+  const [pendingHostRequest, setPendingHostRequest] = useState(false);
+
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    const q = query(
+      collection(db, "hostRequests"),
+      where("userId", "==", uid),
+      where("status", "==", "pending"),
+      limit(1)
+    );
+    const unsub = onSnapshot(
+      q,
+      (snap) => setPendingHostRequest(!snap.empty),
+      (e) => console.warn("host request lookup failed:", e?.message)
+    );
+    return unsub;
+  }, []);
 
   const [editForm, setEditForm] = useState({
     fullName: "",
@@ -495,7 +518,12 @@ export default function ProfileScreen({ navigation }) {
                   events those credits are used for). */}
               {!canManageStripe && (
                 <>
-                  <TouchableOpacity style={s.ajustesRow} onPress={() => navigation.navigate("RequestHost")}>
+                  <TouchableOpacity
+                    style={s.ajustesRow}
+                    onPress={() =>
+                      navigation.navigate(pendingHostRequest ? "HostStatus" : "RequestHost")
+                    }
+                  >
                     <View style={[s.toolIcon, { backgroundColor: colors.brandSoft }]}>
                       <Icon name="calendar" size={18} color={colors.primary} />
                     </View>

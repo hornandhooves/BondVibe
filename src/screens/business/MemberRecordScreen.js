@@ -41,6 +41,7 @@ import { listPackages, assignPackage, adjustCredits, PACKAGE_KIND } from "../../
 import { markPresent, listMemberAttendance } from "../../services/businessAttendanceService";
 import { listMemberPayments } from "../../services/businessPaymentsService";
 import { audienceAllows } from "../../utils/membershipUtils";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 import { formatCentavos } from "../../utils/pricing";
 import { formatDate } from "../../utils/formatDate";
 
@@ -58,25 +59,28 @@ export default function MemberRecordScreen({ route, navigation }) {
   const [business, setBusiness] = useState(null);
   const [attendance, setAttendance] = useState([]);
   const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
 
   const [assignVisible, setAssignVisible] = useState(false);
   const [packages, setPackages] = useState([]);
   const [adjust, setAdjust] = useState(null); // { delta, reason }
 
-  const load = useCallback(async () => {
-    const [m, b, att, pay] = await Promise.all([
-      getMember(memberId),
-      getBusiness(),
-      listMemberAttendance(memberId),
-      listMemberPayments(memberId),
-    ]);
-    setMember(m);
-    setBusiness(b);
-    setAttendance(att);
-    setPayments(pay);
-    setLoading(false);
-  }, [memberId]);
+  const load = useCallback(
+    () =>
+      run(async () => {
+        const [m, b, att, pay] = await Promise.all([
+          getMember(memberId),
+          getBusiness(),
+          listMemberAttendance(memberId),
+          listMemberPayments(memberId),
+        ]);
+        setMember(m);
+        setBusiness(b);
+        setAttendance(att);
+        setPayments(pay);
+      }),
+    [memberId, run]
+  );
 
   useFocusEffect(
     useCallback(() => {
