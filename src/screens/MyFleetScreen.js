@@ -21,6 +21,7 @@ import { formatCentavos } from "../utils/pricing";
 import useUserRole from "../hooks/useUserRole";
 import { isApprovedHost } from "../utils/hostGate";
 import BecomeHostGate from "../components/BecomeHostGate";
+import { useAsyncLoad } from "../hooks/useAsyncLoad";
 
 export default function MyFleetScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -34,18 +35,21 @@ export default function MyFleetScreen({ navigation }) {
   };
   const [fleet, setFleet] = useState([]);
   const [payoutsReady, setPayoutsReady] = useState(true);
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
 
-  const load = useCallback(async () => {
-    const [list, userSnap] = await Promise.all([
-      getMyFleet(),
-      auth.currentUser ? getDoc(doc(db, "users", auth.currentUser.uid)) : Promise.resolve(null),
-    ]);
-    setFleet(list);
-    const sc = userSnap && userSnap.exists() ? userSnap.data().stripeConnect : null;
-    setPayoutsReady(!!(sc && (sc.chargesEnabled || sc.payoutsEnabled)));
-    setLoading(false);
-  }, []);
+  const load = useCallback(
+    () =>
+      run(async () => {
+        const [list, userSnap] = await Promise.all([
+          getMyFleet(),
+          auth.currentUser ? getDoc(doc(db, "users", auth.currentUser.uid)) : Promise.resolve(null),
+        ]);
+        setFleet(list);
+        const sc = userSnap && userSnap.exists() ? userSnap.data().stripeConnect : null;
+        setPayoutsReady(!!(sc && (sc.chargesEnabled || sc.payoutsEnabled)));
+      }),
+    [run]
+  );
 
   useFocusEffect(
     useCallback(() => {
