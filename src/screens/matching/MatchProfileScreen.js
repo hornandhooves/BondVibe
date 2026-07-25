@@ -50,6 +50,7 @@ import {
   DEFAULT_ENERGY,
   isProfileComplete,
 } from "../../constants/matchTags";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
 const ENERGY_STEPS = [0, 25, 50, 75, 100];
 
@@ -74,7 +75,7 @@ export default function MatchProfileScreen({ route, navigation }) {
   const [icebreaker, setIcebreaker] = useState("");
   const [visibility, setVisibility] = useState("everyone");
   const [personality, setPersonality] = useState(null); // Big Five (unified here)
-  const [saving, setSaving] = useState(false);
+  const { loading: saving, run } = useAsyncLoad(false);
 
   // Big Five now lives INSIDE the match profile. Re-read on focus so it updates
   // right after the user finishes the quiz and returns here.
@@ -124,7 +125,7 @@ export default function MatchProfileScreen({ route, navigation }) {
   const toggleIn = (setter) => (id) =>
     setter((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
 
-  const onSave = async () => {
+  const onSave = () => {
     const draft = { lookingFor, interests, funnyTags, energy, groupPref, personality };
     if (!isProfileComplete(draft)) {
       // Big Five is part of "complete" now — point them at the quiz if it's the
@@ -135,39 +136,43 @@ export default function MatchProfileScreen({ route, navigation }) {
       Alert.alert(t("matching.profile.incompleteTitle"), msg);
       return;
     }
-    setSaving(true);
-    const payload = {
-      bio: bio.trim(),
-      profession: profession.trim(),
-      interests,
-      funnyTags,
-      languages,
-      learning,
-      energy,
-      groupPref,
-      pro: {
-        role: pro.role.trim(),
-        industry: pro.industry,
-        offer: pro.offer.trim(),
-        seek: pro.seek.trim(),
-      },
-      lookingFor,
-      icebreaker: icebreaker.trim(),
-      visibility,
-      available: true,
-    };
-    // Same form, two destinations: canonical writes users/{me}.matchProfile;
-    // the event flow writes the attendee doc AND merges into the canonical one.
-    const res = canonical
-      ? await saveCanonicalMatchProfile(payload)
-      : await saveMatchProfile(eventId, payload);
-    setSaving(false);
-    if (!res.success) {
-      Alert.alert(t("matching.profile.couldntSaveTitle"), res.error || t("matching.profile.tryAgain"));
-      return;
-    }
-    if (canonical) navigation.goBack();
-    else navigation.replace("MatchGrid", { eventId, eventTitle });
+    return run(async () => {
+      try {
+        const payload = {
+          bio: bio.trim(),
+          profession: profession.trim(),
+          interests,
+          funnyTags,
+          languages,
+          learning,
+          energy,
+          groupPref,
+          pro: {
+            role: pro.role.trim(),
+            industry: pro.industry,
+            offer: pro.offer.trim(),
+            seek: pro.seek.trim(),
+          },
+          lookingFor,
+          icebreaker: icebreaker.trim(),
+          visibility,
+          available: true,
+        };
+        // Same form, two destinations: canonical writes users/{me}.matchProfile;
+        // the event flow writes the attendee doc AND merges into the canonical one.
+        const res = canonical
+          ? await saveCanonicalMatchProfile(payload)
+          : await saveMatchProfile(eventId, payload);
+        if (!res.success) {
+          Alert.alert(t("matching.profile.couldntSaveTitle"), res.error || t("matching.profile.tryAgain"));
+          return;
+        }
+        if (canonical) navigation.goBack();
+        else navigation.replace("MatchGrid", { eventId, eventTitle });
+      } catch (e) {
+        Alert.alert(t("matching.profile.couldntSaveTitle"), t("matching.profile.tryAgain"));
+      }
+    });
   };
 
   const s = createStyles(colors);

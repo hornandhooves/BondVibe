@@ -32,13 +32,14 @@ import {
   checkHandle,
   claimHandle,
 } from "../services/handleService";
+import { useAsyncLoad } from "../hooks/useAsyncLoad";
 
 export default function ChooseHandleScreen() {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const [value, setValue] = useState("");
   const [status, setStatus] = useState("idle"); // idle|checking|available|taken|invalid|reserved
-  const [claiming, setClaiming] = useState(false);
+  const { loading: claiming, run } = useAsyncLoad(false);
   const [claimed, setClaimed] = useState(false);
   const [error, setError] = useState("");
   const debounceRef = useRef(null);
@@ -92,35 +93,42 @@ export default function ChooseHandleScreen() {
     seed();
   }, [seed]);
 
-  const onClaim = async () => {
+  const onClaim = () => {
     if (status !== "available" || claiming) return;
-    setClaiming(true);
     setError("");
     // BUG 35.1: guard the claim with a 15s timeout so a stalled/flaky call can't
     // hang the spinner forever. On timeout the button re-enables and a retry
     // alert is surfaced; the CTA itself is also a retry affordance.
-    const CLAIM_TIMEOUT_MS = 15000;
-    const timeout = new Promise((resolve) =>
-      setTimeout(() => resolve({ success: false, code: "timeout" }), CLAIM_TIMEOUT_MS),
-    );
-    const r = await Promise.race([claimHandle(value), timeout]);
-    if (r.success) {
-      // Do NOT navigate — the AppNavigator snapshot re-routes once handleLower
-      // is written. Show a brief "setting up" state until it does.
-      setClaimed(true);
-      return;
-    }
-    setClaiming(false);
-    if (r.code === "timeout") {
-      setError(t("chooseHandle.errorTimeout"));
-      Alert.alert(t("chooseHandle.timeoutTitle"), t("chooseHandle.errorTimeout"), [
-        { text: t("common.cancel"), style: "cancel" },
-        { text: t("chooseHandle.retry"), onPress: onClaim },
-      ]);
-    } else {
-      setError(r.error || t("chooseHandle.errorGeneric"));
-      if (r.code === "already-exists") setStatus("taken");
-    }
+    return run(async () => {
+      const CLAIM_TIMEOUT_MS = 15000;
+      const timeout = new Promise((resolve) =>
+        setTimeout(() => resolve({ success: false, code: "timeout" }), CLAIM_TIMEOUT_MS),
+      );
+      try {
+        const r = await Promise.race([claimHandle(value), timeout]);
+        if (r.success) {
+          // Do NOT navigate — the AppNavigator snapshot re-routes once handleLower
+          // is written. Show a brief "setting up" state until it does.
+          setClaimed(true);
+          return;
+        }
+        if (r.code === "timeout") {
+          setError(t("chooseHandle.errorTimeout"));
+          Alert.alert(t("chooseHandle.timeoutTitle"), t("chooseHandle.errorTimeout"), [
+            { text: t("common.cancel"), style: "cancel" },
+            { text: t("chooseHandle.retry"), onPress: onClaim },
+          ]);
+        } else {
+          setError(r.error || t("chooseHandle.errorGeneric"));
+          if (r.code === "already-exists") setStatus("taken");
+        }
+      } catch (e) {
+        // KIN-95: claimHandle() already catches internally, but this guards
+        // against the 15s race itself ever rejecting (e.g. a future refactor)
+        // and leaving the claim button stuck disabled forever.
+        setError(t("chooseHandle.errorGeneric"));
+      }
+    });
   };
 
   if (claimed) {

@@ -21,6 +21,7 @@ import PostCard from "../components/PostCard";
 import { AvatarDisplay } from "../components/AvatarPicker";
 import { useTheme } from "../contexts/ThemeContext";
 import { getPost, subscribeComments, addComment } from "../services/postService";
+import { useAsyncLoad } from "../hooks/useAsyncLoad";
 
 const normAvatar = (a) =>
   !a ? null : typeof a === "string" ? { type: "emoji", value: a } : a;
@@ -32,7 +33,7 @@ export default function PostDetailScreen({ route, navigation }) {
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
+  const { loading: sending, run } = useAsyncLoad(false);
 
   useEffect(() => {
     getPost(postId).then(setPost);
@@ -40,13 +41,17 @@ export default function PostDetailScreen({ route, navigation }) {
     return unsub;
   }, [postId]);
 
-  const send = async () => {
+  const send = () => {
     const body = text.trim();
     if (!body) return;
-    setSending(true);
     setText("");
-    await addComment(postId, body);
-    setSending(false);
+    return run(async () => {
+      try {
+        await addComment(postId, body);
+      } catch (e) {
+        console.error("PostDetailScreen: addComment failed", e);
+      }
+    });
   };
 
   const styles = createStyles(colors);
