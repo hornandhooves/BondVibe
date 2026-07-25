@@ -12,6 +12,7 @@ const {FieldValue} = require("firebase-admin/firestore");
 
 // Define Stripe secret
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
+const stripeConnectWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET_CONNECT");
 
 // Initialize Stripe (done per-function)
 let stripe;
@@ -335,7 +336,7 @@ exports.getAccountStatus = onRequest(
  * Uncomment to enable instant updates without manual refresh
  */
 exports.stripeConnectWebhook = onRequest(
-  {cors: true, secrets: [stripeSecretKey]},
+  {cors: true, secrets: [stripeSecretKey, stripeConnectWebhookSecret]},
   async (req, res) => {
     if (req.method !== "POST") {
       return res.status(405).json({error: "Method not allowed"});
@@ -348,7 +349,7 @@ exports.stripeConnectWebhook = onRequest(
       }
 
       const sig = req.headers["stripe-signature"];
-      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+      const webhookSecret = stripeConnectWebhookSecret.value();
 
       if (!webhookSecret) {
         console.log("⚠️ Webhook secret not configured");

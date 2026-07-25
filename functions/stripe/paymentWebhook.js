@@ -574,9 +574,24 @@ async function handleEventTicketPurchase(paymentIntent) {
   // Extract metadata
   const {eventId, eventTitle, userId, hostId} = metadata;
 
-  // Validate required fields
+  // KIN-107: createEventPaymentIntent now rejects host_unresolved before
+  // charging, so this shouldn't happen on new payments — but an already-paid
+  // PaymentIntent from before that guard existed can still hit this webhook
+  // (Stripe retries a slow/failed delivery for days). Throwing here returned
+  // a 500, and Stripe kept retrying something that will NEVER resolve on its
+  // own. Park it for manual review and return 200 so Stripe stops retrying.
   if (!eventId || !userId || !hostId) {
-    throw new Error("Missing required metadata in payment intent");
+    console.error(
+      "⚠️ Event ticket payment missing required metadata, parking for review:",
+      paymentIntentId,
+    );
+    await db.collection("paymentsNeedingReview").doc(paymentIntentId).set({
+      type: "event_ticket",
+      reason: "missing_required_metadata",
+      paymentIntent,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    return;
   }
 
   // Idempotency: if this payment was already processed, skip. Stripe retries a

@@ -1021,6 +1021,14 @@ exports.createEventPaymentIntent = onRequest(
       const hostId = getHostIdForPayout(eventData);
       const paidToBusinessOwner = !!eventData.businessOwnerUid;
 
+      // KIN-107: no businessOwnerUid/creatorId/createdBy/hostId at all means
+      // there is nobody to pay out AND nobody the webhook can resolve later —
+      // reject before creating the PaymentIntent, never charge for something
+      // the webhook can't process.
+      if (!hostId) {
+        return res.status(400).json({error: "host_unresolved"});
+      }
+
       // Two-tier pricing (kinlo_business/05 §C): a Local member is charged the
       // event's local price. Resolve the caller's tier from their linked CRM
       // member record under the host's business (default general). Which of the

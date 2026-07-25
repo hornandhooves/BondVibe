@@ -1,5 +1,5 @@
 import Icon from "../components/Icon";
-import React, { useState, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,11 +12,10 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { db, auth } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
-import { useFocusEffect } from "@react-navigation/native";
 import * as WebBrowser from "expo-web-browser";
 import { friendlyCallableError } from "../utils/callableError";
 import {
@@ -37,31 +36,37 @@ export default function StripeConnectScreen({ navigation }) {
   const [connecting, setConnecting] = useState(false);
   const [userData, setUserData] = useState(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [])
-  );
-
-  const loadData = async () => {
-    try {
-      const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
-      if (userDoc.exists()) {
-        setUserData(userDoc.data());
-      }
-    } catch (error) {
-      console.error("Error loading data:", error);
-    } finally {
+  // Live listener (mirrors usePayoutsReady) so the card reflects Stripe's
+  // account.updated webhook sync without needing to leave/re-enter the
+  // screen or pull-to-refresh.
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) {
       setLoading(false);
+      return;
     }
-  };
+    const unsub = onSnapshot(
+      doc(db, "users", uid),
+      (snap) => {
+        if (snap.exists()) {
+          setUserData(snap.data());
+        }
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error loading data:", error);
+        setLoading(false);
+      }
+    );
+    return () => unsub();
+  }, []);
 
   const handleRefreshStatus = async ({ silent = false } = {}) => {
     setRefreshing(true);
     try {
       const result = await checkAccountStatus(auth.currentUser.uid);
       if (result.success) {
-        await loadData();
+        // userData refreshes on its own via the onSnapshot listener above.
         if (!silent) {
           Alert.alert(
             t("stripeConnect.statusUpdatedTitle"),
@@ -98,9 +103,8 @@ export default function StripeConnectScreen({ navigation }) {
         }
 
         console.log("✅ Stripe account created:", accountResult.accountId);
-
-        // Recargar userData para obtener la nueva cuenta
-        await loadData();
+        // userData.stripeConnect.accountId refreshes on its own via the
+        // onSnapshot listener above.
       }
 
       // Ahora obtener el onboarding link
