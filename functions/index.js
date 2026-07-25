@@ -3759,6 +3759,21 @@ exports.deleteUserAccount = onRequest(
         return res.status(403).json({error: "forbidden"});
       }
 
+      // KIN-108 (phase 1): never delete an account with open financial
+      // obligations. Doing so orphans paymentLedger/giftLedger rows pointing
+      // at a hostUid that no longer exists (releaseHostPayouts retries them
+      // forever and can never pay them out), and recursiveDelete-ing an
+      // event with sold tickets destroys the only doc hostCancelEvent needs
+      // to refund those attendees — there would be no refund path left.
+      const {checkOpenObligations} = require("./stripe/accountDeletionGuard");
+      const obligations = await checkOpenObligations(db, userId);
+      if (obligations.blocked) {
+        return res.status(409).json({
+          error: "obligations_open",
+          details: obligations.reasons,
+        });
+      }
+
       console.log("🗑️ Starting FULL account deletion for user:", userId);
       const counts = {};
 
