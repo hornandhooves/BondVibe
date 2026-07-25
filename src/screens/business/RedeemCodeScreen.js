@@ -34,18 +34,23 @@ export default function RedeemCodeScreen({ navigation }) {
   const onRedeem = async () => {
     setBusy(true);
     setError(null);
-    const res = await redeemGuestCode(code);
-    setBusy(false);
-    if (res.ok) {
-      setPass({ bizId: res.bizId, memberId: res.memberId, businessName: res.businessName, memberName: res.memberName });
-    } else {
-      setError(
-        res.error === "invalid"
-          ? t("business.redeem.invalid")
-          : res.error === "in_use"
-          ? t("business.redeem.inUse")
-          : t("business.redeem.failed")
-      );
+    try {
+      const res = await redeemGuestCode(code);
+      if (res.ok) {
+        setPass({ bizId: res.bizId, memberId: res.memberId, businessName: res.businessName, memberName: res.memberName });
+      } else {
+        setError(
+          res.error === "invalid"
+            ? t("business.redeem.invalid")
+            : res.error === "in_use"
+            ? t("business.redeem.inUse")
+            : t("business.redeem.failed")
+        );
+      }
+    } catch (e) {
+      setError(t("business.redeem.failed"));
+    } finally {
+      setBusy(false);
     }
   };
 

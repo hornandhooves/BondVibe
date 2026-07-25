@@ -58,31 +58,41 @@ export default function CommunityChatsScreen({ navigation }) {
   const handleCreate = async () => {
     if (!name.trim() || busy) return;
     setBusy(true);
-    const r = await createGroup(name, description, []);
-    setBusy(false);
-    if (r.success) {
-      setCreateOpen(false);
-      setName("");
-      setDescription("");
-      // Straight to management: the host sees the join code + can invite by
-      // email/phone there (BUG 22).
-      navigation.navigate("GroupManage", { groupId: r.groupId });
-    } else {
-      Alert.alert(t("communityChats.couldntCreate"), r.error || t("communityChats.tryAgain"));
+    try {
+      const r = await createGroup(name, description, []);
+      if (r.success) {
+        setCreateOpen(false);
+        setName("");
+        setDescription("");
+        // Straight to management: the host sees the join code + can invite by
+        // email/phone there (BUG 22).
+        navigation.navigate("GroupManage", { groupId: r.groupId });
+      } else {
+        Alert.alert(t("communityChats.couldntCreate"), r.error || t("communityChats.tryAgain"));
+      }
+    } catch (e) {
+      Alert.alert(t("communityChats.couldntCreate"), t("communityChats.tryAgain"));
+    } finally {
+      setBusy(false);
     }
   };
 
   const handleJoin = async () => {
     if (!joinCode.trim() || busy) return;
     setBusy(true);
-    const r = await joinGroupByCode(joinCode);
-    setBusy(false);
-    if (r.success) {
-      setJoinOpen(false);
-      setJoinCode("");
-      if (r.groupId) navigation.navigate("GroupChat", { groupId: r.groupId });
-    } else {
-      Alert.alert(t("communityChats.couldntJoin"), r.error || t("communityChats.tryAgain"));
+    try {
+      const r = await joinGroupByCode(joinCode);
+      if (r.success) {
+        setJoinOpen(false);
+        setJoinCode("");
+        if (r.groupId) navigation.navigate("GroupChat", { groupId: r.groupId });
+      } else {
+        Alert.alert(t("communityChats.couldntJoin"), r.error || t("communityChats.tryAgain"));
+      }
+    } catch (e) {
+      Alert.alert(t("communityChats.couldntJoin"), t("communityChats.tryAgain"));
+    } finally {
+      setBusy(false);
     }
   };
 

@@ -46,9 +46,12 @@ export default function RequestSessionScreen({ route, navigation }) {
     const [h, mn] = time.split(":").map((n) => parseInt(n, 10) || 0);
     start.setHours(h, mn, 0, 0);
     setBusy(true);
-    const res = await requestSession({ bizId, sessionTypeId: type.id, sessionTypeName: type.name, start: start.toISOString(), durationMin: type.durationMin });
-    setBusy(false);
-    if (res.ok) setDone(true);
+    try {
+      const res = await requestSession({ bizId, sessionTypeId: type.id, sessionTypeName: type.name, start: start.toISOString(), durationMin: type.durationMin });
+      if (res.ok) setDone(true);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const styles = createStyles(colors);

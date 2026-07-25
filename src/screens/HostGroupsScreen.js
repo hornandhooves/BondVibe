@@ -65,17 +65,22 @@ export default function HostGroupsScreen({ navigation }) {
 
   const handleCreate = async () => {
     setCreating(true);
-    const r = await createGroup(name, description, []);
-    setCreating(false);
-    if (r.success) {
-      setModalVisible(false);
-      setName("");
-      setDescription("");
-      load();
-      // Go straight to managing members.
-      navigation.navigate("GroupManage", { groupId: r.groupId });
-    } else {
-      Alert.alert(t("hostGroups.couldntCreateGroup"), r.error || t("hostGroups.pleaseTryAgain"));
+    try {
+      const r = await createGroup(name, description, []);
+      if (r.success) {
+        setModalVisible(false);
+        setName("");
+        setDescription("");
+        load();
+        // Go straight to managing members.
+        navigation.navigate("GroupManage", { groupId: r.groupId });
+      } else {
+        Alert.alert(t("hostGroups.couldntCreateGroup"), r.error || t("hostGroups.pleaseTryAgain"));
+      }
+    } catch (e) {
+      Alert.alert(t("hostGroups.couldntCreateGroup"), t("hostGroups.pleaseTryAgain"));
+    } finally {
+      setCreating(false);
     }
   };
 
