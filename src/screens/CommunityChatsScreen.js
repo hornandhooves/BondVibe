@@ -21,6 +21,7 @@ import GradientBackground from "../components/GradientBackground";
 import Icon from "../components/Icon";
 import { useTheme } from "../contexts/ThemeContext";
 import { subscribeUserGroups, createGroup, joinGroupByCode } from "../services/hostGroupService";
+import { useAsyncLoad } from "../hooks/useAsyncLoad";
 import { TYPE, SPACING, RADII, ELEVATION } from "../constants/theme-tokens";
 import useUserRole from "../hooks/useUserRole";
 import { isApprovedHost } from "../utils/hostGate";
@@ -40,7 +41,9 @@ export default function CommunityChatsScreen({ navigation }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [joinCode, setJoinCode] = useState("");
-  const [busy, setBusy] = useState(false);
+  // Shared across handleCreate/handleJoin on purpose — the two modals are
+  // never open at once, and both buttons already disable on any busy state.
+  const { loading: busy, run } = useAsyncLoad(false);
 
   // Creating a community requires an approved host (unified gate — same as
   // marketplace/rentals). Joining by code stays open to everyone. (BUG 42)
@@ -55,45 +58,43 @@ export default function CommunityChatsScreen({ navigation }) {
     ]);
   };
 
-  const handleCreate = async () => {
+  const handleCreate = () => {
     if (!name.trim() || busy) return;
-    setBusy(true);
-    try {
-      const r = await createGroup(name, description, []);
-      if (r.success) {
-        setCreateOpen(false);
-        setName("");
-        setDescription("");
-        // Straight to management: the host sees the join code + can invite by
-        // email/phone there (BUG 22).
-        navigation.navigate("GroupManage", { groupId: r.groupId });
-      } else {
-        Alert.alert(t("communityChats.couldntCreate"), r.error || t("communityChats.tryAgain"));
+    return run(async () => {
+      try {
+        const r = await createGroup(name, description, []);
+        if (r.success) {
+          setCreateOpen(false);
+          setName("");
+          setDescription("");
+          // Straight to management: the host sees the join code + can invite by
+          // email/phone there (BUG 22).
+          navigation.navigate("GroupManage", { groupId: r.groupId });
+        } else {
+          Alert.alert(t("communityChats.couldntCreate"), r.error || t("communityChats.tryAgain"));
+        }
+      } catch (e) {
+        Alert.alert(t("communityChats.couldntCreate"), t("communityChats.tryAgain"));
       }
-    } catch (e) {
-      Alert.alert(t("communityChats.couldntCreate"), t("communityChats.tryAgain"));
-    } finally {
-      setBusy(false);
-    }
+    });
   };
 
-  const handleJoin = async () => {
+  const handleJoin = () => {
     if (!joinCode.trim() || busy) return;
-    setBusy(true);
-    try {
-      const r = await joinGroupByCode(joinCode);
-      if (r.success) {
-        setJoinOpen(false);
-        setJoinCode("");
-        if (r.groupId) navigation.navigate("GroupChat", { groupId: r.groupId });
-      } else {
-        Alert.alert(t("communityChats.couldntJoin"), r.error || t("communityChats.tryAgain"));
+    return run(async () => {
+      try {
+        const r = await joinGroupByCode(joinCode);
+        if (r.success) {
+          setJoinOpen(false);
+          setJoinCode("");
+          if (r.groupId) navigation.navigate("GroupChat", { groupId: r.groupId });
+        } else {
+          Alert.alert(t("communityChats.couldntJoin"), r.error || t("communityChats.tryAgain"));
+        }
+      } catch (e) {
+        Alert.alert(t("communityChats.couldntJoin"), t("communityChats.tryAgain"));
       }
-    } catch (e) {
-      Alert.alert(t("communityChats.couldntJoin"), t("communityChats.tryAgain"));
-    } finally {
-      setBusy(false);
-    }
+    });
   };
 
   useEffect(() => {
