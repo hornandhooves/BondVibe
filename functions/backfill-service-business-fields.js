@@ -21,7 +21,7 @@ const db = admin.firestore();
     const bizId = docSnap.ref.parent.parent.id;
     if (!bizCache.has(bizId)) {
       const bizSnap = await db.collection("businesses").doc(bizId).get();
-      bizCache.set(bizId, bizSnap.exists() ? bizSnap.data() : {});
+      bizCache.set(bizId, bizSnap.exists ? bizSnap.data() : {});
     }
     const biz = bizCache.get(bizId);
     await docSnap.ref.set(
