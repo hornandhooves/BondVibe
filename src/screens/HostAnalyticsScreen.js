@@ -29,6 +29,7 @@ import {
   getHostRatings,
   getHostFeedbackInsights,
 } from "../services/ratingService";
+import { useAsyncLoad } from "../hooks/useAsyncLoad";
 
 const normAvatar = (a) =>
   !a ? null : typeof a === "string" ? { type: "emoji", value: a } : a;
@@ -38,7 +39,7 @@ export default function HostAnalyticsScreen({ navigation }) {
   const { t } = useTranslation();
   const [data, setData] = useState(null);
   const [reviews, setReviews] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
   const [aiLoading, setAiLoading] = useState(false);
   const [aiInsights, setAiInsights] = useState(null);
   const [aiVisible, setAiVisible] = useState(false);
@@ -46,19 +47,20 @@ export default function HostAnalyticsScreen({ navigation }) {
   useFocusEffect(
     useCallback(() => {
       load();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
   );
 
-  const load = async () => {
-    const uid = auth.currentUser?.uid;
-    const [result, hostReviews] = await Promise.all([
-      getHostAnalytics(),
-      uid ? getHostRatings(uid) : Promise.resolve([]),
-    ]);
-    setData(result);
-    setReviews(hostReviews);
-    setLoading(false);
-  };
+  const load = () =>
+    run(async () => {
+      const uid = auth.currentUser?.uid;
+      const [result, hostReviews] = await Promise.all([
+        getHostAnalytics(),
+        uid ? getHostRatings(uid) : Promise.resolve([]),
+      ]);
+      setData(result);
+      setReviews(hostReviews);
+    });
 
   // Star distribution (5★ → 1★) from the loaded reviews.
   const distribution = [5, 4, 3, 2, 1].map((star) => ({
@@ -69,26 +71,31 @@ export default function HostAnalyticsScreen({ navigation }) {
 
   const handleAiInsights = async () => {
     setAiLoading(true);
-    const r = await getHostFeedbackInsights();
-    setAiLoading(false);
-    if (r.success && r.enough) {
-      setAiInsights(r.insights);
-      setAiVisible(true);
-    } else if (r.success && r.enough === false) {
-      Alert.alert(
-        t("hostAnalytics.notEnoughFeedback"),
-        t("hostAnalytics.notEnoughFeedbackMessage")
-      );
-    } else if (
-      (r.code || "").includes("permission-denied") ||
-      r.error === "premium_required"
-    ) {
-      Alert.alert(
-        t("hostAnalytics.premiumFeature"),
-        t("hostAnalytics.premiumFeatureMessage")
-      );
-    } else {
-      Alert.alert(t("hostAnalytics.couldntGenerate"), r.error || t("hostAnalytics.pleaseTryAgainLater"));
+    try {
+      const r = await getHostFeedbackInsights();
+      if (r.success && r.enough) {
+        setAiInsights(r.insights);
+        setAiVisible(true);
+      } else if (r.success && r.enough === false) {
+        Alert.alert(
+          t("hostAnalytics.notEnoughFeedback"),
+          t("hostAnalytics.notEnoughFeedbackMessage")
+        );
+      } else if (
+        (r.code || "").includes("permission-denied") ||
+        r.error === "premium_required"
+      ) {
+        Alert.alert(
+          t("hostAnalytics.premiumFeature"),
+          t("hostAnalytics.premiumFeatureMessage")
+        );
+      } else {
+        Alert.alert(t("hostAnalytics.couldntGenerate"), r.error || t("hostAnalytics.pleaseTryAgainLater"));
+      }
+    } catch (e) {
+      Alert.alert(t("hostAnalytics.couldntGenerate"), t("hostAnalytics.pleaseTryAgainLater"));
+    } finally {
+      setAiLoading(false);
     }
   };
 

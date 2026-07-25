@@ -30,6 +30,7 @@ import {
   crmToCSV,
   sendAnnouncement,
 } from "../services/crmService";
+import { useAsyncLoad } from "../hooks/useAsyncLoad";
 
 const normAvatar = (a) =>
   !a ? null : typeof a === "string" ? { type: "emoji", value: a } : a;
@@ -44,7 +45,7 @@ export default function HostCRMScreen({ navigation }) {
     { id: "all", label: t("hostCRM.segmentAll") },
   ];
   const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
   const [segment, setSegment] = useState("risk");
   const [hostName, setHostName] = useState(t("hostCRM.defaultHostName"));
   const [sent, setSent] = useState({});
@@ -55,7 +56,7 @@ export default function HostCRMScreen({ navigation }) {
 
   useFocusEffect(
     useCallback(() => {
-      (async () => {
+      run(async () => {
         const uid = auth.currentUser?.uid;
         const [list, me] = await Promise.all([
           getHostCRM(),
@@ -63,9 +64,9 @@ export default function HostCRMScreen({ navigation }) {
         ]);
         setRows(list);
         if (me?.exists()) setHostName(me.data().fullName || me.data().name || hostName);
-        setLoading(false);
-      })();
-    }, [])
+      });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [run])
   );
 
   const filtered = rows.filter((r) =>
@@ -91,11 +92,19 @@ export default function HostCRMScreen({ navigation }) {
     const ids = filtered.map((r) => r.id);
     if (!announceText.trim() || ids.length === 0) return;
     setAnnouncing(true);
-    const r = await sendAnnouncement(ids, announceText);
-    setAnnouncing(false);
-    setAnnounceVisible(false);
-    setAnnounceText("");
-    if (r.success) Alert.alert(t("hostCRM.sent"), t("hostCRM.announcementSentCount", { count: r.count }));
+    try {
+      const r = await sendAnnouncement(ids, announceText);
+      setAnnounceVisible(false);
+      setAnnounceText("");
+      if (r.success) Alert.alert(t("hostCRM.sent"), t("hostCRM.announcementSentCount", { count: r.count }));
+    } catch (e) {
+      // KIN-95: sendAnnouncement() already catches internally today, but this
+      // guards against a future refactor leaving "Sending…" stuck forever.
+      // Stay open on failure so the host can retry.
+      Alert.alert(t("hostCRM.couldntSend"));
+    } finally {
+      setAnnouncing(false);
+    }
   };
 
   const Header = (

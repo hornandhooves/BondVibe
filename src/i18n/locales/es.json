@@ -1817,6 +1817,7 @@
     "segmentAll": "Todos",
     "defaultHostName": "tu anfitrión",
     "sent": "Enviado",
+    "couldntSend": "No se pudo enviar el anuncio. Inténtalo de nuevo.",
     "announcementSentCount_one": "Anuncio enviado a {{count}} persona.",
     "announcementSentCount_other": "Anuncio enviado a {{count}} personas.",
     "sendAnnouncementTo": "Enviar anuncio a {{count}}",
