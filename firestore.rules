@@ -1234,6 +1234,15 @@ service cloud.firestore {
                          .hasAny(['ownerUid', 'verified', 'insured']);
       allow delete: if isBizOwnerUid(bizId);
 
+      // KIN-97: public projection (name/verified/avatarUrl/vertical) mirrored
+      // server-side by onBusinessPublicProfileWritten — any signed-in user may
+      // read it (not fully public: request.auth != null, per Carlos's decision
+      // on the design doc's open question), nobody may write it client-side.
+      match /public/profile {
+        allow read: if request.auth != null;
+        allow write: if false;
+      }
+
       // Staff roster — only the owner manages staff (v1). An invitee may read
       // their OWN staff record (any status) so the app can reflect a pending
       // invite (BUG 32.1); writes stay owner-only (accept/decline goes through
