@@ -28,6 +28,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { getCard, updateCard, deleteCard } from "../../services/businessMomentumService";
 import { callClaude } from "../../services/claudeService";
 import { PRIORITIES, ACTION_STATUSES, CHANNELS } from "../../constants/momentumDefaults";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 import { formatDate } from "../../utils/formatDate";
 
 export default function MomentumCardScreen({ route, navigation }) {
@@ -38,7 +39,7 @@ export default function MomentumCardScreen({ route, navigation }) {
   const [card, setCard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [aiBusy, setAiBusy] = useState(false);
+  const { loading: aiBusy, run: runAi } = useAsyncLoad(false);
 
   const [actionTitle, setActionTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -87,25 +88,24 @@ export default function MomentumCardScreen({ route, navigation }) {
     setChecklist((c) => c.map((it, idx) => (idx === i ? { ...it, done: !it.done } : it)));
   const removeCheck = (i) => setChecklist((c) => c.filter((_, idx) => idx !== i));
 
-  const onAiDraft = async () => {
+  const onAiDraft = () => {
     if (!card?.memberId) return;
-    setAiBusy(true);
-    try {
-      const res = await callClaude("momentum_action", { memberId: card.memberId });
-      if (res.ok && res.data) {
-        setActionTitle(res.data.actionTitle || actionTitle);
-        setPriority(res.data.priority || priority);
-        setDescription(res.data.message || description);
-      } else if (res.needsPro) {
-        Alert.alert(t("business.momentum.aiProTitle"), t("business.momentum.aiProMsg"));
-      } else {
+    return runAi(async () => {
+      try {
+        const res = await callClaude("momentum_action", { memberId: card.memberId });
+        if (res.ok && res.data) {
+          setActionTitle(res.data.actionTitle || actionTitle);
+          setPriority(res.data.priority || priority);
+          setDescription(res.data.message || description);
+        } else if (res.needsPro) {
+          Alert.alert(t("business.momentum.aiProTitle"), t("business.momentum.aiProMsg"));
+        } else {
+          Alert.alert(t("business.momentum.aiOffTitle"), t("business.momentum.aiOffMsg"));
+        }
+      } catch (e) {
         Alert.alert(t("business.momentum.aiOffTitle"), t("business.momentum.aiOffMsg"));
       }
-    } catch (e) {
-      Alert.alert(t("business.momentum.aiOffTitle"), t("business.momentum.aiOffMsg"));
-    } finally {
-      setAiBusy(false);
-    }
+    });
   };
 
   const onSave = async () => {

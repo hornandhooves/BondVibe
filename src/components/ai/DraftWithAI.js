@@ -13,6 +13,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useTranslation } from "react-i18next";
 import { callClaude } from "../../services/claudeService";
 import { formatMXN } from "../../utils/pricing";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 import { TYPE, SPACING, RADII, BRAND, ELEVATION } from "../../constants/theme-tokens";
 
 export default function DraftWithAI({ onApply, navigation, placeholder }) {
@@ -20,30 +21,29 @@ export default function DraftWithAI({ onApply, navigation, placeholder }) {
   const { t } = useTranslation();
   const placeholderText = placeholder || t("draftWithAI.placeholder");
   const [idea, setIdea] = useState("");
-  const [busy, setBusy] = useState(false);
+  const { loading: busy, run } = useAsyncLoad(false);
   const [draft, setDraft] = useState(null);
   const [needsPro, setNeedsPro] = useState(false);
   const [failed, setFailed] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  const generate = async () => {
+  const generate = () => {
     const text = idea.trim();
     if (!text || busy) return;
-    setBusy(true);
     setFailed(false);
-    try {
-      const res = await callClaude("host_copilot", { idea: text });
-      if (res.ok) {
-        setExpanded(false);
-        setDraft(res.data);
+    return run(async () => {
+      try {
+        const res = await callClaude("host_copilot", { idea: text });
+        if (res.ok) {
+          setExpanded(false);
+          setDraft(res.data);
+        }
+        else if (res.needsPro) setNeedsPro(true);
+        else setFailed(true);
+      } catch (e) {
+        setFailed(true);
       }
-      else if (res.needsPro) setNeedsPro(true);
-      else setFailed(true);
-    } catch (e) {
-      setFailed(true);
-    } finally {
-      setBusy(false);
-    }
+    });
   };
 
   if (needsPro) {
