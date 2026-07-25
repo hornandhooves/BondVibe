@@ -14,6 +14,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useSubscriptions } from "../hooks/useEntitlement";
 import Icon from "./Icon";
 import { callClaude } from "../services/claudeService";
+import { useAsyncLoad } from "../hooks/useAsyncLoad";
 import { LANGUAGES, LANGUAGE_BY_CODE, nativeName } from "../i18n/languages";
 
 const YEAR_MS = 365 * 24 * 60 * 60 * 1000;
@@ -37,7 +38,7 @@ export default function TranslateButton({ text, contentId, navigation, style }) 
   const { colors } = useTheme();
   const { t, i18n } = useTranslation();
   const { isPro, isPlus } = useSubscriptions();
-  const [busy, setBusy] = useState(false);
+  const { loading: busy, run: runAsync } = useAsyncLoad(false);
   const [translated, setTranslated] = useState(null);
   const [showOriginal, setShowOriginal] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -50,29 +51,33 @@ export default function TranslateButton({ text, contentId, navigation, style }) 
 
   const styles = createStyles(colors);
 
-  const run = async (targetLang) => {
+  const run = (targetLang) => {
     if (busy) return;
     setPickerOpen(false);
-    setBusy(true);
     setFailed(false);
-    const targetName = (LANGUAGE_BY_CODE[targetLang] || {}).english || "English";
-    const res = await callClaude(
-      "content_translation",
-      { text: body, targetLang, targetName },
-      { cacheKey: `translate:${contentId}:${targetLang}`, ttlMs: YEAR_MS }
-    );
-    setBusy(false);
-    if (res.ok && res.data && res.data.translation) {
-      setTranslated(res.data.translation);
-      setShowOriginal(false);
-    } else if (res.needsPlus || res.needsPro || res.error === "taste_limit") {
-      // Pro hosts are unlimited, so a gated user here is non-Pro → Plus paywall
-      // (or Pro upsell if they happen to be a host on Pro trial state).
-      const route = isPro ? "ProUpsell" : "PlusPaywall";
-      navigation && navigation.navigate(route, { from: "content_translation" });
-    } else {
-      setFailed(true);
-    }
+    return runAsync(async () => {
+      const targetName = (LANGUAGE_BY_CODE[targetLang] || {}).english || "English";
+      try {
+        const res = await callClaude(
+          "content_translation",
+          { text: body, targetLang, targetName },
+          { cacheKey: `translate:${contentId}:${targetLang}`, ttlMs: YEAR_MS }
+        );
+        if (res.ok && res.data && res.data.translation) {
+          setTranslated(res.data.translation);
+          setShowOriginal(false);
+        } else if (res.needsPlus || res.needsPro || res.error === "taste_limit") {
+          // Pro hosts are unlimited, so a gated user here is non-Pro → Plus paywall
+          // (or Pro upsell if they happen to be a host on Pro trial state).
+          const route = isPro ? "ProUpsell" : "PlusPaywall";
+          navigation && navigation.navigate(route, { from: "content_translation" });
+        } else {
+          setFailed(true);
+        }
+      } catch (e) {
+        setFailed(true);
+      }
+    });
   };
 
   // The reader's own language first, then the rest — the source is hidden.

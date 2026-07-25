@@ -15,6 +15,7 @@ import GradientBackground from "../../components/GradientBackground";
 import { useTheme } from "../../contexts/ThemeContext";
 import { getRule, createRule, updateRule, deleteRule, sendNow, TRIGGERS, AUDIENCE_TYPES, CHANNELS, SCHEDULED_TRIGGERS } from "../../services/businessAutomationsService";
 import { callClaude } from "../../services/claudeService";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
 export default function AutomationFormScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
@@ -24,7 +25,7 @@ export default function AutomationFormScreen({ route, navigation }) {
 
   const [loading, setLoading] = useState(editing);
   const [saving, setSaving] = useState(false);
-  const [aiBusy, setAiBusy] = useState(false);
+  const { loading: aiBusy, run: runAi } = useAsyncLoad(false);
   const [trigger, setTrigger] = useState("welcome");
   const [audienceType, setAudienceType] = useState("all");
   const [tag, setTag] = useState("");
@@ -54,14 +55,17 @@ export default function AutomationFormScreen({ route, navigation }) {
 
   const buildAudience = () => (audienceType === "tag" ? { type: "tag", value: tag.trim() } : { type: audienceType });
 
-  const onAiDraft = async () => {
-    setAiBusy(true);
-    const res = await callClaude("automation_copy", { trigger, audienceType });
-    setAiBusy(false);
-    if (res.ok && res.data?.message) setMessage(res.data.message);
-    else if (res.needsPro) Alert.alert(t("business.momentum.aiProTitle"), t("business.momentum.aiProMsg"));
-    else Alert.alert(t("business.momentum.aiOffTitle"), t("business.momentum.aiOffMsg"));
-  };
+  const onAiDraft = () =>
+    runAi(async () => {
+      try {
+        const res = await callClaude("automation_copy", { trigger, audienceType });
+        if (res.ok && res.data?.message) setMessage(res.data.message);
+        else if (res.needsPro) Alert.alert(t("business.momentum.aiProTitle"), t("business.momentum.aiProMsg"));
+        else Alert.alert(t("business.momentum.aiOffTitle"), t("business.momentum.aiOffMsg"));
+      } catch (e) {
+        Alert.alert(t("business.momentum.aiOffTitle"), t("business.momentum.aiOffMsg"));
+      }
+    });
 
   const payload = () => ({ trigger, params: { days: parseInt(days, 10) || 3 }, audience: buildAudience(), message: message.trim(), channels, active });
 
