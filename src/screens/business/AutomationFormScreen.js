@@ -56,11 +56,16 @@ export default function AutomationFormScreen({ route, navigation }) {
 
   const onAiDraft = async () => {
     setAiBusy(true);
-    const res = await callClaude("automation_copy", { trigger, audienceType });
-    setAiBusy(false);
-    if (res.ok && res.data?.message) setMessage(res.data.message);
-    else if (res.needsPro) Alert.alert(t("business.momentum.aiProTitle"), t("business.momentum.aiProMsg"));
-    else Alert.alert(t("business.momentum.aiOffTitle"), t("business.momentum.aiOffMsg"));
+    try {
+      const res = await callClaude("automation_copy", { trigger, audienceType });
+      if (res.ok && res.data?.message) setMessage(res.data.message);
+      else if (res.needsPro) Alert.alert(t("business.momentum.aiProTitle"), t("business.momentum.aiProMsg"));
+      else Alert.alert(t("business.momentum.aiOffTitle"), t("business.momentum.aiOffMsg"));
+    } catch (e) {
+      Alert.alert(t("business.momentum.aiOffTitle"), t("business.momentum.aiOffMsg"));
+    } finally {
+      setAiBusy(false);
+    }
   };
 
   const payload = () => ({ trigger, params: { days: parseInt(days, 10) || 3 }, audience: buildAudience(), message: message.trim(), channels, active });

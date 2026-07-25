@@ -90,16 +90,21 @@ export default function MomentumCardScreen({ route, navigation }) {
   const onAiDraft = async () => {
     if (!card?.memberId) return;
     setAiBusy(true);
-    const res = await callClaude("momentum_action", { memberId: card.memberId });
-    setAiBusy(false);
-    if (res.ok && res.data) {
-      setActionTitle(res.data.actionTitle || actionTitle);
-      setPriority(res.data.priority || priority);
-      setDescription(res.data.message || description);
-    } else if (res.needsPro) {
-      Alert.alert(t("business.momentum.aiProTitle"), t("business.momentum.aiProMsg"));
-    } else {
+    try {
+      const res = await callClaude("momentum_action", { memberId: card.memberId });
+      if (res.ok && res.data) {
+        setActionTitle(res.data.actionTitle || actionTitle);
+        setPriority(res.data.priority || priority);
+        setDescription(res.data.message || description);
+      } else if (res.needsPro) {
+        Alert.alert(t("business.momentum.aiProTitle"), t("business.momentum.aiProMsg"));
+      } else {
+        Alert.alert(t("business.momentum.aiOffTitle"), t("business.momentum.aiOffMsg"));
+      }
+    } catch (e) {
       Alert.alert(t("business.momentum.aiOffTitle"), t("business.momentum.aiOffMsg"));
+    } finally {
+      setAiBusy(false);
     }
   };
 

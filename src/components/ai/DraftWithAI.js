@@ -31,14 +31,19 @@ export default function DraftWithAI({ onApply, navigation, placeholder }) {
     if (!text || busy) return;
     setBusy(true);
     setFailed(false);
-    const res = await callClaude("host_copilot", { idea: text });
-    if (res.ok) {
-      setExpanded(false);
-      setDraft(res.data);
+    try {
+      const res = await callClaude("host_copilot", { idea: text });
+      if (res.ok) {
+        setExpanded(false);
+        setDraft(res.data);
+      }
+      else if (res.needsPro) setNeedsPro(true);
+      else setFailed(true);
+    } catch (e) {
+      setFailed(true);
+    } finally {
+      setBusy(false);
     }
-    else if (res.needsPro) setNeedsPro(true);
-    else setFailed(true);
-    setBusy(false);
   };
 
   if (needsPro) {

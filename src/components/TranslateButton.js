@@ -56,22 +56,27 @@ export default function TranslateButton({ text, contentId, navigation, style }) 
     setBusy(true);
     setFailed(false);
     const targetName = (LANGUAGE_BY_CODE[targetLang] || {}).english || "English";
-    const res = await callClaude(
-      "content_translation",
-      { text: body, targetLang, targetName },
-      { cacheKey: `translate:${contentId}:${targetLang}`, ttlMs: YEAR_MS }
-    );
-    setBusy(false);
-    if (res.ok && res.data && res.data.translation) {
-      setTranslated(res.data.translation);
-      setShowOriginal(false);
-    } else if (res.needsPlus || res.needsPro || res.error === "taste_limit") {
-      // Pro hosts are unlimited, so a gated user here is non-Pro → Plus paywall
-      // (or Pro upsell if they happen to be a host on Pro trial state).
-      const route = isPro ? "ProUpsell" : "PlusPaywall";
-      navigation && navigation.navigate(route, { from: "content_translation" });
-    } else {
+    try {
+      const res = await callClaude(
+        "content_translation",
+        { text: body, targetLang, targetName },
+        { cacheKey: `translate:${contentId}:${targetLang}`, ttlMs: YEAR_MS }
+      );
+      if (res.ok && res.data && res.data.translation) {
+        setTranslated(res.data.translation);
+        setShowOriginal(false);
+      } else if (res.needsPlus || res.needsPro || res.error === "taste_limit") {
+        // Pro hosts are unlimited, so a gated user here is non-Pro → Plus paywall
+        // (or Pro upsell if they happen to be a host on Pro trial state).
+        const route = isPro ? "ProUpsell" : "PlusPaywall";
+        navigation && navigation.navigate(route, { from: "content_translation" });
+      } else {
+        setFailed(true);
+      }
+    } catch (e) {
       setFailed(true);
+    } finally {
+      setBusy(false);
     }
   };
 
