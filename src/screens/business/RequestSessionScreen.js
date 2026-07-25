@@ -16,6 +16,7 @@ import DateField from "../../components/DateField";
 import { useTheme } from "../../contexts/ThemeContext";
 import { getBusinessSessionTypes, requestSession } from "../../services/businessPassService";
 import { formatCentavos } from "../../utils/pricing";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
 export default function RequestSessionScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
@@ -26,7 +27,7 @@ export default function RequestSessionScreen({ route, navigation }) {
   const [typeId, setTypeId] = useState(null);
   const [date, setDate] = useState(new Date());
   const [time, setTime] = useState("10:00");
-  const [busy, setBusy] = useState(false);
+  const { loading: busy, run } = useAsyncLoad(false);
   const [done, setDone] = useState(false);
 
   useEffect(() => {
@@ -40,15 +41,15 @@ export default function RequestSessionScreen({ route, navigation }) {
 
   const type = types.find((x) => x.id === typeId);
 
-  const submit = async () => {
+  const submit = () => {
     if (!type) return;
     const start = new Date(date);
     const [h, mn] = time.split(":").map((n) => parseInt(n, 10) || 0);
     start.setHours(h, mn, 0, 0);
-    setBusy(true);
-    const res = await requestSession({ bizId, sessionTypeId: type.id, sessionTypeName: type.name, start: start.toISOString(), durationMin: type.durationMin });
-    setBusy(false);
-    if (res.ok) setDone(true);
+    return run(async () => {
+      const res = await requestSession({ bizId, sessionTypeId: type.id, sessionTypeName: type.name, start: start.toISOString(), durationMin: type.durationMin });
+      if (res.ok) setDone(true);
+    });
   };
 
   const styles = createStyles(colors);

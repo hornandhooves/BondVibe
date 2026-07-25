@@ -20,6 +20,7 @@ import KeyboardAccessory from "../components/KeyboardAccessory";
 import { getHostGroups, createGroup } from "../services/hostGroupService";
 import { AvatarDisplay } from "../components/AvatarPicker";
 import { usePremium } from "../hooks/usePremium";
+import { useAsyncLoad } from "../hooks/useAsyncLoad";
 
 const normAvatar = (a) =>
   !a ? null : typeof a === "string" ? { type: "emoji", value: a } : a;
@@ -35,7 +36,7 @@ export default function HostGroupsScreen({ navigation }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [creating, setCreating] = useState(false);
+  const { loading: creating, run } = useAsyncLoad(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -63,21 +64,24 @@ export default function HostGroupsScreen({ navigation }) {
     setModalVisible(true);
   };
 
-  const handleCreate = async () => {
-    setCreating(true);
-    const r = await createGroup(name, description, []);
-    setCreating(false);
-    if (r.success) {
-      setModalVisible(false);
-      setName("");
-      setDescription("");
-      load();
-      // Go straight to managing members.
-      navigation.navigate("GroupManage", { groupId: r.groupId });
-    } else {
-      Alert.alert(t("hostGroups.couldntCreateGroup"), r.error || t("hostGroups.pleaseTryAgain"));
-    }
-  };
+  const handleCreate = () =>
+    run(async () => {
+      try {
+        const r = await createGroup(name, description, []);
+        if (r.success) {
+          setModalVisible(false);
+          setName("");
+          setDescription("");
+          load();
+          // Go straight to managing members.
+          navigation.navigate("GroupManage", { groupId: r.groupId });
+        } else {
+          Alert.alert(t("hostGroups.couldntCreateGroup"), r.error || t("hostGroups.pleaseTryAgain"));
+        }
+      } catch (e) {
+        Alert.alert(t("hostGroups.couldntCreateGroup"), t("hostGroups.pleaseTryAgain"));
+      }
+    });
 
   const styles = createStyles(colors, isDark);
 

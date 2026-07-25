@@ -22,31 +22,36 @@ import GradientBackground from "../../components/GradientBackground";
 import BusinessPassCard from "../../components/business/BusinessPassCard";
 import { useTheme } from "../../contexts/ThemeContext";
 import { redeemGuestCode } from "../../services/businessPassService";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
 export default function RedeemCodeScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [pass, setPass] = useState(null);
+  const { loading: busy, run } = useAsyncLoad(false);
 
-  const onRedeem = async () => {
-    setBusy(true);
+  const onRedeem = () => {
     setError(null);
-    const res = await redeemGuestCode(code);
-    setBusy(false);
-    if (res.ok) {
-      setPass({ bizId: res.bizId, memberId: res.memberId, businessName: res.businessName, memberName: res.memberName });
-    } else {
-      setError(
-        res.error === "invalid"
-          ? t("business.redeem.invalid")
-          : res.error === "in_use"
-          ? t("business.redeem.inUse")
-          : t("business.redeem.failed")
-      );
-    }
+    return run(async () => {
+      try {
+        const res = await redeemGuestCode(code);
+        if (res.ok) {
+          setPass({ bizId: res.bizId, memberId: res.memberId, businessName: res.businessName, memberName: res.memberName });
+        } else {
+          setError(
+            res.error === "invalid"
+              ? t("business.redeem.invalid")
+              : res.error === "in_use"
+              ? t("business.redeem.inUse")
+              : t("business.redeem.failed")
+          );
+        }
+      } catch (e) {
+        setError(t("business.redeem.failed"));
+      }
+    });
   };
 
   const styles = createStyles(colors);
