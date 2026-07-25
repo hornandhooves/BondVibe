@@ -24,6 +24,7 @@ import {
   getMembershipExpiryDate,
   getMembershipPlan,
 } from "../services/membershipService";
+import { useAsyncLoad } from "../hooks/useAsyncLoad";
 
 export default function MyMembershipsScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -36,19 +37,18 @@ export default function MyMembershipsScreen({ navigation }) {
   const [memberships, setMemberships] = useState([]);
   const [passes, setPasses] = useState([]);
   const [passModal, setPassModal] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
 
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [])
+      run(load);
+    }, [run])
   );
 
   const load = async () => {
     const [data, biz] = await Promise.all([getUserMemberships(), getMyBusinessPasses()]);
     setMemberships(data);
     setPasses(biz);
-    setLoading(false);
   };
 
   const handleRenew = async (m) => {

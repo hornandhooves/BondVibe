@@ -26,31 +26,34 @@ import {
   MATCH_TYPE_COLORS,
 } from "../../services/matchingService";
 import { funnyTag, isProfileComplete } from "../../constants/matchTags";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
 export default function MatchProfileViewScreen({ navigation }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const [profile, setProfile] = useState(null);
   const [user, setUser] = useState({});
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const me = auth.currentUser?.uid;
-    const [p, uSnap, md] = await Promise.all([
-      getCanonicalMatchProfile(),
-      me ? getDoc(doc(db, "users", me)) : Promise.resolve(null),
-      me ? getMatchDataFor(me) : Promise.resolve({}),
-    ]);
-    setProfile(p);
-    // personality moved to the gated match subcollection — fold it back onto the
-    // `user` object so the existing `user.personality` read keeps working even
-    // when the match profile itself isn't filled yet.
-    const u = uSnap?.exists() ? uSnap.data() : {};
-    u.personality = md.personality ?? null;
-    setUser(u);
-    setLoading(false);
-  }, []);
+  const load = useCallback(
+    () =>
+      run(async () => {
+        const me = auth.currentUser?.uid;
+        const [p, uSnap, md] = await Promise.all([
+          getCanonicalMatchProfile(),
+          me ? getDoc(doc(db, "users", me)) : Promise.resolve(null),
+          me ? getMatchDataFor(me) : Promise.resolve({}),
+        ]);
+        setProfile(p);
+        // personality moved to the gated match subcollection — fold it back onto
+        // the `user` object so the existing `user.personality` read keeps
+        // working even when the match profile itself isn't filled yet.
+        const u = uSnap?.exists() ? uSnap.data() : {};
+        u.personality = md.personality ?? null;
+        setUser(u);
+      }),
+    [run]
+  );
   // Re-read on focus so returning from the editor shows the saved profile.
   React.useEffect(() => navigation.addListener("focus", load), [navigation, load]);
 
