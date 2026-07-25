@@ -23,6 +23,13 @@ dashboard). App scheme is `kinlo://`; the git repo is still `hornandhooves/BondV
 6. **Never commit secrets.** `google-play-service-account.json`,
    `*-firebase-adminsdk-*.json`, `ANTHROPIC_API_KEY`, `.env` — all gitignored,
    keep it that way.
+7. **A `setLoading(true)`/`setSaving(true)` must always resolve back to `false`,
+   even on failure.** Use `useAsyncLoad()` (or wrap the risky call in
+   try/catch/finally) — an unguarded `await`/`Promise.all(...)`/`.then(...)` that
+   rejects leaves the UI stuck forever (a spinner that never resolves, a button
+   stuck disabled). This reproduced independently 35+ times (KIN-92/94/95)
+   before it had a name; it's now a lint error, not a convention to remember.
+   (See §7.)
 
 ---
 
@@ -105,6 +112,15 @@ dashboard). App scheme is `kinlo://`; the git repo is still `hornandhooves/BondV
 - **i18n:** all copy via `react-i18next` `t("...")`; add keys to BOTH
   `src/i18n/locales/en.json` and `es.json` (same nesting; use `_one`/`_other` for
   plurals, `{{var}}` for interpolation). Verify parity before finishing.
+- **Server-rendered i18n is a SEPARATE catalog** (`functions/i18n/notifications.{en,es}.json`
+  + `tPush(key, lang, params)` in `functions/index.js`). If a notification/message
+  needs to be read by someone other than its author, it must NOT be pre-rendered
+  client-side and frozen into Firestore — forward the i18n `key` + `params` so
+  each recipient renders it in **their own** language (BUG 34). A `titleKey`/`bodyKey`
+  in `NOTIF_CATALOG` with no matching entry in the server JSON renders the raw key
+  string to every reader who isn't the author (KIN-93's root cause). If you add a
+  new `NOTIF_CATALOG` type with a `titleKey`/`bodyKey`, add the matching entries to
+  BOTH server JSON files in the same PR.
 - **Theme tokens, no hardcoded colors** — use `src/constants/theme-tokens.js`
   (`colors`, `FONTS`, `SPACING`, `RADII`). Exception: when a PIXEL-FIDELITY spec
   dictates an exact hue, use that exact value (and comment why).
@@ -128,6 +144,13 @@ dashboard). App scheme is `kinlo://`; the git repo is still `hornandhooves/BondV
   (e.g. `expenses`, `goals`) REQUIRES a matching rule in `firestore.rules`** and a
   deploy — otherwise it's denied. Finance-sensitive collections use the
   owner + non-reception-staff gate (mirror `payments`).
+- **`businesses/{bizId}` itself is staff/owner-gated only — there is no public
+  read.** A screen that needs to show business identity (name, verified badge,
+  avatar) to a customer who is NOT staff must NOT read the parent doc directly
+  (KIN-92). Either denormalize the safe fields onto the customer-readable doc at
+  write time (see `bizDenorm()` in `src/services/businessSessionsService.js`), or
+  read from a dedicated public sub-doc if one exists for that surface (see
+  `claude/DISENO_business_public_profile.md` for the proposed general pattern).
 - **Never write `undefined` to Firestore** — it's rejected. Coalesce optional
   fields to `null`.
 - **`collectionGroup` queries need a recursive-wildcard rule**
@@ -141,6 +164,14 @@ dashboard). App scheme is `kinlo://`; the git repo is still `hornandhooves/BondV
 
 ## 5. Before you finish (verification)
 - `CI=true npx jest` → green.
+- **`npm run lint` → clean, always — not just for `src/`.** `functions/` has its
+  own ESLint config (`comma-dangle` and friends) that `jest` never exercises,
+  especially for a one-off script that only runs standalone
+  (`node some-script.js`), never imported by a test. A KIN-92 PR shipped with
+  red CI for exactly this — a missing trailing comma, invisible to `jest`,
+  caught only by CI instead of locally. Run lint before opening the PR, not
+  after CI tells you.
+- No new `local/no-unguarded-async-state` warnings on files you touched (see §7).
 - Quick i18n parity check (en vs es key sets match).
 - Babel-transform touched files through the project config if unsure.
 - **Screenshot-diff** new screens against the design mocks. The `design_handoff_*/`
@@ -162,3 +193,43 @@ dashboard). App scheme is `kinlo://`; the git repo is still `hornandhooves/BondV
   (`formatCentavos`, `formatCentavosCompact`).
 - Rules: `firestore.rules`, `storage.rules` (root). Navigation:
   `src/navigation/AppNavigator.js`.
+
+---
+
+## 7. Async state — never let it get stuck (KIN-92 / KIN-94 / KIN-95)
+**The pattern that keeps reproducing:** `setLoading(true)` (or `setSaving`,
+`setWorking`, ...) → an `await somethingThatCanThrow()` or `Promise.all([...])`
+with no try/catch → `setLoading(false)`. The moment the awaited call rejects
+(permission-denied, offline, a bad doc, a server validation error — anything),
+the reset line never runs. The screen is stuck spinning, or the button stuck
+disabled, forever — the only way out is force-quitting the app. This was found
+independently in 35+ places (23 load-sites, 13 save-sites) before it had a name.
+
+**The fix, in order of preference:**
+1. **Use `useAsyncLoad()`** (`src/hooks/useAsyncLoad.js`). It wraps the
+   try/catch/finally for you and is unmount-safe:
+   ```js
+   // initial load
+   const { loading, error, run } = useAsyncLoad();
+   useFocusEffect(useCallback(() => {
+     run(async () => {
+       const [a, b] = await Promise.all([fetchA(), fetchB()]);
+       setA(a); setB(b);
+     });
+   }, [run]));
+
+   // save button
+   const { loading: saving, run } = useAsyncLoad(false);
+   const onSave = () => run(() => updateGroup(groupId, { name }));
+   ```
+2. If the shape genuinely doesn't fit the hook, wrap the risky call yourself:
+   `try { ...await...; } catch (e) { ...surface it...; } finally { setLoading(false); }`.
+   `finally` is the part that matters — it's what guarantees the reset runs.
+
+**This is enforced, not just documented.** `eslint-rules/no-unguarded-async-state.js`
+(registered in `eslint.config.js` as `local/no-unguarded-async-state`, currently
+`"warn"` — see that file's header comment for exactly what it does and does not
+catch) flags a `setX(true)` followed by an unguarded risky call with no
+try/catch/finally before the matching `setX(false)`. Fix warnings on files you
+touch; don't add new ones. Once the existing KIN-94/95 backlog is cleared the
+rule should be promoted to `"error"`.
