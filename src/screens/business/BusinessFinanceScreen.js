@@ -32,6 +32,7 @@ import {
 import { RANGE_IDS, DEFAULT_RANGE, rangeBounds, rangeLabelKey } from "../../constants/businessRanges";
 import { formatCentavos } from "../../utils/pricing";
 import { formatDate } from "../../utils/formatDate";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
 export default function BusinessFinanceScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -40,23 +41,25 @@ export default function BusinessFinanceScreen({ navigation }) {
   const [payments, setPayments] = useState([]);
   const [outstanding, setOutstanding] = useState([]);
   const [business, setBusiness] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
 
   const bounds = rangeBounds(rangeId);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const [pays, owing, biz] = await Promise.all([
-      listPaymentsInRange(bounds.from.toISOString(), bounds.to.toISOString()),
-      listOutstanding(),
-      getBusiness(),
-    ]);
-    setPayments(pays);
-    setOutstanding(owing);
-    setBusiness(biz);
-    setLoading(false);
+  const load = useCallback(
+    () =>
+      run(async () => {
+        const [pays, owing, biz] = await Promise.all([
+          listPaymentsInRange(bounds.from.toISOString(), bounds.to.toISOString()),
+          listOutstanding(),
+          getBusiness(),
+        ]);
+        setPayments(pays);
+        setOutstanding(owing);
+        setBusiness(biz);
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rangeId]);
+    [rangeId, run]
+  );
 
   useFocusEffect(
     useCallback(() => {
