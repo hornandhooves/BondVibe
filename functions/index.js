@@ -5131,6 +5131,52 @@ exports.onStaffWritten = onDocumentWritten(
   },
 );
 
+// KIN-97: mirror a safe public projection of businesses/{bizId} into
+// businesses/{bizId}/public/profile — exactly 4 fields (name, verified,
+// avatarUrl, vertical) + updatedAt. The parent doc itself is staff/owner-only
+// (KIN-92: no public read), so any screen that needs to show business
+// identity to a customer who isn't staff reads this sub-doc instead. Never
+// written by the client — see firestore.rules (`allow write: if false`).
+// Skips the write when none of the 4 tracked fields actually changed, so an
+// unrelated business-doc write (financials, settings, staff roster changes
+// elsewhere) doesn't churn this doc for nothing. Writing to a SUBCOLLECTION
+// doc under the watched businesses/{bizId} path doesn't re-trigger this
+// function — no loop risk.
+/**
+ * @param {object} d raw businesses/{bizId} doc data
+ * @return {object} the 4 tracked public-safe fields
+ */
+function publicProfileFields(d) {
+  return {
+    name: (d && d.name) || "",
+    verified: (d && d.verified) === true,
+    avatarUrl: (d && d.avatarUrl) || null,
+    vertical: (d && d.vertical) || null,
+  };
+}
+exports.onBusinessPublicProfileWritten = onDocumentWritten(
+  "businesses/{bizId}",
+  async (event) => {
+    const {bizId} = event.params;
+    const profileRef = db.collection("businesses").doc(bizId)
+      .collection("public").doc("profile");
+    const after = event.data && event.data.after;
+
+    if (!after || !after.exists) {
+      // The business was deleted — don't leave an orphaned public profile.
+      await profileRef.delete().catch(() => {});
+      return;
+    }
+
+    const next = publicProfileFields(after.data());
+    const before = event.data && event.data.before;
+    const prev = before && before.exists ? publicProfileFields(before.data()) : null;
+    if (prev && JSON.stringify(prev) === JSON.stringify(next)) return; // unchanged
+
+    await profileRef.set({...next, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
+  },
+);
+
 /**
  * Request an ownership transfer (BUG 32.4, Phase 2). Only the CURRENT owner can
  * initiate, and only to a VALIDATED host (users/{toUid}.role in host/admin). It

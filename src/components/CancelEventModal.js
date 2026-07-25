@@ -27,9 +27,18 @@ export default function CancelEventModal({
   const handleConfirm = async () => {
     Keyboard.dismiss(); // Dismiss keyboard before confirming
     setLoading(true);
-    await onConfirm(reason.trim() || t("cancelEventModal.noReasonProvided"));
-    setLoading(false);
-    setReason("");
+    try {
+      await onConfirm(reason.trim() || t("cancelEventModal.noReasonProvided"));
+      setReason("");
+    } catch (e) {
+      // KIN-95: this component's only current caller (EventDetailScreen)
+      // already wraps its own onConfirm — but nothing here enforced that,
+      // so a future caller passing a self-throwing callback would have left
+      // "Cancelling…" stuck on the button forever. Stay open on failure so
+      // the host can retry, matching the pattern from the rest of the app.
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleClose = () => {

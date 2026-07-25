@@ -25,10 +25,19 @@ export default function AdminMessageModal({ visible, onClose, onSubmit, title, u
     }
 
     setSubmitting(true);
-    await onSubmit(message.trim());
-    setSubmitting(false);
-    setMessage('');
-    onClose();
+    try {
+      await onSubmit(message.trim());
+      setMessage('');
+      onClose();
+    } catch (e) {
+      // KIN-95: this component's only current caller (AdminDashboardScreen)
+      // already wraps its own onSubmit — but nothing here enforced that, so
+      // a future caller passing a self-throwing callback would have left
+      // "Processing…" stuck forever. Stay open on failure so the admin can
+      // retry, instead of silently closing as if it had succeeded.
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleClose = () => {

@@ -21,6 +21,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { getOwnerRentals, getMyFleet } from "../services/rentalService";
 import { formatCentavos } from "../utils/pricing";
 import { formatDate } from "../utils/formatDate";
+import { useAsyncLoad } from "../hooks/useAsyncLoad";
 
 const fmt = (iso) =>
   iso ? formatDate(new Date(iso), { day: "numeric", month: "short" }) : "—";
@@ -29,7 +30,7 @@ export default function VehicleBookingsScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
 
   const STATUS_META = {
     reserved: { label: t("vehicleBookings.status.reserved"), color: "#B45309" },
@@ -41,7 +42,7 @@ export default function VehicleBookingsScreen({ navigation }) {
 
   useFocusEffect(
     useCallback(() => {
-      (async () => {
+      run(async () => {
         const [rentals, fleet] = await Promise.all([getOwnerRentals(), getMyFleet()]);
         const titleById = Object.fromEntries(fleet.map((v) => [v.id, v.title]));
         const now = Date.now();
@@ -54,9 +55,9 @@ export default function VehicleBookingsScreen({ navigation }) {
           }))
           .sort((a, b) => a.startMs - b.startMs);
         setRows(decorated);
-        setLoading(false);
-      })();
-    }, [])
+      });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [run])
   );
 
   const styles = createStyles(colors, isDark);
