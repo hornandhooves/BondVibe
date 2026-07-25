@@ -57,13 +57,6 @@ export async function getListing(bizId, id) {
   return shapeListing({ id: snap.id, ref: snap.ref, data: () => snap.data() });
 }
 
-/** The business behind a listing (name + verified/vertical for the detail host card). */
-export async function getListingBusiness(bizId) {
-  if (!bizId) return null;
-  const snap = await getDoc(doc(db, "businesses", bizId));
-  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
-}
-
 /**
  * Reserve + pay a slot on a public service (Marketplace P1 · M4). Calls the
  * reserveServiceBooking Cloud Function — the SERVER validates price + capacity

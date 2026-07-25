@@ -31,5 +31,9 @@ export function shapeListing(d) {
     city: data.city || null,
     description: data.description || null,
     planPackageId: data.planPackageId || null,
+    // Denormalized at write time (businessSessionsService) so the detail screen
+    // never needs a direct businesses/{bizId} read — see KIN-92.
+    businessName: data.businessName || "",
+    businessVerified: data.businessVerified === true,
   };
 }

@@ -96,6 +96,19 @@ export const fieldsSchemaFor = (vertical) => {
   return [];
 };
 
+/**
+ * KIN-92: businessName/businessVerified are denormalized onto the SessionType
+ * doc itself (mirroring shapeListing()'s list-view read) so the marketplace
+ * detail screen never needs a direct `businesses/{bizId}` read — that doc is
+ * staff/owner-only in firestore.rules, so any other signed-in customer got a
+ * permission-denied there that hung the screen forever.
+ */
+async function bizDenorm(bizId) {
+  const snap = await getDoc(doc(db, "businesses", bizId));
+  const b = snap.exists() ? snap.data() : {};
+  return { businessName: b.name || "", businessVerified: b.verified === true };
+}
+
 export async function createSessionType(data, bizId = getMyBizId()) {
   const payload = {
     name: (data.name || "").trim(),
@@ -114,6 +127,7 @@ export async function createSessionType(data, bizId = getMyBizId()) {
     city: (data.city || "").trim() || null,
     planPackageId: data.planPackageId || null, // wellness: link to a package (P2)
     fieldsSchema: fieldsSchemaFor(data.vertical), // home/auto intake fields (P3)
+    ...(await bizDenorm(bizId)),
     createdAt: serverTimestamp(),
   };
   const r = await addDoc(col(bizId, "sessionTypes"), payload);
@@ -134,6 +148,9 @@ export async function updateSessionType(id, patch, bizId = getMyBizId()) {
   if ("vertical" in clean && !clean.vertical) clean.vertical = null;
   if ("vertical" in clean) clean.fieldsSchema = fieldsSchemaFor(clean.vertical);
   if ("city" in clean) clean.city = (clean.city || "").trim() || null;
+  // Refresh the denorm on every edit so a host who gets verified later isn't
+  // stuck showing a stale badge on existing listings once they touch them.
+  Object.assign(clean, await bizDenorm(bizId));
   await updateDoc(ref(bizId, "sessionTypes", id), clean);
 }
 export async function deleteSessionType(id, bizId = getMyBizId()) {

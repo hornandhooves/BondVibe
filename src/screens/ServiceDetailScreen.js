@@ -14,7 +14,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { FONTS } from "../constants/theme-tokens";
 import Icon from "../components/Icon";
 import { formatCentavos } from "../utils/pricing";
-import { getListing, getListingBusiness } from "../services/marketplaceService";
+import { getListing } from "../services/marketplaceService";
 import { getMembershipPlan } from "../services/membershipService";
 import { VERTICAL_META } from "./MarketplaceExploreScreen";
 
@@ -34,25 +34,30 @@ export default function ServiceDetailScreen({ route, navigation }) {
   const s = createStyles(colors, isDark);
 
   const [listing, setListing] = useState(null);
-  const [business, setBusiness] = useState(null);
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [l, b] = await Promise.all([getListing(bizId, listingId), getListingBusiness(bizId)]);
-      setListing(l);
-      setBusiness(b);
-      // Plan variant (P2): a service linked to a membership plan → reuse the
-      // existing membership checkout instead of a per-slot booking.
-      if (l && l.planPackageId) {
-        try {
-          setPlan(await getMembershipPlan(l.planPackageId));
-        } catch (e) {
-          /* plan unavailable — falls back to slot/quote */
+      try {
+        const l = await getListing(bizId, listingId);
+        setListing(l);
+        // Plan variant (P2): a service linked to a membership plan → reuse the
+        // existing membership checkout instead of a per-slot booking.
+        if (l && l.planPackageId) {
+          try {
+            setPlan(await getMembershipPlan(l.planPackageId));
+          } catch (e) {
+            /* plan unavailable — falls back to slot/quote */
+          }
         }
+      } catch (e) {
+        // KIN-92: an unhandled rejection here used to leave `loading` stuck
+        // forever (infinite spinner). Falling through leaves `listing` null,
+        // which renders the existing "not found" state instead.
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, [bizId, listingId]);
 
@@ -93,7 +98,7 @@ export default function ServiceDetailScreen({ route, navigation }) {
       // Quote / free → the existing on-demand request flow (host confirms).
       navigation.navigate("BusinessRequestSession", {
         bizId,
-        businessName: business?.name || listing.name,
+        businessName: listing.businessName || listing.name,
       });
     } else {
       // Paid slot → the transactional reserve-and-pay checkout (M4).
@@ -135,17 +140,17 @@ export default function ServiceDetailScreen({ route, navigation }) {
           </View>
 
           {/* Host card */}
-          {!!business && (
+          {!!listing.businessName && (
             <View style={[s.hostCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={[s.hostAvatar, { backgroundColor: colors.brandSoft }]}>
                 <Icon name="user" size={18} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[s.hostName, { color: colors.text }]} numberOfLines={1}>
-                  {t("marketplace.detail.hostedBy", { name: business.name || "Kinlo" })}
+                  {t("marketplace.detail.hostedBy", { name: listing.businessName || "Kinlo" })}
                 </Text>
               </View>
-              {business.verified && (
+              {listing.businessVerified && (
                 <View style={[s.verifiedPill, { backgroundColor: colors.successBg }]}>
                   <Icon name="verified" size={13} color={colors.success} />
                   <Text style={[s.verifiedTxt, { color: colors.success }]}>
