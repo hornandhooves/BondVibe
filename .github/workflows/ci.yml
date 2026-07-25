@@ -90,5 +90,6 @@ jobs:
           cat > functions/.secret.local <<'SECRETS'
           STRIPE_SECRET_KEY=sk_test_ci_dummy
           STRIPE_WEBHOOK_SECRET_PAYMENTS=whsec_dummy_emulator_only
+          STRIPE_WEBHOOK_SECRET_CONNECT=whsec_dummy_connect_emulator_only
           SECRETS
           npm run test:payments
