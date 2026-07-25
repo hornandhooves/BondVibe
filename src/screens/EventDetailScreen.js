@@ -605,10 +605,16 @@ export default function EventDetailScreen({ route, navigation }) {
       for (const participantId of uniqueParticipants) {
         if (participantId !== auth.currentUser.uid) {
           try {
+            // KIN-96: forward the i18n key + params (BUG 34) instead of a
+            // pre-rendered message, so each recipient reads this in THEIR OWN
+            // language, not the canceller's. `reason` itself stays free-text
+            // (host-authored, or the localized "no reason" fallback) — only
+            // the title + surrounding sentence now render server-side.
             await createNotification(participantId, {
               type: "event_cancelled",
-              title: t("eventDetail.alerts.notifCancelledTitle"),
-              message: t("eventDetail.alerts.notifCancelledMsg", { title: event.title, reason }),
+              titleKey: "notif.eventCancelled.title",
+              bodyKey: "notif.eventCancelled.body",
+              params: { title: event.title, reason },
               icon: "block",
               metadata: {
                 eventId: event.id,
