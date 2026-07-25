@@ -34,6 +34,7 @@ import {
 } from "../../services/businessMomentumService";
 import { listMembers } from "../../services/businessMembersService";
 import { columnName } from "../../constants/momentumDefaults";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
 const PRIORITY_FILTERS = [null, "urgent", "high", "medium", "low"];
 
@@ -84,7 +85,7 @@ export default function MomentumBoardScreen({ navigation }) {
   const { t } = useTranslation();
   const [board, setBoard] = useState(null);
   const [cards, setCards] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { loading, run } = useAsyncLoad();
   const [movingCard, setMovingCard] = useState(null);
   const [pickMember, setPickMember] = useState(false);
   const [members, setMembers] = useState([]);
@@ -145,12 +146,15 @@ export default function MomentumBoardScreen({ navigation }) {
     }
   }, [board, columnAtX, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const load = useCallback(async () => {
-    const [b, c] = await Promise.all([getBoard(), listCards()]);
-    setBoard(b);
-    setCards(c);
-    setLoading(false);
-  }, []);
+  const load = useCallback(
+    () =>
+      run(async () => {
+        const [b, c] = await Promise.all([getBoard(), listCards()]);
+        setBoard(b);
+        setCards(c);
+      }),
+    [run]
+  );
 
   useFocusEffect(
     useCallback(() => {
