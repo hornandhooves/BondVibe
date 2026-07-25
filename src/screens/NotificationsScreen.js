@@ -101,14 +101,19 @@ export default function NotificationsScreen({ navigation }) {
   const handleJoinByCode = async () => {
     if (!joinCode.trim()) return;
     setJoining(true);
-    const r = await joinGroupByCode(joinCode);
-    setJoining(false);
-    if (r.success) {
-      setJoinVisible(false);
-      setJoinCode("");
-      navigation.navigate("GroupChat", { groupId: r.groupId });
-    } else {
-      Alert.alert(t("notifications.couldntJoinTitle"), r.error || t("notifications.checkCodeTryAgain"));
+    try {
+      const r = await joinGroupByCode(joinCode);
+      if (r.success) {
+        setJoinVisible(false);
+        setJoinCode("");
+        navigation.navigate("GroupChat", { groupId: r.groupId });
+      } else {
+        Alert.alert(t("notifications.couldntJoinTitle"), r.error || t("notifications.checkCodeTryAgain"));
+      }
+    } catch (e) {
+      Alert.alert(t("notifications.couldntJoinTitle"), t("notifications.checkCodeTryAgain"));
+    } finally {
+      setJoining(false);
     }
   };
 

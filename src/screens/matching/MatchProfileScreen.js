@@ -136,38 +136,43 @@ export default function MatchProfileScreen({ route, navigation }) {
       return;
     }
     setSaving(true);
-    const payload = {
-      bio: bio.trim(),
-      profession: profession.trim(),
-      interests,
-      funnyTags,
-      languages,
-      learning,
-      energy,
-      groupPref,
-      pro: {
-        role: pro.role.trim(),
-        industry: pro.industry,
-        offer: pro.offer.trim(),
-        seek: pro.seek.trim(),
-      },
-      lookingFor,
-      icebreaker: icebreaker.trim(),
-      visibility,
-      available: true,
-    };
-    // Same form, two destinations: canonical writes users/{me}.matchProfile;
-    // the event flow writes the attendee doc AND merges into the canonical one.
-    const res = canonical
-      ? await saveCanonicalMatchProfile(payload)
-      : await saveMatchProfile(eventId, payload);
-    setSaving(false);
-    if (!res.success) {
-      Alert.alert(t("matching.profile.couldntSaveTitle"), res.error || t("matching.profile.tryAgain"));
-      return;
+    try {
+      const payload = {
+        bio: bio.trim(),
+        profession: profession.trim(),
+        interests,
+        funnyTags,
+        languages,
+        learning,
+        energy,
+        groupPref,
+        pro: {
+          role: pro.role.trim(),
+          industry: pro.industry,
+          offer: pro.offer.trim(),
+          seek: pro.seek.trim(),
+        },
+        lookingFor,
+        icebreaker: icebreaker.trim(),
+        visibility,
+        available: true,
+      };
+      // Same form, two destinations: canonical writes users/{me}.matchProfile;
+      // the event flow writes the attendee doc AND merges into the canonical one.
+      const res = canonical
+        ? await saveCanonicalMatchProfile(payload)
+        : await saveMatchProfile(eventId, payload);
+      if (!res.success) {
+        Alert.alert(t("matching.profile.couldntSaveTitle"), res.error || t("matching.profile.tryAgain"));
+        return;
+      }
+      if (canonical) navigation.goBack();
+      else navigation.replace("MatchGrid", { eventId, eventTitle });
+    } catch (e) {
+      Alert.alert(t("matching.profile.couldntSaveTitle"), t("matching.profile.tryAgain"));
+    } finally {
+      setSaving(false);
     }
-    if (canonical) navigation.goBack();
-    else navigation.replace("MatchGrid", { eventId, eventTitle });
   };
 
   const s = createStyles(colors);

@@ -103,23 +103,31 @@ export default function ChooseHandleScreen() {
     const timeout = new Promise((resolve) =>
       setTimeout(() => resolve({ success: false, code: "timeout" }), CLAIM_TIMEOUT_MS),
     );
-    const r = await Promise.race([claimHandle(value), timeout]);
-    if (r.success) {
-      // Do NOT navigate — the AppNavigator snapshot re-routes once handleLower
-      // is written. Show a brief "setting up" state until it does.
-      setClaimed(true);
-      return;
-    }
-    setClaiming(false);
-    if (r.code === "timeout") {
-      setError(t("chooseHandle.errorTimeout"));
-      Alert.alert(t("chooseHandle.timeoutTitle"), t("chooseHandle.errorTimeout"), [
-        { text: t("common.cancel"), style: "cancel" },
-        { text: t("chooseHandle.retry"), onPress: onClaim },
-      ]);
-    } else {
-      setError(r.error || t("chooseHandle.errorGeneric"));
-      if (r.code === "already-exists") setStatus("taken");
+    try {
+      const r = await Promise.race([claimHandle(value), timeout]);
+      if (r.success) {
+        // Do NOT navigate — the AppNavigator snapshot re-routes once handleLower
+        // is written. Show a brief "setting up" state until it does.
+        setClaimed(true);
+        return;
+      }
+      setClaiming(false);
+      if (r.code === "timeout") {
+        setError(t("chooseHandle.errorTimeout"));
+        Alert.alert(t("chooseHandle.timeoutTitle"), t("chooseHandle.errorTimeout"), [
+          { text: t("common.cancel"), style: "cancel" },
+          { text: t("chooseHandle.retry"), onPress: onClaim },
+        ]);
+      } else {
+        setError(r.error || t("chooseHandle.errorGeneric"));
+        if (r.code === "already-exists") setStatus("taken");
+      }
+    } catch (e) {
+      // KIN-95: claimHandle() already catches internally, but this guards
+      // against the 15s race itself ever rejecting (e.g. a future refactor)
+      // and leaving the claim button stuck disabled forever.
+      setClaiming(false);
+      setError(t("chooseHandle.errorGeneric"));
     }
   };
 

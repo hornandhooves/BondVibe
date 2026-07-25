@@ -45,8 +45,13 @@ export default function PostDetailScreen({ route, navigation }) {
     if (!body) return;
     setSending(true);
     setText("");
-    await addComment(postId, body);
-    setSending(false);
+    try {
+      await addComment(postId, body);
+    } catch (e) {
+      console.error("PostDetailScreen: addComment failed", e);
+    } finally {
+      setSending(false);
+    }
   };
 
   const styles = createStyles(colors);
