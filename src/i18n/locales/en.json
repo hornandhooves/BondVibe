@@ -1817,6 +1817,7 @@
     "segmentAll": "All",
     "defaultHostName": "your host",
     "sent": "Sent",
+    "couldntSend": "Couldn't send the announcement. Please try again.",
     "announcementSentCount_one": "Announcement sent to {{count}} person.",
     "announcementSentCount_other": "Announcement sent to {{count}} people.",
     "sendAnnouncementTo": "Send announcement to {{count}}",

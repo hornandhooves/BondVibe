@@ -97,6 +97,11 @@ export default function HostCRMScreen({ navigation }) {
       setAnnounceVisible(false);
       setAnnounceText("");
       if (r.success) Alert.alert(t("hostCRM.sent"), t("hostCRM.announcementSentCount", { count: r.count }));
+    } catch (e) {
+      // KIN-95: sendAnnouncement() already catches internally today, but this
+      // guards against a future refactor leaving "Sending…" stuck forever.
+      // Stay open on failure so the host can retry.
+      Alert.alert(t("hostCRM.couldntSend"));
     } finally {
       setAnnouncing(false);
     }
