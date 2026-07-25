@@ -19,6 +19,7 @@ import GradientBackground from "../components/GradientBackground";
 import KeyboardAccessory from "../components/KeyboardAccessory";
 import { auth, db } from "../services/firebase";
 import { subscribeUserGroups, joinGroupByCode } from "../services/hostGroupService";
+import { useAsyncLoad } from "../hooks/useAsyncLoad";
 import { formatDate } from "../utils/formatDate";
 import {
   getUserNotifications,
@@ -90,7 +91,7 @@ export default function NotificationsScreen({ navigation }) {
   const [groups, setGroups] = useState([]);
   const [joinVisible, setJoinVisible] = useState(false);
   const [joinCode, setJoinCode] = useState("");
-  const [joining, setJoining] = useState(false);
+  const { loading: joining, run: runJoin } = useAsyncLoad(false);
 
   // Member inbox: groups the user belongs to.
   useEffect(() => {
@@ -98,23 +99,22 @@ export default function NotificationsScreen({ navigation }) {
     return () => unsub();
   }, []);
 
-  const handleJoinByCode = async () => {
+  const handleJoinByCode = () => {
     if (!joinCode.trim()) return;
-    setJoining(true);
-    try {
-      const r = await joinGroupByCode(joinCode);
-      if (r.success) {
-        setJoinVisible(false);
-        setJoinCode("");
-        navigation.navigate("GroupChat", { groupId: r.groupId });
-      } else {
-        Alert.alert(t("notifications.couldntJoinTitle"), r.error || t("notifications.checkCodeTryAgain"));
+    return runJoin(async () => {
+      try {
+        const r = await joinGroupByCode(joinCode);
+        if (r.success) {
+          setJoinVisible(false);
+          setJoinCode("");
+          navigation.navigate("GroupChat", { groupId: r.groupId });
+        } else {
+          Alert.alert(t("notifications.couldntJoinTitle"), r.error || t("notifications.checkCodeTryAgain"));
+        }
+      } catch (e) {
+        Alert.alert(t("notifications.couldntJoinTitle"), t("notifications.checkCodeTryAgain"));
       }
-    } catch (e) {
-      Alert.alert(t("notifications.couldntJoinTitle"), t("notifications.checkCodeTryAgain"));
-    } finally {
-      setJoining(false);
-    }
+    });
   };
 
   useEffect(() => {
