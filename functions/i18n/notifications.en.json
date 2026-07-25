@@ -92,5 +92,6 @@
   "notifications.event.reminder.h24Body": "\"{{event}}\" is happening within 24 hours.",
 
   "notif.eventCancelled.title": "Event Cancelled",
-  "notif.eventCancelled.body": "\"{{title}}\" has been cancelled. {{reason}}"
+  "notif.eventCancelled.body": "\"{{title}}\" has been cancelled. Reason: {{reason}}",
+  "notif.eventCancelledNoReason.body": "\"{{title}}\" has been cancelled."
 }
