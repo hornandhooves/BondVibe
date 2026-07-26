@@ -2689,7 +2689,7 @@
     "sectionTitle": "¿Por qué estás reportando esto?",
     "additionalDetailsLabel": "Detalles adicionales (opcional)",
     "detailsPlaceholder": "Proporciona información adicional...",
-    "safetyNote": "Tu reporte es anónimo. Tomamos todos los reportes en serio e investigaremos de inmediato.",
+    "safetyNote": "Tu reporte es confidencial: solo lo ve el equipo de Kinlo, nunca la persona reportada. Revisamos todos los reportes.",
     "submitButton": "Enviar reporte"
   },
   "safetyCenter": {
