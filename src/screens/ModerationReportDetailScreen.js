@@ -17,7 +17,9 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import { TYPE, SPACING, RADII } from "../constants/theme-tokens";
 import Icon from "../components/Icon";
+import useUserRole from "../hooks/useUserRole";
 import { getReport, getUserName, takeReportCase, resolveReportCase } from "../services/moderationService";
+import { resolveReasonText } from "../constants/reportReasons";
 
 const RESOLUTIONS = ["action_taken", "no_violation", "duplicate"];
 const RESOLUTION_KEY = {
@@ -29,6 +31,8 @@ const RESOLUTION_KEY = {
 export default function ModerationReportDetailScreen({ route, navigation }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const { role, loading: roleLoading } = useUserRole();
+  const isAdmin = role === "admin";
   const { reportId } = route.params || {};
 
   const [report, setReport] = useState(null);
@@ -36,6 +40,8 @@ export default function ModerationReportDetailScreen({ route, navigation }) {
   const [error, setError] = useState(false);
   const [reporterName, setReporterName] = useState(null);
   const [targetName, setTargetName] = useState(null);
+  const [takenByName, setTakenByName] = useState(null);
+  const [reviewedByName, setReviewedByName] = useState(null);
   const [imageLoading, setImageLoading] = useState(true);
   const [imageFailed, setImageFailed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -53,12 +59,18 @@ export default function ModerationReportDetailScreen({ route, navigation }) {
       setReport(r);
       // §1 rule 3: targetName only exists on reportUserOrEvent docs — resolve
       // it for user_block (never invent it; honest-null if the user is gone).
-      const [rName, tName] = await Promise.all([
+      // takenBy/reviewedBy (QA fix #4) are two INDEPENDENT audit fields now —
+      // resolve whichever are present, honest-null if either admin is gone.
+      const [rName, tName, takenName, reviewedName] = await Promise.all([
         getUserName(r.reporterId),
         r.targetUserId && !r.targetName ? getUserName(r.targetUserId) : Promise.resolve(r.targetName || null),
+        r.takenBy ? getUserName(r.takenBy) : Promise.resolve(null),
+        r.reviewedBy ? getUserName(r.reviewedBy) : Promise.resolve(null),
       ]);
       setReporterName(rName);
       setTargetName(tName);
+      setTakenByName(takenName);
+      setReviewedByName(reviewedName);
     } catch (_e) {
       setError(true);
     } finally {
@@ -68,12 +80,7 @@ export default function ModerationReportDetailScreen({ route, navigation }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const reasonLabel = () => {
-    if (!report || !report.reason) return null;
-    const key = `report.reasons.${report.reason}`;
-    const translated = t(key);
-    return translated === key ? report.reason : translated;
-  };
+  const reasonLabel = () => (report && report.reason ? resolveReasonText(t, report.reason) : null);
 
   const onTakeCase = async () => {
     setBusy(true);
@@ -101,11 +108,38 @@ export default function ModerationReportDetailScreen({ route, navigation }) {
     }
   };
 
-  if (loading) {
+  if (roleLoading || loading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.centerFill}>
           <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // QA fix #6: firestore.rules lets a reporter read their OWN report
+  // (reporterId == uid) — this screen has no admin gate on its own today
+  // (safe only because nothing currently deep-links here for a non-admin),
+  // but a future deep link would otherwise render "Confidential — staff
+  // only" and Take case/Resolve to a non-admin. Fail closed explicitly.
+  if (!isAdmin) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Icon name="back" size={26} color={colors.text} />
+          </TouchableOpacity>
+          <View style={{ width: 26 }} />
+        </View>
+        <View style={styles.centerFill}>
+          <Text style={[TYPE.body, { color: colors.textSecondary }]}>{t("moderation.notAuthorized")}</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: SPACING.sm }}>
+            <Text style={{ color: colors.primary }}>{t("common.back")}</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -155,6 +189,19 @@ export default function ModerationReportDetailScreen({ route, navigation }) {
           <Text style={[TYPE.caption, { color: colors.textSecondary, marginTop: 4 }]}>
             {t("moderation.confidential")}
           </Text>
+          {/* QA fix #4: takenBy/reviewedBy are two independent audit fields —
+              show whichever are present so the trail survives a
+              take-then-hand-off between two different admins. */}
+          {report.takenBy ? (
+            <Text style={[TYPE.caption, { color: colors.textSecondary, marginTop: 4 }]}>
+              {t("moderation.detail.takenBy", { name: takenByName || "—" })}
+            </Text>
+          ) : null}
+          {report.reviewedBy ? (
+            <Text style={[TYPE.caption, { color: colors.textSecondary, marginTop: 4 }]}>
+              {t("moderation.detail.reviewedBy", { name: reviewedByName || "—" })}
+            </Text>
+          ) : null}
         </View>
 
         {report.reason ? (

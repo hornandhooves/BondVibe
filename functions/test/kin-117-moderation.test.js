@@ -82,18 +82,42 @@ test("K117-1 moderateReport denies a non-admin", async () => {
 // moderateReport — take / resolve, server-stamped identity
 // ===========================================================================
 
-test("K117-2 'take': reviewedBy is the CALLER's uid, never a client-supplied value", async () => {
+test("K117-2 'take': takenBy is the CALLER's uid, never a client-supplied value; reviewedBy stays unset", async () => {
   const reportId = await seedReport();
   const adminUid = `admin_${nextId()}`;
   const token = await tokenFor(adminUid, {isAdmin: true});
-  // Attempt to spoof reviewedBy via the payload — must be ignored.
+  // Attempt to spoof takenBy via the payload — must be ignored.
   const res = await callFn(
-    "moderateReport", {reportId, action: "take", reviewedBy: "someone_else"}, token);
+    "moderateReport", {reportId, action: "take", takenBy: "someone_else"}, token);
   assert.strictEqual(res.status, 200);
   assert.strictEqual(res.body.result.status, "in_review");
   const after = await db.collection("reports").doc(reportId).get();
   assert.strictEqual(after.data().status, "in_review");
-  assert.strictEqual(after.data().reviewedBy, adminUid, "reviewedBy must be the caller, not the payload");
+  assert.strictEqual(after.data().takenBy, adminUid, "takenBy must be the caller, not the payload");
+  assert.strictEqual(
+    after.data().reviewedBy, undefined,
+    "'take' must not write reviewedBy — that's a separate field 'resolve' owns (QA fix #4)",
+  );
+});
+
+test("K117-2b take then resolve by a DIFFERENT admin keeps both audit fields independently", async () => {
+  const reportId = await seedReport();
+  const takerUid = `admin_${nextId()}`;
+  const resolverUid = `admin_${nextId()}`;
+  const takerToken = await tokenFor(takerUid, {isAdmin: true});
+  const resolverToken = await tokenFor(resolverUid, {isAdmin: true});
+
+  await callFn("moderateReport", {reportId, action: "take"}, takerToken);
+  await callFn(
+    "moderateReport",
+    {reportId, action: "resolve", resolution: "action_taken", adminNotes: "handled"},
+    resolverToken,
+  );
+
+  const after = await db.collection("reports").doc(reportId).get();
+  assert.strictEqual(after.data().takenBy, takerUid, "who took the case must survive the resolve");
+  assert.strictEqual(after.data().reviewedBy, resolverUid, "who resolved it is a distinct admin");
+  assert.strictEqual(after.data().status, "resolved");
 });
 
 test("K117-3 'resolve': writes resolution + adminNotes, reviewedBy = caller", async () => {
@@ -150,25 +174,64 @@ test("K117-6 an unknown reportId is 404", async () => {
 // onReportCreated — deterministic id, idempotent
 // ===========================================================================
 
-test("K117-7 the same reportId+admin never produces more than one notification (no .add())", async () => {
+test("K117-7 onReportCreated: re-firing the trigger for the SAME reportId never duplicates it", async () => {
+  // QA review: the previous version of this test wrote the notification doc
+  // itself twice with .set() and asserted one — that only proves Firestore's
+  // .set() is idempotent, not that onReportCreated IS. It would stay green
+  // even if the trigger were changed to .add() (the exact bug this test
+  // exists to prevent, mirroring KIN-111's notifyPayoutStuck). This version
+  // makes the TRIGGER itself run twice for the same reportId: delete the
+  // /reports doc and recreate it with the identical id — a real Firestore
+  // document-create event the trigger genuinely re-fires for.
   const adminUid = `admin_${nextId()}`;
+  await db.collection("users").doc(adminUid).set({role: "admin"});
   const reportId = `report_${nextId()}`;
-
-  // Exercises the exact write path onReportCreated uses (deterministic doc
-  // id, .set() not .add()) twice for the same reportId — proving a Firestore
-  // at-least-once retry of the trigger can never duplicate the notification.
   const notifRef = db.collection("notifications").doc(`reportNew_${reportId}_${adminUid}`);
-  for (let i = 0; i < 2; i++) {
-    await notifRef.set({
-      userId: adminUid,
-      type: "report_new",
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      metadata: {reportId, reportType: "user"},
-    });
+  const reportRef = db.collection("reports").doc(reportId);
+
+  const seed = () => reportRef.set({
+    reporterId: `reporter_${nextId()}`,
+    type: "user",
+    status: "open",
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  const waitForNotif = async () => {
+    for (let i = 0; i < 25; i++) {
+      const snap = await notifRef.get();
+      if (snap.exists) return true;
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    return false;
+  };
+
+  await seed();
+  assert.ok(await waitForNotif(), "onReportCreated must fire on the first create");
+
+  // Delete + recreate the SAME reportId — a genuine second "create" event.
+  await reportRef.delete();
+  await seed();
+
+  // Poll the count across a few checks (not a single fixed sleep) to catch
+  // a duplicate that lands slightly late. Filters on userId too — the shared
+  // emulator DB accumulates OTHER admins from earlier tests in a full suite
+  // run, and onReportCreated legitimately notifies every one of them for
+  // the same reportId (correct multi-admin fan-out, not a duplicate).
+  let finalCount = 0;
+  for (let i = 0; i < 6; i++) {
+    // eslint-disable-next-line no-await-in-loop
+    const snap = await db.collection("notifications")
+      .where("metadata.reportId", "==", reportId)
+      .where("userId", "==", adminUid)
+      .get();
+    finalCount = snap.size;
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((r) => setTimeout(r, 500));
   }
-  const snap = await db.collection("notifications")
-    .where("metadata.reportId", "==", reportId).get();
-  assert.strictEqual(snap.size, 1, "the same reportId+admin must only ever yield one notification doc");
+  assert.strictEqual(
+    finalCount, 1,
+    "the same reportId+admin must still yield only one notification doc after the trigger re-fires",
+  );
 });
 
 test("K117-8 a real report write fires onReportCreated, notifying every admin once", async () => {

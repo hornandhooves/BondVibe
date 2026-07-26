@@ -2620,6 +2620,8 @@
   "moderation": {
     "title": "Moderation",
     "queueEmpty": "No reports match this filter.",
+    "queueEmptyScanned": "No matches in the most recent reports scanned.",
+    "keepScanning": "Keep scanning",
     "loadError": "Couldn't load reports. Requires admin permissions.",
     "retry": "Retry",
     "loadMore": "Load more",
@@ -2630,6 +2632,7 @@
     "about": "About {{name}}",
     "unknownReporter": "Someone",
     "serverBadge": "SERVER",
+    "notAuthorized": "This section is for the Kinlo team only.",
     "tabs": {
       "open": "Open",
       "in_review": "In review",
@@ -2664,7 +2667,9 @@
       "cancel": "Cancel",
       "submit": "Confirm",
       "takeCaseError": "Couldn't take the case.",
-      "resolveError": "Couldn't resolve the report."
+      "resolveError": "Couldn't resolve the report.",
+      "takenBy": "Taken by {{name}}",
+      "reviewedBy": "Resolved by {{name}}"
     }
   },
   "report": {
@@ -2700,7 +2705,7 @@
     "reportUser": "Report a user",
     "contactSafetyTeam": "Contact safety team",
     "safetyTips": "SAFETY TIPS",
-    "footnote": "We respond to safety reports within 24 hours.",
+    "footnote": "We review every safety report. Cases with immediate risk are prioritized.",
     "callEmergencyTitle": "Call Emergency Services",
     "callEmergencyMessage": "This will dial {{number}}. Continue?",
     "cancel": "Cancel",

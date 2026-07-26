@@ -2638,11 +2638,19 @@ const REPORT_RESOLUTIONS = ["action_taken", "no_violation", "duplicate"];
 /**
  * Admin-only action on a report: "take" (status -> in_review) or "resolve"
  * (status -> resolved, resolution + adminNotes). BOTH actions go through this
- * ONE callable rather than a direct client update, so reviewedBy/reviewedAt
- * are always the CALLER's own uid/server time — never trusted from the
- * client, the same gate pattern as setPayoutFrozen. Idempotent: acting on an
- * already-resolved report is a no-op that returns the current state instead
- * of re-writing it (a resolved case can't be reopened or re-resolved here).
+ * ONE callable rather than a direct client update, so the identity fields are
+ * always the CALLER's own uid/server time — never trusted from the client,
+ * the same gate pattern as setPayoutFrozen.
+ *
+ * QA review fix: "take" and "resolve" used to both write reviewedBy/
+ * reviewedAt, so admin A taking a case and admin B resolving it lost who
+ * took it — half the audit trail a moderation console exists for. "take"
+ * now writes takenBy/takenAt only; "resolve" keeps reviewedBy/reviewedAt
+ * (+ resolution/adminNotes). Both survive independently on the same doc.
+ *
+ * Idempotent: acting on an already-resolved report is a no-op that returns
+ * the current state instead of re-writing it (a resolved case can't be
+ * reopened or re-resolved here).
  * data: { reportId, action: "take"|"resolve", resolution?, adminNotes? }
  */
 exports.moderateReport = onCall(async (request) => {
@@ -2668,8 +2676,8 @@ exports.moderateReport = onCall(async (request) => {
   if (action === "take") {
     await ref.set({
       status: "in_review",
-      reviewedBy: uid,
-      reviewedAt: FieldValue.serverTimestamp(),
+      takenBy: uid,
+      takenAt: FieldValue.serverTimestamp(),
     }, {merge: true});
     return {ok: true, status: "in_review"};
   }

@@ -2620,6 +2620,8 @@
   "moderation": {
     "title": "Moderación",
     "queueEmpty": "No hay reportes con este filtro.",
+    "queueEmptyScanned": "Sin coincidencias en los reportes más recientes revisados.",
+    "keepScanning": "Seguir buscando",
     "loadError": "No se pudieron cargar los reportes. Requiere permisos de admin.",
     "retry": "Reintentar",
     "loadMore": "Cargar más",
@@ -2630,6 +2632,7 @@
     "about": "Sobre {{name}}",
     "unknownReporter": "Alguien",
     "serverBadge": "SERVER",
+    "notAuthorized": "Esta sección es solo para el equipo de Kinlo.",
     "tabs": {
       "open": "Abiertos",
       "in_review": "En revisión",
@@ -2664,7 +2667,9 @@
       "cancel": "Cancelar",
       "submit": "Confirmar",
       "takeCaseError": "No se pudo tomar el caso.",
-      "resolveError": "No se pudo resolver el reporte."
+      "resolveError": "No se pudo resolver el reporte.",
+      "takenBy": "Tomado por {{name}}",
+      "reviewedBy": "Resuelto por {{name}}"
     }
   },
   "report": {
@@ -2700,7 +2705,7 @@
     "reportUser": "Reportar a un usuario",
     "contactSafetyTeam": "Contactar al equipo de seguridad",
     "safetyTips": "CONSEJOS DE SEGURIDAD",
-    "footnote": "Respondemos a los reportes de seguridad dentro de 24 horas.",
+    "footnote": "Revisamos todos los reportes de seguridad. Los casos de riesgo inmediato tienen prioridad.",
     "callEmergencyTitle": "Llamar a servicios de emergencia",
     "callEmergencyMessage": "Esto marcará el {{number}}. ¿Continuar?",
     "cancel": "Cancelar",

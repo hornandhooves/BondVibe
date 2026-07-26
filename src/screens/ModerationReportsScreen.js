@@ -17,6 +17,7 @@ import { TYPE, SPACING, RADII } from "../constants/theme-tokens";
 import Icon from "../components/Icon";
 import useUserRole from "../hooks/useUserRole";
 import { listReports, countReportsByStatus } from "../services/moderationService";
+import { resolveReasonText } from "../constants/reportReasons";
 
 const STATUSES = ["open", "in_review", "resolved"];
 const TYPES = ["user", "event", "general", "prohibited_content", "user_block"];
@@ -24,6 +25,7 @@ const TYPE_ICON = {
   user: "user", event: "calendar", general: "message",
   prohibited_content: "dollar", user_block: "block",
 };
+const OVERDUE_MS = 48 * 3600 * 1000;
 
 const ageMs = (createdAt) => {
   if (!createdAt) return null;
@@ -32,22 +34,19 @@ const ageMs = (createdAt) => {
   return Number.isFinite(ms) ? ms : null;
 };
 
-// §1 rule 5: reason is either a known i18n key (report.reasons.*) or free
-// prose (historical docs / user_block) — show it as-is when there's no
-// matching key. Fallback is mandatory, never a raw "report.reasons.foo".
-const reasonText = (t, reason) => {
-  if (!reason) return null;
-  const key = `report.reasons.${reason}`;
-  const translated = t(key);
-  return translated === key ? reason : translated;
+// QA fix #1: takes the already-computed `nowMs` (once per render, never
+// Date.now() per row) so overdue rows can be identified for both sorting
+// and the badge without re-deriving "now" for every item.
+const isOverdueAt = (createdAt, nowMs) => {
+  const ms = ageMs(createdAt);
+  return ms != null && nowMs - ms > OVERDUE_MS;
 };
 
 // §1: the queue row's main text — details (the explanation) first, then the
 // translated reason, then a truncated blocked-message preview.
 const rowLabel = (r, t) => {
   if (r.details) return r.details;
-  const reason = reasonText(t, r.reason);
-  if (reason) return reason;
+  if (r.reason) return resolveReasonText(t, r.reason);
   if (r.content) return r.content.length > 140 ? `${r.content.slice(0, 140)}…` : r.content;
   return "";
 };
@@ -97,7 +96,7 @@ export default function ModerationReportsScreen({ navigation }) {
     });
   }, [isAdmin]);
 
-  if (roleLoading || !isAdmin) {
+  if (roleLoading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.centerFill}>
@@ -106,6 +105,33 @@ export default function ModerationReportsScreen({ navigation }) {
       </SafeAreaView>
     );
   }
+
+  // QA fix #6: a non-admin who reaches this screen (deep link, stale route)
+  // used to spin forever. Fail closed with an explicit denial + a way out.
+  if (!isAdmin) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.centerFill}>
+          <Text style={[TYPE.body, { color: colors.textSecondary }]}>{t("moderation.notAuthorized")}</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.retryBtn}>
+            <Text style={{ color: colors.primary }}>{t("common.back")}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // QA fix #1: the SLA badge is decorative unless overdue (>48h) rows sort
+  // first — the page loads createdAt-desc, so the oldest (most overdue)
+  // rows would otherwise sink to the bottom. `nowMs` is computed ONCE per
+  // render (never inside the per-row map) and reused for both the sort and
+  // the badge. A stable partition — never mutates `reports` — preserves
+  // createdAt-desc order within each group; this ordering only applies to
+  // the page already loaded, never a global guarantee.
+  const nowMs = Date.now();
+  const overdueReports = reports.filter((r) => isOverdueAt(r.createdAt, nowMs));
+  const restReports = reports.filter((r) => !isOverdueAt(r.createdAt, nowMs));
+  const sortedReports = [...overdueReports, ...restReports];
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -177,11 +203,30 @@ export default function ModerationReportsScreen({ navigation }) {
         </View>
       ) : reports.length === 0 ? (
         <View style={styles.centerFill}>
-          <Text style={[TYPE.body, { color: colors.textSecondary }]}>{t("moderation.queueEmpty")}</Text>
+          {/* QA fix #2: MAX_SCAN can exhaust with zero matches while hasMore
+              stays true — that is NOT "no reports", it's "keep looking". A
+              plain "no reports" here would be a false all-clear the admin
+              has no way to act on. */}
+          <Text style={[TYPE.body, { color: colors.textSecondary }]}>
+            {hasMore ? t("moderation.queueEmptyScanned") : t("moderation.queueEmpty")}
+          </Text>
+          {hasMore && (
+            <TouchableOpacity
+              onPress={() => { setLoadingMore(true); load(false); }}
+              style={styles.retryBtn}
+              disabled={loadingMore}
+            >
+              {loadingMore ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <Text style={{ color: colors.primary }}>{t("moderation.keepScanning")}</Text>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
-          {reports.map((r) => (
+          {sortedReports.map((r) => (
             <TouchableOpacity
               key={r.id}
               style={[styles.row, { borderColor: colors.border }]}
@@ -205,15 +250,11 @@ export default function ModerationReportsScreen({ navigation }) {
                   </Text>
                 )}
               </View>
-              {(() => {
-                const ms = ageMs(r.createdAt);
-                const overdue = ms != null && Date.now() - ms > 48 * 3600 * 1000;
-                return overdue ? (
-                  <View style={[styles.overdueBadge, { backgroundColor: colors.warnSoft }]}>
-                    <Text style={[TYPE.caption, { color: colors.warning }]}>{t("moderation.overdueBadge")}</Text>
-                  </View>
-                ) : null;
-              })()}
+              {isOverdueAt(r.createdAt, nowMs) && (
+                <View style={[styles.overdueBadge, { backgroundColor: colors.warnSoft }]}>
+                  <Text style={[TYPE.caption, { color: colors.warning }]}>{t("moderation.overdueBadge")}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           ))}
           {hasMore && (

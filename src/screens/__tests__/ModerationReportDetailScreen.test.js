@@ -4,11 +4,16 @@
  * message's AUTHOR, not the reporter — §1 rule 2); a user_block report with
  * no targetName resolves via getUserName and falls back to honest-null "—"
  * when even that comes up empty; a report with no evidenceUrl never crashes.
+ *
+ * Also covers the QA review fixes: #4 (takenBy/reviewedBy are independent
+ * audit fields, both shown when present) and #6 (a non-admin gets an
+ * explicit denial, not the confidential detail + action buttons).
  */
 import React from "react";
 import { render, waitFor } from "@testing-library/react-native";
 import ModerationReportDetailScreen from "../ModerationReportDetailScreen";
 import { getReport, getUserName } from "../../services/moderationService";
+import useUserRole from "../../hooks/useUserRole";
 
 jest.mock("../../services/moderationService", () => ({
   getReport: jest.fn(),
@@ -16,6 +21,7 @@ jest.mock("../../services/moderationService", () => ({
   takeReportCase: jest.fn(),
   resolveReportCase: jest.fn(),
 }));
+jest.mock("../../hooks/useUserRole", () => jest.fn(() => ({ role: "admin", loading: false })));
 jest.mock("../../components/Icon", () => () => null);
 jest.mock("../../contexts/ThemeContext", () => ({
   useTheme: () => ({
@@ -41,6 +47,7 @@ beforeEach(() => {
   getReport.mockReset();
   getUserName.mockReset();
   getUserName.mockResolvedValue(null);
+  useUserRole.mockReturnValue({ role: "admin", loading: false });
 });
 
 describe("ModerationReportDetailScreen", () => {
@@ -84,5 +91,35 @@ describe("ModerationReportDetailScreen", () => {
     const utils = setup("r5");
     await waitFor(() => expect(utils.getByText("General concern")).toBeTruthy());
     expect(utils.queryByText("moderation.detail.evidenceLabel")).toBeNull();
+  });
+
+  it("QA fix #4: shows BOTH takenBy and reviewedBy when a different admin resolved than took the case", async () => {
+    getReport.mockResolvedValue({
+      id: "r6", type: "general", status: "resolved", reporterId: "u3",
+      reason: "other", details: "handled by two admins",
+      takenBy: "admin_a", reviewedBy: "admin_b", resolution: "action_taken",
+    });
+    getUserName.mockImplementation((uid) => {
+      if (uid === "admin_a") return Promise.resolve("Admin A");
+      if (uid === "admin_b") return Promise.resolve("Admin B");
+      return Promise.resolve(null);
+    });
+    const utils = setup("r6");
+    await waitFor(() => expect(getUserName).toHaveBeenCalledWith("admin_a"));
+    await waitFor(() => expect(getUserName).toHaveBeenCalledWith("admin_b"));
+    expect(utils.getByText("moderation.detail.takenBy")).toBeTruthy();
+    expect(utils.getByText("moderation.detail.reviewedBy")).toBeTruthy();
+  });
+
+  it("QA fix #6: a non-admin sees an explicit denial, never the confidential detail or action buttons", async () => {
+    useUserRole.mockReturnValue({ role: "user", loading: false });
+    getReport.mockResolvedValue({
+      id: "r1", type: "user", status: "open", reporterId: "u1", reason: "other",
+    });
+    const utils = setup("r1");
+    await waitFor(() => expect(utils.getByText("moderation.notAuthorized")).toBeTruthy());
+    expect(utils.queryByText("moderation.confidential")).toBeNull();
+    expect(utils.queryByText("moderation.detail.takeCase")).toBeNull();
+    expect(utils.queryByText("moderation.detail.resolve")).toBeNull();
   });
 });

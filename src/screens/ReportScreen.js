@@ -16,16 +16,7 @@ import { reportUserOrEvent } from '../services/reportService';
 import { useTheme } from '../contexts/ThemeContext';
 import Colors from '../constants/Colors';
 import Sizes from '../constants/Sizes';
-
-const REPORT_REASON_KEYS = [
-  'inappropriateContent',
-  'harassmentOrBullying',
-  'spamOrScam',
-  'safetyConcern',
-  'fakeProfile',
-  'offensiveBehavior',
-  'other',
-];
+import { REPORT_REASON_KEYS } from '../constants/reportReasons';
 
 export default function ReportScreen({ route, navigation }) {
   const { colors } = useTheme();
