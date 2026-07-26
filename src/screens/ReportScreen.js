@@ -16,16 +16,7 @@ import { reportUserOrEvent } from '../services/reportService';
 import { useTheme } from '../contexts/ThemeContext';
 import Colors from '../constants/Colors';
 import Sizes from '../constants/Sizes';
-
-const REPORT_REASON_KEYS = [
-  'inappropriateContent',
-  'harassmentOrBullying',
-  'spamOrScam',
-  'safetyConcern',
-  'fakeProfile',
-  'offensiveBehavior',
-  'other',
-];
+import { REPORT_REASON_KEYS } from '../constants/reportReasons';
 
 export default function ReportScreen({ route, navigation }) {
   const { colors } = useTheme();
@@ -36,7 +27,11 @@ export default function ReportScreen({ route, navigation }) {
   const { targetUserId = null, targetEventId = null, targetName = null } =
     route.params || {};
   const type = targetUserId ? 'user' : targetEventId ? 'event' : 'general';
-  const REPORT_REASONS = REPORT_REASON_KEYS.map((key) => t(`report.reasons.${key}`));
+  // KIN-119: selectedReason stores the i18n KEY, never the translated label —
+  // the label is only for display. Storing the label used to write e.g.
+  // "Acoso o intimidación" / "Harassment or Bullying" to reports.reason
+  // depending on the reporter's language, instead of a stable key every
+  // reader (admin console, any language) can render consistently.
   const [selectedReason, setSelectedReason] = useState('');
   const [details, setDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -108,22 +103,22 @@ export default function ReportScreen({ route, navigation }) {
 
         <Text style={styles.sectionTitle}>{t('report.sectionTitle')}</Text>
 
-        {REPORT_REASONS.map((reason) => (
+        {REPORT_REASON_KEYS.map((key) => (
           <TouchableOpacity
-            key={reason}
+            key={key}
             style={[
               styles.reasonOption,
-              selectedReason === reason && styles.reasonSelected
+              selectedReason === key && styles.reasonSelected
             ]}
-            onPress={() => setSelectedReason(reason)}
+            onPress={() => setSelectedReason(key)}
           >
             <View style={[
               styles.radioCircle,
-              selectedReason === reason && styles.radioSelected
+              selectedReason === key && styles.radioSelected
             ]}>
-              {selectedReason === reason && <View style={styles.radioDot} />}
+              {selectedReason === key && <View style={styles.radioDot} />}
             </View>
-            <Text style={styles.reasonText}>{reason}</Text>
+            <Text style={styles.reasonText}>{t(`report.reasons.${key}`)}</Text>
           </TouchableOpacity>
         ))}
 

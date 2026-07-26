@@ -85,4 +85,13 @@ describe("ReportScreen", () => {
       "report.submittedTitle", expect.anything(), expect.anything(),
     );
   });
+
+  it("KIN-119: reason is sent as the i18n KEY, never the translated label", async () => {
+    const utils = setup({ targetUserId: "victim1" });
+    fireEvent.press(utils.getByText("report.reasons.harassmentOrBullying"));
+    fireEvent.press(utils.getByText("report.submitButton"));
+    await waitFor(() => expect(reportUserOrEvent).toHaveBeenCalled());
+    const call = reportUserOrEvent.mock.calls[0][0];
+    expect(call.reason).toBe("harassmentOrBullying");
+  });
 });

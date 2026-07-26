@@ -2629,6 +2629,111 @@ exports.onGroupMessage = onDocumentCreated(
   },
 );
 
+// ============================================
+// MODERATION CONSOLE — /reports (KIN-117)
+// ============================================
+
+const REPORT_RESOLUTIONS = ["action_taken", "no_violation", "duplicate"];
+
+/**
+ * Admin-only action on a report: "take" (status -> in_review) or "resolve"
+ * (status -> resolved, resolution + adminNotes). BOTH actions go through this
+ * ONE callable rather than a direct client update, so the identity fields are
+ * always the CALLER's own uid/server time — never trusted from the client,
+ * the same gate pattern as setPayoutFrozen.
+ *
+ * QA review fix: "take" and "resolve" used to both write reviewedBy/
+ * reviewedAt, so admin A taking a case and admin B resolving it lost who
+ * took it — half the audit trail a moderation console exists for. "take"
+ * now writes takenBy/takenAt only; "resolve" keeps reviewedBy/reviewedAt
+ * (+ resolution/adminNotes). Both survive independently on the same doc.
+ *
+ * Idempotent: acting on an already-resolved report is a no-op that returns
+ * the current state instead of re-writing it (a resolved case can't be
+ * reopened or re-resolved here).
+ * data: { reportId, action: "take"|"resolve", resolution?, adminNotes? }
+ */
+exports.moderateReport = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in first.");
+  if (!(await isAdminUid(uid))) {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+  const {reportId, action, resolution, adminNotes} = request.data || {};
+  if (!reportId || !["take", "resolve"].includes(action)) {
+    throw new HttpsError("invalid-argument", "reportId + a valid action are required.");
+  }
+
+  const ref = db.collection("reports").doc(reportId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Report not found.");
+  const data = snap.data();
+
+  if (data.status === "resolved") {
+    return {ok: true, status: "resolved", alreadyResolved: true};
+  }
+
+  if (action === "take") {
+    await ref.set({
+      status: "in_review",
+      takenBy: uid,
+      takenAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+    return {ok: true, status: "in_review"};
+  }
+
+  if (!REPORT_RESOLUTIONS.includes(resolution)) {
+    throw new HttpsError("invalid-argument", "A valid resolution is required.");
+  }
+  await ref.set({
+    status: "resolved",
+    resolution,
+    adminNotes: String(adminNotes || "").slice(0, 2000),
+    reviewedBy: uid,
+    reviewedAt: FieldValue.serverTimestamp(),
+  }, {merge: true});
+  return {ok: true, status: "resolved"};
+});
+
+/**
+ * Notify admins the instant a new report lands, so triage isn't purely
+ * pull-based. Deterministic notification doc id (reportNew_{reportId}_
+ * {adminUid}), NOT .add() — Firestore triggers are at-least-once, and .add()
+ * would duplicate the notification on every retry (the open bug against
+ * escrow.js's notifyPayoutStuck, KIN-111 — not repeated here).
+ *
+ * Deliberately does NOT touch NOTIF_CATALOG: that catalog gates the
+ * CLIENT-callable createNotification-style path; this is an Admin-SDK
+ * trigger writing directly, exactly like message_blocked (onGroupMessage
+ * above) and payout_stuck (escrow.js) already do.
+ */
+exports.onReportCreated = onDocumentCreated("reports/{reportId}", async (event) => {
+  const snap = event.data;
+  if (!snap) return;
+  const report = snap.data();
+  const {reportId} = event.params;
+
+  const admins = await db.collection("users").where("role", "==", "admin").limit(10).get();
+  if (admins.empty) return;
+
+  const titleKey = "notifications.moderation.newReport.title";
+  const bodyKey = "notifications.moderation.newReport.body";
+  await Promise.all(admins.docs.map((a) =>
+    db.collection("notifications").doc(`reportNew_${reportId}_${a.id}`).set({
+      userId: a.id,
+      type: "report_new",
+      title: tPush(titleKey, "en", {}),
+      message: tPush(bodyKey, "en", {}),
+      titleKey,
+      bodyKey,
+      params: {},
+      icon: "🚩",
+      read: false,
+      createdAt: FieldValue.serverTimestamp(),
+      metadata: {reportId, reportType: report.type || null},
+    })));
+});
+
 /**
  * Join a host group via its invite code. Runs server-side because members
  * can't write the group doc directly (rules allow only the host to edit it).

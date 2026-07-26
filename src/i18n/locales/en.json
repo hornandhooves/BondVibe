@@ -2447,6 +2447,12 @@
         "body": "Sharing off-platform payment details isn't allowed on Kinlo."
       }
     },
+    "moderation": {
+      "newReport": {
+        "title": "New report 🚩",
+        "body": "A new report is waiting for review."
+      }
+    },
     "match": {
       "open": {
         "title": "Community Matching is open 🎉",
@@ -2611,6 +2617,61 @@
     "joining": "Joining…",
     "join": "Join"
   },
+  "moderation": {
+    "title": "Moderation",
+    "queueEmpty": "No reports match this filter.",
+    "queueEmptyScanned": "No matches in the most recent reports scanned.",
+    "keepScanning": "Keep scanning",
+    "loadError": "Couldn't load reports. Requires admin permissions.",
+    "retry": "Retry",
+    "loadMore": "Load more",
+    "reportedBy": "Reported {{name}}",
+    "detectedAuto": "Auto-detected · message author: {{name}}",
+    "confidential": "Confidential — visible to staff only",
+    "overdueBadge": "+48h",
+    "about": "About {{name}}",
+    "unknownReporter": "Someone",
+    "serverBadge": "SERVER",
+    "notAuthorized": "This section is for the Kinlo team only.",
+    "tabs": {
+      "open": "Open",
+      "in_review": "In review",
+      "resolved": "Resolved"
+    },
+    "typeChips": {
+      "all": "All",
+      "user": "User",
+      "event": "Event",
+      "general": "General",
+      "prohibited_content": "Off-platform pay",
+      "user_block": "Block"
+    },
+    "detail": {
+      "title": "Report detail",
+      "reasonLabel": "Reason",
+      "detailsLabel": "Details",
+      "contentLabel": "Blocked message",
+      "evidenceLabel": "Evidence",
+      "evidenceLoadError": "Couldn't load the image",
+      "targetLabel": "Target",
+      "viewProfile": "View profile",
+      "viewEvent": "View event",
+      "takeCase": "Take case",
+      "resolve": "Resolve",
+      "resolveSheetTitle": "Resolve report",
+      "resolutionActionTaken": "Action taken",
+      "resolutionNoViolation": "No violation",
+      "resolutionDuplicate": "Duplicate",
+      "notesLabel": "Notes (internal)",
+      "notesPlaceholder": "Notes for the team…",
+      "cancel": "Cancel",
+      "submit": "Confirm",
+      "takeCaseError": "Couldn't take the case.",
+      "resolveError": "Couldn't resolve the report.",
+      "takenBy": "Taken by {{name}}",
+      "reviewedBy": "Resolved by {{name}}"
+    }
+  },
   "report": {
     "reasons": {
       "inappropriateContent": "Inappropriate content",
@@ -2633,7 +2694,7 @@
     "sectionTitle": "Why are you reporting this?",
     "additionalDetailsLabel": "Additional Details (Optional)",
     "detailsPlaceholder": "Provide any additional information...",
-    "safetyNote": "Your report is anonymous. We take all reports seriously and will investigate promptly.",
+    "safetyNote": "Your report is confidential: only the Kinlo team sees it — never the person you're reporting. We review every report.",
     "submitButton": "Submit Report"
   },
   "safetyCenter": {
@@ -2644,7 +2705,7 @@
     "reportUser": "Report a user",
     "contactSafetyTeam": "Contact safety team",
     "safetyTips": "SAFETY TIPS",
-    "footnote": "We respond to safety reports within 24 hours.",
+    "footnote": "We review every safety report. Cases with immediate risk are prioritized.",
     "callEmergencyTitle": "Call Emergency Services",
     "callEmergencyMessage": "This will dial {{number}}. Continue?",
     "cancel": "Cancel",

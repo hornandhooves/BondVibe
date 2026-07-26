@@ -24,6 +24,8 @@
   "notifications.carpool.approved.body": "You've got a seat in {{driver}}'s car pool!",
   "notifications.group.messageBlocked.title": "Message blocked 🚫",
   "notifications.group.messageBlocked.body": "Sharing off-platform payment details isn't allowed on Kinlo.",
+  "notifications.moderation.newReport.title": "New report 🚩",
+  "notifications.moderation.newReport.body": "A new report is waiting for review.",
 
   "notifications.match.open.title": "Community Matching is open 🎉",
   "notifications.match.open.body": "See who was at \"{{event}}\".",

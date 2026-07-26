@@ -632,20 +632,42 @@ service cloud.firestore {
     // KIN-114: create used to allow ANY shape as long as reporterId matched
     // the caller — including a self-assigned status:"resolved" or planting
     // resolution/reviewedBy/adminNotes at creation time, before an admin
-    // ever looked at it. Now pinned to status:"open" (the only value both
-    // live writers — reportProhibitedContent, reportUserBlock — already use)
-    // and the admin-only-after-review fields are denylisted outright.
+    // ever looked at it. Pinned to status:"open" (the only value both
+    // live writers — reportProhibitedContent, reportUserBlock — already use).
+    //
+    // KIN-117 QA fix #4 follow-up: a DENYLIST of admin-only fields
+    // (resolution/reviewedBy/reviewedAt/adminNotes) was used here first —
+    // it missed takenBy/takenAt the moment moderateReport introduced them,
+    // and it can never block `source` (server-only, marks the SERVER badge)
+    // since that field didn't exist yet either. A denylist only closes the
+    // fields you remembered; every future admin-only field is an open door
+    // by default. Inverted to an ALLOWLIST: `hasOnly` is the exact union of
+    // every field the three live client writers ever set — reportProhibited
+    // Content + reportUserBlock + reportUserOrEvent (src/services/
+    // reportService.js). A field NOT in this list can never be created by a
+    // client, including ones that don't exist yet (takenBy/takenAt/source
+    // and anything moderateReport adds later). Adding a new CLIENT-writable
+    // field requires adding it here on purpose — that's the point.
     match /reports/{reportId} {
       allow create: if isSignedIn() &&
                        request.resource.data.reporterId == request.auth.uid &&
                        request.resource.data.status == 'open' &&
                        request.resource.data.type is string &&
                        request.resource.data.get('details', '').size() <= 2000 &&
-                       !request.resource.data.keys().hasAny(
-                         ['resolution', 'reviewedBy', 'reviewedAt', 'adminNotes']);
+                       request.resource.data.keys().hasOnly([
+                         'reporterId', 'status', 'createdAt', 'type', 'reason',
+                         'details', 'content', 'groupId', 'eventId',
+                         'targetUserId', 'targetEventId', 'targetName', 'evidenceUrl'
+                       ]);
       allow read: if isSignedIn() &&
                      (resource.data.reporterId == request.auth.uid || isAdmin());
-      allow update: if isSignedIn() && isAdmin();
+      // KIN-117 QA fix #4 follow-up: update used to be admin-only, which let
+      // an admin write reviewedBy/takenBy straight from the client — exactly
+      // what moderateReport (Admin SDK, bypasses rules) exists to prevent.
+      // No client code updates a report today (moderationService only reads
+      // + calls the callable) — verified against the repo. If a screen ever
+      // needs to write one directly, this must change on purpose, loudly.
+      allow update: if false;
       allow delete: if false;
     }
 

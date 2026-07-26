@@ -4,9 +4,19 @@
  * so every user-initiated report was permission-denied and the screen showed
  * a false "thank you" (see git history / KIN-114 for the full diagnosis).
  *
- * RP2 is the regression test for that exact bug — it is the most important
- * test in this file. RP8/RP9 prove the rule doesn't over-block the two
- * writers that already worked (reportProhibitedContent, reportUserBlock).
+ * RP2 is the regression test for that historical bug — it can't reappear
+ * from the current code (ReportScreen has written reporterId since KIN-119),
+ * so it stays as a pinned regression guard, not the live risk surface.
+ * RP8/RP9 prove the create rule doesn't over-block the two writers that
+ * already worked (reportProhibitedContent, reportUserBlock).
+ *
+ * RP10-RP13 (KIN-117 QA fix #4 follow-up) are what actually gate the LIVE
+ * risk surface today: the create rule flipped from a denylist (which missed
+ * takenBy/takenAt the moment moderateReport introduced them, and could never
+ * block `source`) to an allowlist of the exact 13 fields the three live
+ * client writers ever set — RP10-12 prove a client can't plant an
+ * admin/server-only field this way, RP13 proves update is closed to
+ * everyone (moderateReport, Admin SDK, is the only write path left).
  *
  * Run: npm run test:rules (boots the firestore emulator)
  */
@@ -17,7 +27,7 @@ const {
   assertFails,
   assertSucceeds,
 } = require("@firebase/rules-unit-testing");
-const { doc, setDoc, getDoc } = require("firebase/firestore");
+const { doc, setDoc, getDoc, updateDoc } = require("firebase/firestore");
 
 const ROOT = path.join(__dirname, "..", "..");
 const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
@@ -134,5 +144,27 @@ describe("RP · reports.create", () => {
       reason: "harassment",
       evidenceUrl: null,
     }));
+  });
+
+  test("RP10 KIN-117: a client can't plant takenBy/takenAt at creation (allowlist, not denylist)", async () => {
+    const db = asUser("reporter1");
+    await assertFails(setDoc(doc(db, "reports", "r10"),
+      validReport({ takenBy: "admin1", takenAt: new Date().toISOString() })));
+  });
+
+  test("RP11 KIN-117: a client can't fake the SERVER badge by planting source:'server'", async () => {
+    const db = asUser("reporter1");
+    await assertFails(setDoc(doc(db, "reports", "r11"), validReport({ source: "server" })));
+  });
+
+  test("RP12 KIN-117: ANY field outside the allowlist is denied — this is what keeps it an allowlist", async () => {
+    const db = asUser("reporter1");
+    await assertFails(setDoc(doc(db, "reports", "r12"), validReport({ foo: "bar" })));
+  });
+
+  test("RP13 KIN-117: update is closed to everyone, including admins — moderateReport (Admin SDK) is the only write path", async () => {
+    await seed((db) => setDoc(doc(db, "reports", "r13"), validReport()));
+    const admin = asUser("admin1", { admin: true });
+    await assertFails(updateDoc(doc(admin, "reports", "r13"), { status: "in_review", reviewedBy: "admin1" }));
   });
 });
