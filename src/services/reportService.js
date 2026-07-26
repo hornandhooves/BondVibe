@@ -41,3 +41,22 @@ export const reportUserBlock = ({ groupId, targetUserId, reason, evidenceUrl }) 
     reason: String(reason || "").slice(0, 500),
     evidenceUrl: evidenceUrl || null,
   });
+
+/**
+ * KIN-114: reporte iniciado por el usuario desde ReportScreen. Pasa por el
+ * mismo helper que reportProhibitedContent/reportUserBlock — es lo que
+ * garantiza reporterId (exigido por firestore.rules) y createdAt de servidor.
+ * targetUserId/targetEventId son mutuamente excluyentes; ambos null es un
+ * reporte general (entrada desde el Centro de Seguridad).
+ */
+export const reportUserOrEvent = ({
+  targetUserId, targetEventId, targetName, reason, details,
+}) =>
+  report({
+    type: targetUserId ? "user" : targetEventId ? "event" : "general",
+    targetUserId: targetUserId || null,
+    targetEventId: targetEventId || null,
+    targetName: targetName || null,
+    reason: String(reason || "").slice(0, 500),
+    details: String(details || "").slice(0, 2000),
+  });
