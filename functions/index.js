@@ -3733,6 +3733,65 @@ exports.stripePaymentWebhook = stripePaymentWebhook;
 // ============================================
 
 /**
+ * KIN-108 Commit C2 — self-delete gate. Runs previewDeletionImpact and, if
+ * every category resolved, moves the account into pending_deletion instead
+ * of purging money-adjacent data synchronously: writes
+ * accountDeletions/{userId} (the full preview + who/when), sets
+ * users/{userId}.accountStatus = "pending_deletion", and marks (never
+ * cancels/removes) the user's own events with ownerPendingDeletion:true.
+ * If ANY category came back `unavailable: true` (its query failed — e.g. an
+ * index still building), aborts WITHOUT writing anything: a deletion whose
+ * own impact radius couldn't be measured must not start at all (KIN-108
+ * QA review, AD5).
+ *
+ * Exported (not just called inline from the onRequest handler below) so
+ * tests can call it directly with an injected db to force the `unavailable`
+ * path — the same technique previewDeletionImpact's own tests use (PDI12),
+ * necessary because the emulator never produces a real Firestore index
+ * failure to trigger this naturally.
+ * @param {FirebaseFirestore.Firestore} db admin Firestore
+ * @param {string} userId the account being deleted (self)
+ * @param {string} callerUid the verified caller's uid (== userId for a
+ *   genuine self-delete; kept separate for symmetry with
+ *   accountDeletions.requestedBy)
+ * @return {Promise<object>} {aborted:true, reason, category} on abort, or
+ *   {aborted:false, deletionScheduledAt, eventsMarked} on success
+ */
+async function selfDeleteGate(db, userId, callerUid) {
+  const {previewDeletionImpact} = require("./account/deletionPreview");
+  const preview = await previewDeletionImpact(db, userId);
+  const unavailableCategory = Object.entries(preview)
+    .find(([key, val]) => key !== "complete" && val && val.unavailable === true);
+  if (unavailableCategory) {
+    return {aborted: true, reason: "impact_preview_unavailable", category: unavailableCategory[0]};
+  }
+
+  const deletionScheduledAt = Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000);
+  await db.collection("accountDeletions").doc(userId).set({
+    preview,
+    requestedAt: FieldValue.serverTimestamp(),
+    requestedBy: callerUid,
+    deletionScheduledAt,
+  });
+  await db.collection("users").doc(userId).set({
+    accountStatus: "pending_deletion",
+    accountStatusAt: FieldValue.serverTimestamp(),
+    deletionScheduledAt,
+  }, {merge: true});
+
+  // Mark (never remove/cancel) the user's own events — the settlement queue
+  // (KIN-108's third PR) is what actually cancels+refunds them. No change to
+  // participantCount, roster, or the event's own status.
+  const myEvents = await db.collection("events")
+    .where("creatorId", "==", userId).get();
+  await Promise.all(myEvents.docs.map((d) =>
+    d.ref.update({ownerPendingDeletion: true})));
+
+  return {aborted: false, deletionScheduledAt, eventsMarked: myEvents.size};
+}
+exports.selfDeleteGate = selfDeleteGate;
+
+/**
  * Delete user account and all associated data
  * This is required by Apple App Store guidelines
  */
@@ -3759,19 +3818,23 @@ exports.deleteUserAccount = onRequest(
         return res.status(403).json({error: "forbidden"});
       }
 
-      // KIN-108 (Rev. 2.1): deletion is NEVER rejected for open financial
-      // obligations — that policy (PR #97's original 409 obligations_open)
-      // was killed by product decision 2026-07-25 (KIN-108 comment 10038).
-      // The radius-of-impact check now lives at
-      // functions/account/deletionPreview.js:previewDeletionImpact — a
-      // read-only preview for the client's confirmation screen, not a gate
-      // here. The actual cancel-and-refund-before-purge settlement queue is
-      // KIN-108's SECOND PR, not implemented in this one; today this
-      // function still purges immediately, same as before KIN-108.
+      // KIN-108 (Rev. 2.1 → Commit C): deletion is NEVER rejected for open
+      // financial obligations (PR #97's original 409 obligations_open was
+      // killed by product decision 2026-07-25, comment 10038) — but a
+      // self-delete no longer purges anything that has money attached to it
+      // synchronously either. It goes into pending_deletion instead; the
+      // actual cancel-and-refund-then-purge settlement queue is KIN-108's
+      // THIRD PR (purgeScheduledDeletions), not implemented here.
       //
-      // T&S (admin) force-deleting another uid is explicitly never blocked
-      // by any of this and leaves an audit trail (KIN-108 AC #9).
-      if (bodyUserId && bodyUserId !== caller.uid) {
+      // T&S (admin) force-deleting another uid stays exactly as it always
+      // was: immediate, full, synchronous purge, never blocked, never
+      // deferred to pending_deletion — KIN-108 AC #9 requires T&S be able to
+      // remove a fraudulent host right now, money in flight or not. Only the
+      // events purge (old step 1) and the doc/Auth/storage purge (old steps
+      // 10-12) differ below by `isAdminAction`; steps 2-9b (privacy-only
+      // purges, no money involved) run identically for both.
+      const isAdminAction = !!(bodyUserId && bodyUserId !== caller.uid);
+      if (isAdminAction) {
         await db.collection("adminAuditLog").add({
           action: "deleteUserAccount",
           targetUid: userId,
@@ -3781,8 +3844,9 @@ exports.deleteUserAccount = onRequest(
         console.log(`🛡️ Admin ${caller.uid} force-deleting account ${userId}`);
       }
 
-      console.log("🗑️ Starting FULL account deletion for user:", userId);
+      console.log("🗑️ Starting account deletion for user:", userId, "admin:", isAdminAction);
       const counts = {};
+      let deletionScheduledAt = null; // set below on the self-delete path only
 
       // Helper: delete every doc a query returns (recursively, so any
       // subcollections go too). Failures on one query never abort the rest —
@@ -3799,10 +3863,33 @@ exports.deleteUserAccount = onRequest(
         }
       };
 
-      // 1. Events the user created — recursiveDelete also clears their
-      //    messages / checkins / recapPhotos subcollections.
-      await purgeQuery("events",
-        db.collection("events").where("creatorId", "==", userId));
+      if (isAdminAction) {
+        // ADMIN: unchanged from before Commit C — immediate, full purge.
+        // 1. Events the user created — recursiveDelete also clears their
+        //    messages / checkins / recapPhotos subcollections.
+        await purgeQuery("events",
+          db.collection("events").where("creatorId", "==", userId));
+      } else {
+        // SELF-DELETE (Commit C): no synchronous money-adjacent purge.
+        // selfDeleteGate is the FIRST real production caller of
+        // previewDeletionImpact (until now only tests/QA-seed scripts
+        // exercised it).
+        const gate = await selfDeleteGate(db, userId, caller.uid);
+        if (gate.aborted) {
+          // A deletion whose own impact radius couldn't be measured must not
+          // start at all — nothing is written, nothing is purged (AD5).
+          console.error(
+            `⚠️ deleteUserAccount aborted for ${userId}: category "${gate.category}" unavailable`,
+          );
+          return res.status(503).json({
+            error: gate.reason,
+            details: {category: gate.category},
+          });
+        }
+        deletionScheduledAt = gate.deletionScheduledAt;
+        counts.eventsMarkedPendingDeletion = gate.eventsMarked;
+        console.log(`✅ Marked ownerPendingDeletion on ${gate.eventsMarked} events (not purged)`);
+      }
 
       // 2. Social posts the user authored.
       await purgeQuery("posts",
@@ -3918,49 +4005,86 @@ exports.deleteUserAccount = onRequest(
         console.error("⚠️ gifter anonymize failed:", e.message);
       }
 
-      // 10. The user document AND all its subcollections (private/contact =
-      //     phone, notifications, blocks, stripeConnect). recursiveDelete is
-      //     essential here — deleting the doc alone would ORPHAN these.
-      try {
-        await db.recursiveDelete(db.collection("users").doc(userId));
-        console.log("✅ Deleted user document + subcollections");
-      } catch (e) {
-        console.error("⚠️ user doc delete failed:", e.message);
-      }
+      if (isAdminAction) {
+        // ADMIN: unchanged from before Commit C — the user doc, Auth
+        // account, and storage files are gone immediately, same as always.
 
-      // 11. Firebase Auth account.
-      try {
-        await admin.auth().deleteUser(userId);
-        console.log("✅ Deleted Firebase Auth user");
-      } catch (authError) {
-        console.error("⚠️ Auth delete (may already be gone):", authError.message);
-      }
-
-      // 12. Storage: everything the user uploaded — avatar, posts, and the
-      //     legacy users/{uid}/ prefix.
-      try {
-        const bucket = admin.storage().bucket();
-        const prefixes = [
-          `users/${userId}/`,
-          `avatars/${userId}/`,
-          `posts/${userId}/`,
-        ];
-        let removed = 0;
-        for (const prefix of prefixes) {
-          const [files] = await bucket.getFiles({prefix});
-          await Promise.all(files.map((f) => f.delete()));
-          removed += files.length;
+        // 10. The user document AND all its subcollections (private/contact
+        //     = phone, notifications, blocks, stripeConnect). recursiveDelete
+        //     is essential here — deleting the doc alone would ORPHAN these.
+        try {
+          await db.recursiveDelete(db.collection("users").doc(userId));
+          console.log("✅ Deleted user document + subcollections");
+        } catch (e) {
+          console.error("⚠️ user doc delete failed:", e.message);
         }
-        counts.storageFiles = removed;
-        console.log(`✅ Deleted ${removed} storage files`);
-      } catch (storageError) {
-        console.error("⚠️ Storage delete failed:", storageError.message);
+
+        // 11. Firebase Auth account.
+        try {
+          await admin.auth().deleteUser(userId);
+          console.log("✅ Deleted Firebase Auth user");
+        } catch (authError) {
+          console.error("⚠️ Auth delete (may already be gone):", authError.message);
+        }
+
+        // 12. Storage: everything the user uploaded — avatar, posts, and the
+        //     legacy users/{uid}/ prefix.
+        try {
+          const bucket = admin.storage().bucket();
+          const prefixes = [
+            `users/${userId}/`,
+            `avatars/${userId}/`,
+            `posts/${userId}/`,
+          ];
+          let removed = 0;
+          for (const prefix of prefixes) {
+            const [files] = await bucket.getFiles({prefix});
+            await Promise.all(files.map((f) => f.delete()));
+            removed += files.length;
+          }
+          counts.storageFiles = removed;
+          console.log(`✅ Deleted ${removed} storage files`);
+        } catch (storageError) {
+          console.error("⚠️ Storage delete failed:", storageError.message);
+        }
+
+        console.log("🎉 FULL account deletion complete for user:", userId);
+        return res.json({
+          success: true,
+          message: "Account and personal data deleted",
+          deletedData: counts,
+        });
       }
 
-      console.log("🎉 FULL account deletion complete for user:", userId);
+      // SELF-DELETE (Commit C): the user document, Auth account, and storage
+      // files all SURVIVE — deleting/purging them here would (a) destroy the
+      // accountStatus this very call just wrote (the doc is the same one),
+      // (b) leave releaseOnePayout (escrow.js) with no users/{hostUid} doc to
+      // read for its pending_deletion payout gate (C3), and (c) be exactly
+      // the kind of irreversible action a 24h undo window requires NOT
+      // happening yet. All three are deferred to purgeScheduledDeletions
+      // (KIN-108's third PR).
+      //
+      // Auth: revokeRefreshTokens (not deleteUser) — ends the session in a
+      // way that's still recoverable if the deletion is later cancelled,
+      // instead of destroying the account outright. Known limitation,
+      // accepted: an ID token the client already holds stays valid until it
+      // expires (max 1h) since Firestore rules don't check revocation — not
+      // a money risk (C3 is the hard, server-side gate), and immediate
+      // client-side logout is KIN-110's navigation gate, not this PR's job.
+      try {
+        await admin.auth().revokeRefreshTokens(userId);
+        console.log("✅ Revoked refresh tokens (Auth account preserved)");
+      } catch (authError) {
+        console.error("⚠️ revokeRefreshTokens failed:", authError.message);
+      }
+
+      console.log("🎉 Account scheduled for deletion (pending_deletion):", userId);
       res.json({
         success: true,
-        message: "Account and personal data deleted",
+        message: "Account scheduled for deletion",
+        accountStatus: "pending_deletion",
+        deletionScheduledAt: deletionScheduledAt.toDate().toISOString(),
         deletedData: counts,
       });
     } catch (error) {
