@@ -11,9 +11,8 @@ import {
   Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { collection, addDoc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
-import { auth, db } from '../services/firebase';
+import { reportUserOrEvent } from '../services/reportService';
 import { useTheme } from '../contexts/ThemeContext';
 import Colors from '../constants/Colors';
 import Sizes from '../constants/Sizes';
@@ -31,7 +30,12 @@ const REPORT_REASON_KEYS = [
 export default function ReportScreen({ route, navigation }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const { type, targetId, targetName } = route.params;
+  // route.params can be {} (SafetyCenterScreen's entry point) or even
+  // undefined depending on how React Navigation delivers it — never assume
+  // it's populated.
+  const { targetUserId = null, targetEventId = null, targetName = null } =
+    route.params || {};
+  const type = targetUserId ? 'user' : targetEventId ? 'event' : 'general';
   const REPORT_REASONS = REPORT_REASON_KEYS.map((key) => t(`report.reasons.${key}`));
   const [selectedReason, setSelectedReason] = useState('');
   const [details, setDetails] = useState('');
@@ -45,16 +49,21 @@ export default function ReportScreen({ route, navigation }) {
 
     setSubmitting(true);
     try {
-      await addDoc(collection(db, 'reports'), {
-        type,
-        targetId,
+      const result = await reportUserOrEvent({
+        targetUserId,
+        targetEventId,
         targetName,
-        reportedBy: auth.currentUser.uid,
         reason: selectedReason,
         details: details.trim(),
-        status: 'pending',
-        createdAt: new Date().toISOString(),
       });
+
+      // reportUserOrEvent never throws — it returns {success:false} on
+      // failure (network, rules rejection, etc). Branching on it is what
+      // stops a rejected write from showing the "thank you" success alert.
+      if (!result.success) {
+        Alert.alert(t('report.errorTitle'), t('report.submitFailedError'));
+        return;
+      }
 
       Alert.alert(
         t('report.submittedTitle'),
@@ -83,17 +92,19 @@ export default function ReportScreen({ route, navigation }) {
           <Icon name="back" size={26} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {type === 'user' ? t('report.reportUserTitle') : t('report.reportEventTitle')}
+          {type === 'event' ? t('report.reportEventTitle') : t('report.reportUserTitle')}
         </Text>
         <View style={{ width: 60 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.infoCard}>
-          <Text style={styles.infoText}>
-            {t('report.reportingLabel')} <Text style={styles.infoHighlight}>{targetName}</Text>
-          </Text>
-        </View>
+        {targetName != null && (
+          <View style={styles.infoCard}>
+            <Text style={styles.infoText}>
+              {t('report.reportingLabel')} <Text style={styles.infoHighlight}>{targetName}</Text>
+            </Text>
+          </View>
+        )}
 
         <Text style={styles.sectionTitle}>{t('report.sectionTitle')}</Text>
 
