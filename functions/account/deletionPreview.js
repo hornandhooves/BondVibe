@@ -17,8 +17,20 @@
  * called from the client's confirmation screen, so a single unbounded
  * collection .get() is not acceptable (QA review, KIN-108 comment 10039).
  * When a category's page cap is reached, its partial count is still
- * returned (never invented as zero) and `truncated` is set on the overall
- * result.
+ * returned (never invented as zero) and that category's own `truncated`
+ * flag is set (per-category, not a single root-level flag — a truncated
+ * `pendingSettlement` must not read as if `memberships` were also unreliable).
+ *
+ * OVERLAP WARNING: futureEvents.amountMinor is an independent ESTIMATE
+ * (price × participantCount) computed straight off the event doc, not
+ * derived from escrow. It is NOT additive with pendingSettlement/
+ * pendingGifts — an event ticket sold via Stripe shows up in BOTH
+ * futureEvents (as an estimate) AND pendingSettlement (as the real ledger
+ * amount) for the same sale. Summing all amountMinor fields double-counts
+ * every Stripe-paid future event. futureEvents exists ONLY to catch the
+ * MercadoPago gap pendingSettlement structurally cannot see (see
+ * futurePaidEvents below) — render it as its own line, never folded into a
+ * grand total with the ledger-derived categories.
  */
 
 const {FieldPath} = require("firebase-admin/firestore");
@@ -79,54 +91,75 @@ async function paginate(baseQuery, reduce, initial) {
   return {result: acc, truncated};
 }
 
+/** @return {{count: number, amountMinor: number}} a fresh zeroed bucket */
+const zeroBucket = () => ({count: 0, amountMinor: 0});
+
 /**
- * Held escrow across a ledger collection (paymentLedger or giftLedger).
- * "held" always counts (money not paid out yet). "released" only counts if
- * still frozen (active dispute) or within the dispute window — otherwise
- * it's settled and no longer this account's problem.
+ * Escrow still pending settlement across a ledger collection (paymentLedger
+ * or giftLedger), broken down by state so a client can render "$X not yet
+ * paid out" vs. "$Y still reversible" vs. "$Z actively disputed"
+ * differently. Inclusion criteria are UNCHANGED from the prior single-count
+ * version — held always counts; released counts only if frozen or within
+ * the dispute window. Only the classification changed: `frozen` takes
+ * priority over `held`/`releasedReversible` for a row that is both (a
+ * disputed-but-not-yet-released row is still money not paid out, but frozen
+ * is the more urgent fact to surface) — every row that was counted before is
+ * still counted now, just placed in a specific bucket.
  * @param {FirebaseFirestore.Firestore} db admin Firestore
  * @param {string} collectionName "paymentLedger" | "giftLedger"
  * @param {string} userId the hostUid being previewed
  * @param {number} disputeWindowDays dispute window, already resolved
- * @return {Promise<{count: number, amountMinor: number, truncated: boolean}>}
+ * @return {Promise<{count: number, amountMinor: number, byState: object, truncated: boolean}>}
  */
-async function heldEscrowInCollection(db, collectionName, userId, disputeWindowDays) {
+async function pendingEscrowInCollection(db, collectionName, userId, disputeWindowDays) {
   const now = Date.now();
   const windowMs = disputeWindowDays * 24 * 60 * 60 * 1000;
   const coll = db.collection(collectionName);
 
-  const fold = (acc, doc) => {
-    const l = doc.data();
-    acc.count++;
-    acc.amountMinor += l.grossAmount || 0;
+  const addTo = (acc, key, l) => {
+    acc.byState[key].count++;
+    acc.byState[key].amountMinor += l.grossAmount || 0;
     return acc;
   };
+  const initial = () => ({
+    byState: {held: zeroBucket(), releasedReversible: zeroBucket(), frozen: zeroBucket()},
+  });
 
+  const heldFold = (acc, doc) => {
+    const l = doc.data();
+    return addTo(acc, l.frozen === true ? "frozen" : "held", l);
+  };
   const held = await paginate(
     coll.where("hostUid", "==", userId).where("state", "==", "held"),
-    fold, {count: 0, amountMinor: 0},
+    heldFold, initial(),
   );
 
   const releasedFold = (acc, doc) => {
     const l = doc.data();
     const releasedMs = l.releasedAt && l.releasedAt.toMillis ? l.releasedAt.toMillis() : NaN;
     const withinDisputeWindow = Number.isFinite(releasedMs) && (now - releasedMs) <= windowMs;
-    if (l.frozen === true || withinDisputeWindow) {
-      acc.count++;
-      acc.amountMinor += l.grossAmount || 0;
-    }
+    if (l.frozen === true) return addTo(acc, "frozen", l);
+    if (withinDisputeWindow) return addTo(acc, "releasedReversible", l);
     return acc;
   };
   const released = await paginate(
     coll.where("hostUid", "==", userId).where("state", "==", "released"),
-    releasedFold, {count: 0, amountMinor: 0},
+    releasedFold, initial(),
   );
 
-  return {
-    count: held.result.count + released.result.count,
-    amountMinor: held.result.amountMinor + released.result.amountMinor,
-    truncated: held.truncated || released.truncated,
+  const byState = {
+    held: held.result.byState.held,
+    releasedReversible: released.result.byState.releasedReversible,
+    frozen: {
+      count: held.result.byState.frozen.count + released.result.byState.frozen.count,
+      amountMinor: held.result.byState.frozen.amountMinor + released.result.byState.frozen.amountMinor,
+    },
   };
+  const count = byState.held.count + byState.releasedReversible.count + byState.frozen.count;
+  const amountMinor = byState.held.amountMinor + byState.releasedReversible.amountMinor +
+    byState.frozen.amountMinor;
+
+  return {count, amountMinor, byState, truncated: held.truncated || released.truncated};
 }
 
 /**
@@ -139,6 +172,8 @@ async function heldEscrowInCollection(db, collectionName, userId, disputeWindowD
  * ledger). amountMinor here is an ESTIMATE (price × participantCount) — there
  * is no per-ticket amount to sum for MP sales precisely because they never
  * reach the ledger, so an exact total isn't obtainable from this collection.
+ * See the module header for why this must not be summed with
+ * pendingSettlement/pendingGifts.
  * @param {FirebaseFirestore.Firestore} db admin Firestore
  * @param {string} userId creatorId or businessOwnerUid being previewed
  * @return {Promise<{count: number, attendees: number, amountMinor: number, truncated: boolean}>}
@@ -223,7 +258,11 @@ async function activeMemberships(db, userId) {
  * KIN-108 comment 10039, finding 5). Bookings live at
  * businesses/{bizId}/bookings/{id} with ownerUid == businesses/{bizId}.ownerUid
  * (verified in index.js reserveServiceBooking) — a single equality filter,
- * no businessOwnerUid variant needed (a booking's owner IS the business owner).
+ * no businessOwnerUid variant needed (a booking's owner IS the business
+ * owner). Needs the bookings.ownerUid COLLECTION_GROUP fieldOverride in
+ * firestore.indexes.json — single-field automatic indexes default to
+ * COLLECTION scope only, NOT COLLECTION_GROUP, so without that override this
+ * query fails against real data despite passing in the emulator.
  * @param {FirebaseFirestore.Firestore} db admin Firestore
  * @param {string} userId the business owner uid being previewed
  * @return {Promise<{count: number, amountMinor: number, truncated: boolean}>}
@@ -252,19 +291,25 @@ async function activeBookings(db, userId) {
  * Read-only radius-of-impact preview for deleting `userId`'s account. Never
  * blocks, never deletes, never touches money — purely informational, for a
  * client confirmation screen and for the (separate, not-yet-built) settlement
- * queue to know what it needs to reconcile.
+ * queue to know what it needs to reconcile. See the module header for the
+ * futureEvents/pendingSettlement/pendingGifts overlap warning.
  * @param {FirebaseFirestore.Firestore} db admin Firestore
  * @param {string} userId the account being previewed for deletion
- * @return {Promise<object>} see module header for the exact shape
+ * @return {Promise<object>} { futureEvents:{count,attendees,amountMinor,
+ *   isEstimate,truncated}, pendingSettlement:{count,amountMinor,byState,
+ *   truncated}, pendingGifts:{count,amountMinor,byState,truncated},
+ *   bookings:{count,amountMinor,truncated}, activeRentals:{count,truncated},
+ *   memberships:{count,truncated} } — no root-level `truncated`; each
+ *   category carries its own.
  */
 async function previewDeletionImpact(db, userId) {
   const disputeWindowDays = await readDisputeWindowDays(db);
 
   const [
-    heldLedger, heldGifts, events, rentals, memberships, bookings,
+    pendingSettlement, pendingGifts, events, rentals, memberships, bookings,
   ] = await Promise.all([
-    heldEscrowInCollection(db, "paymentLedger", userId, disputeWindowDays),
-    heldEscrowInCollection(db, "giftLedger", userId, disputeWindowDays),
+    pendingEscrowInCollection(db, "paymentLedger", userId, disputeWindowDays),
+    pendingEscrowInCollection(db, "giftLedger", userId, disputeWindowDays),
     futurePaidEvents(db, userId),
     activeRentals(db, userId),
     activeMemberships(db, userId),
@@ -273,15 +318,29 @@ async function previewDeletionImpact(db, userId) {
 
   return {
     futureEvents: {
-      count: events.count, attendees: events.attendees, amountMinor: events.amountMinor,
+      count: events.count,
+      attendees: events.attendees,
+      amountMinor: events.amountMinor,
+      isEstimate: true,
+      truncated: events.truncated,
     },
-    heldLedger: {count: heldLedger.count, amountMinor: heldLedger.amountMinor},
-    heldGifts: {count: heldGifts.count, amountMinor: heldGifts.amountMinor},
-    bookings: {count: bookings.count, amountMinor: bookings.amountMinor},
-    activeRentals: {count: rentals.count},
-    memberships: {count: memberships.count},
-    truncated: events.truncated || rentals.truncated || memberships.truncated ||
-      heldLedger.truncated || heldGifts.truncated || bookings.truncated,
+    pendingSettlement: {
+      count: pendingSettlement.count,
+      amountMinor: pendingSettlement.amountMinor,
+      byState: pendingSettlement.byState,
+      truncated: pendingSettlement.truncated,
+    },
+    pendingGifts: {
+      count: pendingGifts.count,
+      amountMinor: pendingGifts.amountMinor,
+      byState: pendingGifts.byState,
+      truncated: pendingGifts.truncated,
+    },
+    bookings: {
+      count: bookings.count, amountMinor: bookings.amountMinor, truncated: bookings.truncated,
+    },
+    activeRentals: {count: rentals.count, truncated: rentals.truncated},
+    memberships: {count: memberships.count, truncated: memberships.truncated},
   };
 }
 

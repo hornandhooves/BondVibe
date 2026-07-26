@@ -607,6 +607,16 @@
       ]
     },
     {
+      "collectionGroup": "bookings",
+      "fieldPath": "ownerUid",
+      "indexes": [
+        {
+          "queryScope": "COLLECTION_GROUP",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "momentItems",
       "fieldPath": "expiresAt",
       "indexes": [
