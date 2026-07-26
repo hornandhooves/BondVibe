@@ -624,12 +624,25 @@ service cloud.firestore {
                        resource.data.followerId == request.auth.uid;
     }
 
-    // Moderation reports (off-platform payment attempts, host user blocks).
-    // Any signed-in user files them (reporterId must be theirs); admins read +
-    // resolve. The reporter can read their own.
+    // Moderation reports (off-platform payment attempts, host user blocks,
+    // user-initiated reports from ReportScreen). Any signed-in user files
+    // them (reporterId must be theirs); admins read + resolve. The reporter
+    // can read their own.
+    //
+    // KIN-114: create used to allow ANY shape as long as reporterId matched
+    // the caller — including a self-assigned status:"resolved" or planting
+    // resolution/reviewedBy/adminNotes at creation time, before an admin
+    // ever looked at it. Now pinned to status:"open" (the only value both
+    // live writers — reportProhibitedContent, reportUserBlock — already use)
+    // and the admin-only-after-review fields are denylisted outright.
     match /reports/{reportId} {
       allow create: if isSignedIn() &&
-                       request.resource.data.reporterId == request.auth.uid;
+                       request.resource.data.reporterId == request.auth.uid &&
+                       request.resource.data.status == 'open' &&
+                       request.resource.data.type is string &&
+                       request.resource.data.get('details', '').size() <= 2000 &&
+                       !request.resource.data.keys().hasAny(
+                         ['resolution', 'reviewedBy', 'reviewedAt', 'adminNotes']);
       allow read: if isSignedIn() &&
                      (resource.data.reporterId == request.auth.uid || isAdmin());
       allow update: if isSignedIn() && isAdmin();
