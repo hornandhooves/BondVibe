@@ -2447,6 +2447,12 @@
         "body": "Compartir datos de pago fuera de la plataforma no está permitido en Kinlo."
       }
     },
+    "moderation": {
+      "newReport": {
+        "title": "Nuevo reporte 🚩",
+        "body": "Hay un nuevo reporte pendiente de revisión."
+      }
+    },
     "match": {
       "open": {
         "title": "El Match de la comunidad está abierto 🎉",
@@ -2610,6 +2616,56 @@
     "cancel": "Cancelar",
     "joining": "Uniéndose…",
     "join": "Unirse"
+  },
+  "moderation": {
+    "title": "Moderación",
+    "queueEmpty": "No hay reportes con este filtro.",
+    "loadError": "No se pudieron cargar los reportes. Requiere permisos de admin.",
+    "retry": "Reintentar",
+    "loadMore": "Cargar más",
+    "reportedBy": "Reportó {{name}}",
+    "detectedAuto": "Detectado automáticamente · autor del mensaje: {{name}}",
+    "confidential": "Confidencial — solo visible al equipo",
+    "overdueBadge": "+48h",
+    "about": "Sobre {{name}}",
+    "unknownReporter": "Alguien",
+    "serverBadge": "SERVER",
+    "tabs": {
+      "open": "Abiertos",
+      "in_review": "En revisión",
+      "resolved": "Resueltos"
+    },
+    "typeChips": {
+      "all": "Todos",
+      "user": "Usuario",
+      "event": "Evento",
+      "general": "General",
+      "prohibited_content": "Pago fuera",
+      "user_block": "Bloqueo"
+    },
+    "detail": {
+      "title": "Detalle del reporte",
+      "reasonLabel": "Motivo",
+      "detailsLabel": "Detalles",
+      "contentLabel": "Mensaje bloqueado",
+      "evidenceLabel": "Evidencia",
+      "evidenceLoadError": "No se pudo cargar la imagen",
+      "targetLabel": "Objetivo",
+      "viewProfile": "Ver perfil",
+      "viewEvent": "Ver evento",
+      "takeCase": "Tomar caso",
+      "resolve": "Resolver",
+      "resolveSheetTitle": "Resolver reporte",
+      "resolutionActionTaken": "Acción tomada",
+      "resolutionNoViolation": "Sin violación",
+      "resolutionDuplicate": "Duplicado",
+      "notesLabel": "Notas (internas)",
+      "notesPlaceholder": "Notas para el equipo…",
+      "cancel": "Cancelar",
+      "submit": "Confirmar",
+      "takeCaseError": "No se pudo tomar el caso.",
+      "resolveError": "No se pudo resolver el reporte."
+    }
   },
   "report": {
     "reasons": {

@@ -41,6 +41,7 @@ import { approveHostRequest, rejectHostRequest } from "../services/hostService";
 import AdminMessageModal from "../components/AdminMessageModal";
 import AdminConfirmModal from "../components/AdminConfirmModal";
 import { normalizeCategory } from "../utils/eventCategories";
+import { countReportsByStatus } from "../services/moderationService";
 
 /**
  * One-line summary of a host request's structured answers, e.g.
@@ -86,6 +87,7 @@ export default function AdminDashboardScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("requests"); // requests | users
+  const [openReportsCount, setOpenReportsCount] = useState(null); // KIN-117 header badge
 
   // Host Requests state
   const [pendingRequests, setPendingRequests] = useState([]);
@@ -175,6 +177,14 @@ export default function AdminDashboardScreen({ navigation }) {
 
   useEffect(() => {
     if (authorized) loadData();
+  }, [authorized]);
+
+  // KIN-117: open-report count for the moderation entry badge.
+  useEffect(() => {
+    if (!authorized) return;
+    countReportsByStatus("open")
+      .then(setOpenReportsCount)
+      .catch(() => {});
   }, [authorized]);
 
   useEffect(() => {
@@ -941,16 +951,40 @@ export default function AdminDashboardScreen({ navigation }) {
         <Text style={[styles.headerTitle, { color: colors.text }]}>
           {t("adminDashboard.title")}
         </Text>
-        {/* Admin-only entry to the payouts (escrow) ledger. This whole screen is
-            already admin-gated, so it's not exposed to normal users. */}
-        <TouchableOpacity
-          onPress={() => navigation.navigate("AdminPayouts")}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          accessibilityRole="button"
-          accessibilityLabel={t("adminPayouts.title")}
-        >
-          <Icon name="dollar" size={24} color={colors.primary} />
-        </TouchableOpacity>
+        {/* Admin-only entries. This whole screen is already admin-gated, so
+            neither is exposed to normal users. */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate("ModerationReports")}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel={t("moderation.title")}
+            style={{ position: "relative" }}
+          >
+            <Icon name="report" size={24} color={colors.primary} />
+            {!!openReportsCount && (
+              <View
+                style={{
+                  position: "absolute", top: -4, right: -8, minWidth: 16, height: 16,
+                  borderRadius: 8, paddingHorizontal: 3, backgroundColor: colors.error,
+                  justifyContent: "center", alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#FFFFFF", fontSize: 10, fontFamily: FONTS.bodyBold }}>
+                  {openReportsCount > 99 ? "99+" : openReportsCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate("AdminPayouts")}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel={t("adminPayouts.title")}
+          >
+            <Icon name="dollar" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Tabs */}

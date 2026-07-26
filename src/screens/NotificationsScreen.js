@@ -384,6 +384,15 @@ export default function NotificationsScreen({ navigation }) {
         }
         break;
 
+      case "report_new":
+        // KIN-117: admin-only, sent to admins when a new /reports doc lands.
+        if (notification.metadata?.reportId) {
+          navigation.navigate("ModerationReportDetail", {
+            reportId: notification.metadata.reportId,
+          });
+        }
+        break;
+
       case "welcome": {
         const params = notification.params || {};
         const title =

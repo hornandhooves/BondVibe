@@ -2447,6 +2447,12 @@
         "body": "Sharing off-platform payment details isn't allowed on Kinlo."
       }
     },
+    "moderation": {
+      "newReport": {
+        "title": "New report 🚩",
+        "body": "A new report is waiting for review."
+      }
+    },
     "match": {
       "open": {
         "title": "Community Matching is open 🎉",
@@ -2610,6 +2616,56 @@
     "cancel": "Cancel",
     "joining": "Joining…",
     "join": "Join"
+  },
+  "moderation": {
+    "title": "Moderation",
+    "queueEmpty": "No reports match this filter.",
+    "loadError": "Couldn't load reports. Requires admin permissions.",
+    "retry": "Retry",
+    "loadMore": "Load more",
+    "reportedBy": "Reported {{name}}",
+    "detectedAuto": "Auto-detected · message author: {{name}}",
+    "confidential": "Confidential — visible to staff only",
+    "overdueBadge": "+48h",
+    "about": "About {{name}}",
+    "unknownReporter": "Someone",
+    "serverBadge": "SERVER",
+    "tabs": {
+      "open": "Open",
+      "in_review": "In review",
+      "resolved": "Resolved"
+    },
+    "typeChips": {
+      "all": "All",
+      "user": "User",
+      "event": "Event",
+      "general": "General",
+      "prohibited_content": "Off-platform pay",
+      "user_block": "Block"
+    },
+    "detail": {
+      "title": "Report detail",
+      "reasonLabel": "Reason",
+      "detailsLabel": "Details",
+      "contentLabel": "Blocked message",
+      "evidenceLabel": "Evidence",
+      "evidenceLoadError": "Couldn't load the image",
+      "targetLabel": "Target",
+      "viewProfile": "View profile",
+      "viewEvent": "View event",
+      "takeCase": "Take case",
+      "resolve": "Resolve",
+      "resolveSheetTitle": "Resolve report",
+      "resolutionActionTaken": "Action taken",
+      "resolutionNoViolation": "No violation",
+      "resolutionDuplicate": "Duplicate",
+      "notesLabel": "Notes (internal)",
+      "notesPlaceholder": "Notes for the team…",
+      "cancel": "Cancel",
+      "submit": "Confirm",
+      "takeCaseError": "Couldn't take the case.",
+      "resolveError": "Couldn't resolve the report."
+    }
   },
   "report": {
     "reasons": {
