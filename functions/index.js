@@ -3759,6 +3759,28 @@ exports.deleteUserAccount = onRequest(
         return res.status(403).json({error: "forbidden"});
       }
 
+      // KIN-108 (Rev. 2.1): deletion is NEVER rejected for open financial
+      // obligations — that policy (PR #97's original 409 obligations_open)
+      // was killed by product decision 2026-07-25 (KIN-108 comment 10038).
+      // The radius-of-impact check now lives at
+      // functions/account/deletionPreview.js:previewDeletionImpact — a
+      // read-only preview for the client's confirmation screen, not a gate
+      // here. The actual cancel-and-refund-before-purge settlement queue is
+      // KIN-108's SECOND PR, not implemented in this one; today this
+      // function still purges immediately, same as before KIN-108.
+      //
+      // T&S (admin) force-deleting another uid is explicitly never blocked
+      // by any of this and leaves an audit trail (KIN-108 AC #9).
+      if (bodyUserId && bodyUserId !== caller.uid) {
+        await db.collection("adminAuditLog").add({
+          action: "deleteUserAccount",
+          targetUid: userId,
+          performedBy: caller.uid,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+        console.log(`🛡️ Admin ${caller.uid} force-deleting account ${userId}`);
+      }
+
       console.log("🗑️ Starting FULL account deletion for user:", userId);
       const counts = {};
 
