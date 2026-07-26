@@ -31,6 +31,22 @@
  * MercadoPago gap pendingSettlement structurally cannot see (see
  * futurePaidEvents below) — render it as its own line, never folded into a
  * grand total with the ledger-derived categories.
+ *
+ * PARTIAL-FAILURE CONTRACT (KIN-108 AC #14). The six categories run via
+ * Promise.allSettled, NOT Promise.all — one category's query failing (e.g. a
+ * composite/collection-group index still `CREATING`, verified live against
+ * kinlo-app-dev, KIN-108 comment thread 26-jul-2026) must never abort the
+ * other five, and must NEVER be silently read as "nothing pending" (a false
+ * all-clear right before an irreversible action) or as a reason to block
+ * deletion (Rev. 2's deletion-never-rejected policy). A category whose query
+ * rejects returns its NORMAL shape with every count/amount at 0 PLUS
+ * `unavailable: true` — the only valid signal for "we couldn't verify this,"
+ * distinct from a verified zero. The underlying Firestore error (code,
+ * message, collection name) is logged server-side only and never reaches the
+ * returned object — the client gets `unavailable`, not raw backend detail.
+ * The root `complete` boolean is `true` only when every category resolved;
+ * a caller (e.g. KIN-111's confirmation screen) MUST check `complete` before
+ * treating an all-zero result as a real "nothing pending" state.
  */
 
 const {FieldPath} = require("firebase-admin/firestore");
@@ -288,60 +304,98 @@ async function activeBookings(db, userId) {
 }
 
 /**
+ * The zeroed shape for a category when its query rejects — same fields a
+ * successful result would have, all at 0, so a caller can render it exactly
+ * like a real (verified) zero EXCEPT for the extra `unavailable: true`.
+ * @param {string} name one of the six previewDeletionImpact category keys
+ * @return {object} zeroed shape for that category
+ */
+function emptyForCategory(name) {
+  if (name === "futureEvents") {
+    return {count: 0, attendees: 0, amountMinor: 0, isEstimate: true, truncated: false};
+  }
+  if (name === "pendingSettlement" || name === "pendingGifts") {
+    return {
+      count: 0, amountMinor: 0,
+      byState: {held: zeroBucket(), releasedReversible: zeroBucket(), frozen: zeroBucket()},
+      truncated: false,
+    };
+  }
+  if (name === "bookings") return {count: 0, amountMinor: 0, truncated: false};
+  return {count: 0, truncated: false}; // activeRentals, memberships
+}
+
+/**
+ * Map a category's raw fulfilled helper result onto its final shape in the
+ * previewDeletionImpact response. Every helper already returns the right
+ * shape 1:1 except futurePaidEvents, which needs `isEstimate` added.
+ * @param {string} name one of the six previewDeletionImpact category keys
+ * @param {object} raw the resolved value from that category's query function
+ * @return {object} the shape previewDeletionImpact returns for this category
+ */
+function shapeCategory(name, raw) {
+  if (name === "futureEvents") {
+    return {
+      count: raw.count, attendees: raw.attendees, amountMinor: raw.amountMinor,
+      isEstimate: true, truncated: raw.truncated,
+    };
+  }
+  return raw;
+}
+
+/**
  * Read-only radius-of-impact preview for deleting `userId`'s account. Never
  * blocks, never deletes, never touches money — purely informational, for a
  * client confirmation screen and for the (separate, not-yet-built) settlement
  * queue to know what it needs to reconcile. See the module header for the
- * futureEvents/pendingSettlement/pendingGifts overlap warning.
+ * futureEvents/pendingSettlement/pendingGifts overlap warning AND the
+ * partial-failure contract (KIN-108 AC #14) — a rejected category returns
+ * `unavailable: true` instead of aborting the whole preview or lying as a
+ * verified zero.
  * @param {FirebaseFirestore.Firestore} db admin Firestore
  * @param {string} userId the account being previewed for deletion
  * @return {Promise<object>} { futureEvents:{count,attendees,amountMinor,
- *   isEstimate,truncated}, pendingSettlement:{count,amountMinor,byState,
- *   truncated}, pendingGifts:{count,amountMinor,byState,truncated},
- *   bookings:{count,amountMinor,truncated}, activeRentals:{count,truncated},
- *   memberships:{count,truncated} } — no root-level `truncated`; each
- *   category carries its own.
+ *   isEstimate,truncated,unavailable?}, pendingSettlement:{count,amountMinor,
+ *   byState,truncated,unavailable?}, pendingGifts:{count,amountMinor,byState,
+ *   truncated,unavailable?}, bookings:{count,amountMinor,truncated,
+ *   unavailable?}, activeRentals:{count,truncated,unavailable?},
+ *   memberships:{count,truncated,unavailable?}, complete:boolean } — no
+ *   root-level `truncated` (each category carries its own); `complete` is
+ *   `true` only when every category resolved without error.
  */
 async function previewDeletionImpact(db, userId) {
   const disputeWindowDays = await readDisputeWindowDays(db);
 
-  const [
-    pendingSettlement, pendingGifts, events, rentals, memberships, bookings,
-  ] = await Promise.all([
-    pendingEscrowInCollection(db, "paymentLedger", userId, disputeWindowDays),
-    pendingEscrowInCollection(db, "giftLedger", userId, disputeWindowDays),
-    futurePaidEvents(db, userId),
-    activeRentals(db, userId),
-    activeMemberships(db, userId),
-    activeBookings(db, userId),
-  ]);
+  const categories = [
+    ["pendingSettlement",
+      () => pendingEscrowInCollection(db, "paymentLedger", userId, disputeWindowDays)],
+    ["pendingGifts",
+      () => pendingEscrowInCollection(db, "giftLedger", userId, disputeWindowDays)],
+    ["futureEvents", () => futurePaidEvents(db, userId)],
+    ["activeRentals", () => activeRentals(db, userId)],
+    ["memberships", () => activeMemberships(db, userId)],
+    ["bookings", () => activeBookings(db, userId)],
+  ];
 
-  return {
-    futureEvents: {
-      count: events.count,
-      attendees: events.attendees,
-      amountMinor: events.amountMinor,
-      isEstimate: true,
-      truncated: events.truncated,
-    },
-    pendingSettlement: {
-      count: pendingSettlement.count,
-      amountMinor: pendingSettlement.amountMinor,
-      byState: pendingSettlement.byState,
-      truncated: pendingSettlement.truncated,
-    },
-    pendingGifts: {
-      count: pendingGifts.count,
-      amountMinor: pendingGifts.amountMinor,
-      byState: pendingGifts.byState,
-      truncated: pendingGifts.truncated,
-    },
-    bookings: {
-      count: bookings.count, amountMinor: bookings.amountMinor, truncated: bookings.truncated,
-    },
-    activeRentals: {count: rentals.count, truncated: rentals.truncated},
-    memberships: {count: memberships.count, truncated: memberships.truncated},
-  };
+  const settled = await Promise.allSettled(categories.map(([, run]) => run()));
+
+  const result = {};
+  let complete = true;
+  settled.forEach((outcome, i) => {
+    const [name] = categories[i];
+    if (outcome.status === "fulfilled") {
+      result[name] = shapeCategory(name, outcome.value);
+      return;
+    }
+    complete = false;
+    const err = outcome.reason || {};
+    console.error(
+      `previewDeletionImpact: category "${name}" failed — ${err.code || "?"} ${err.message || err}`,
+    );
+    result[name] = {...emptyForCategory(name), unavailable: true};
+  });
+  result.complete = complete;
+  return result;
 }
 
 module.exports = {previewDeletionImpact, readDisputeWindowDays, DEFAULT_DISPUTE_WINDOW_DAYS};
