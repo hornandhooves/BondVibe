@@ -31,7 +31,7 @@ const {verifyBearer, isAdminUid} = require("./lib/auth");
 
 // Import refunds AFTER Firebase is initialized. processRefund is reused by the
 // admin payouts callable (ledger-aware: held→refund, released→reversal+refund).
-const {cancelEventAttendance, hostCancelEvent, processRefund} =
+const {cancelEventAttendance, hostCancelEvent, hostCancelEventCore, processRefund} =
   require("./stripe/refunds");
 
 // @handle claiming/checking (server-enforced uniqueness).
@@ -3689,7 +3689,16 @@ exports.adminReleasePayout = onCall({secrets: [stripeSecretKey]}, async (request
   }
   if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
   const outcome = await escrow.releaseOnePayout(stripe, db, snap);
-  return {ok: true, paymentIntentId, outcome};
+  // KIN-111 Piece 9: outcome:"held" alone doesn't tell the admin WHY — re-read
+  // the ledger doc for the reason releaseOnePayout just stamped via
+  // notifyPayoutStuck (lastStuckReason), so AdminPayoutsScreen can show it
+  // instead of a false "released OK" alert.
+  let reason = null;
+  if (outcome === "held") {
+    const after = await ref.get();
+    reason = (after.exists && after.data().lastStuckReason) || null;
+  }
+  return {ok: true, paymentIntentId, outcome, reason};
 });
 
 /**
@@ -3792,6 +3801,152 @@ async function selfDeleteGate(db, userId, callerUid) {
 exports.selfDeleteGate = selfDeleteGate;
 
 /**
+ * KIN-111 Piece 2 — steps 2-9b of account deletion, extracted so the admin
+ * immediate-purge path and the settlement queue (settleAccountDeletions,
+ * Piece 3) share the exact same code instead of the admin-only path
+ * duplicating it. Privacy-only purges, no money moved: posts, notifications,
+ * ratings, matchProfiles, dmThreads, ownedGroups, group-member detach,
+ * roster mark-not-remove (Commit B3), gift decline as recipient (Commit B4),
+ * gift anonymize as gifter (Commit B4). Best-effort per query/gift — one
+ * failure never aborts the rest (mirrors the local purgeQuery contract this
+ * was extracted from).
+ * @param {FirebaseFirestore.Firestore} db admin Firestore
+ * @param {string} userId account being purged
+ * @return {Promise<object>} counts, keyed the same as before extraction
+ */
+async function purgeUserPrivacyData(db, userId) {
+  const counts = {};
+  const purgeQuery = async (label, ref) => {
+    try {
+      const snap = await ref.get();
+      await Promise.all(snap.docs.map((d) => db.recursiveDelete(d.ref)));
+      counts[label] = snap.size;
+      console.log(`✅ Purged ${snap.size} ${label}`);
+    } catch (e) {
+      counts[label] = `error: ${e.message}`;
+      console.error(`⚠️ Purge ${label} failed:`, e.message);
+    }
+  };
+
+  // 2. Social posts the user authored.
+  await purgeQuery("posts",
+    db.collection("posts").where("authorId", "==", userId));
+
+  // 3. Top-level notifications addressed to the user.
+  await purgeQuery("notifications",
+    db.collection("notifications").where("userId", "==", userId));
+
+  // 4. Ratings the user wrote.
+  await purgeQuery("ratings",
+    db.collection("ratings").where("raterId", "==", userId));
+
+  // 5. Match profiles across every event (sensitive data). Stored at
+  //    matchProfiles/{eventId}/attendees/{uid} with a userId field.
+  await purgeQuery("matchProfiles",
+    db.collectionGroup("attendees").where("userId", "==", userId));
+
+  // 6. Direct-message threads the user is part of (+ their messages).
+  await purgeQuery("dmThreads",
+    db.collection("dms").where("users", "array-contains", userId));
+
+  // 7. Host groups the user OWNS — remove entirely.
+  await purgeQuery("ownedGroups",
+    db.collection("hostGroups").where("hostId", "==", userId));
+
+  // 8. Detach the user from groups they're only a MEMBER of.
+  try {
+    const memberGroups = await db.collection("hostGroups")
+      .where("memberIds", "array-contains", userId).get();
+    await Promise.all(memberGroups.docs.map((g) =>
+      g.ref.update({
+        memberIds: FieldValue.arrayRemove(userId),
+        blockedIds: FieldValue.arrayRemove(userId),
+      })));
+    counts.groupMemberships = memberGroups.size;
+    console.log(`✅ Removed from ${memberGroups.size} group memberships`);
+  } catch (e) {
+    console.error("⚠️ group membership detach failed:", e.message);
+  }
+
+  // 9. MARK (never remove) the user's roster docs for events they only
+  //    JOINED (not created) — KIN-108 Commit B3. Under the no-refund-on-
+  //    delete policy (Rev. 2), a deleted buyer's seat stays PAID: calling
+  //    roster.removeFromRoster (the old behavior) decrements
+  //    participantCount and frees the spot, which lets the host resell
+  //    and get paid TWICE for the same seat. Rewriting `uid` (or the doc
+  //    id, which the roster schema uses AS the uid — roster.js:33-34)
+  //    would break activeUids() (roster.js:111, `d.data().uid || d.id`
+  //    — a rewritten uid field is truthy and wins over the id fallback),
+  //    consumed in 8 places for push notifications: index.js:831,2169,
+  //    2948; ai/recaps.js:72; ai/foundation.js:201; ai/features.js:60,
+  //    84,141 — those would then notify a uid that no longer exists.
+  //    So: add accountDeleted+deletedAt only. Leave uid, doc id, status,
+  //    and participantCount untouched. `interested` stays a public
+  //    array, purged separately (unaffected by this change).
+  try {
+    const [myRoster, interested] = await Promise.all([
+      db.collectionGroup("roster").where("uid", "==", userId).get(),
+      db.collection("events").where("interested", "array-contains", userId).get(),
+    ]);
+    await Promise.all(myRoster.docs.map((d) =>
+      d.ref.update({accountDeleted: true, deletedAt: FieldValue.serverTimestamp()})));
+    await Promise.all(interested.docs.map((ev) =>
+      ev.ref.update({interested: FieldValue.arrayRemove(userId)})));
+    counts.eventsMarkedDeleted = myRoster.size;
+    console.log(`✅ Marked accountDeleted on ${myRoster.size} roster docs (not removed)`);
+  } catch (e) {
+    console.error("⚠️ event attendee mark-deleted failed:", e.message);
+  }
+
+  // 9a. Gifts where the user is the still-unredeemed RECIPIENT — KIN-108
+  //     Commit B4. Reuses gifting.declineGiftCore (the exact refund-the-
+  //     gifter path a recipient-initiated decline already uses); no new
+  //     money logic. Best-effort per gift, mirroring purgeQuery above.
+  try {
+    const gifting = require("./stripe/gifting");
+    const asRecipient = await db.collection("gifts")
+      .where("recipientId", "==", userId)
+      .where("status", "==", "sent")
+      .get();
+    let declined = 0;
+    for (const g of asRecipient.docs) {
+      try {
+        await gifting.declineGiftCore(g.id);
+        declined++;
+      } catch (e) {
+        console.error(`⚠️ declineGiftCore failed for gift ${g.id}:`, e.message);
+      }
+    }
+    counts.giftsDeclinedAsRecipient = declined;
+    console.log(`✅ Declined ${declined} unredeemed gifts (recipient deleted)`);
+  } catch (e) {
+    console.error("⚠️ recipient gift decline failed:", e.message);
+  }
+
+  // 9b. Gifts where the user is the GIFTER (payer) of a STILL-UNREDEEMED
+  //     gift — KIN-108 Commit B4. The gift stays valid (the recipient can
+  //     still redeem it); only gifterId is anonymized. expireGifts
+  //     (functions/stripe/gifting.js) refunds it automatically if never
+  //     redeemed. NOT implemented here (separate ticket, gifting inbox):
+  //     transferring/reassigning the gift to someone else.
+  try {
+    const asGifter = await db.collection("gifts")
+      .where("gifterId", "==", userId)
+      .where("status", "==", "sent")
+      .get();
+    await Promise.all(asGifter.docs.map((g) =>
+      g.ref.update({gifterId: null, gifterAnonymizedAt: FieldValue.serverTimestamp()})));
+    counts.giftsAnonymizedAsGifter = asGifter.size;
+    console.log(`✅ Anonymized gifterId on ${asGifter.size} still-valid gifts`);
+  } catch (e) {
+    console.error("⚠️ gifter anonymize failed:", e.message);
+  }
+
+  return counts;
+}
+exports.purgeUserPrivacyData = purgeUserPrivacyData;
+
+/**
  * Delete user account and all associated data
  * This is required by Apple App Store guidelines
  */
@@ -3829,10 +3984,17 @@ exports.deleteUserAccount = onRequest(
       // T&S (admin) force-deleting another uid stays exactly as it always
       // was: immediate, full, synchronous purge, never blocked, never
       // deferred to pending_deletion — KIN-108 AC #9 requires T&S be able to
-      // remove a fraudulent host right now, money in flight or not. Only the
-      // events purge (old step 1) and the doc/Auth/storage purge (old steps
-      // 10-12) differ below by `isAdminAction`; steps 2-9b (privacy-only
-      // purges, no money involved) run identically for both.
+      // remove a fraudulent host right now, money in flight or not.
+      //
+      // KIN-111 Piece 2: steps 2-9b (privacy-only purges, no money involved —
+      // posts/notifications/ratings/matchProfiles/dmThreads/ownedGroups/
+      // group-detach/roster-mark/gift-decline/gift-anonymize) used to run
+      // UNCONDITIONALLY for both paths. For a self-delete that's premature:
+      // it purges gift/roster/social state before the 24h undo window even
+      // closes. They now run immediately ONLY for admin force-delete; a
+      // self-delete defers them entirely to settleAccountDeletions (the
+      // hourly settlement queue), which calls the same extracted
+      // purgeUserPrivacyData() once the account is actually finalized.
       const isAdminAction = !!(bodyUserId && bodyUserId !== caller.uid);
       if (isAdminAction) {
         await db.collection("adminAuditLog").add({
@@ -3869,11 +4031,19 @@ exports.deleteUserAccount = onRequest(
         //    messages / checkins / recapPhotos subcollections.
         await purgeQuery("events",
           db.collection("events").where("creatorId", "==", userId));
+
+        // 2-9b: privacy-only purges, no money involved (KIN-111 Piece 2 —
+        // extracted to purgeUserPrivacyData so the settlement queue can run
+        // the identical code once a self-delete is finalized).
+        Object.assign(counts, await purgeUserPrivacyData(db, userId));
       } else {
-        // SELF-DELETE (Commit C): no synchronous money-adjacent purge.
-        // selfDeleteGate is the FIRST real production caller of
-        // previewDeletionImpact (until now only tests/QA-seed scripts
-        // exercised it).
+        // SELF-DELETE (Commit C + KIN-111 Piece 2): NOTHING synchronous
+        // beyond the gate below — not even steps 2-9b anymore. Those (and
+        // the user's own events) are deferred to settleAccountDeletions,
+        // which calls purgeUserPrivacyData once the account is actually
+        // finalized (past the 24h undo window). selfDeleteGate is the FIRST
+        // real production caller of previewDeletionImpact (until now only
+        // tests/QA-seed scripts exercised it).
         const gate = await selfDeleteGate(db, userId, caller.uid);
         if (gate.aborted) {
           // A deletion whose own impact radius couldn't be measured must not
@@ -3889,120 +4059,6 @@ exports.deleteUserAccount = onRequest(
         deletionScheduledAt = gate.deletionScheduledAt;
         counts.eventsMarkedPendingDeletion = gate.eventsMarked;
         console.log(`✅ Marked ownerPendingDeletion on ${gate.eventsMarked} events (not purged)`);
-      }
-
-      // 2. Social posts the user authored.
-      await purgeQuery("posts",
-        db.collection("posts").where("authorId", "==", userId));
-
-      // 3. Top-level notifications addressed to the user.
-      await purgeQuery("notifications",
-        db.collection("notifications").where("userId", "==", userId));
-
-      // 4. Ratings the user wrote.
-      await purgeQuery("ratings",
-        db.collection("ratings").where("raterId", "==", userId));
-
-      // 5. Match profiles across every event (sensitive data). Stored at
-      //    matchProfiles/{eventId}/attendees/{uid} with a userId field.
-      await purgeQuery("matchProfiles",
-        db.collectionGroup("attendees").where("userId", "==", userId));
-
-      // 6. Direct-message threads the user is part of (+ their messages).
-      await purgeQuery("dmThreads",
-        db.collection("dms").where("users", "array-contains", userId));
-
-      // 7. Host groups the user OWNS — remove entirely.
-      await purgeQuery("ownedGroups",
-        db.collection("hostGroups").where("hostId", "==", userId));
-
-      // 8. Detach the user from groups they're only a MEMBER of.
-      try {
-        const memberGroups = await db.collection("hostGroups")
-          .where("memberIds", "array-contains", userId).get();
-        await Promise.all(memberGroups.docs.map((g) =>
-          g.ref.update({
-            memberIds: FieldValue.arrayRemove(userId),
-            blockedIds: FieldValue.arrayRemove(userId),
-          })));
-        counts.groupMemberships = memberGroups.size;
-        console.log(`✅ Removed from ${memberGroups.size} group memberships`);
-      } catch (e) {
-        console.error("⚠️ group membership detach failed:", e.message);
-      }
-
-      // 9. MARK (never remove) the user's roster docs for events they only
-      //    JOINED (not created) — KIN-108 Commit B3. Under the no-refund-on-
-      //    delete policy (Rev. 2), a deleted buyer's seat stays PAID: calling
-      //    roster.removeFromRoster (the old behavior) decrements
-      //    participantCount and frees the spot, which lets the host resell
-      //    and get paid TWICE for the same seat. Rewriting `uid` (or the doc
-      //    id, which the roster schema uses AS the uid — roster.js:33-34)
-      //    would break activeUids() (roster.js:111, `d.data().uid || d.id`
-      //    — a rewritten uid field is truthy and wins over the id fallback),
-      //    consumed in 8 places for push notifications: index.js:831,2169,
-      //    2948; ai/recaps.js:72; ai/foundation.js:201; ai/features.js:60,
-      //    84,141 — those would then notify a uid that no longer exists.
-      //    So: add accountDeleted+deletedAt only. Leave uid, doc id, status,
-      //    and participantCount untouched. `interested` stays a public
-      //    array, purged separately (unaffected by this change).
-      try {
-        const [myRoster, interested] = await Promise.all([
-          db.collectionGroup("roster").where("uid", "==", userId).get(),
-          db.collection("events").where("interested", "array-contains", userId).get(),
-        ]);
-        await Promise.all(myRoster.docs.map((d) =>
-          d.ref.update({accountDeleted: true, deletedAt: FieldValue.serverTimestamp()})));
-        await Promise.all(interested.docs.map((ev) =>
-          ev.ref.update({interested: FieldValue.arrayRemove(userId)})));
-        counts.eventsMarkedDeleted = myRoster.size;
-        console.log(`✅ Marked accountDeleted on ${myRoster.size} roster docs (not removed)`);
-      } catch (e) {
-        console.error("⚠️ event attendee mark-deleted failed:", e.message);
-      }
-
-      // 9a. Gifts where the user is the still-unredeemed RECIPIENT — KIN-108
-      //     Commit B4. Reuses gifting.declineGiftCore (the exact refund-the-
-      //     gifter path a recipient-initiated decline already uses); no new
-      //     money logic. Best-effort per gift, mirroring purgeQuery above.
-      try {
-        const gifting = require("./stripe/gifting");
-        const asRecipient = await db.collection("gifts")
-          .where("recipientId", "==", userId)
-          .where("status", "==", "sent")
-          .get();
-        let declined = 0;
-        for (const g of asRecipient.docs) {
-          try {
-            await gifting.declineGiftCore(g.id);
-            declined++;
-          } catch (e) {
-            console.error(`⚠️ declineGiftCore failed for gift ${g.id}:`, e.message);
-          }
-        }
-        counts.giftsDeclinedAsRecipient = declined;
-        console.log(`✅ Declined ${declined} unredeemed gifts (recipient deleted)`);
-      } catch (e) {
-        console.error("⚠️ recipient gift decline failed:", e.message);
-      }
-
-      // 9b. Gifts where the user is the GIFTER (payer) of a STILL-UNREDEEMED
-      //     gift — KIN-108 Commit B4. The gift stays valid (the recipient can
-      //     still redeem it); only gifterId is anonymized. expireGifts
-      //     (functions/stripe/gifting.js) refunds it automatically if never
-      //     redeemed. NOT implemented here (separate ticket, gifting inbox):
-      //     transferring/reassigning the gift to someone else.
-      try {
-        const asGifter = await db.collection("gifts")
-          .where("gifterId", "==", userId)
-          .where("status", "==", "sent")
-          .get();
-        await Promise.all(asGifter.docs.map((g) =>
-          g.ref.update({gifterId: null, gifterAnonymizedAt: FieldValue.serverTimestamp()})));
-        counts.giftsAnonymizedAsGifter = asGifter.size;
-        console.log(`✅ Anonymized gifterId on ${asGifter.size} still-valid gifts`);
-      } catch (e) {
-        console.error("⚠️ gifter anonymize failed:", e.message);
       }
 
       if (isAdminAction) {
@@ -4091,6 +4147,227 @@ exports.deleteUserAccount = onRequest(
       console.error("❌ Error deleting account:", error);
       res.status(500).json({error: error.message});
     }
+  },
+);
+
+// ============================================
+// SETTLEMENT QUEUE — KIN-111
+// Finalizes self-deletions once the 24h undo window (selfDeleteGate) has
+// passed: cancels+refunds any imminent paid event, releases what the host
+// still earned, then runs the exact same purge the admin path always did.
+// ============================================
+
+/**
+ * KIN-111 Piece 5 — undo a pending self-delete. Deletes the accountDeletions
+ * row, clears accountStatus/deletionScheduledAt off users/{uid}, and clears
+ * ownerPendingDeletion off the user's events. accountDeletions stays fully
+ * deny-all in firestore.rules (Admin SDK only, same as every other call in
+ * this file) — no rules change for this piece. No client UI here (KIN-110).
+ */
+exports.cancelAccountDeletion = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in first.");
+
+  const delRef = db.collection("accountDeletions").doc(uid);
+  const delSnap = await delRef.get();
+  if (!delSnap.exists) {
+    throw new HttpsError("failed-precondition", "no_pending_deletion");
+  }
+
+  await delRef.delete();
+  await db.collection("users").doc(uid).set({
+    accountStatus: FieldValue.delete(),
+    accountStatusAt: FieldValue.delete(),
+    deletionScheduledAt: FieldValue.delete(),
+  }, {merge: true});
+
+  const myEvents = await db.collection("events")
+    .where("creatorId", "==", uid).get();
+  await Promise.all(myEvents.docs.map((d) =>
+    d.ref.update({ownerPendingDeletion: FieldValue.delete()})));
+
+  console.log(`↩️ cancelAccountDeletion: restored ${uid}, ${myEvents.size} events unmarked`);
+  return {ok: true, eventsRestored: myEvents.size};
+});
+
+/**
+ * KIN-111 Piece 5 — read-only status check for the (future, KIN-110) client
+ * undo screen. data: none, uses request.auth.uid.
+ */
+exports.getAccountDeletionStatus = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in first.");
+
+  const snap = await db.collection("users").doc(uid).get();
+  const data = snap.exists ? snap.data() : {};
+  const deletionScheduledAt = data.deletionScheduledAt ?
+    data.deletionScheduledAt.toDate().toISOString() : null;
+  return {status: data.accountStatus || "active", deletionScheduledAt};
+});
+
+// KIN-111 §8-style throttle isn't needed here — this cron runs once/host/day
+// in practice (a stray row is deleted the first time it's found not to be
+// pending_deletion anymore).
+const KIN111_PROXIMITY_WINDOW_MS = 72 * 60 * 60 * 1000;
+
+/**
+ * KIN-111 Piece 3+4 — settle ONE self-delete whose 24h undo window
+ * (selfDeleteGate) has passed.
+ *
+ * Piece 4 (72h proximity exception): if this host has a PAID, non-cancelled
+ * event starting within the next 72h, cancel+refund it NOW via
+ * hostCancelEventCore (same core hostCancelEvent already uses) and DEFER the
+ * rest of settlement to the next hourly run — never leave attendees holding
+ * a paid ticket to an event whose host is mid-deletion.
+ *
+ * Once no imminent paid event remains: release whatever this host still
+ * earned (escrow.releaseOnePayout, allowPendingDeletionHost:true — Piece 6)
+ * before the users/{uid} doc that gate reads disappears; purge privacy data
+ * (purgeUserPrivacyData — Piece 2, identical code the admin path uses);
+ * purge the host's remaining events via recursiveDelete, same as the admin
+ * path always did. KNOWN LIMITATION, accepted for this ticket's scope: a
+ * paid event further out than 72h is wholesale-purged with no refund at
+ * this final step, same as it always was for admin force-delete — only the
+ * imminent (<=72h) window is guarded here.
+ * @param {FirebaseFirestore.QueryDocumentSnapshot} deletionDoc accountDeletions/{uid} doc
+ * @param {object} stripeClient initialized Stripe client
+ * @return {Promise<'settled'|'deferred'|'stray'>} outcome
+ */
+async function settleOneAccountDeletion(deletionDoc, stripeClient) {
+  const userId = deletionDoc.id;
+  const userSnap = await db.collection("users").doc(userId).get();
+  if (!userSnap.exists || userSnap.data().accountStatus !== "pending_deletion") {
+    // cancelAccountDeletion already ran, or the doc is otherwise gone — drop
+    // the stray accountDeletions row so it doesn't keep getting scanned.
+    await deletionDoc.ref.delete();
+    return "stray";
+  }
+
+  const escrow = require("./stripe/escrow");
+  const now = Date.now();
+  const soonCutoffMs = now + KIN111_PROXIMITY_WINDOW_MS;
+  const myEventsSnap = await db.collection("events")
+    .where("creatorId", "==", userId).get();
+  const imminentPaid = myEventsSnap.docs.filter((d) => {
+    const ev = d.data();
+    if (ev.status === "cancelled") return false;
+    const startMs = escrow.dateToMillis(ev.date);
+    const hasPrice = (ev.price || 0) > 0 || (ev.priceLocal || 0) > 0;
+    const attendees = ev.participantCount || 0;
+    return Number.isFinite(startMs) && startMs >= now && startMs <= soonCutoffMs &&
+      hasPrice && attendees > 0;
+  });
+
+  if (imminentPaid.length > 0) {
+    for (const d of imminentPaid) {
+      try {
+        await hostCancelEventCore(d.id, {
+          stripe: stripeClient, actorUid: userId, reason: "host_account_deletion",
+        });
+      } catch (e) {
+        console.error(`settleAccountDeletions: cancel ${d.id} failed:`, e.message);
+      }
+    }
+    console.log(
+      `⏳ settleAccountDeletions: ${userId} has ${imminentPaid.length} imminent ` +
+      "paid event(s) — cancelled+refunded, deferring full settlement",
+    );
+    return "deferred";
+  }
+
+  // No imminent paid events — safe to finalize. Release earned payouts
+  // BEFORE the users/{uid} doc (escrow.js C3's own lookup target) disappears.
+  const heldLedgerSnap = await db.collection("paymentLedger")
+    .where("hostUid", "==", userId).where("state", "==", "held").get();
+  for (const ledgerDoc of heldLedgerSnap.docs) {
+    try {
+      await escrow.releaseOnePayout(
+        stripeClient, db, ledgerDoc, {allowPendingDeletionHost: true});
+    } catch (e) {
+      console.error(`settleAccountDeletions: release ${ledgerDoc.id} failed:`, e.message);
+    }
+  }
+
+  await purgeUserPrivacyData(db, userId);
+
+  try {
+    await Promise.all(myEventsSnap.docs.map((d) => db.recursiveDelete(d.ref)));
+    console.log(`✅ Purged ${myEventsSnap.size} events (final settlement)`);
+  } catch (e) {
+    console.error("⚠️ settleAccountDeletions events purge failed:", e.message);
+  }
+
+  try {
+    await db.recursiveDelete(db.collection("users").doc(userId));
+  } catch (e) {
+    console.error("⚠️ settleAccountDeletions user doc delete failed:", e.message);
+  }
+
+  try {
+    await admin.auth().deleteUser(userId);
+  } catch (e) {
+    console.error("⚠️ settleAccountDeletions Auth delete failed:", e.message);
+  }
+
+  try {
+    const bucket = admin.storage().bucket();
+    const prefixes = [`users/${userId}/`, `avatars/${userId}/`, `posts/${userId}/`];
+    for (const prefix of prefixes) {
+      const [files] = await bucket.getFiles({prefix});
+      await Promise.all(files.map((f) => f.delete()));
+    }
+  } catch (e) {
+    console.error("⚠️ settleAccountDeletions storage delete failed:", e.message);
+  }
+
+  await deletionDoc.ref.delete();
+  console.log(`🎉 settleAccountDeletions: finalized ${userId}`);
+  return "settled";
+}
+// Exported (not just called from the cron below) so tests can drive it
+// directly with an injected Stripe mock — same reasoning as selfDeleteGate.
+exports.settleOneAccountDeletion = settleOneAccountDeletion;
+
+// Runs hourly. Single-field query (deletionScheduledAt <= now, ordered by
+// deletionScheduledAt — the automatic index every field gets) so it can
+// NEVER fail on a missing/still-building composite index, same reasoning as
+// adminListPayouts (index.js ~3574): everything else (is this row still
+// actually pending_deletion? does it have an imminent paid event?) is
+// checked in code inside settleOneAccountDeletion, not pushed into the
+// query. Cursor-paginated like releaseHostPayouts to avoid an unbounded read.
+exports.settleAccountDeletions = onSchedule(
+  {schedule: "every 1 hours", secrets: [stripeSecretKey]},
+  async () => {
+    if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+    const nowTs = Timestamp.now();
+    const PAGE = 50;
+    let processed = 0; let settled = 0; let deferred = 0; let stray = 0; let last = null;
+    for (;;) {
+      let q = db.collection("accountDeletions")
+        .where("deletionScheduledAt", "<=", nowTs)
+        .orderBy("deletionScheduledAt", "asc")
+        .limit(PAGE);
+      if (last) q = q.startAfter(last);
+      const snap = await q.get();
+      if (snap.empty) break;
+      for (const doc of snap.docs) {
+        last = doc;
+        processed++;
+        try {
+          const outcome = await settleOneAccountDeletion(doc, stripe);
+          if (outcome === "settled") settled++;
+          else if (outcome === "deferred") deferred++;
+          else if (outcome === "stray") stray++;
+        } catch (e) {
+          console.error(`settleAccountDeletions error ${doc.id}:`, e.message);
+        }
+      }
+      if (snap.size < PAGE) break;
+    }
+    console.log(
+      `settleAccountDeletions: processed=${processed} settled=${settled} ` +
+      `deferred=${deferred} stray=${stray}`,
+    );
   },
 );
 

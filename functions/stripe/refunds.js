@@ -424,6 +424,189 @@ exports.cancelEventAttendance = functions.https.onCall(
 // CLOUD FUNCTION: HOST CANCELS EVENT
 // ============================================
 
+/**
+ * Core of hostCancelEvent: cancel an event and refund every succeeded
+ * payment for it (100% including fees — the host absorbs them via
+ * penaltyOwed), plus every live gift on it. NO auth/permission check here —
+ * the caller (the hostCancelEvent callable below, or KIN-111's settlement
+ * queue) is responsible for authorizing eventId against actorUid BEFORE
+ * calling this. Mirrors declineGiftCore's shape exactly (gifting.js) —
+ * exported so settleAccountDeletions can call it directly, the same way
+ * deleteUserAccount already calls declineGiftCore.
+ * @param {string} eventId the event being cancelled
+ * @param {object} opts
+ * @param {object} opts.stripe an initialized Stripe client
+ * @param {string} opts.actorUid who is cancelling (stamped as cancelledBy)
+ * @param {string} [opts.reason] cancellation reason (free text)
+ * @return {Promise<object>} {success:true, refundsProcessed, refunds,
+ *   failedRefunds, message} on success, or {success:false, reason:"not_found"}
+ */
+async function hostCancelEventCore(eventId, {stripe, actorUid, reason}) {
+  const eventRef = db.collection("events").doc(eventId);
+  const eventDoc = await eventRef.get();
+  if (!eventDoc.exists) return {success: false, reason: "not_found"};
+
+  const eventData = eventDoc.data();
+
+  console.log("📋 Event data:", {
+    title: eventData.title,
+    creatorId: eventData.creatorId,
+    attendeesCount: eventData.participantCount || 0,
+  });
+
+  // Get payments with status 'succeeded'
+  const paymentsSnapshot = await db
+    .collection("payments")
+    .where("eventId", "==", eventId)
+    .where("status", "==", "succeeded")
+    .get();
+
+  console.log("💳 Payments with succeeded status:", paymentsSnapshot.size);
+
+  const refundResults = [];
+  const failedRefunds = [];
+
+  // Process refunds (100% - but minus Stripe fees)
+  for (const paymentDoc of paymentsSnapshot.docs) {
+    const paymentData = paymentDoc.data();
+
+    console.log("💵 Processing refund for:", {
+      paymentId: paymentDoc.id,
+      userId: paymentData.userId,
+      paymentIntentId: paymentData.paymentIntentId,
+      amount: paymentData.amount,
+    });
+
+    // Host cancelled → refund 100% INCLUDING fees (host absorbs them).
+    const refundResult = await processRefund(
+      stripe,
+      paymentData.paymentIntentId,
+      1.0,
+      "requested_by_customer",
+      true,
+    );
+
+    if (refundResult.success) {
+      await paymentDoc.ref.update({
+        status: "refunded",
+        refundAmount: refundResult.refund.amount,
+        refundPercentage: 100,
+        refundedAt: new Date().toISOString(),
+        refundReason: "event_cancelled_by_host",
+        stripeFeeRetained: refundResult.refund.stripeFeeRetained,
+        refundableAmount: refundResult.refund.refundableAmount,
+      });
+
+      refundResults.push({
+        paymentId: paymentDoc.id,
+        userId: paymentData.userId,
+        amount: refundResult.refund.amount,
+        stripeFeeRetained: refundResult.refund.stripeFeeRetained,
+      });
+
+      // ESCROW §6: HOST cancelled → attendee refunded in full (fees
+      // included). The unrecoverable Stripe processing fee is charged to the
+      // host as a penalty on their per-host debt, netted from their next
+      // release (§4). Never absorbed by Kinlo. The ledger is authoritative
+      // for the fee amount + the payout host.
+      const ledSnap = await db
+        .collection("paymentLedger")
+        .doc(paymentData.paymentIntentId)
+        .get();
+      const led = ledSnap.exists ? ledSnap.data() : null;
+      const penaltyFee = led ?
+        (led.stripeFee || 0) :
+        (parseInt((paymentData.metadata || {}).stripeFee, 10) || 0);
+      const payoutHostUid = led ?
+        led.hostUid :
+        (eventData.businessOwnerUid || eventData.creatorId);
+      if (penaltyFee > 0 && payoutHostUid) {
+        await db.collection("hostPayoutAccounts").doc(payoutHostUid).set({
+          penaltyOwed: FieldValue.increment(penaltyFee),
+          updatedAt: FieldValue.serverTimestamp(),
+        }, {merge: true});
+      }
+
+      // Notify user (recipient = the refunded attendee). BUG 34: key+params.
+      const refundPesos = (refundResult.refund.amount / 100).toFixed(2);
+      const params = {event: eventData.title, amount: refundPesos};
+
+      await db.collection("notifications").add({
+        userId: paymentData.userId,
+        type: "event_cancelled_refund",
+        title: tPush("notifications.refund.eventCancelled.title", "en", params),
+        message: tPush("notifications.refund.eventCancelled.body", "en", params),
+        titleKey: "notifications.refund.eventCancelled.title",
+        bodyKey: "notifications.refund.eventCancelled.body",
+        params,
+        icon: "💰",
+        read: false,
+        createdAt: new Date().toISOString(),
+        metadata: {
+          eventId: eventId,
+          eventTitle: eventData.title,
+          refundAmount: refundResult.refund.amount,
+          stripeFeeRetained: refundResult.refund.stripeFeeRetained,
+          reason: reason || "No reason provided",
+        },
+      });
+
+      console.log("✅ Refund successful for user:", paymentData.userId);
+    } else {
+      console.log(
+        "❌ Refund failed:",
+        paymentData.userId,
+        refundResult.error,
+      );
+      failedRefunds.push({
+        userId: paymentData.userId,
+        error: refundResult.error,
+      });
+    }
+  }
+
+  // Update event status
+  await eventRef.update({
+    status: "cancelled",
+    cancelledAt: new Date().toISOString(),
+    cancellationReason: reason || "No reason provided",
+    cancelledBy: actorUid,
+  });
+
+  // SOCIAL GIFTING (gate E): gift money lives in the separate giftLedger, so
+  // the payments-refund loop above never touched it. Refund every live gift
+  // on this event to its gifter and mark both views 'event_cancelled'.
+  let giftsRefunded = 0;
+  try {
+    giftsRefunded = await require("./gifting").refundEventGiftsOnCancel(eventId);
+  } catch (e) {
+    console.error("gift refund on cancel failed:", e.message);
+  }
+  if (giftsRefunded) console.log(`↩️ refunded ${giftsRefunded} gifts`);
+
+  const logMsg =
+    "✅ Event cancelled, " +
+    refundResults.length +
+    " refunds processed, " +
+    failedRefunds.length +
+    " failed";
+  console.log(logMsg);
+
+  return {
+    success: true,
+    refundsProcessed: refundResults.length,
+    refunds: refundResults,
+    failedRefunds: failedRefunds,
+    // Host-cancel refunds gross — the host absorbs the fees (BUG 8), so the
+    // old "(Stripe fees retained)" wording was wrong.
+    message:
+      "Event cancelled. " +
+      refundResults.length +
+      " attendees refunded in full (all fees included).",
+  };
+}
+exports.hostCancelEventCore = hostCancelEventCore;
+
 exports.hostCancelEvent = functions.https.onCall(
   {secrets: [stripeSecretKey]},
   async (request) => {
@@ -455,12 +638,6 @@ exports.hostCancelEvent = functions.https.onCall(
 
       const eventData = eventDoc.data();
 
-      console.log("📋 Event data:", {
-        title: eventData.title,
-        creatorId: eventData.creatorId,
-        attendeesCount: eventData.participantCount || 0,
-      });
-
       // Verify permission — admins are authorized via the claim-first helper
       // isAdminUid (defense-in-depth; matches the rest of functions/).
       if (eventData.creatorId !== userId) {
@@ -472,156 +649,9 @@ exports.hostCancelEvent = functions.https.onCall(
         }
       }
 
-      // Get payments with status 'succeeded'
-      const paymentsSnapshot = await db
-        .collection("payments")
-        .where("eventId", "==", eventId)
-        .where("status", "==", "succeeded")
-        .get();
-
-      console.log("💳 Payments with succeeded status:", paymentsSnapshot.size);
-
-      const refundResults = [];
-      const failedRefunds = [];
-
-      // Process refunds (100% - but minus Stripe fees)
-      for (const paymentDoc of paymentsSnapshot.docs) {
-        const paymentData = paymentDoc.data();
-
-        console.log("💵 Processing refund for:", {
-          paymentId: paymentDoc.id,
-          userId: paymentData.userId,
-          paymentIntentId: paymentData.paymentIntentId,
-          amount: paymentData.amount,
-        });
-
-        // Host cancelled → refund 100% INCLUDING fees (host absorbs them).
-        const refundResult = await processRefund(
-          stripe,
-          paymentData.paymentIntentId,
-          1.0,
-          "requested_by_customer",
-          true,
-        );
-
-        if (refundResult.success) {
-          await paymentDoc.ref.update({
-            status: "refunded",
-            refundAmount: refundResult.refund.amount,
-            refundPercentage: 100,
-            refundedAt: new Date().toISOString(),
-            refundReason: "event_cancelled_by_host",
-            stripeFeeRetained: refundResult.refund.stripeFeeRetained,
-            refundableAmount: refundResult.refund.refundableAmount,
-          });
-
-          refundResults.push({
-            paymentId: paymentDoc.id,
-            userId: paymentData.userId,
-            amount: refundResult.refund.amount,
-            stripeFeeRetained: refundResult.refund.stripeFeeRetained,
-          });
-
-          // ESCROW §6: HOST cancelled → attendee refunded in full (fees
-          // included). The unrecoverable Stripe processing fee is charged to the
-          // host as a penalty on their per-host debt, netted from their next
-          // release (§4). Never absorbed by Kinlo. The ledger is authoritative
-          // for the fee amount + the payout host.
-          const ledSnap = await db
-            .collection("paymentLedger")
-            .doc(paymentData.paymentIntentId)
-            .get();
-          const led = ledSnap.exists ? ledSnap.data() : null;
-          const penaltyFee = led ?
-            (led.stripeFee || 0) :
-            (parseInt((paymentData.metadata || {}).stripeFee, 10) || 0);
-          const payoutHostUid = led ?
-            led.hostUid :
-            (eventData.businessOwnerUid || eventData.creatorId);
-          if (penaltyFee > 0 && payoutHostUid) {
-            await db.collection("hostPayoutAccounts").doc(payoutHostUid).set({
-              penaltyOwed: FieldValue.increment(penaltyFee),
-              updatedAt: FieldValue.serverTimestamp(),
-            }, {merge: true});
-          }
-
-          // Notify user (recipient = the refunded attendee). BUG 34: key+params.
-          const refundPesos = (refundResult.refund.amount / 100).toFixed(2);
-          const params = {event: eventData.title, amount: refundPesos};
-
-          await db.collection("notifications").add({
-            userId: paymentData.userId,
-            type: "event_cancelled_refund",
-            title: tPush("notifications.refund.eventCancelled.title", "en", params),
-            message: tPush("notifications.refund.eventCancelled.body", "en", params),
-            titleKey: "notifications.refund.eventCancelled.title",
-            bodyKey: "notifications.refund.eventCancelled.body",
-            params,
-            icon: "💰",
-            read: false,
-            createdAt: new Date().toISOString(),
-            metadata: {
-              eventId: eventId,
-              eventTitle: eventData.title,
-              refundAmount: refundResult.refund.amount,
-              stripeFeeRetained: refundResult.refund.stripeFeeRetained,
-              reason: cancellationReason || "No reason provided",
-            },
-          });
-
-          console.log("✅ Refund successful for user:", paymentData.userId);
-        } else {
-          console.log(
-            "❌ Refund failed:",
-            paymentData.userId,
-            refundResult.error,
-          );
-          failedRefunds.push({
-            userId: paymentData.userId,
-            error: refundResult.error,
-          });
-        }
-      }
-
-      // Update event status
-      await eventRef.update({
-        status: "cancelled",
-        cancelledAt: new Date().toISOString(),
-        cancellationReason: cancellationReason || "No reason provided",
-        cancelledBy: userId,
+      return await hostCancelEventCore(eventId, {
+        stripe, actorUid: userId, reason: cancellationReason,
       });
-
-      // SOCIAL GIFTING (gate E): gift money lives in the separate giftLedger, so
-      // the payments-refund loop above never touched it. Refund every live gift
-      // on this event to its gifter and mark both views 'event_cancelled'.
-      let giftsRefunded = 0;
-      try {
-        giftsRefunded = await require("./gifting").refundEventGiftsOnCancel(eventId);
-      } catch (e) {
-        console.error("gift refund on cancel failed:", e.message);
-      }
-      if (giftsRefunded) console.log(`↩️ refunded ${giftsRefunded} gifts`);
-
-      const logMsg =
-        "✅ Event cancelled, " +
-        refundResults.length +
-        " refunds processed, " +
-        failedRefunds.length +
-        " failed";
-      console.log(logMsg);
-
-      return {
-        success: true,
-        refundsProcessed: refundResults.length,
-        refunds: refundResults,
-        failedRefunds: failedRefunds,
-        // Host-cancel refunds gross — the host absorbs the fees (BUG 8), so the
-        // old "(Stripe fees retained)" wording was wrong.
-        message:
-          "Event cancelled. " +
-          refundResults.length +
-          " attendees refunded in full (all fees included).",
-      };
     } catch (error) {
       console.error("❌ Error cancelling event:", error);
       throw new functions.https.HttpsError("internal", error.message);

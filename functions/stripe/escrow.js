@@ -156,16 +156,33 @@ async function writeHeldLedger(db, p) {
   return releaseAt;
 }
 
+// KIN-111 §8: don't re-notify the same stuck reason more than once a day.
+const STUCK_NOTIFY_THROTTLE_MS = 24 * 60 * 60 * 1000;
+
 /**
  * Notify host + admins that a payout is stuck (no Connect account or a failed
  * transfer at release time) — §8. The ledger stays 'held' and retries next run.
+ * Always stamps `lastStuckReason` on the ledger doc (so adminReleasePayout can
+ * surface WHY a release stayed held — KIN-111 Piece 9), but only actually sends
+ * notifications (and bumps `lastStuckNotifiedAt`) once per 24h per ledger row,
+ * so a permanently-stuck row doesn't spam host + admins every hourly cron tick.
  * @param {FirebaseFirestore.Firestore} db admin Firestore
- * @param {object} ledger paymentLedger doc data
+ * @param {FirebaseFirestore.DocumentSnapshot} ledgerDoc paymentLedger doc snapshot
  * @param {string} reason short reason code
  * @return {Promise<void>}
  */
-async function notifyPayoutStuck(db, ledger, reason) {
+async function notifyPayoutStuck(db, ledgerDoc, reason) {
+  const ledger = ledgerDoc.data() || {};
   try {
+    await ledgerDoc.ref.set({lastStuckReason: reason}, {merge: true});
+
+    const last = ledger.lastStuckNotifiedAt;
+    const lastMs = last && typeof last.toMillis === "function" ?
+      last.toMillis() : null;
+    if (lastMs !== null && Date.now() - lastMs < STUCK_NOTIFY_THROTTLE_MS) {
+      return; // notified recently — reason stamped above, skip the spam
+    }
+
     const recipients = new Set();
     if (ledger.hostUid) recipients.add(ledger.hostUid);
     const admins = await db
@@ -184,6 +201,8 @@ async function notifyPayoutStuck(db, ledger, reason) {
         createdAt: new Date().toISOString(),
         metadata: {paymentIntentId: ledger.paymentIntentId, reason},
       })));
+    await ledgerDoc.ref.set(
+      {lastStuckNotifiedAt: FieldValue.serverTimestamp()}, {merge: true});
   } catch (e) {
     console.warn("notifyPayoutStuck failed:", e.message);
   }
@@ -197,22 +216,39 @@ async function notifyPayoutStuck(db, ledger, reason) {
  * @param {object} stripe initialized Stripe client
  * @param {FirebaseFirestore.Firestore} db admin Firestore
  * @param {FirebaseFirestore.QueryDocumentSnapshot} ledgerDoc held ledger doc
+ * @param {object} [opts]
+ * @param {boolean} [opts.allowPendingDeletionHost] KIN-111: let a
+ *   `pending_deletion` host still get paid what they already earned (the
+ *   settlement cron uses this right before finalizing that account's
+ *   deletion). Default false preserves the existing hourly cron behavior
+ *   exactly — a pending_deletion host stays blocked. Never bypasses the
+ *   doc-missing check.
  * @return {Promise<'released'|'held'|'skipped'>} outcome
  */
-async function releaseOnePayout(stripe, db, ledgerDoc) {
+async function releaseOnePayout(stripe, db, ledgerDoc, opts = {}) {
+  const {allowPendingDeletionHost = false} = opts;
   const l = ledgerDoc.data();
   const paymentIntentId = l.paymentIntentId || ledgerDoc.id;
 
-  // KIN-108 Commit C3: never pay out a host who no longer exists or who is
-  // mid-deletion. This lookup used to run ONLY when hostAccountId was
-  // missing from the ledger — but writeHeldLedger captures hostAccountId at
-  // SALE time, so for a normal sale this check never ran at all, and a
-  // deleted-but-still-`held` row would sail straight to the transfer below
-  // using a stale, captured account id. Must run on every release, not just
-  // the no-account-id fallback path.
+  // KIN-111 Piece 7: a ledger row with no hostUid at all would crash the
+  // lookup below (doc(undefined)). Guard first — same "held" + notify + retry
+  // contract as every other stuck reason.
+  if (!l.hostUid) {
+    await notifyPayoutStuck(db, ledgerDoc, "missing_host_uid");
+    return "held";
+  }
+
+  // KIN-108 Commit C3: never pay out a host who no longer exists. This lookup
+  // used to run ONLY when hostAccountId was missing from the ledger — but
+  // writeHeldLedger captures hostAccountId at SALE time, so for a normal sale
+  // this check never ran at all, and a deleted-but-still-`held` row would
+  // sail straight to the transfer below using a stale, captured account id.
+  // Must run on every release, not just the no-account-id fallback path.
   const hostSnap = await db.collection("users").doc(l.hostUid).get();
-  if (!hostSnap.exists || hostSnap.data().accountStatus === "pending_deletion") {
-    await notifyPayoutStuck(db, l, "host_pending_deletion");
+  const pendingDeletion = hostSnap.exists &&
+    hostSnap.data().accountStatus === "pending_deletion";
+  if (!hostSnap.exists || (pendingDeletion && !allowPendingDeletionHost)) {
+    await notifyPayoutStuck(db, ledgerDoc, "host_pending_deletion");
     return "held";
   }
 
@@ -224,7 +260,7 @@ async function releaseOnePayout(stripe, db, ledgerDoc) {
       hostSnap.data().stripeConnect.accountId : null;
   }
   if (!hostAccountId) {
-    await notifyPayoutStuck(db, l, "no_connect_account");
+    await notifyPayoutStuck(db, ledgerDoc, "no_connect_account");
     return "held";
   }
 
@@ -254,7 +290,7 @@ async function releaseOnePayout(stripe, db, ledgerDoc) {
     } catch (e) {
       // §8: e.g. the host's account can't receive transfers now.
       console.warn(`release transfer failed ${paymentIntentId}: ${e.message}`);
-      await notifyPayoutStuck(db, l, "transfer_failed");
+      await notifyPayoutStuck(db, ledgerDoc, "transfer_failed");
       return "held";
     }
   }
