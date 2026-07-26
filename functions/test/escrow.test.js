@@ -303,6 +303,12 @@ test("ESC8 event edit: moving durationMinutes recomputes held ledgers' releaseAt
 const seedHeld = async (over = {}) => {
   const pi = `pi_${nextId()}`;
   const hostUid = over.hostUid || `host_${nextId()}`;
+  // KIN-108 Commit C3: releaseOnePayout now ALWAYS reads users/{hostUid} to
+  // gate on existence/accountStatus, not just when hostAccountId is missing
+  // from the ledger. Seed a normal (active, no accountStatus field) host doc
+  // so these tests keep modeling "the host is still around" — the same
+  // assumption they always implicitly made before this doc existed.
+  await db.collection("users").doc(hostUid).set({seededForEscrowTest: true}, {merge: true});
   await db.collection("paymentLedger").doc(pi).set({
     paymentIntentId: pi, eventId: `evt_${nextId()}`, hostUid,
     hostAccountId: "acct_testhost", attendeeUid: `a_${nextId()}`,

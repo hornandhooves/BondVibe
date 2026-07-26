@@ -527,3 +527,53 @@ describe("R6 · users.update — self-granted stripeConnect (payout spoof)", () 
       { merge: true })));
   });
 });
+
+// ===========================================================================
+// R7 — KIN-108 Commit C1: accountStatus/accountStatusAt/deletionScheduledAt
+// are set only by deleteUserAccount and read only by escrow.js's
+// releaseOnePayout payout gate (Commit C3). Same privesc class as
+// hostApproved/suspended: if a client could self-write accountStatus, a
+// modified client would un-suspend itself straight out of pending_deletion
+// and the C3 payout gate becomes decorative.
+// ===========================================================================
+describe("R7 · users.create/update — self-written accountStatus (pending_deletion escape)", () => {
+  const seedPendingDeletion = (env) =>
+    seed(env, (db) => setDoc(doc(db, "users", "mallory"),
+      { role: "user", accountStatus: "pending_deletion", displayName: "M" }));
+
+  test("FIX: a new account cannot self-create with accountStatus set", async () => {
+    const db = asUser(fixed, "mallory");
+    await assertFails(setDoc(doc(db, "users", "mallory"),
+      { role: "user", accountStatus: "active", displayName: "M" }));
+  });
+
+  test("FIX: a user in pending_deletion cannot self-clear accountStatus", async () => {
+    await seedPendingDeletion(fixed);
+    const db = asUser(fixed, "mallory");
+    await assertFails(updateDoc(doc(db, "users", "mallory"), { accountStatus: "active" }));
+  });
+
+  test("FIX: a user cannot self-write deletionScheduledAt either", async () => {
+    await seedPendingDeletion(fixed);
+    const db = asUser(fixed, "mallory");
+    await assertFails(updateDoc(doc(db, "users", "mallory"),
+      { deletionScheduledAt: null }));
+  });
+
+  test("NO OVER-BLOCK: an admin still reinstates the account", async () => {
+    await seedPendingDeletion(fixed);
+    const db = asUser(fixed, "admin1", { admin: true });
+    await assertSucceeds(updateDoc(doc(db, "users", "mallory"), { accountStatus: "active" }));
+  });
+
+  test("NO OVER-BLOCK: the user still edits their own profile while pending_deletion", async () => {
+    await seedPendingDeletion(fixed);
+    const db = asUser(fixed, "mallory");
+    await assertSucceeds(updateDoc(doc(db, "users", "mallory"), { displayName: "Mallory B" }));
+  });
+
+  test("NO OVER-BLOCK: the Admin SDK (server) still sets accountStatus", async () => {
+    await assertSucceeds(seed(fixed, (db) => setDoc(doc(db, "users", "mallory"),
+      { role: "user", accountStatus: "pending_deletion" }, { merge: true })));
+  });
+});

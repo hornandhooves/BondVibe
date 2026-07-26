@@ -418,7 +418,7 @@ test("DA2 admin route force-deletes another uid with open obligations, unblocked
   assert.strictEqual(audit.performedBy, admin_);
 });
 
-test("DA3 an account with no open obligations still deletes normally", async () => {
+test("DA3 an account with no open obligations still self-deletes into pending_deletion (Commit C)", async () => {
   const user = `clean_${nextId()}`;
   const idToken = await tokenFor(user);
   await db.collection("users").doc(user).set({fullName: "Clean User"});
@@ -428,8 +428,12 @@ test("DA3 an account with no open obligations still deletes normally", async () 
   const body = await res.json();
   assert.strictEqual(body.success, true);
 
+  // KIN-108 Commit C: self-delete never fully removes the user doc anymore,
+  // clean account or not — it survives with accountStatus:"pending_deletion"
+  // (see kin-108-commit-c.test.js AD1/AD2/AD7 for the full behavior).
   const userAfter = await db.collection("users").doc(user).get();
-  assert.strictEqual(userAfter.exists, false);
+  assert.strictEqual(userAfter.exists, true);
+  assert.strictEqual(userAfter.data().accountStatus, "pending_deletion");
 });
 
 // ── KIN-108 Commit B3: roster mark-not-remove ───────────────────────────────

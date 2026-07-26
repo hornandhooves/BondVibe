@@ -144,7 +144,9 @@ service cloud.firestore {
                                    'plan', 'matchCountByEvent',
                                    'handle', 'handleLower',
                                    'hostApproved', 'hostConfig',
-                                   'personality', 'matchProfile']) &&
+                                   'personality', 'matchProfile',
+                                   'accountStatus', 'accountStatusAt',
+                                   'deletionScheduledAt']) &&
                        request.resource.data.get('role', 'user') == 'user' &&
                        validBirthday(request.resource.data);
 
@@ -177,6 +179,12 @@ service cloud.firestore {
       // (below). They must NEVER be written back to this world-readable doc, or
       // the leak reopens — deny any update that touches them here. (Migration off
       // the main doc runs via the Admin SDK, which bypasses this rule.)
+      //
+      // KIN-108 Commit C1: accountStatus/accountStatusAt/deletionScheduledAt are
+      // server-only (set by deleteUserAccount, read by releaseOnePayout's
+      // pending_deletion payout gate). Same privesc class as hostApproved: if
+      // a client could write these, a modified client would un-suspend itself
+      // out of pending_deletion and the C3 payout gate becomes decorative.
       allow update: if isAdmin() ||
                        (isOwner(userId) &&
                         !request.resource.data.diff(resource.data)
@@ -185,7 +193,9 @@ service cloud.firestore {
                                    'plan', 'matchCountByEvent', 'hostApproved',
                                    'handle', 'handleLower', 'role',
                                    'hostConfig', 'suspended', 'stripeConnect',
-                                   'personality', 'matchProfile']) &&
+                                   'personality', 'matchProfile',
+                                   'accountStatus', 'accountStatusAt',
+                                   'deletionScheduledAt']) &&
                         request.resource.data.get('matchmaking', {})
                           .get('freeTrialEndsAt', null) ==
                         resource.data.get('matchmaking', {})
