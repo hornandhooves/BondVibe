@@ -41,6 +41,18 @@ const mapErr = (code, t) => {
   return t("adminPayouts.errGeneric");
 };
 
+// KIN-111 Piece 9: adminReleasePayout's outcome:"held" carries a `reason`
+// (escrow.js's own notifyPayoutStuck codes) so the admin sees WHY the money
+// didn't move instead of a false "released OK".
+const mapStuckReason = (reason, t) => {
+  const s = `${reason || ""}`;
+  if (/host_pending_deletion/.test(s)) return t("adminPayouts.stuckHostPendingDeletion");
+  if (/no_connect_account/.test(s)) return t("adminPayouts.stuckNoConnectAccount");
+  if (/transfer_failed/.test(s)) return t("adminPayouts.stuckTransferFailed");
+  if (/missing_host_uid/.test(s)) return t("adminPayouts.stuckMissingHostUid");
+  return t("adminPayouts.stuckGeneric");
+};
+
 export default function AdminPayoutsScreen({ navigation }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -89,9 +101,22 @@ export default function AdminPayoutsScreen({ navigation }) {
           onPress: async () => {
             setBusyId(row.paymentIntentId);
             try {
-              if (kind === "release") await releasePayout(row.paymentIntentId);
-              else await refundPayout(row.paymentIntentId);
-              Alert.alert(t(kind === "release" ? "adminPayouts.releasedOk" : "adminPayouts.refundedOk"));
+              if (kind === "release") {
+                const result = await releasePayout(row.paymentIntentId);
+                if (result && result.outcome === "held") {
+                  // KIN-111: still held (e.g. host mid-deletion, no Connect
+                  // account, a failed transfer) — do NOT claim success.
+                  Alert.alert(
+                    t("adminPayouts.releaseStillHeldTitle"),
+                    mapStuckReason(result.reason, t),
+                  );
+                } else {
+                  Alert.alert(t("adminPayouts.releasedOk"));
+                }
+              } else {
+                await refundPayout(row.paymentIntentId);
+                Alert.alert(t("adminPayouts.refundedOk"));
+              }
               await load(true);
             } catch (e) {
               Alert.alert(t("adminPayouts.title"), mapErr(e?.message, t));
