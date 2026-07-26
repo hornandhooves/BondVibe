@@ -13,6 +13,10 @@
  *   - a category that exceeds the page cap truncates (per-category flag,
  *     not a single root-level one) instead of crashing, and an untruncated
  *     sibling category never inherits that flag
+ *   - PDI12: a category whose query rejects (e.g. an index still CREATING —
+ *     the exact failure verified live against kinlo-app-dev) degrades to
+ *     `unavailable: true` instead of aborting the other five, and flips the
+ *     root `complete` flag to false (KIN-108 AC #14, Commit B0)
  *
  *   npm run test:payments
  */
@@ -247,6 +251,57 @@ test("PDI11 only the truncated category reports truncated:true — others stay f
   assert.strictEqual(preview.activeRentals.truncated, false);
   assert.strictEqual(preview.bookings.truncated, false);
   assert.strictEqual(preview.futureEvents.truncated, false);
+});
+
+test("PDI12 one category's query rejecting degrades to unavailable, others stay real, complete=false", async () => {
+  const host = `host_${nextId()}`;
+  // A real, independently-verifiable membership for the SAME uid — proves
+  // the failure of one category doesn't drag down a sibling that resolved fine.
+  await db.collection("memberships").doc(`mem_${nextId()}`).set({
+    userId: `member_${nextId()}`, hostId: host, status: "active",
+    expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 30 * 864e5),
+  });
+
+  // Force ONLY the "rentals" collection to reject, as if its index were
+  // still CREATING (the exact live failure verified against kinlo-app-dev).
+  // Everything else on this fake db passes straight through to the real
+  // emulator db.
+  const failingQuery = {
+    where() {
+      return failingQuery;
+    },
+    orderBy() {
+      return failingQuery;
+    },
+    limit() {
+      return failingQuery;
+    },
+    startAfter() {
+      return failingQuery;
+    },
+    get() {
+      return Promise.reject(Object.assign(new Error("simulated index not ready"), {code: 9}));
+    },
+  };
+  const fakeDb = {
+    collection: (name) => (name === "rentals" ? failingQuery : db.collection(name)),
+    collectionGroup: (name) => db.collectionGroup(name),
+  };
+
+  const preview = await previewDeletionImpact(fakeDb, host);
+
+  assert.strictEqual(preview.complete, false, "complete must be false when any category failed");
+  assert.strictEqual(preview.activeRentals.unavailable, true);
+  assert.strictEqual(preview.activeRentals.count, 0, "a failed category is zeroed, never invented as a real zero");
+  assert.strictEqual(preview.activeRentals.truncated, false);
+
+  // The other five must be REAL results, not swallowed by rentals' failure.
+  assert.strictEqual(preview.memberships.count, 1);
+  assert.strictEqual(preview.memberships.unavailable, undefined);
+  assert.strictEqual(preview.pendingSettlement.unavailable, undefined);
+  assert.strictEqual(preview.pendingGifts.unavailable, undefined);
+  assert.strictEqual(preview.bookings.unavailable, undefined);
+  assert.strictEqual(preview.futureEvents.unavailable, undefined);
 });
 
 // ── deleteUserAccount: never rejects, admin route audited ──────────────────
