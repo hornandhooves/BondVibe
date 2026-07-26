@@ -203,13 +203,25 @@ async function releaseOnePayout(stripe, db, ledgerDoc) {
   const l = ledgerDoc.data();
   const paymentIntentId = l.paymentIntentId || ledgerDoc.id;
 
+  // KIN-108 Commit C3: never pay out a host who no longer exists or who is
+  // mid-deletion. This lookup used to run ONLY when hostAccountId was
+  // missing from the ledger — but writeHeldLedger captures hostAccountId at
+  // SALE time, so for a normal sale this check never ran at all, and a
+  // deleted-but-still-`held` row would sail straight to the transfer below
+  // using a stale, captured account id. Must run on every release, not just
+  // the no-account-id fallback path.
+  const hostSnap = await db.collection("users").doc(l.hostUid).get();
+  if (!hostSnap.exists || hostSnap.data().accountStatus === "pending_deletion") {
+    await notifyPayoutStuck(db, l, "host_pending_deletion");
+    return "held";
+  }
+
   // Resolve the payout account: the ledger's (captured at sale), else the host's
   // current Connect account. §8: none → stay held, notify, retry next run.
   let hostAccountId = l.hostAccountId;
   if (!hostAccountId) {
-    const hs = await db.collection("users").doc(l.hostUid).get();
-    hostAccountId = hs.exists && hs.data().stripeConnect ?
-      hs.data().stripeConnect.accountId : null;
+    hostAccountId = hostSnap.data().stripeConnect ?
+      hostSnap.data().stripeConnect.accountId : null;
   }
   if (!hostAccountId) {
     await notifyPayoutStuck(db, l, "no_connect_account");

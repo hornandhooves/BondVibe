@@ -81,12 +81,18 @@ const getLedger = async (id) =>
 // Seed a ledger row. `over.capturedAtMs` controls the desc ordering.
 const seedLedger = async (over = {}) => {
   const pi = over.paymentIntentId || `pi_${nextId()}`;
+  const hostUid = over.hostUid || `host_${nextId()}`;
+  // KIN-108 Commit C3: releaseOnePayout now ALWAYS reads users/{hostUid} to
+  // gate on existence/accountStatus. Seed a normal (active) host doc so AP12
+  // keeps modeling "the host is still around" — the same assumption it
+  // always implicitly made before this doc existed.
+  await db.collection("users").doc(hostUid).set({seededForAdminPayoutsTest: true}, {merge: true});
   await db.collection("paymentLedger").doc(pi).set({
     paymentIntentId: pi,
     type: "event_ticket",
     sourceId: `src_${nextId()}`,
     bizId: null,
-    hostUid: `host_${nextId()}`,
+    hostUid,
     buyerUid: `buyer_${nextId()}`,
     hostAccountId: "acct_testhost",
     grossAmount: 27312, hostAmount: 25000, platformFee: 1250, stripeFee: 1062,
