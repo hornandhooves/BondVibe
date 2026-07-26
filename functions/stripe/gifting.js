@@ -492,6 +492,30 @@ exports.cancelGift = onCall({secrets: [stripeSecretKey]}, async (request) => {
   return {success: true, ...out};
 });
 
+/**
+ * Core decline: refund the gifter and mark the gift declined. Shared by the
+ * recipient-initiated declineGift callable below AND by deleteUserAccount
+ * (KIN-108 Commit B4) when the RECIPIENT of a still-unredeemed gift deletes
+ * their account — reuses the exact same refund path, no money logic
+ * duplicated. Best-effort/idempotent: a gift that's no longer "sent" (already
+ * declined/redeemed/expired by the time this runs) is a no-op, not an error.
+ * @param {string} giftId the gift id
+ * @param {object} [stripeClient] injected stripe client (tests); defaults to
+ *   the real getStripe() singleton, same as every production call site.
+ * @return {Promise<object>} {success:true, ...refund} or {success:false, reason}
+ */
+async function declineGiftCore(giftId, stripeClient) {
+  const gSnap = await giftRef(giftId).get();
+  if (!gSnap.exists) return {success: false, reason: "not_found"};
+  const g = gSnap.data();
+  if (g.status !== "sent") return {success: false, reason: "not_declinable"};
+  const ledger = (await ledgerRef(g.paymentIntentId).get()).data();
+  const out = await refundGiftToGifter(stripeClient || getStripe(), ledger, "requested_by_customer");
+  // Discreet: the gifter only sees "not redeemed", never a reason.
+  await syncGiftStatus(giftId, "declined");
+  return {success: true, ...out};
+}
+
 // ── declineGift (recipient, discreet) → refund the gifter ───────────────────
 exports.declineGift = onCall({secrets: [stripeSecretKey]}, async (request) => {
   const uid = request.auth?.uid;
@@ -503,13 +527,11 @@ exports.declineGift = onCall({secrets: [stripeSecretKey]}, async (request) => {
   const g = gSnap.data();
   if (g.recipientId !== uid) throw new HttpsError("permission-denied", "Not your gift.");
   if (g.status !== "sent") throw new HttpsError("failed-precondition", "not_declinable");
-
-  const ledger = (await ledgerRef(g.paymentIntentId).get()).data();
-  const out = await refundGiftToGifter(getStripe(), ledger, "requested_by_customer");
-  // Discreet: the gifter only sees "not redeemed", never a reason.
-  await syncGiftStatus(giftId, "declined");
-  return {success: true, ...out};
+  const result = await declineGiftCore(giftId);
+  return result;
 });
+
+exports.declineGiftCore = declineGiftCore;
 
 // ── expireGifts — daily cron: unredeemed after 30d → refund the gifter ──────
 // v1 has NO credit wallet, so expiry refunds the gifter's card (not a credit).
@@ -609,5 +631,5 @@ exports.refundEventGiftsOnCancel = refundEventGiftsOnCancel;
 // Exported for unit/emulator tests.
 exports._internal = {
   writeGiftLedger, refundGiftToGifter, buildReveal, syncGiftStatus,
-  refundEventGiftsOnCancel, GIFT_EXPIRY_DAYS,
+  refundEventGiftsOnCancel, GIFT_EXPIRY_DAYS, declineGiftCore,
 };

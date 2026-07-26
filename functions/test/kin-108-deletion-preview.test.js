@@ -116,7 +116,7 @@ test("PDI2 future paid event, attendees, ZERO ledger rows is detected (MP route,
   assert.strictEqual(preview.futureEvents.isEstimate, true);
 });
 
-test("PDI3 a released ledger row INSIDE the dispute window is detected, classified releasedReversible", async () => {
+test("PDI3 a released ledger row INSIDE the reversal window is detected, classified releasedReversible", async () => {
   const host = `host_${nextId()}`;
   await db.collection("paymentLedger").doc(`pi_${nextId()}`).set({
     hostUid: host, state: "released", frozen: false, grossAmount: 10000,
@@ -129,21 +129,28 @@ test("PDI3 a released ledger row INSIDE the dispute window is detected, classifi
   assert.strictEqual(preview.pendingSettlement.byState.releasedReversible.count, 1);
   assert.strictEqual(preview.pendingSettlement.byState.held.count, 0);
   assert.strictEqual(preview.pendingSettlement.byState.frozen.count, 0);
+  assert.strictEqual(preview.pendingSettlement.byState.notRecoverable.count, 0);
 });
 
-test("PDI4 a released ledger row OUTSIDE the dispute window is NOT detected", async () => {
+test("PDI4 a released row OUTSIDE the reversal window is shown as notRecoverable, not hidden (Commit B5)", async () => {
   const host = `host_${nextId()}`;
   await db.collection("paymentLedger").doc(`pi_${nextId()}`).set({
     hostUid: host, state: "released", frozen: false, grossAmount: 10000,
-    // 200 days ago — past the 120-day default dispute window.
+    // 200 days ago — past the 30-day default reversal window.
     releasedAt: admin.firestore.Timestamp.fromMillis(Date.now() - 200 * 864e5),
   });
 
   const preview = await previewDeletionImpact(db, host);
   assert.strictEqual(
     preview.pendingSettlement.count, 0,
-    "settled money outside the dispute window is no longer at risk",
+    "settled, no-longer-reversible money is excluded from the actionable total",
   );
+  assert.strictEqual(
+    preview.pendingSettlement.byState.notRecoverable.count, 1,
+    "but it must still be VISIBLE under notRecoverable, never silently dropped",
+  );
+  assert.strictEqual(preview.pendingSettlement.byState.notRecoverable.amountMinor, 10000);
+  assert.strictEqual(preview.pendingSettlement.byState.releasedReversible.count, 0);
 });
 
 test("PDI5 a frozen ledger row is detected regardless of age, classified frozen (not releasedReversible)", async () => {
@@ -295,13 +302,79 @@ test("PDI12 one category's query rejecting degrades to unavailable, others stay 
   assert.strictEqual(preview.activeRentals.count, 0, "a failed category is zeroed, never invented as a real zero");
   assert.strictEqual(preview.activeRentals.truncated, false);
 
-  // The other five must be REAL results, not swallowed by rentals' failure.
+  // The other seven must be REAL results, not swallowed by rentals' failure.
   assert.strictEqual(preview.memberships.count, 1);
   assert.strictEqual(preview.memberships.unavailable, undefined);
   assert.strictEqual(preview.pendingSettlement.unavailable, undefined);
+  assert.strictEqual(preview.myPendingPayments.unavailable, undefined);
   assert.strictEqual(preview.pendingGifts.unavailable, undefined);
+  assert.strictEqual(preview.myPendingGifts.unavailable, undefined);
   assert.strictEqual(preview.bookings.unavailable, undefined);
   assert.strictEqual(preview.futureEvents.unavailable, undefined);
+});
+
+// ── Buyer/counterparty side (KIN-108 Commit B2) ─────────────────────────────
+
+test("PDI13 a held payment where the uid is the BUYER (not host) is detected via myPendingPayments", async () => {
+  const buyer = `buyer_${nextId()}`;
+  const seller = `seller_${nextId()}`;
+  await db.collection("paymentLedger").doc(`pi_${nextId()}`).set({
+    hostUid: seller, buyerUid: buyer, state: "held", grossAmount: 25000,
+  });
+
+  const preview = await previewDeletionImpact(db, buyer);
+  assert.strictEqual(preview.myPendingPayments.count, 1);
+  assert.strictEqual(preview.myPendingPayments.amountMinor, 25000);
+  assert.strictEqual(preview.myPendingPayments.byState.held.count, 1);
+  // The buyer is not the host, so the seller-side category must stay empty.
+  assert.strictEqual(preview.pendingSettlement.count, 0);
+});
+
+test("PDI14 a held gift where the uid is GIFTER or RECIPIENT (not host) is detected via myPendingGifts", async () => {
+  const gifter = `gifter_${nextId()}`;
+  const recipient = `recipient_${nextId()}`;
+  const seller = `seller_${nextId()}`;
+  await db.collection("giftLedger").doc(`pi_gift_${nextId()}`).set({
+    hostUid: seller, gifterId: gifter, recipientId: recipient,
+    state: "held", grossAmount: 15000,
+  });
+
+  const asGifter = await previewDeletionImpact(db, gifter);
+  assert.strictEqual(asGifter.myPendingGifts.count, 1);
+  assert.strictEqual(asGifter.myPendingGifts.amountMinor, 15000);
+  assert.strictEqual(asGifter.pendingGifts.count, 0, "gifter is not the host");
+
+  const asRecipient = await previewDeletionImpact(db, recipient);
+  assert.strictEqual(asRecipient.myPendingGifts.count, 1);
+  assert.strictEqual(asRecipient.myPendingGifts.amountMinor, 15000);
+
+  const asHost = await previewDeletionImpact(db, seller);
+  assert.strictEqual(asHost.pendingGifts.count, 1);
+  assert.strictEqual(asHost.myPendingGifts.count, 0, "host is neither gifter nor recipient here");
+});
+
+test("PDI15 futurePaidEvents catches both a string-dated AND a Timestamp-dated event (Commit B6)", async () => {
+  const host = `host_${nextId()}`;
+  await db.collection("events").doc(`evt_${nextId()}`).set({
+    creatorId: host,
+    title: "String-dated future event",
+    price: 300,
+    participantCount: 1,
+    date: new Date(Date.now() + 5 * 864e5).toISOString(),
+  });
+  await db.collection("events").doc(`evt_${nextId()}`).set({
+    creatorId: host,
+    title: "Timestamp-dated future event",
+    price: 400,
+    participantCount: 1,
+    date: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 864e5),
+  });
+
+  const preview = await previewDeletionImpact(db, host);
+  assert.strictEqual(
+    preview.futureEvents.count, 2,
+    "a Timestamp-stored date must not be silently excluded by a string-only range filter",
+  );
 });
 
 // ── deleteUserAccount: never rejects, admin route audited ──────────────────
@@ -357,4 +430,96 @@ test("DA3 an account with no open obligations still deletes normally", async () 
 
   const userAfter = await db.collection("users").doc(user).get();
   assert.strictEqual(userAfter.exists, false);
+});
+
+// ── KIN-108 Commit B3: roster mark-not-remove ───────────────────────────────
+
+test("DA4 a deleted buyer's roster doc is MARKED accountDeleted, never removed (Commit B3)", async () => {
+  const buyer = `buyer_${nextId()}`;
+  const eventId = `evt_${nextId()}`;
+  const idToken = await tokenFor(buyer);
+
+  await db.collection("events").doc(eventId).set({
+    creatorId: `host_${nextId()}`,
+    title: "Paid event with a real attendee",
+    price: 200,
+    participantCount: 1,
+    date: new Date(Date.now() + 5 * 864e5).toISOString(),
+  });
+  await db.collection("events").doc(eventId).collection("roster").doc(buyer).set({
+    uid: buyer, eventId, status: "active",
+    joinedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  const res = await deleteAccount(idToken);
+  assert.strictEqual(res.status, 200);
+
+  const rosterAfter = await db.collection("events").doc(eventId)
+    .collection("roster").doc(buyer).get();
+  assert.strictEqual(rosterAfter.exists, true, "roster doc must survive — never removed");
+  const r = rosterAfter.data();
+  assert.strictEqual(r.accountDeleted, true);
+  assert.ok(r.deletedAt, "deletedAt must be stamped");
+  assert.strictEqual(r.uid, buyer, "uid field must be untouched — activeUids() depends on it");
+  assert.strictEqual(r.status, "active", "status untouched");
+
+  const eventAfter = await db.collection("events").doc(eventId).get();
+  assert.strictEqual(
+    eventAfter.data().participantCount, 1,
+    "participantCount must NOT decrement — the seat stays paid, no double-sell",
+  );
+});
+
+// ── KIN-108 Commit B4: gift decline (recipient) / anonymize (gifter) ───────
+
+test("DA5 a deleted gifter's still-unredeemed gift stays valid, only gifterId is anonymized", async () => {
+  const gifter = `gifter_${nextId()}`;
+  const recipient = `recipient_${nextId()}`;
+  const giftId = `gift_${nextId()}`;
+  const idToken = await tokenFor(gifter);
+
+  await db.collection("gifts").doc(giftId).set({
+    giftId, gifterId: gifter, recipientId: recipient,
+    itemId: `evt_${nextId()}`, itemType: "event", status: "sent",
+    paymentIntentId: `pi_${nextId()}`,
+  });
+
+  const res = await deleteAccount(idToken);
+  assert.strictEqual(res.status, 200);
+
+  const giftAfter = await db.collection("gifts").doc(giftId).get();
+  assert.strictEqual(giftAfter.exists, true, "the gift must survive — the recipient can still redeem it");
+  const g = giftAfter.data();
+  assert.strictEqual(g.status, "sent", "still redeemable, unaffected by the gifter's own deletion");
+  assert.strictEqual(g.gifterId, null, "gifterId anonymized");
+  assert.ok(g.gifterAnonymizedAt, "anonymization must be timestamped");
+});
+
+test("DA6 recipient-decline step never crashes deletion, even when its Stripe call fails (dummy key)", async () => {
+  const recipient = `recipient_${nextId()}`;
+  const giftId = `gift_${nextId()}`;
+  const paymentIntentId = `pi_${nextId()}`;
+  const idToken = await tokenFor(recipient);
+
+  await db.collection("gifts").doc(giftId).set({
+    giftId, gifterId: `gifter_${nextId()}`, recipientId: recipient,
+    itemId: `evt_${nextId()}`, itemType: "event", status: "sent", paymentIntentId,
+  });
+  await db.collection("giftLedger").doc(paymentIntentId).set({
+    paymentIntentId, hostUid: `host_${nextId()}`, gifterId: `gifter_${nextId()}`,
+    recipientId: recipient, state: "held", grossAmount: 15000,
+  });
+
+  const res = await deleteAccount(idToken);
+  // The emulator's Stripe client uses a dummy test key (functions/.secret.local)
+  // and this gift's paymentIntentId was never a real Stripe charge, so the
+  // ACTUAL refund call inside declineGiftCore fails — deleteUserAccount's
+  // per-gift try/catch (matching every other purge step's best-effort
+  // pattern) swallows that and moves on. declineGiftCore's OWN correctness
+  // (it really does refund + flip status when Stripe succeeds) is unit-
+  // tested with an injected mock in gifting.test.js GF4/GF5 — this test only
+  // proves the wiring here can't take the whole deletion down with it.
+  assert.strictEqual(res.status, 200, "deletion must succeed regardless of this sub-step's outcome");
+  const body = await res.json();
+  assert.strictEqual(body.success, true);
 });

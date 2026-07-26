@@ -269,3 +269,40 @@ test("GF3 concurrent refunds settle only ONCE (CAS claim)", async () => {
   const after = (await db.collection("giftLedger").doc(pi.id).get()).data();
   assert.strictEqual(after.state, "refunded");
 });
+
+// ── declineGiftCore (KIN-108 Commit B4: reused by deleteUserAccount when the
+//    RECIPIENT of a still-unredeemed gift deletes their account) ───────────
+test("GF4 declineGiftCore refunds the gifter and flips gift+ledger to declined/refunded", async () => {
+  const pi = fakeGiftPI();
+  await gifting.handleGiftPurchase(pi);
+  const calls = [];
+  const mockStripe = {refunds: {create: async (a) => {
+    calls.push(a); return {id: "re_decline_1", status: "succeeded"};
+  }}};
+
+  const out = await gifting._internal.declineGiftCore(pi.metadata.giftId, mockStripe);
+
+  assert.strictEqual(out.success, true);
+  assert.strictEqual(calls.length, 1, "reuses refundGiftToGifter — exactly one Stripe call");
+  assert.strictEqual(calls[0].payment_intent, pi.id);
+  const gift = (await db.collection("gifts").doc(pi.metadata.giftId).get()).data();
+  assert.strictEqual(gift.status, "declined");
+  const ledger = (await db.collection("giftLedger").doc(pi.id).get()).data();
+  assert.strictEqual(ledger.state, "refunded");
+});
+
+test("GF5 declineGiftCore on an already-redeemed gift is a no-op, not an error (best-effort)", async () => {
+  const pi = fakeGiftPI();
+  await gifting.handleGiftPurchase(pi);
+  await db.collection("gifts").doc(pi.metadata.giftId).set({status: "redeemed"}, {merge: true});
+  let called = false;
+  const mockStripe = {refunds: {create: async () => {
+    called = true; return {id: "x"};
+  }}};
+
+  const out = await gifting._internal.declineGiftCore(pi.metadata.giftId, mockStripe);
+
+  assert.strictEqual(out.success, false);
+  assert.strictEqual(out.reason, "not_declinable");
+  assert.strictEqual(called, false, "no Stripe call for a gift that's no longer sent");
+});

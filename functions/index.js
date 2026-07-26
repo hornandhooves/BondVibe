@@ -3844,24 +3844,78 @@ exports.deleteUserAccount = onRequest(
         console.error("⚠️ group membership detach failed:", e.message);
       }
 
-      // 9. Detach the user from events they only JOINED (not created). ROSTER
-      //    (fix/privacy-event-roster): leave each via their roster docs
-      //    (collectionGroup by uid) — decrements participantCount + frees the spot
-      //    (the roster trigger promotes the waitlist). `interested` stays a public
-      //    array, purged separately.
+      // 9. MARK (never remove) the user's roster docs for events they only
+      //    JOINED (not created) — KIN-108 Commit B3. Under the no-refund-on-
+      //    delete policy (Rev. 2), a deleted buyer's seat stays PAID: calling
+      //    roster.removeFromRoster (the old behavior) decrements
+      //    participantCount and frees the spot, which lets the host resell
+      //    and get paid TWICE for the same seat. Rewriting `uid` (or the doc
+      //    id, which the roster schema uses AS the uid — roster.js:33-34)
+      //    would break activeUids() (roster.js:111, `d.data().uid || d.id`
+      //    — a rewritten uid field is truthy and wins over the id fallback),
+      //    consumed in 8 places for push notifications: index.js:831,2169,
+      //    2948; ai/recaps.js:72; ai/foundation.js:201; ai/features.js:60,
+      //    84,141 — those would then notify a uid that no longer exists.
+      //    So: add accountDeleted+deletedAt only. Leave uid, doc id, status,
+      //    and participantCount untouched. `interested` stays a public
+      //    array, purged separately (unaffected by this change).
       try {
         const [myRoster, interested] = await Promise.all([
           db.collectionGroup("roster").where("uid", "==", userId).get(),
           db.collection("events").where("interested", "array-contains", userId).get(),
         ]);
         await Promise.all(myRoster.docs.map((d) =>
-          roster.removeFromRoster(db, d.ref.parent.parent.id, userId)));
+          d.ref.update({accountDeleted: true, deletedAt: FieldValue.serverTimestamp()})));
         await Promise.all(interested.docs.map((ev) =>
           ev.ref.update({interested: FieldValue.arrayRemove(userId)})));
-        counts.eventsLeft = myRoster.size;
-        console.log(`✅ Removed from ${myRoster.size} joined events`);
+        counts.eventsMarkedDeleted = myRoster.size;
+        console.log(`✅ Marked accountDeleted on ${myRoster.size} roster docs (not removed)`);
       } catch (e) {
-        console.error("⚠️ event attendee detach failed:", e.message);
+        console.error("⚠️ event attendee mark-deleted failed:", e.message);
+      }
+
+      // 9a. Gifts where the user is the still-unredeemed RECIPIENT — KIN-108
+      //     Commit B4. Reuses gifting.declineGiftCore (the exact refund-the-
+      //     gifter path a recipient-initiated decline already uses); no new
+      //     money logic. Best-effort per gift, mirroring purgeQuery above.
+      try {
+        const gifting = require("./stripe/gifting");
+        const asRecipient = await db.collection("gifts")
+          .where("recipientId", "==", userId)
+          .where("status", "==", "sent")
+          .get();
+        let declined = 0;
+        for (const g of asRecipient.docs) {
+          try {
+            await gifting.declineGiftCore(g.id);
+            declined++;
+          } catch (e) {
+            console.error(`⚠️ declineGiftCore failed for gift ${g.id}:`, e.message);
+          }
+        }
+        counts.giftsDeclinedAsRecipient = declined;
+        console.log(`✅ Declined ${declined} unredeemed gifts (recipient deleted)`);
+      } catch (e) {
+        console.error("⚠️ recipient gift decline failed:", e.message);
+      }
+
+      // 9b. Gifts where the user is the GIFTER (payer) of a STILL-UNREDEEMED
+      //     gift — KIN-108 Commit B4. The gift stays valid (the recipient can
+      //     still redeem it); only gifterId is anonymized. expireGifts
+      //     (functions/stripe/gifting.js) refunds it automatically if never
+      //     redeemed. NOT implemented here (separate ticket, gifting inbox):
+      //     transferring/reassigning the gift to someone else.
+      try {
+        const asGifter = await db.collection("gifts")
+          .where("gifterId", "==", userId)
+          .where("status", "==", "sent")
+          .get();
+        await Promise.all(asGifter.docs.map((g) =>
+          g.ref.update({gifterId: null, gifterAnonymizedAt: FieldValue.serverTimestamp()})));
+        counts.giftsAnonymizedAsGifter = asGifter.size;
+        console.log(`✅ Anonymized gifterId on ${asGifter.size} still-valid gifts`);
+      } catch (e) {
+        console.error("⚠️ gifter anonymize failed:", e.message);
       }
 
       // 10. The user document AND all its subcollections (private/contact =
