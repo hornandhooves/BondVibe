@@ -314,33 +314,43 @@ async function myGiftInvolvement(db, userId, reversalWindowDays) {
  * See the module header for why this must not be summed with
  * pendingSettlement/pendingGifts.
  *
- * The date filter is pushed server-side (`date >= nowISO`, KIN-108 Commit
- * B1) rather than fetched-then-filtered in memory, matching the existing
- * live pattern this repo already uses for future-event queries (verified:
- * ai/foundation.js:185-186, ai/features.js:184-188,402, ai/stream.js:112 all
- * do `.where("date", ">=", nowIso).orderBy("date", "asc")`). KNOWN RISK,
- * inherited from that existing pattern rather than introduced here: `date`
- * is stored as a Firestore Timestamp OR an ISO string depending on the write
- * path (escrow.js's own dateToMillis handles both) — a server-side string
- * comparison only matches docs where `date` is ALSO stored as a string.
- * An event whose `date` is a Timestamp would be silently excluded from this
- * query, whereas the prior in-memory dateToMillis-based filter handled both
- * formats. Flagged, not silently accepted as risk-free.
+ * The date filter is pushed server-side (KIN-108 Commit B1) rather than
+ * fetched-then-filtered in memory. Firestore range filters are type-strict —
+ * a string cutoff only matches string-typed `date` values, a Timestamp
+ * cutoff only matches Timestamp-typed ones — and `date` is written as EITHER
+ * depending on the write path (escrow.js's own dateToMillis exists to
+ * normalize both). QA review (26-jul-2026, Commit B6) caught that pushing a
+ * SINGLE string-cutoff query (matching ai/foundation.js:185-186 et al., which
+ * have the same latent gap) silently excludes any Timestamp-stored event —
+ * a verified-looking `count: 0` that's actually wrong, which is worse than
+ * an error since B0 exists precisely to avoid a false "nothing pending".
+ * Fix: run BOTH a string-cutoff and a Timestamp-cutoff query per owner
+ * field, feeding the same fold + `seen` dedup — a doc's `date` is one type
+ * or the other, never both, so no double-count is possible. The existing
+ * (creatorId/businessOwnerUid, date) indexes serve both queries unchanged —
+ * a field index doesn't distinguish the stored type.
  * @param {FirebaseFirestore.Firestore} db admin Firestore
  * @param {string} userId creatorId or businessOwnerUid being previewed
  * @return {Promise<{count: number, attendees: number, amountMinor: number, truncated: boolean}>}
  */
 async function futurePaidEvents(db, userId) {
-  const nowISO = new Date().toISOString();
+  const now = Date.now();
+  const nowISO = new Date(now).toISOString();
+  const nowTs = Timestamp.fromMillis(now);
   const events = db.collection("events");
   const seen = new Set();
   const fold = (acc, doc) => {
     if (seen.has(doc.id)) return acc;
     seen.add(doc.id);
     const ev = doc.data();
+    // Same posture as activeBookings: an unparseable date counts as future
+    // (never silently excluded) — this is a preview ahead of an irreversible
+    // action, so the safe default is to show it, not drop it.
+    const startMs = dateToMillis(ev.date);
+    const isFuture = !Number.isFinite(startMs) || startMs >= now;
     const attendees = ev.participantCount || 0;
     const hasPrice = (ev.price || 0) > 0 || (ev.priceLocal || 0) > 0;
-    if (hasPrice && attendees > 0) {
+    if (isFuture && hasPrice && attendees > 0) {
       acc.count++;
       acc.attendees += attendees;
       acc.amountMinor += Math.round((ev.price || 0) * 100) * attendees;
@@ -348,13 +358,19 @@ async function futurePaidEvents(db, userId) {
     return acc;
   };
   const initial = {count: 0, attendees: 0, amountMinor: 0};
-  const byCreator = await paginate(
-    events.where("creatorId", "==", userId).where("date", ">=", nowISO),
-    fold, initial, "date");
-  const byBizOwner = await paginate(
-    events.where("businessOwnerUid", "==", userId).where("date", ">=", nowISO),
-    fold, byCreator.result, "date");
-  return {...byBizOwner.result, truncated: byCreator.truncated || byBizOwner.truncated};
+  let truncated = false;
+  let acc = initial;
+  for (const ownerField of ["creatorId", "businessOwnerUid"]) {
+    for (const [cutoff, dateFieldForOrder] of [[nowISO, "date"], [nowTs, "date"]]) {
+      const page = await paginate(
+        events.where(ownerField, "==", userId).where("date", ">=", cutoff),
+        fold, acc, dateFieldForOrder,
+      );
+      acc = page.result;
+      truncated = truncated || page.truncated;
+    }
+  }
+  return {...acc, truncated};
 }
 
 /**

@@ -353,6 +353,30 @@ test("PDI14 a held gift where the uid is GIFTER or RECIPIENT (not host) is detec
   assert.strictEqual(asHost.myPendingGifts.count, 0, "host is neither gifter nor recipient here");
 });
 
+test("PDI15 futurePaidEvents catches both a string-dated AND a Timestamp-dated event (Commit B6)", async () => {
+  const host = `host_${nextId()}`;
+  await db.collection("events").doc(`evt_${nextId()}`).set({
+    creatorId: host,
+    title: "String-dated future event",
+    price: 300,
+    participantCount: 1,
+    date: new Date(Date.now() + 5 * 864e5).toISOString(),
+  });
+  await db.collection("events").doc(`evt_${nextId()}`).set({
+    creatorId: host,
+    title: "Timestamp-dated future event",
+    price: 400,
+    participantCount: 1,
+    date: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 864e5),
+  });
+
+  const preview = await previewDeletionImpact(db, host);
+  assert.strictEqual(
+    preview.futureEvents.count, 2,
+    "a Timestamp-stored date must not be silently excluded by a string-only range filter",
+  );
+});
+
 // ── deleteUserAccount: never rejects, admin route audited ──────────────────
 
 test("DA1 an account WITH open obligations still deletes normally (no more 409)", async () => {
