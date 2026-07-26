@@ -438,7 +438,13 @@ test("DA3 an account with no open obligations still self-deletes into pending_de
 
 // ── KIN-108 Commit B3: roster mark-not-remove ───────────────────────────────
 
-test("DA4 a deleted buyer's roster doc is MARKED accountDeleted, never removed (Commit B3)", async () => {
+test("DA4 KIN-111: self-delete no longer marks the buyer's roster doc synchronously (deferred)", async () => {
+  // Superseded by KIN-111 Piece 2: roster mark-not-remove (Commit B3) used to
+  // run inline on self-delete. It's now deferred to settleAccountDeletions,
+  // which calls the exact same purgeUserPrivacyData code (see
+  // kin-111-settlement-queue.test.js K111-8) once the 24h undo window has
+  // actually passed — a self-delete's undo window must mean nothing is
+  // touched yet, roster included.
   const buyer = `buyer_${nextId()}`;
   const eventId = `evt_${nextId()}`;
   const idToken = await tokenFor(buyer);
@@ -462,9 +468,8 @@ test("DA4 a deleted buyer's roster doc is MARKED accountDeleted, never removed (
     .collection("roster").doc(buyer).get();
   assert.strictEqual(rosterAfter.exists, true, "roster doc must survive — never removed");
   const r = rosterAfter.data();
-  assert.strictEqual(r.accountDeleted, true);
-  assert.ok(r.deletedAt, "deletedAt must be stamped");
-  assert.strictEqual(r.uid, buyer, "uid field must be untouched — activeUids() depends on it");
+  assert.strictEqual(r.accountDeleted, undefined, "not marked yet — deferred to settlement");
+  assert.strictEqual(r.uid, buyer, "uid field untouched — activeUids() depends on it");
   assert.strictEqual(r.status, "active", "status untouched");
 
   const eventAfter = await db.collection("events").doc(eventId).get();
@@ -476,7 +481,11 @@ test("DA4 a deleted buyer's roster doc is MARKED accountDeleted, never removed (
 
 // ── KIN-108 Commit B4: gift decline (recipient) / anonymize (gifter) ───────
 
-test("DA5 a deleted gifter's still-unredeemed gift stays valid, only gifterId is anonymized", async () => {
+test("DA5 KIN-111: a self-delete no longer anonymizes the gifter's gift synchronously (deferred)", async () => {
+  // Superseded by KIN-111 Piece 2 — same reasoning as DA4, for gift
+  // anonymization (Commit B4). Full behavior once settlement actually runs
+  // is unit-tested directly against purgeUserPrivacyData/settleOneAccount
+  // Deletion in kin-111-settlement-queue.test.js.
   const gifter = `gifter_${nextId()}`;
   const recipient = `recipient_${nextId()}`;
   const giftId = `gift_${nextId()}`;
@@ -495,8 +504,8 @@ test("DA5 a deleted gifter's still-unredeemed gift stays valid, only gifterId is
   assert.strictEqual(giftAfter.exists, true, "the gift must survive — the recipient can still redeem it");
   const g = giftAfter.data();
   assert.strictEqual(g.status, "sent", "still redeemable, unaffected by the gifter's own deletion");
-  assert.strictEqual(g.gifterId, null, "gifterId anonymized");
-  assert.ok(g.gifterAnonymizedAt, "anonymization must be timestamped");
+  assert.strictEqual(g.gifterId, gifter, "not anonymized yet — deferred to settlement");
+  assert.strictEqual(g.gifterAnonymizedAt, undefined);
 });
 
 test("DA6 recipient-decline step never crashes deletion, even when its Stripe call fails (dummy key)", async () => {

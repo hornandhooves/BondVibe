@@ -218,7 +218,13 @@ test("AD5 selfDeleteGate aborts (writes nothing) when a preview category is unav
   assert.strictEqual(deletionDoc.exists, false, "accountDeletions/{uid} must not be created");
 });
 
-test("AD6 regression: a moneyless user's steps 2-9b purge exactly as before Commit C", async () => {
+test("AD6 KIN-111 Piece 2: even a moneyless self-delete no longer purges steps 2-9b synchronously", async () => {
+  // Superseded by KIN-111: steps 2-9b (posts/notifications/ratings/etc.) used
+  // to run unconditionally for both admin and self-delete — this test used to
+  // assert they purged immediately even for a user with no money attached.
+  // KIN-111 Piece 2 defers ALL of steps 2-9b to settleAccountDeletions
+  // (see kin-111-settlement-queue.test.js), regardless of whether money is
+  // involved — a self-delete's undo window must mean nothing is purged yet.
   const user = `clean_${nextId()}`;
   const idToken = await tokenFor(user);
   await db.collection("posts").doc(`post_${nextId()}`).set({authorId: user, text: "hi"});
@@ -228,12 +234,12 @@ test("AD6 regression: a moneyless user's steps 2-9b purge exactly as before Comm
   const res = await deleteAccount(idToken);
   assert.strictEqual(res.status, 200);
   const body = await res.json();
-  assert.strictEqual(body.deletedData.posts, 1);
-  assert.strictEqual(body.deletedData.notifications, 1);
-  assert.strictEqual(body.deletedData.ratings, 1);
+  assert.strictEqual(body.deletedData.posts, undefined, "posts purge deferred, not run inline");
+  assert.strictEqual(body.deletedData.notifications, undefined);
+  assert.strictEqual(body.deletedData.ratings, undefined);
 
   const postsAfter = await db.collection("posts").where("authorId", "==", user).get();
-  assert.strictEqual(postsAfter.size, 0, "posts still purge normally");
+  assert.strictEqual(postsAfter.size, 1, "post survives until settlement finalizes the account");
 });
 
 test("AD7 self-delete: users doc, Auth account, and Storage step all survive (nothing irreversible)", async () => {
