@@ -10,7 +10,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": false,
     "runtimeVersion": {
-      "policy": "appVersion"
+      "policy": "fingerprint"
     },
     "updates": {
       "url": "https://u.expo.dev/b7026dce-ba1e-4bc9-bed5-2403b8fe6c85"
