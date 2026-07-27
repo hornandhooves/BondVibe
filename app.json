@@ -112,7 +112,12 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE"
-      ]
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCAEpAlKlPqXESrp07nW7LDudRkzLXHc4A"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
