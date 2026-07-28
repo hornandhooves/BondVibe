@@ -100,7 +100,7 @@
       "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
       "icon": "./assets/icon.png",
-      "package": "com.kinlo.beta",
+      "package": "com.kinlo.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#7C3AED"
