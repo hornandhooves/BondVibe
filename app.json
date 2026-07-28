@@ -85,7 +85,7 @@
     "ios": {
       "supportsTablet": true,
       "icon": "./assets/icon.png",
-      "bundleIdentifier": "com.kinlo.app",
+      "bundleIdentifier": "com.kinlo.beta",
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Kinlo needs access to your location to let you share it with your group.",
