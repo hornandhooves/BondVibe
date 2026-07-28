@@ -48,7 +48,7 @@ firestore-debug.log
 *-firebase-adminsdk-*.json
 *-firebase-adminsdk.json
 *-fcm-sa.json
-google-service-account*.json
+google*service-account*.json
 cleanup-firebase.js
 *.swp
 
