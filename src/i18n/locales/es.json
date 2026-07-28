@@ -67,6 +67,14 @@
       "delete": "Eliminar"
     },
     "cancel": "Cancelar",
+    "diagnostics": {
+      "title": "Diagnóstico",
+      "pushToken": "Token de push",
+      "loading": "Cargando…",
+      "registered": "Registrado · {{platform}}",
+      "registeredWithDate": "Registrado · {{platform}} · {{date}}",
+      "notRegistered": "SIN registrar · {{platform}} — revisa los logs del dispositivo (getExpoPushTokenAsync/getDevicePushTokenAsync)"
+    },
     "errors": {
       "deleteErrorTitle": "Error",
       "deleteErrorPrefix": "Error al eliminar la cuenta: "
