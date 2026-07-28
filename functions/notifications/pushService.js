@@ -94,9 +94,38 @@ const sendPushNotification = async (pushToken, notification) => {
       body: JSON.stringify(message),
     });
 
+    if (!response.ok) {
+      const body = await response.text().catch(() => "<unreadable body>");
+      console.error(`❌ Expo push send failed: HTTP ${response.status}`, body);
+      return {success: false, error: `HTTP ${response.status}`};
+    }
+
     const result = await response.json();
+    // KIN-136 Tier 1: a single-message send returns result.data as one
+    // ticket OBJECT, not an array (only a batch send returns an array) —
+    // normalize so the error check below is the same either way.
+    const tickets = Array.isArray(result.data) ? result.data : [result.data];
+    let hasError = false;
+    for (const ticket of tickets) {
+      if (ticket?.status === "error") {
+        hasError = true;
+        // Never log the push token itself — long-lived, PII-adjacent. The
+        // uid is enough to find the affected user/doc.
+        console.error(
+          `❌ [push] delivery error for uid ${notification.uid || "unknown"}:`,
+          ticket.details?.error,
+          ticket.message,
+        );
+      } else if (ticket?.id) {
+        // ticketId is the key to a manual `getReceipts` curl during the
+        // beta — Tier 2 (automated polling) isn't in yet, this is the
+        // one-line stand-in for it. uid only, never the token.
+        console.log(`✅ [push] ticket ok for uid ${notification.uid || "unknown"}, ticketId=${ticket.id}`);
+      }
+    }
+
     console.log("✅ Push notification sent:", result);
-    return {success: true, result: result};
+    return {success: !hasError, result: result};
   } catch (error) {
     console.error("❌ Error sending push notification:", error);
     return {success: false, error: error.message};
@@ -120,6 +149,9 @@ const sendBatchPushNotifications = async (notifications) => {
   const langByUid = keyedUids.length ? await getUserLangs(keyedUids) : {};
 
   const messages = [];
+  // Kept aligned with `messages` (same filter, same order) so a ticket can
+  // be zipped back to the uid that sent it, below.
+  const validNotifs = [];
 
   for (const notif of notifications) {
     // Validate Expo push token format
@@ -146,6 +178,7 @@ const sendBatchPushNotifications = async (notifications) => {
     };
     if (typeof notif.badge === "number") msg.badge = notif.badge;
     messages.push(msg);
+    validNotifs.push(notif);
   }
 
   if (messages.length === 0) {
@@ -165,9 +198,33 @@ const sendBatchPushNotifications = async (notifications) => {
       body: JSON.stringify(messages),
     });
 
+    if (!response.ok) {
+      const body = await response.text().catch(() => "<unreadable body>");
+      console.error(`❌ Expo push batch send failed: HTTP ${response.status}`, body);
+      return [];
+    }
+
     const result = await response.json();
+    const tickets = result.data || [];
+    // KIN-136 Tier 1: a batch send returns tickets in the same order as the
+    // messages sent — zip each error ticket back to its uid (never the
+    // token itself, long-lived and PII-adjacent).
+    tickets.forEach((ticket, i) => {
+      const uid = validNotifs[i]?.uid || "unknown";
+      if (ticket?.status === "error") {
+        console.error(
+          `❌ [push] delivery error for uid ${uid}:`,
+          ticket.details?.error,
+          ticket.message,
+        );
+      } else if (ticket?.id) {
+        // Same manual-getReceipts stand-in as sendPushNotification, above.
+        console.log(`✅ [push] ticket ok for uid ${uid}, ticketId=${ticket.id}`);
+      }
+    });
+
     console.log(`✅ Sent ${messages.length} push notifications:`, result);
-    return result.data || [];
+    return tickets;
   } catch (error) {
     console.error("❌ Error sending batch:", error);
     return [];
