@@ -36,8 +36,8 @@
   "submit": {
     "beta": {
       "ios": {
-        "appleId": "jcpuntoduarte@gmail.com",
-        "ascAppId": "6756991364",
+        "appleId": "jc.duarte@icloud.com",
+        "ascAppId": "6794210056",
         "appleTeamId": "XZA3946V5X"
       },
       "android": {
@@ -47,8 +47,8 @@
     },
     "production": {
       "ios": {
-        "appleId": "jcpuntoduarte@gmail.com",
-        "ascAppId": "6756991364",
+        "appleId": "jc.duarte@icloud.com",
+        "ascAppId": "6794210056",
         "appleTeamId": "XZA3946V5X"
       },
       "android": {
