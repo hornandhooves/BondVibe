@@ -116,6 +116,11 @@ const sendPushNotification = async (pushToken, notification) => {
           ticket.details?.error,
           ticket.message,
         );
+      } else if (ticket?.id) {
+        // ticketId is the key to a manual `getReceipts` curl during the
+        // beta — Tier 2 (automated polling) isn't in yet, this is the
+        // one-line stand-in for it. uid only, never the token.
+        console.log(`✅ [push] ticket ok for uid ${notification.uid || "unknown"}, ticketId=${ticket.id}`);
       }
     }
 
@@ -205,12 +210,16 @@ const sendBatchPushNotifications = async (notifications) => {
     // messages sent — zip each error ticket back to its uid (never the
     // token itself, long-lived and PII-adjacent).
     tickets.forEach((ticket, i) => {
+      const uid = validNotifs[i]?.uid || "unknown";
       if (ticket?.status === "error") {
         console.error(
-          `❌ [push] delivery error for uid ${validNotifs[i]?.uid || "unknown"}:`,
+          `❌ [push] delivery error for uid ${uid}:`,
           ticket.details?.error,
           ticket.message,
         );
+      } else if (ticket?.id) {
+        // Same manual-getReceipts stand-in as sendPushNotification, above.
+        console.log(`✅ [push] ticket ok for uid ${uid}, ticketId=${ticket.id}`);
       }
     });
 
