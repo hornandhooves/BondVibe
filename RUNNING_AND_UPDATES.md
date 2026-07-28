@@ -64,10 +64,11 @@ JS‑only changes to testers instantly:
 ```bash
 eas login                                   # once per machine
 
-# Publish to a channel (matches eas.json build profiles):
-eas update --branch production  -m "what changed"   # → production builds (TestFlight/store)
-eas update --branch preview     -m "what changed"   # → preview builds
-eas update --branch development -m "what changed"   # → dev-client builds
+# Publish to a channel (matches eas.json build profiles). Always through the
+# npm wrapper — see "npx eas build skips preflight" below.
+npm run eas:update -- --branch production  -m "what changed"   # → production builds (TestFlight/store)
+npm run eas:update -- --branch preview     -m "what changed"   # → preview builds
+npm run eas:update -- --branch development -m "what changed"   # → dev-client builds
 ```
 
 - Publishes for **iOS + Android** at once (add `--platform ios|android` to limit).
@@ -102,10 +103,11 @@ Do a build **only** when the change is native:
 npm run ios
 npm run android
 
-# EAS (uses a build credit) — for TestFlight / Play internal:
-eas build --profile production --platform ios
-eas build --profile production --platform android
-eas submit --profile production --platform ios      # upload to TestFlight
+# EAS (uses a build credit) — for TestFlight / Play internal. Through the npm
+# wrapper, always — see "npx eas build skips preflight" below.
+npm run eas:build -- --profile production --platform ios
+npm run eas:build -- --profile production --platform android
+eas submit --profile production --platform ios      # upload to TestFlight (no preflight gate — nothing local ships here)
 ```
 
 Optional pre‑build sanity gate (lint + tests + rules e2e + doctor + export):
@@ -154,3 +156,22 @@ Native wiring is regenerated automatically on `expo run:*` and `eas build`
   until you ship one new build.
 - **`eas update` ≠ `eas build`.** Only `eas build` consumes your monthly iOS
   build quota. `eas update` is free and unlimited.
+- **Google Maps Android key has 2 SHA-1 fingerprints registered** (debug
+  keystore + the EAS build keystore) in Google Cloud Console — **always add a
+  new SHA-1 when it changes, never replace the existing ones.** Removing
+  either one breaks Maps for whichever build type used it.
+- **Places/Geocoding API daily quota is NOT adjustable on `kinlo-app-dev`** —
+  Google Cloud Console shows `Adjustable: No` for this key's cap. Plan usage
+  assuming the default ceiling is fixed; don't expect to request an increase
+  from this project.
+- **Do NOT add Application restrictions to the Places/Geocoding key**
+  (`EXPO_PUBLIC_GOOGLE_PLACES_API_KEY`) — it's called from JS via `fetch()` at
+  runtime, not through a native SDK, so an app-restricted key (bundle ID /
+  package name / HTTP referrer) rejects those calls. Restrict by API only,
+  never by application.
+- **`npx eas build` / `npx eas update` (or plain `eas build`/`eas update`)
+  skip the KIN-133 preflight gate** — the gate only wraps `npm run eas:build`
+  / `npm run eas:update` (`scripts/preflight-clean.sh`, fails on any
+  uncommitted change). Always use the npm scripts, never call
+  `eas build`/`eas update` directly — otherwise an uncommitted local edit can
+  ride along into a real build or OTA push with no record of what changed.
