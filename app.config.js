@@ -1,28 +1,13 @@
-// Dynamic Expo config. Everything lives in app.json; this file only injects the
-// native Android Google Maps SDK key from the environment (GOOGLE_MAPS_ANDROID_API_KEY
-// in .env, gitignored) so it never sits in the committed repo.
+// Todo vive en app.json. Este archivo existía para inyectar la llave de Google Maps
+// Android desde .env; se retiró porque hacía la config no determinista y, con
+// runtimeVersion de política fingerprint, eso producía runtimeVersions distintos
+// según el entorno de build (ver KIN-122). La llave viaja igual dentro del APK;
+// su protección real son las restricciones de aplicación en Google Cloud Console.
 //
-// The web Places/Geocoding key (EXPO_PUBLIC_GOOGLE_PLACES_API_KEY) is NOT injected
-// here: Expo inlines EXPO_PUBLIC_* vars into the JS bundle from .env at build time,
-// and the client reads it via process.env. Injecting it into `extra` made `eas`
-// commands serialize it back into app.json — so we keep it out of the config.
+// La llave web de Places/Geocoding (EXPO_PUBLIC_GOOGLE_PLACES_API_KEY) sigue
+// viniendo de .env: Expo la inlinea en el bundle JS y el cliente la lee por
+// process.env. No entra aquí.
 //
-// iOS uses Apple Maps (no key needed). See .env.example.
+// iOS usa Apple Maps (no necesita llave). Ver .env.example.
 const appJson = require("./app.json");
-const expo = appJson.expo;
-
-const androidMapsKey = process.env.GOOGLE_MAPS_ANDROID_API_KEY || "";
-
-module.exports = () => ({
-  ...expo,
-  android: {
-    ...expo.android,
-    config: {
-      ...expo.android?.config,
-      // Only attach the maps config when a key is present, so a missing key
-      // degrades to our in-app "Map unavailable" guard instead of a prebuild
-      // error or a silently-broken (gray) map.
-      ...(androidMapsKey ? { googleMaps: { apiKey: androidMapsKey } } : {}),
-    },
-  },
-});
+module.exports = () => appJson.expo;
