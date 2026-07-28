@@ -1198,6 +1198,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // pushReceipts/{ticketId} — KIN-135: Expo push-ticket bookkeeping for
+    // pollPushReceipts (sendPushNotification/sendBatchPushNotifications write
+    // it, the scheduled poll reads/updates it). Purely a Cloud Functions
+    // implementation detail — no client ever needs it. Server-only.
+    match /pushReceipts/{ticketId} {
+      allow read, write: if false;
+    }
+
     // Admin-tunable payout settings (§7). settings/payouts.retentionHours: global
     // retention window, default 24, HARD FLOOR 0 — the rule rejects a negative
     // value (the server also clamps on use). Readable so the admin dashboard can
