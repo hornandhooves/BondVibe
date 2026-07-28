@@ -64,10 +64,11 @@ JS‑only changes to testers instantly:
 ```bash
 eas login                                   # once per machine
 
-# Publish to a channel (matches eas.json build profiles):
-eas update --branch production  -m "what changed"   # → production builds (TestFlight/store)
-eas update --branch preview     -m "what changed"   # → preview builds
-eas update --branch development -m "what changed"   # → dev-client builds
+# Publish to a channel (matches eas.json build profiles). Always through the
+# npm wrapper — see "npx eas build skips preflight" below.
+npm run eas:update -- --branch production  -m "what changed"   # → production builds (TestFlight/store)
+npm run eas:update -- --branch preview     -m "what changed"   # → preview builds
+npm run eas:update -- --branch development -m "what changed"   # → dev-client builds
 ```
 
 - Publishes for **iOS + Android** at once (add `--platform ios|android` to limit).
@@ -102,10 +103,11 @@ Do a build **only** when the change is native:
 npm run ios
 npm run android
 
-# EAS (uses a build credit) — for TestFlight / Play internal:
-eas build --profile production --platform ios
-eas build --profile production --platform android
-eas submit --profile production --platform ios      # upload to TestFlight
+# EAS (uses a build credit) — for TestFlight / Play internal. Through the npm
+# wrapper, always — see "npx eas build skips preflight" below.
+npm run eas:build -- --profile production --platform ios
+npm run eas:build -- --profile production --platform android
+eas submit --profile production --platform ios      # upload to TestFlight (no preflight gate — nothing local ships here)
 ```
 
 Optional pre‑build sanity gate (lint + tests + rules e2e + doctor + export):
@@ -117,7 +119,7 @@ npm run gates
 
 ## 4. runtimeVersion — why OTA sometimes needs a build
 
-`app.json` uses `runtimeVersion.policy: "appVersion"`. An OTA update only
+`app.json` uses `runtimeVersion.policy: "fingerprint"`. An OTA update only
 applies to a build whose **app version matches** the update's runtime version.
 
 - Keep `version` the same → JS updates flow over OTA. ✅
@@ -136,7 +138,7 @@ Configured so the **next** build is OTA‑enabled:
 - `expo-updates` installed (SDK 54 compatible).
 - `app.json`:
   ```json
-  "runtimeVersion": { "policy": "appVersion" },
+  "runtimeVersion": { "policy": "fingerprint" },
   "updates": { "url": "https://u.expo.dev/0cf2c3f2-26ad-4e9f-816f-b449085f9b10" }
   ```
 - `eas.json`: `channel` on each build profile (`development` / `preview` / `production`).
@@ -154,3 +156,30 @@ Native wiring is regenerated automatically on `expo run:*` and `eas build`
   until you ship one new build.
 - **`eas update` ≠ `eas build`.** Only `eas build` consumes your monthly iOS
   build quota. `eas update` is free and unlimited.
+- **Google Maps Android key has 2 SHA-1 fingerprints registered** (debug
+  keystore + the EAS build keystore) in Google Cloud Console — **always add a
+  new SHA-1 when it changes, never replace the existing ones.** Removing
+  either one breaks Maps for whichever build type used it.
+- **Places/Geocoding API quota on `kinlo-app-dev` shows `Adjustable: No` — read
+  this as a cost-control gotcha, not a "can't get more" one.** `Adjustable: No`
+  means the quota can't be moved in **either** direction — you can't dial it
+  *down* to cap spend/abuse any more than you could request it up. There's no
+  built-in ceiling here you can lower from this console page. If you need to
+  bound cost on this key, do it elsewhere (a Google Cloud billing budget/alert,
+  or an app-level rate limit) — don't assume this quota is already acting as
+  one.
+- **Application restrictions apply to only ONE of our two Google Maps keys.**
+  `EXPO_PUBLIC_GOOGLE_PLACES_API_KEY` (Places/Geocoding — called from JS via
+  `fetch()`, not a native SDK) must stay **unrestricted by application**: an
+  app restriction (bundle ID / package name / HTTP referrer) rejects those
+  calls outright. Restrict it by API only. The **native Android Maps SDK key**
+  (`app.json → android.config.googleMaps.apiKey`) is the opposite — its real
+  protection **is** the Application restriction (package `com.kinlo.app` + the
+  2 SHA-1s above; see `app.config.js`'s header comment). Don't read that
+  comment as applying to the Places key too — they take opposite settings.
+- **`npx eas build` / `npx eas update` (or plain `eas build`/`eas update`)
+  skip the KIN-133 preflight gate** — the gate only wraps `npm run eas:build`
+  / `npm run eas:update` (`scripts/preflight-clean.sh`, fails on any
+  uncommitted change). Always use the npm scripts, never call
+  `eas build`/`eas update` directly — otherwise an uncommitted local edit can
+  ride along into a real build or OTA push with no record of what changed.
