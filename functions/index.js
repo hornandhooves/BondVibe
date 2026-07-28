@@ -45,7 +45,7 @@ const {
 } = require("./stripe/pricing");
 
 // Import push notification service
-const {sendBatchPushNotifications, sendPushNotification, unreadTotalForUser} =
+const {sendBatchPushNotifications, sendPushNotification, unreadTotalForUser, pollPushReceipts} =
   require("./notifications/pushService");
 const {tPush, baseLang} = require("./i18n"); // BUG 34: localized notification strings
 const bizAutomations = require("./business/automations");
@@ -2131,6 +2131,18 @@ exports.sendMembershipReminders = onSchedule(
     console.log(`✅ Membership reminders sent: ${sent}`);
     return null;
   },
+);
+
+/**
+ * Every 30min: poll Expo delivery receipts for pushes sent since the last
+ * run (KIN-135). A ticket alone only means Expo enqueued the push — the
+ * receipt (available ~15-30min later) is what says whether Apple/Google
+ * actually delivered it or rejected the token outright. See
+ * functions/notifications/pushService.js for the actual logic.
+ */
+exports.pollPushReceipts = onSchedule(
+  {schedule: "every 30 minutes"},
+  pollPushReceipts,
 );
 
 /**
