@@ -64,7 +64,13 @@ export default function SettingsScreen({ navigation }) {
       if (!uid) return;
       getDoc(doc(db, "users", uid))
         .then((snap) => {
-          if (!snap.exists()) return;
+          if (!snap.exists()) {
+            // No doc yet (e.g. brand-new account) — that's a definite "no
+            // token registered", not an unknown. Don't leave pushDiag stuck
+            // on null forever (renders as "Loading…" indefinitely).
+            setPushDiag({ hasToken: false, updatedAt: null });
+            return;
+          }
           const data = snap.data();
           setAiOptIn(data.aiOptIn === true);
           setPushDiag({
@@ -72,7 +78,11 @@ export default function SettingsScreen({ navigation }) {
             updatedAt: data.pushTokenUpdatedAt || null,
           });
         })
-        .catch(() => {});
+        .catch(() => {
+          // Same "Loading…" trap on a failed fetch (offline, permission
+          // error) — surface it as unregistered rather than stuck loading.
+          setPushDiag({ hasToken: false, updatedAt: null });
+        });
     }, [])
   );
 
