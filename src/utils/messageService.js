@@ -16,6 +16,7 @@ import {
 import { db } from "../services/firebase";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
+import * as Device from "expo-device";
 import { Platform } from "react-native";
 import { logger } from "./logger";
 
@@ -345,6 +346,14 @@ export const clearEventMessageNotifications = async (
  * Registrar token de push del dispositivo
  */
 export const registerPushToken = async (userId) => {
+  // Simulators/emulators aren't real devices — getExpoPushTokenAsync/
+  // getDevicePushTokenAsync either throw or return garbage there, which
+  // would now log as a KIN-135 "registration failed" every single local
+  // run. That's expected simulator behavior, not a real signal.
+  if (!Device.isDevice) {
+    console.log("⚠️ Push registration skipped — not a physical device (simulator/emulator)");
+    return null;
+  }
   try {
     const { status: existingStatus } =
       await Notifications.getPermissionsAsync();
