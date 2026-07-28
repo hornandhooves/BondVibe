@@ -119,7 +119,7 @@ npm run gates
 
 ## 4. runtimeVersion — why OTA sometimes needs a build
 
-`app.json` uses `runtimeVersion.policy: "appVersion"`. An OTA update only
+`app.json` uses `runtimeVersion.policy: "fingerprint"`. An OTA update only
 applies to a build whose **app version matches** the update's runtime version.
 
 - Keep `version` the same → JS updates flow over OTA. ✅
@@ -138,7 +138,7 @@ Configured so the **next** build is OTA‑enabled:
 - `expo-updates` installed (SDK 54 compatible).
 - `app.json`:
   ```json
-  "runtimeVersion": { "policy": "appVersion" },
+  "runtimeVersion": { "policy": "fingerprint" },
   "updates": { "url": "https://u.expo.dev/0cf2c3f2-26ad-4e9f-816f-b449085f9b10" }
   ```
 - `eas.json`: `channel` on each build profile (`development` / `preview` / `production`).
@@ -160,15 +160,23 @@ Native wiring is regenerated automatically on `expo run:*` and `eas build`
   keystore + the EAS build keystore) in Google Cloud Console — **always add a
   new SHA-1 when it changes, never replace the existing ones.** Removing
   either one breaks Maps for whichever build type used it.
-- **Places/Geocoding API daily quota is NOT adjustable on `kinlo-app-dev`** —
-  Google Cloud Console shows `Adjustable: No` for this key's cap. Plan usage
-  assuming the default ceiling is fixed; don't expect to request an increase
-  from this project.
-- **Do NOT add Application restrictions to the Places/Geocoding key**
-  (`EXPO_PUBLIC_GOOGLE_PLACES_API_KEY`) — it's called from JS via `fetch()` at
-  runtime, not through a native SDK, so an app-restricted key (bundle ID /
-  package name / HTTP referrer) rejects those calls. Restrict by API only,
-  never by application.
+- **Places/Geocoding API quota on `kinlo-app-dev` shows `Adjustable: No` — read
+  this as a cost-control gotcha, not a "can't get more" one.** `Adjustable: No`
+  means the quota can't be moved in **either** direction — you can't dial it
+  *down* to cap spend/abuse any more than you could request it up. There's no
+  built-in ceiling here you can lower from this console page. If you need to
+  bound cost on this key, do it elsewhere (a Google Cloud billing budget/alert,
+  or an app-level rate limit) — don't assume this quota is already acting as
+  one.
+- **Application restrictions apply to only ONE of our two Google Maps keys.**
+  `EXPO_PUBLIC_GOOGLE_PLACES_API_KEY` (Places/Geocoding — called from JS via
+  `fetch()`, not a native SDK) must stay **unrestricted by application**: an
+  app restriction (bundle ID / package name / HTTP referrer) rejects those
+  calls outright. Restrict it by API only. The **native Android Maps SDK key**
+  (`app.json → android.config.googleMaps.apiKey`) is the opposite — its real
+  protection **is** the Application restriction (package `com.kinlo.app` + the
+  2 SHA-1s above; see `app.config.js`'s header comment). Don't read that
+  comment as applying to the Places key too — they take opposite settings.
 - **`npx eas build` / `npx eas update` (or plain `eas build`/`eas update`)
   skip the KIN-133 preflight gate** — the gate only wraps `npm run eas:build`
   / `npm run eas:update` (`scripts/preflight-clean.sh`, fails on any
