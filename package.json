@@ -16,7 +16,10 @@
     "test:rules": "firebase emulators:exec --only firestore,storage \"jest --config jest.rules.config.js\"",
     "test:payments": "firebase emulators:exec --only functions,firestore,auth \"node --test --test-concurrency=1 functions/test/*.test.js\"",
     "lint": "expo lint",
-    "gates": "npm run lint && npm test && npm run test:e2e && npx expo-doctor && npx expo export --platform ios && npx expo export --platform android && echo '\\n✅ ALL GATES PASSED — safe to build'"
+    "gates": "npm run lint && npm test && npm run test:e2e && npx expo-doctor && npx expo export --platform ios && npx expo export --platform android && echo '\\n✅ ALL GATES PASSED — safe to build'",
+    "preflight": "bash scripts/preflight-clean.sh",
+    "eas:build": "npm run preflight && eas build",
+    "eas:update": "npm run preflight && eas update"
   },
   "dependencies": {
     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
