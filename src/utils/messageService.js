@@ -16,6 +16,7 @@ import {
 import { db } from "../services/firebase";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
+import { Platform } from "react-native";
 import { logger } from "./logger";
 
 // ============================================
@@ -359,6 +360,32 @@ export const registerPushToken = async (userId) => {
       return null;
     }
 
+    // KIN-135: permission granted is NOT the same as "this device can
+    // actually receive a push" — e.g. iOS registers permission fine even
+    // when Firebase has no APNs key configured for the bundle id, and then
+    // silently never gets a real token. Log both token calls explicitly
+    // (platform, whether a token came back, full error otherwise) so that
+    // failure is visible in device/crash logs instead of indistinguishable
+    // from "permission granted, all good". console.* on purpose, not
+    // `logger` — logger.log/debug are no-ops outside __DEV__, which is
+    // exactly the build type (TestFlight/beta) this needs to be visible in.
+    try {
+      const deviceToken = await Notifications.getDevicePushTokenAsync();
+      console.log("🔔 [push-diag] getDevicePushTokenAsync result:", {
+        platform: Platform.OS,
+        hasToken: Boolean(deviceToken?.data),
+        tokenType: deviceToken?.type ?? null,
+      });
+    } catch (deviceTokenError) {
+      console.error("❌ [push-diag] getDevicePushTokenAsync failed:", {
+        platform: Platform.OS,
+        hasToken: false,
+        error: deviceTokenError,
+      });
+      // Non-fatal — this call is diagnostic only, the actual registration
+      // below (getExpoPushTokenAsync) is what the app depends on.
+    }
+
     const projectId = Constants.expoConfig?.extra?.eas?.projectId;
 
     if (!projectId) {
@@ -366,12 +393,24 @@ export const registerPushToken = async (userId) => {
       return null;
     }
 
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: projectId,
-    });
-
-    const token = tokenData.data;
-    logger.log("🔔 Expo Push Token obtained");
+    let token;
+    try {
+      const tokenData = await Notifications.getExpoPushTokenAsync({
+        projectId: projectId,
+      });
+      token = tokenData.data;
+      console.log("🔔 [push-diag] getExpoPushTokenAsync result:", {
+        platform: Platform.OS,
+        hasToken: Boolean(token),
+      });
+    } catch (expoTokenError) {
+      console.error("❌ [push-diag] getExpoPushTokenAsync failed:", {
+        platform: Platform.OS,
+        hasToken: false,
+        error: expoTokenError,
+      });
+      return null;
+    }
 
     // Clear this token from any other user document (same device, different account).
     // Without this, old UIDs on the same device keep receiving notifications.

@@ -14,8 +14,10 @@ import {
   Modal,
   Switch,
   Alert,
+  Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import * as Updates from "expo-updates";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
@@ -32,6 +34,20 @@ import LanguageSelector from "../components/LanguageSelector";
 import { nativeName } from "../i18n/languages";
 import { TYPE, SPACING, RADII, ELEVATION } from "../constants/theme-tokens";
 
+// KIN-135: beta-only diagnostic — Firebase has no APNs key configured for
+// either bundle id yet, so iOS grants push permission but registerPushToken
+// (src/utils/messageService.js) silently never gets a real token. Gated on
+// the `beta` OTA channel (not __DEV__) so it only shows for actual TestFlight
+// testers, not local dev runs. Wrapped: Updates.channel can throw outside a
+// real Updates-aware build (see src/services/appCheck.js's currentChannel()).
+function isBetaChannel() {
+  try {
+    return Updates.channel === "beta";
+  } catch {
+    return false;
+  }
+}
+
 export default function SettingsScreen({ navigation }) {
   const { colors, isDark, toggleTheme } = useTheme();
   const { t, i18n } = useTranslation();
@@ -40,13 +56,22 @@ export default function SettingsScreen({ navigation }) {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [pushDiag, setPushDiag] = useState(null); // { hasToken, updatedAt } | null while loading
 
   useFocusEffect(
     useCallback(() => {
       const uid = auth.currentUser?.uid;
       if (!uid) return;
       getDoc(doc(db, "users", uid))
-        .then((snap) => snap.exists() && setAiOptIn(snap.data().aiOptIn === true))
+        .then((snap) => {
+          if (!snap.exists()) return;
+          const data = snap.data();
+          setAiOptIn(data.aiOptIn === true);
+          setPushDiag({
+            hasToken: Boolean(data.pushToken),
+            updatedAt: data.pushTokenUpdatedAt || null,
+          });
+        })
         .catch(() => {});
     }, [])
   );
@@ -244,6 +269,31 @@ export default function SettingsScreen({ navigation }) {
             divider={false}
           />
         </View>
+
+        {isBetaChannel() ? (
+          <>
+            <SectionHeader title={t("settings.diagnostics.title")} />
+            <View style={card}>
+              <ListRow
+                icon="bell"
+                title={t("settings.diagnostics.pushToken")}
+                subtitle={
+                  pushDiag === null
+                    ? t("settings.diagnostics.loading")
+                    : pushDiag.hasToken
+                    ? pushDiag.updatedAt
+                      ? t("settings.diagnostics.registeredWithDate", {
+                          platform: Platform.OS,
+                          date: new Date(pushDiag.updatedAt).toLocaleString(),
+                        })
+                      : t("settings.diagnostics.registered", { platform: Platform.OS })
+                    : t("settings.diagnostics.notRegistered", { platform: Platform.OS })
+                }
+                divider={false}
+              />
+            </View>
+          </>
+        ) : null}
 
         <TouchableOpacity style={styles.logoutRow} onPress={() => setShowLogoutModal(true)}>
           <Icon name="logout" size={18} color={colors.error} />
