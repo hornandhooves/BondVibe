@@ -439,6 +439,7 @@
     "locationDeniedMsg": "Turn on location to find events near you, or search a place instead."
   },
   "eventLocation": {
+    "loading": "Loading location…",
     "lockedHint": "exact address after you reserve",
     "approxArea": "Approximate area",
     "approxNote": "Approximate area — the exact spot is shared after you reserve.",

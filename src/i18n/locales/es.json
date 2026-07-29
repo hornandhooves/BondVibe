@@ -439,6 +439,7 @@
     "locationDeniedMsg": "Activa la ubicación para ver eventos cerca de ti, o busca un lugar."
   },
   "eventLocation": {
+    "loading": "Cargando ubicación…",
     "lockedHint": "dirección exacta al reservar",
     "approxArea": "Zona aproximada",
     "approxNote": "Zona aproximada — te compartimos el punto exacto al reservar.",

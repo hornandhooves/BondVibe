@@ -397,20 +397,8 @@ export default function EventChatScreen({ route, navigation }) {
               void err;
             }
           }
-          // (legacy per-user loop retained below for any extra ids)
-          const participantIds = new Set();
-          for (const userId of participantIds) {
-            try {
-              const userDoc = await getDoc(doc(db, "users", userId));
-              if (userDoc.exists()) {
-                usersData[userId] = userDoc.data();
-              }
-            } catch (err) {
-              console.log("Could not load user:", userId);
-            }
-          }
           setUsers(usersData);
-          console.log(`👥 Loaded ${participantIds.size} participants`);
+          console.log(`👥 Loaded ${Object.keys(usersData).length} participants`);
         }
 
         // Suscribirse a mensajes
