@@ -12,9 +12,17 @@ import MapView, { Marker, Circle } from "react-native-maps";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import Icon from "./Icon";
-import { resolveEventLocation, APPROX_CIRCLE_RADIUS_M } from "../utils/eventLocation";
-import { getEventLocation, isEventParticipant } from "../services/eventLocationService";
+import { APPROX_CIRCLE_RADIUS_M } from "../utils/eventLocation";
+import { getEventLocation } from "../services/eventLocationService";
 import { formatMXN } from "../utils/pricing";
+
+// Three explicit states — never let "we haven't checked yet" masquerade as
+// "locked". A synchronous initial guess is exactly the bug this replaced:
+// EventDetailScreen's isJoined starts false and only flips true once
+// isOnRoster() resolves, so computing an initial state from isParticipant at
+// mount time was guaranteed to render the wrong answer for a genuine
+// attendee on their very first paint.
+const STATUS = { LOADING: "loading", LOCKED: "locked", UNLOCKED: "unlocked" };
 
 export default function EventLocationBlock({ event, eventId, isParticipant, onReserve }) {
   const { colors, isDark } = useTheme();
@@ -22,14 +30,19 @@ export default function EventLocationBlock({ event, eventId, isParticipant, onRe
   const styles = createStyles(colors);
 
   const withId = { ...event, id: eventId || event?.id };
-  // Show the coarse state immediately, then reveal exact once the private doc
-  // is fetched (participants only) — no flash of an empty block.
-  const [resolved, setResolved] = useState(() =>
-    resolveEventLocation(withId, { isParticipant: isParticipant ?? isEventParticipant(withId) }),
-  );
+  // No synchronous initializer — this component derives NO state of its own
+  // from the (possibly still-resolving) isParticipant prop. The effect below
+  // is the only thing allowed to set a real answer; until it does, we
+  // genuinely don't know, and say so.
+  const [resolved, setResolved] = useState(null);
 
   useEffect(() => {
     let alive = true;
+    // Re-entering "unknown" on every dependency change (not just at mount)
+    // means a stale answer is never shown while a fresh one is in flight —
+    // e.g. isParticipant flipping false→true right after mount shows a
+    // skeleton again instead of holding onto the wrong locked render.
+    setResolved(null);
     // Forward the caller's real membership (e.g. EventDetailScreen's
     // isOnRoster-informed isParticipant) — without this, getEventLocation
     // falls back to the creator/co-host-only heuristic and silently
@@ -44,8 +57,33 @@ export default function EventLocationBlock({ event, eventId, isParticipant, onRe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId || event?.id, isParticipant]);
 
-  if (!resolved) return null;
-  const { locked, exact, legacy, area, venueName, address, coords } = resolved;
+  // `locked` and `exact` are independent booleans, not inverses — a
+  // participant whose private doc hasn't loaded yet (fetchPrivateLocation
+  // returned null) resolves to {locked: false, exact: false}
+  // (resolveEventLocation's gated branch: locked = !isParticipant). What's
+  // DRAWN (pin/green vs circle/gray) must track `exact` — whether we
+  // actually have real venue/address/coords to show, not just whether the
+  // viewer is nominally "not locked out".
+  const status =
+    resolved === null ? STATUS.LOADING : resolved.exact ? STATUS.UNLOCKED : STATUS.LOCKED;
+
+  if (status === STATUS.LOADING) {
+    return (
+      <View
+        style={styles.wrap}
+        accessible
+        accessibilityLabel={t("eventLocation.loading")}
+      >
+        <View style={[styles.skeletonMap, { backgroundColor: colors.sunken, borderColor: colors.borderStrong }]} />
+        <View style={[styles.skeletonBox, { backgroundColor: colors.sunken, borderColor: colors.borderStrong }]}>
+          <View style={[styles.skeletonLine, styles.skeletonLineShort, { backgroundColor: colors.border }]} />
+          <View style={[styles.skeletonLine, { backgroundColor: colors.border }]} />
+        </View>
+      </View>
+    );
+  }
+
+  const { legacy, area, venueName, address, coords } = resolved;
 
   const openMaps = () => {
     if (!coords && !address) return;
@@ -68,7 +106,7 @@ export default function EventLocationBlock({ event, eventId, isParticipant, onRe
             userInterfaceStyle={isDark ? "dark" : "light"}
             initialRegion={{ ...coords, latitudeDelta: 0.02, longitudeDelta: 0.02 }}
           >
-            {exact ? (
+            {status === STATUS.UNLOCKED ? (
               <Marker coordinate={coords} pinColor={colors.primary} />
             ) : (
               <Circle
@@ -81,7 +119,12 @@ export default function EventLocationBlock({ event, eventId, isParticipant, onRe
               />
             )}
           </MapView>
-          {locked && (
+          {/* The tag's wording ("reserve to see it") is about GATING, which
+              tracks resolved.locked directly — not the derived `status`
+              (what's drawn). A participant with {locked:false, exact:false}
+              already has access; they just don't have data yet, so they
+              shouldn't be told to "reserve" something they already did. */}
+          {resolved.locked && (
             <View style={[styles.approxTag, { backgroundColor: colors.text }]}>
               <Text style={[styles.approxTagText, { color: colors.surface }]}>
                 {t("eventLocation.approxArea")}
@@ -91,7 +134,7 @@ export default function EventLocationBlock({ event, eventId, isParticipant, onRe
         </View>
       )}
 
-      {exact ? (
+      {status === STATUS.UNLOCKED ? (
         <View style={[styles.exactBox, { backgroundColor: `${colors.success}12`, borderColor: `${colors.success}44` }]}>
           {!legacy && (
             <View style={styles.badgeRow}>
@@ -138,6 +181,12 @@ function createStyles(colors) {
     wrap: { marginBottom: 12 },
     mapBox: { height: 150, borderRadius: 16, overflow: "hidden", borderWidth: 1, marginBottom: 10 },
     map: { flex: 1 },
+    // Loading — content-shaped placeholders only, matching mapBox/lockedBox's
+    // footprint so nothing jumps once the real answer lands.
+    skeletonMap: { height: 150, borderRadius: 16, borderWidth: 1, marginBottom: 10 },
+    skeletonBox: { borderWidth: 1, borderRadius: 14, padding: 16, gap: 8 },
+    skeletonLine: { height: 12, borderRadius: 6, width: "70%" },
+    skeletonLineShort: { width: "40%" },
     approxTag: {
       position: "absolute",
       bottom: 10,
