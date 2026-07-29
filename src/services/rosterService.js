@@ -21,6 +21,18 @@ import {
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
 
+// KIN-138/139/140: an empty [] can't tell a caller whether the read was
+// denied (permission-denied — often expected, e.g. a non-host listing a
+// roster) from a rule/index bug (failed-precondition — usually a missing
+// composite index, never expected). Log which one it was instead of just
+// swallowing.
+const describeFirestoreError = (e) =>
+  e?.code === "permission-denied"
+    ? "permission-denied"
+    : e?.code === "failed-precondition"
+    ? "failed-precondition (missing index?)"
+    : e?.code || "unknown-error";
+
 /** Event ids the current user is on the roster of (any status). */
 export async function getMyRosterEventIds() {
   const me = auth.currentUser?.uid;
@@ -32,7 +44,7 @@ export async function getMyRosterEventIds() {
     // doc path: events/{eventId}/roster/{uid} → parent.parent is the event.
     return [...new Set(snap.docs.map((d) => d.ref.parent.parent.id))];
   } catch (e) {
-    console.error("❌ getMyRosterEventIds:", e);
+    console.error("❌ getMyRosterEventIds:", describeFirestoreError(e), e);
     return [];
   }
 }
@@ -59,6 +71,10 @@ export async function isOnRoster(eventId) {
   try {
     return (await getDoc(doc(db, "events", eventId, "roster", me))).exists();
   } catch (e) {
+    // A read here should always succeed (own-doc read, gated on
+    // request.auth.uid == rosterUid — firestore.rules line 337). A denial is
+    // more likely a rule regression than an expected "not joined".
+    console.warn("⚠️ isOnRoster:", describeFirestoreError(e), eventId);
     return false;
   }
 }
@@ -74,7 +90,11 @@ export async function getEventRosterUids(eventId) {
     );
     return snap.docs.map((d) => d.data().uid || d.id);
   } catch (e) {
-    return []; // not a host → denied; the roster list is host-only by design
+    // not a host → denied; the roster list is host-only by design. Still
+    // log which — permission-denied (expected here) vs failed-precondition
+    // (never expected) look identical from a bare [] otherwise.
+    console.warn("⚠️ getEventRosterUids:", describeFirestoreError(e), eventId);
+    return [];
   }
 }
 
@@ -89,6 +109,7 @@ export async function getEventWaitlistUids(eventId) {
     );
     return snap.docs.map((d) => d.data().uid || d.id);
   } catch (e) {
+    console.warn("⚠️ getEventWaitlistUids:", describeFirestoreError(e), eventId);
     return [];
   }
 }
@@ -105,7 +126,11 @@ export async function getEventCoAttendees(eventId) {
     const res = await fn({ eventId });
     return res.data?.attendees || [];
   } catch (e) {
-    return []; // not a participant → denied
+    // not a participant → denied. e.code here is the callable's HttpsError
+    // code, not a raw Firestore one, but the same permission-denied vs
+    // failed-precondition distinction still applies.
+    console.warn("⚠️ getEventCoAttendees:", describeFirestoreError(e), eventId);
+    return [];
   }
 }
 

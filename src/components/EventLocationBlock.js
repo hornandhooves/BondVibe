@@ -30,7 +30,12 @@ export default function EventLocationBlock({ event, eventId, isParticipant, onRe
 
   useEffect(() => {
     let alive = true;
-    getEventLocation(withId).then((r) => {
+    // Forward the caller's real membership (e.g. EventDetailScreen's
+    // isOnRoster-informed isParticipant) — without this, getEventLocation
+    // falls back to the creator/co-host-only heuristic and silently
+    // downgrades a genuine attendee back to the locked/approximate view
+    // once this effect resolves and overwrites the initial render.
+    getEventLocation(withId, { isParticipant }).then((r) => {
       if (alive && r) setResolved(r);
     });
     return () => {

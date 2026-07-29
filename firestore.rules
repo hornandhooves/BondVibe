@@ -1443,6 +1443,33 @@ service cloud.firestore {
       allow read: if isSignedIn() && resource.data.get('buyerUid', null) == request.auth.uid;
     }
 
+    // "My events" roster lookup — collectionGroup("roster").where("uid", "==",
+    // me) (rosterService.js) — needs this recursive-wildcard rule; the nested
+    // events/{eventId}/roster rule (line 337) authorizes the host's full-roster
+    // read and a participant's own single-doc get, but NOT a collection-group
+    // query. Firestore only proves a query safe against the SAME field it
+    // filters on, so this checks resource.data.uid — a real field on every
+    // roster doc (functions/index.js:3587's backfill writer, and every live
+    // writer in functions/utils/roster.js) — not the rosterUid path segment.
+    // Read-only; every write is still Admin-SDK-only via the nested rule
+    // (fix/privacy-event-roster). Rules OR together — this is additive, the
+    // nested rule at line 337 is untouched.
+    match /{path=**}/roster/{rosterUid} {
+      allow read: if isSignedIn() && request.auth.uid == resource.data.uid;
+      allow write: if false;
+    }
+
+    // "People you met" cross-event matches — collectionGroup("pairs")
+    // .where("users", "array-contains", me) (matchingService.js's
+    // getAllMyMatches) — needs this recursive-wildcard rule; the nested
+    // matches/{eventId}/pairs rule only authorizes a read scoped to one event.
+    // Same users-array + `in` check as that nested rule. Writes stay
+    // server-only.
+    match /{path=**}/pairs/{pairId} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.users;
+      allow write: if false;
+    }
+
     // ============================================
     // DEFAULT DENY ALL
     // ============================================
