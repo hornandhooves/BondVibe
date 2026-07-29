@@ -175,7 +175,11 @@ export const getMatchDataFor = async (userId) => {
     const s = await getDoc(matchDataRef(userId));
     return s.exists() ? s.data() : {};
   } catch (e) {
-    return {}; // gated read the caller isn't allowed / offline — not fatal
+    // gated read the caller isn't allowed / offline — not fatal, but a
+    // permission-denied (expected) and a failed-precondition (not) look
+    // identical from an empty {} otherwise.
+    console.warn("⚠️ getMatchDataFor:", e?.code, userId);
+    return {};
   }
 };
 
@@ -190,7 +194,7 @@ export const getCanonicalMatchProfile = async () => {
     if (!d.matchProfile) return null;
     return { ...d.matchProfile, personality: d.personality ?? d.matchProfile.personality ?? null };
   } catch (e) {
-    console.error("❌ getCanonicalMatchProfile:", e);
+    console.error("❌ getCanonicalMatchProfile:", e?.code, e);
     return null;
   }
 };
@@ -275,7 +279,10 @@ async function writeCanonicalProfile(me, u, f, opts = {}) {
     try {
       await syncMatchPool();
     } catch (e) {
-      /* non-fatal — the weekly batch reconciles */
+      // non-fatal — the weekly batch reconciles, but a silent swallow here
+      // hides a real regression (e.g. permission-denied vs failed-precondition)
+      // just as easily as a benign transient failure.
+      console.warn("⚠️ writeCanonicalProfile syncMatchPool:", e?.code, me);
     }
   }
   return complete;
@@ -448,7 +455,7 @@ export const setMatchmakingEnabled = async (enabled) => {
     try {
       await syncMatchPool();
     } catch (e) {
-      /* non-fatal — the weekly batch reconciles */
+      console.warn("⚠️ setMatchmakingEnabled syncMatchPool:", e?.code, uid());
     }
   }
   return res;
@@ -517,7 +524,7 @@ export const getMatchGrid = async (eventId) => {
       })
       .sort((a, b) => (b.compatibility ?? -1) - (a.compatibility ?? -1));
   } catch (e) {
-    console.error("❌ getMatchGrid:", e);
+    console.error("❌ getMatchGrid:", e?.code, e);
     return [];
   }
 };
@@ -566,7 +573,7 @@ export const getMyMatches = async (eventId) => {
     );
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   } catch (e) {
-    console.error("❌ getMyMatches:", e);
+    console.error("❌ getMyMatches:", e?.code, e);
     return [];
   }
 };
@@ -585,7 +592,7 @@ export const getAllMyMatches = async () => {
     );
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   } catch (e) {
-    console.error("❌ getAllMyMatches:", e);
+    console.error("❌ getAllMyMatches:", e?.code, e);
     return [];
   }
 };

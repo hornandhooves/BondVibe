@@ -39,8 +39,12 @@ export const fetchPrivateLocation = async (eventId) => {
   try {
     const snap = await getDoc(doc(db, "events", eventId, "private", "location"));
     return snap.exists() ? snap.data() : null;
-  } catch (_e) {
-    // Permission-denied for a non-participant (or offline) — fall back to approx.
+  } catch (e) {
+    // Permission-denied for a non-participant (or offline) — fall back to
+    // approx. Still log e.code: permission-denied here is expected/benign,
+    // but a null that hides a real error (failed-precondition, unavailable)
+    // looks identical from the caller's side otherwise.
+    console.warn("⚠️ fetchPrivateLocation:", e?.code, eventId);
     return null;
   }
 };
@@ -49,11 +53,20 @@ export const fetchPrivateLocation = async (eventId) => {
  * Resolve an event's location for the current user, fetching the private doc
  * when they're a participant. Never throws; never returns a blank for a legacy doc.
  * @param {object} event public event doc (must include its id as event.id)
- * @param {string} [uid] defaults to the signed-in user
+ * @param {object} [opts]
+ * @param {string} [opts.uid] defaults to the signed-in user
+ * @param {boolean} [opts.isParticipant] real roster membership (e.g. from
+ *   isOnRoster), when the caller already knows it. Falls back to the
+ *   synchronous creator/co-host-only heuristic (isEventParticipant) when
+ *   omitted — that heuristic can't see roster membership, so a caller that
+ *   knows better should always pass this rather than let it get recomputed.
  * @returns {Promise<ReturnType<typeof resolveEventLocation>>}
  */
-export const getEventLocation = async (event, uid = auth.currentUser?.uid) => {
-  const participant = isEventParticipant(event, uid);
+export const getEventLocation = async (
+  event,
+  { uid = auth.currentUser?.uid, isParticipant } = {},
+) => {
+  const participant = isParticipant ?? isEventParticipant(event, uid);
   const privateLocation = participant ? await fetchPrivateLocation(event?.id) : null;
   return resolveEventLocation(event, { isParticipant: participant, privateLocation });
 };

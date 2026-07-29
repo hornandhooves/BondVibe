@@ -32,7 +32,7 @@ export async function getMyRosterEventIds() {
     // doc path: events/{eventId}/roster/{uid} → parent.parent is the event.
     return [...new Set(snap.docs.map((d) => d.ref.parent.parent.id))];
   } catch (e) {
-    console.error("❌ getMyRosterEventIds:", e);
+    console.error("❌ getMyRosterEventIds:", e?.code, e);
     return [];
   }
 }
@@ -59,6 +59,11 @@ export async function isOnRoster(eventId) {
   try {
     return (await getDoc(doc(db, "events", eventId, "roster", me))).exists();
   } catch (e) {
+    // A read here should always succeed (own-doc read, gated on request.auth.uid
+    // == rosterUid — see firestore.rules). A denial is more likely a rule
+    // regression than an expected "not joined" — an empty result that lies
+    // is worse than a visible error code, so at least log e.code.
+    console.warn("⚠️ isOnRoster:", e?.code, eventId);
     return false;
   }
 }
@@ -74,7 +79,12 @@ export async function getEventRosterUids(eventId) {
     );
     return snap.docs.map((d) => d.data().uid || d.id);
   } catch (e) {
-    return []; // not a host → denied; the roster list is host-only by design
+    // not a host → denied; the roster list is host-only by design. Still log
+    // e.code — permission-denied (expected here) reads very differently from
+    // failed-precondition (a missing index), and a silent [] can't tell them
+    // apart from the caller's side.
+    console.warn("⚠️ getEventRosterUids:", e?.code, eventId);
+    return [];
   }
 }
 
@@ -89,6 +99,7 @@ export async function getEventWaitlistUids(eventId) {
     );
     return snap.docs.map((d) => d.data().uid || d.id);
   } catch (e) {
+    console.warn("⚠️ getEventWaitlistUids:", e?.code, eventId);
     return [];
   }
 }
@@ -105,7 +116,10 @@ export async function getEventCoAttendees(eventId) {
     const res = await fn({ eventId });
     return res.data?.attendees || [];
   } catch (e) {
-    return []; // not a participant → denied
+    // not a participant → denied. e.code here is the callable's HttpsError
+    // code (e.g. "permission-denied"), not a Firestore code.
+    console.warn("⚠️ getEventCoAttendees:", e?.code, eventId);
+    return [];
   }
 }
 
