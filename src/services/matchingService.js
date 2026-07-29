@@ -45,6 +45,17 @@ import {
   INDUSTRIES,
 } from "../constants/matchTags";
 
+// KIN-138/139/140: an empty return can't tell a caller whether a read was
+// denied (permission-denied — often expected) from a rule/index bug
+// (failed-precondition — usually a missing composite index, never
+// expected). Log which one it was instead of just swallowing.
+const describeFirestoreError = (e) =>
+  e?.code === "permission-denied"
+    ? "permission-denied"
+    : e?.code === "failed-precondition"
+    ? "failed-precondition (missing index?)"
+    : e?.code || "unknown-error";
+
 // ---- Enums (mirror §4 of the handoff) -------------------------------------
 export const MATCH_TYPES = ["friend", "professional", "romantic"];
 // BUG 11: only Everyone / Same gender / Opposite gender. "Organizer only" and
@@ -175,7 +186,11 @@ export const getMatchDataFor = async (userId) => {
     const s = await getDoc(matchDataRef(userId));
     return s.exists() ? s.data() : {};
   } catch (e) {
-    return {}; // gated read the caller isn't allowed / offline — not fatal
+    // gated read the caller isn't allowed / offline — not fatal, but a
+    // permission-denied (expected) and a failed-precondition (not) look
+    // identical from an empty {} otherwise.
+    console.warn("⚠️ getMatchDataFor:", describeFirestoreError(e), userId);
+    return {};
   }
 };
 
@@ -190,7 +205,7 @@ export const getCanonicalMatchProfile = async () => {
     if (!d.matchProfile) return null;
     return { ...d.matchProfile, personality: d.personality ?? d.matchProfile.personality ?? null };
   } catch (e) {
-    console.error("❌ getCanonicalMatchProfile:", e);
+    console.error("❌ getCanonicalMatchProfile:", describeFirestoreError(e), e);
     return null;
   }
 };
@@ -275,7 +290,9 @@ async function writeCanonicalProfile(me, u, f, opts = {}) {
     try {
       await syncMatchPool();
     } catch (e) {
-      /* non-fatal — the weekly batch reconciles */
+      // non-fatal — the weekly batch reconciles, but a silent swallow hides
+      // a real regression just as easily as a benign transient failure.
+      console.warn("⚠️ writeCanonicalProfile syncMatchPool:", describeFirestoreError(e), me);
     }
   }
   return complete;
@@ -448,7 +465,7 @@ export const setMatchmakingEnabled = async (enabled) => {
     try {
       await syncMatchPool();
     } catch (e) {
-      /* non-fatal — the weekly batch reconciles */
+      console.warn("⚠️ setMatchmakingEnabled syncMatchPool:", describeFirestoreError(e), uid());
     }
   }
   return res;
@@ -517,7 +534,7 @@ export const getMatchGrid = async (eventId) => {
       })
       .sort((a, b) => (b.compatibility ?? -1) - (a.compatibility ?? -1));
   } catch (e) {
-    console.error("❌ getMatchGrid:", e);
+    console.error("❌ getMatchGrid:", describeFirestoreError(e), e);
     return [];
   }
 };
@@ -566,7 +583,7 @@ export const getMyMatches = async (eventId) => {
     );
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   } catch (e) {
-    console.error("❌ getMyMatches:", e);
+    console.error("❌ getMyMatches:", describeFirestoreError(e), e);
     return [];
   }
 };
@@ -585,7 +602,7 @@ export const getAllMyMatches = async () => {
     );
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   } catch (e) {
-    console.error("❌ getAllMyMatches:", e);
+    console.error("❌ getAllMyMatches:", describeFirestoreError(e), e);
     return [];
   }
 };
