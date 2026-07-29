@@ -1455,7 +1455,7 @@ service cloud.firestore {
     // (fix/privacy-event-roster). Rules OR together — this is additive, the
     // nested rule at line 337 is untouched.
     match /{path=**}/roster/{rosterUid} {
-      allow read: if request.auth != null && request.auth.uid == resource.data.uid;
+      allow read: if isSignedIn() && request.auth.uid == resource.data.uid;
       allow write: if false;
     }
 
@@ -1466,7 +1466,7 @@ service cloud.firestore {
     // Same users-array + `in` check as that nested rule. Writes stay
     // server-only.
     match /{path=**}/pairs/{pairId} {
-      allow read: if request.auth != null && request.auth.uid in resource.data.users;
+      allow read: if isSignedIn() && request.auth.uid in resource.data.users;
       allow write: if false;
     }
 

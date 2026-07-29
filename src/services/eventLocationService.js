@@ -39,8 +39,11 @@ export const fetchPrivateLocation = async (eventId) => {
   try {
     const snap = await getDoc(doc(db, "events", eventId, "private", "location"));
     return snap.exists() ? snap.data() : null;
-  } catch (_e) {
-    // Permission-denied for a non-participant (or offline) — fall back to approx.
+  } catch (e) {
+    // permission-denied aquí es esperado para un no-participante; un
+    // failed-precondition o unavailable NO lo es y hoy se ve idéntico
+    // desde el llamador. Log del code antes de degradar a aproximada.
+    console.warn("⚠️ fetchPrivateLocation:", e?.code, eventId);
     return null;
   }
 };
