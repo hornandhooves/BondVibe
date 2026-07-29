@@ -57,8 +57,15 @@ export default function EventLocationBlock({ event, eventId, isParticipant, onRe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId || event?.id, isParticipant]);
 
+  // `locked` and `exact` are independent booleans, not inverses — a
+  // participant whose private doc hasn't loaded yet (fetchPrivateLocation
+  // returned null) resolves to {locked: false, exact: false}
+  // (resolveEventLocation's gated branch: locked = !isParticipant). What's
+  // DRAWN (pin/green vs circle/gray) must track `exact` — whether we
+  // actually have real venue/address/coords to show, not just whether the
+  // viewer is nominally "not locked out".
   const status =
-    resolved === null ? STATUS.LOADING : resolved.locked ? STATUS.LOCKED : STATUS.UNLOCKED;
+    resolved === null ? STATUS.LOADING : resolved.exact ? STATUS.UNLOCKED : STATUS.LOCKED;
 
   if (status === STATUS.LOADING) {
     return (
@@ -112,7 +119,12 @@ export default function EventLocationBlock({ event, eventId, isParticipant, onRe
               />
             )}
           </MapView>
-          {status === STATUS.LOCKED && (
+          {/* The tag's wording ("reserve to see it") is about GATING, which
+              tracks resolved.locked directly — not the derived `status`
+              (what's drawn). A participant with {locked:false, exact:false}
+              already has access; they just don't have data yet, so they
+              shouldn't be told to "reserve" something they already did. */}
+          {resolved.locked && (
             <View style={[styles.approxTag, { backgroundColor: colors.text }]}>
               <Text style={[styles.approxTagText, { color: colors.surface }]}>
                 {t("eventLocation.approxArea")}

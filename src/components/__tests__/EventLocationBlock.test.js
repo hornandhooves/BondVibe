@@ -68,6 +68,21 @@ const unlockedResult = {
   coords: { latitude: 20.2114, longitude: -87.4654 },
 };
 
+// `locked` and `exact` are independent booleans, not inverses — this is what
+// resolveEventLocation's gated branch returns for a real participant whose
+// private-location doc hasn't loaded yet (or doesn't exist): locked = !isParticipant
+// = false, but exact stays false because there's no venue/address/coords to show.
+const participantNoPrivateResult = {
+  locked: false,
+  exact: false,
+  legacy: false,
+  area: "Roma Norte",
+  approxCoords: { latitude: 19.41, longitude: -99.17 },
+  venueName: null,
+  address: null,
+  coords: { latitude: 19.41, longitude: -99.17 },
+};
+
 beforeEach(() => {
   mockGetEventLocation.mockReset();
   mockGetEventLocation.mockImplementation((_event, opts) =>
@@ -107,6 +122,16 @@ describe("EventLocationBlock — no state derived from a still-resolving prop", 
   it("stays locked when isParticipant is confirmed false throughout (no false unlock)", async () => {
     const { getByText, queryByText } = render(
       <EventLocationBlock event={EVENT} eventId="evt1" isParticipant={false} onReserve={jest.fn()} />,
+    );
+    await waitFor(() => expect(getByText("Locked")).toBeTruthy());
+    expect(queryByText("Unlocked")).toBeNull();
+    expect(queryByText("Casa Azul")).toBeNull();
+  });
+
+  it("a participant with no private-location doc yet shows the approximate view, not a false unlock", async () => {
+    mockGetEventLocation.mockImplementation(() => Promise.resolve(participantNoPrivateResult));
+    const { getByText, queryByText } = render(
+      <EventLocationBlock event={EVENT} eventId="evt1" isParticipant={true} onReserve={jest.fn()} />,
     );
     await waitFor(() => expect(getByText("Locked")).toBeTruthy());
     expect(queryByText("Unlocked")).toBeNull();
