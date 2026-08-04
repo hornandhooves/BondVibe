@@ -246,6 +246,75 @@ test("ESC6b capture: a Firestore Timestamp `date` still yields a non-null releas
   assert.strictEqual(led.releaseAt, wantRelease);
 });
 
+test("ESC6c KIN-163 writeHeldLedger: actualStripeFee/platformFeeActual persist, else null", async () => {
+  const piWith = `pi_${nextId()}`;
+  await escrow.writeHeldLedger(db, {
+    paymentIntentId: piWith,
+    type: "event_ticket",
+    sourceId: `evt_${nextId()}`,
+    deliveryEndAt: new Date(Date.now() + HOUR).toISOString(),
+    buyerUid: `buyer_${nextId()}`,
+    hostUid: `host_${nextId()}`,
+    hostAccountId: "acct_testhost",
+    grossAmount: 27312,
+    hostAmount: 25000,
+    platformFee: 1000,
+    stripeFee: 909,
+    actualStripeFee: 1390,
+    platformFeeActual: 519,
+    currency: "mxn",
+    retentionHours: 24,
+  });
+  const ledWith = await getLedger(piWith);
+  assert.strictEqual(ledWith.actualStripeFee, 1390);
+  assert.strictEqual(ledWith.platformFeeActual, 519);
+  // stripeFee (the estimate) is untouched — the two numbers coexist.
+  assert.strictEqual(ledWith.stripeFee, 909);
+
+  const piWithout = `pi_${nextId()}`;
+  await escrow.writeHeldLedger(db, {
+    paymentIntentId: piWithout,
+    type: "event_ticket",
+    sourceId: `evt_${nextId()}`,
+    deliveryEndAt: new Date(Date.now() + HOUR).toISOString(),
+    buyerUid: `buyer_${nextId()}`,
+    hostUid: `host_${nextId()}`,
+    hostAccountId: "acct_testhost",
+    grossAmount: 27312,
+    hostAmount: 25000,
+    platformFee: 1000,
+    stripeFee: 909,
+    currency: "mxn",
+    retentionHours: 24,
+  });
+  const ledWithout = await getLedger(piWithout);
+  assert.strictEqual(ledWithout.actualStripeFee, null);
+  assert.strictEqual(ledWithout.platformFeeActual, null);
+
+  // Unaffected flows (rentals/service bookings) never pass these — confirm
+  // they still get null rather than undefined/omitted (a caller reading
+  // ledger.actualStripeFee must always see a value, never a missing field).
+  const piRental = `pi_${nextId()}`;
+  await escrow.writeHeldLedger(db, {
+    paymentIntentId: piRental,
+    type: "rental",
+    sourceId: `veh_${nextId()}`,
+    deliveryEndAt: new Date(Date.now() + HOUR).toISOString(),
+    buyerUid: `buyer_${nextId()}`,
+    hostUid: `host_${nextId()}`,
+    hostAccountId: "acct_testhost",
+    grossAmount: 10000,
+    hostAmount: 9000,
+    platformFee: 500,
+    stripeFee: 500,
+    currency: "mxn",
+    retentionHours: 24,
+  });
+  const ledRental = await getLedger(piRental);
+  assert.strictEqual(ledRental.actualStripeFee, null);
+  assert.strictEqual(ledRental.platformFeeActual, null);
+});
+
 test("ESC7 dispute: charge.dispute.created FREEZES the ledger (§8)", async () => {
   const pi = `pi_${nextId()}`;
   await db.collection("paymentLedger").doc(pi).set({

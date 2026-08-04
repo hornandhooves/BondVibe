@@ -627,6 +627,38 @@ async function handleEventTicketPurchase(paymentIntent) {
       eventEndAt = Number.isFinite(ms) ? new Date(ms).toISOString() : null;
     }
   }
+  // KIN-163: measure Stripe's REAL fee (balance_transaction.fee) alongside
+  // the estimate already in metadata.stripeFee — nothing today reads the
+  // actual charge, so margin leaks go undetected. Never fails the webhook:
+  // a lookup failure, or a balance_transaction not yet settled, just leaves
+  // both values null and the ledger writes exactly as before.
+  let actualStripeFee = null;
+  let platformFeeActual = null;
+  try {
+    const stripe = require("stripe")(stripeSecretKey.value());
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ["latest_charge.balance_transaction"],
+    });
+    const fee = pi.latest_charge?.balance_transaction?.fee;
+    if (Number.isFinite(fee)) {
+      actualStripeFee = fee;
+      const grossAmount = num(metadata.totalAmount) || amount;
+      const hostAmount = num(metadata.hostReceives);
+      platformFeeActual = grossAmount - hostAmount - actualStripeFee;
+      const platformFeeEstimated = num(metadata.platformFee);
+      if (platformFeeActual < platformFeeEstimated) {
+        console.warn(
+          `⚠️ KIN-163 margin leak: ${paymentIntentId} platformFee(estimated)=${platformFeeEstimated} ` +
+          `platformFeeActual=${platformFeeActual} shortfall=${platformFeeEstimated - platformFeeActual}`,
+        );
+      }
+    } else {
+      console.warn(`⚠️ KIN-163: balance_transaction.fee unavailable for ${paymentIntentId} (not settled yet?)`);
+    }
+  } catch (e) {
+    console.warn(`⚠️ KIN-163: could not measure actual Stripe fee for ${paymentIntentId}:`, e.message);
+  }
+
   const releaseAt = await escrow.writeHeldLedger(db, {
     paymentIntentId,
     type: "event_ticket",
@@ -640,6 +672,8 @@ async function handleEventTicketPurchase(paymentIntent) {
     hostAmount: num(metadata.hostReceives),
     platformFee: num(metadata.platformFee),
     stripeFee: num(metadata.stripeFee),
+    actualStripeFee,
+    platformFeeActual,
     currency,
     retentionHours,
   });
