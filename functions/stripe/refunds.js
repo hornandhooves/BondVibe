@@ -532,9 +532,16 @@ exports.hostCancelEvent = functions.https.onCall(
             .doc(paymentData.paymentIntentId)
             .get();
           const led = ledSnap.exists ? ledSnap.data() : null;
-          const penaltyFee = led ?
-            (led.stripeFee || 0) :
-            (parseInt((paymentData.metadata || {}).stripeFee, 10) || 0);
+          // KIN-163: prefer the REAL fee when measured, so the host penalty
+          // matches what Stripe actually kept — not the pre-charge estimate.
+          // Falls back to the estimate on the ledger (older payments, or a
+          // failed measurement), then to payment-doc metadata (pre-ledger
+          // payments) as a last resort.
+          const penaltyFee = (led && Number.isFinite(led.actualStripeFee) && led.actualStripeFee > 0) ?
+            led.actualStripeFee :
+            led ?
+              (led.stripeFee || 0) :
+              (parseInt((paymentData.metadata || {}).stripeFee, 10) || 0);
           const payoutHostUid = led ?
             led.hostUid :
             (eventData.businessOwnerUid || eventData.creatorId);
