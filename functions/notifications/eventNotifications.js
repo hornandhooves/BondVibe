@@ -113,7 +113,9 @@ async function notifyPromoted(eventId, uid, eventTitle) {
  * @param {string} hostId - Host user ID
  * @param {string} eventId - Event ID
  * @param {string} eventTitle - Event title
- * @param {number} eventPrice - Event price in centavos
+ * @param {number} eventPrice - Event price in MXN (pesos), tal como se
+ *   almacena en events/{id}.price. NO en centavos: la conversión ocurre en
+ *   la capa de pricing (ver functions/stripe/gifting.js:238).
  * @param {Array<string>} attendeeIds - Array of attendee user IDs
  */
 async function notifyHostOfNewAttendees(
@@ -165,7 +167,7 @@ async function notifyHostOfNewAttendees(
     // pass params, and keep the English title/body as a fallback.
     const n = attendeeNames.length;
     const paid = !!(eventPrice && eventPrice > 0);
-    const priceMXN = paid ? (eventPrice / 100).toFixed(0) : null;
+    const priceMXN = paid ? String(Math.round(eventPrice)) : null;
     const grp = paid ? "paid" : "free";
     const sfx = n === 1 ? "One" : "Other";
     const titleKey = `notifications.event.joined.${grp}Title${sfx}`;
