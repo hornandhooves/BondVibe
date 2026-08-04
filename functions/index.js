@@ -4320,9 +4320,16 @@ exports.onNewHostRequest = onDocumentCreated(
 // ============================================
 // MERCADO PAGO — Checkout Pro (single-account, Option B)
 // ============================================
-const mercadopago = require("./mercadopago");
-exports.createMercadoPagoPreference = mercadopago.createMercadoPagoPreference;
-exports.mercadoPagoWebhook = mercadopago.mercadoPagoWebhook;
+// KIN-164: Mercado Pago está desactivado por decisión de producto — hoy la
+// app cobra sólo con Stripe (MERCADOPAGO_ENABLED es false en
+// src/config/featureFlags.js y ninguna pantalla llama a estas funciones).
+// Las dos Cloud Functions de abajo ya fueron borradas a propósito de
+// kinlo-app-dev con `firebase functions:delete`. NO descomentar estas líneas
+// sin una decisión explícita: hacerlo vuelve a publicar dos endpoints HTTP
+// públicos en el siguiente `firebase deploy --only functions`.
+// const mercadopago = require("./mercadopago");
+// exports.createMercadoPagoPreference = mercadopago.createMercadoPagoPreference;
+// exports.mercadoPagoWebhook = mercadopago.mercadoPagoWebhook;
 
 // ============================================
 // ADMIN — user management (master/admin only)
