@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { getGreetingKey } from "../utils/greeting";
 import {
   View,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  RefreshControl,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
@@ -41,6 +42,13 @@ export default function HomeScreen({ navigation }) {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
 
+  // KIN-150: pull-to-refresh — each carousel owns its own data/state, so
+  // refreshing them from here goes through the imperative `reload()` each
+  // exposes via ref, not by lifting their state up.
+  const [refreshing, setRefreshing] = useState(false);
+  const eventsRowRef = useRef(null);
+  const marketplaceRowRef = useRef(null);
+
   const loadUser = useCallback(async () => {
     if (!auth.currentUser) return;
     try {
@@ -68,6 +76,24 @@ export default function HomeScreen({ navigation }) {
       loadPendingRatings();
     }, [loadUser, loadPendingRatings]),
   );
+
+  // KIN-150: manual escape hatch — bypasses each carousel's TTL and forces an
+  // immediate refetch. Waits for every reload to actually finish (not just
+  // fire) before dropping the spinner, so pull-to-refresh doesn't lie about
+  // being done while a fetch is still in flight.
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        loadUser(),
+        loadPendingRatings(),
+        eventsRowRef.current?.reload(),
+        marketplaceRowRef.current?.reload(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadUser, loadPendingRatings]);
 
   const handleRateEvent = (event) => {
     setSelectedEvent(event);
@@ -111,6 +137,14 @@ export default function HomeScreen({ navigation }) {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
         {/* Weekly Digest banner (§2.2 / ai_features/14) */}
         <TouchableOpacity
@@ -143,10 +177,10 @@ export default function HomeScreen({ navigation }) {
         <BirthdayReminders navigation={navigation} />
 
         {/* Events near you (M0) — own loading/empty/error state */}
-        <EventsRow navigation={navigation} />
+        <EventsRow ref={eventsRowRef} navigation={navigation} />
 
         {/* Services near you (M0) — own loading/empty/error state */}
-        <MarketplaceRow navigation={navigation} />
+        <MarketplaceRow ref={marketplaceRowRef} navigation={navigation} />
 
         {/* Rate experiences — nudge to rate past events */}
         {pendingRatingEvents.length > 0 && (
