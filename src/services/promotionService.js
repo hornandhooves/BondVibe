@@ -73,41 +73,74 @@ export const createPromotionPaymentIntent = async (eventId, planId) => {
   }
 };
 
+// BUG 37: `featuredUntil` is only the paid promo window (7/14/30 days) and is
+// independent of when the event actually happens, so a past-dated event
+// lingers in the carousel until its promo expires. Also drop events whose
+// date has already passed. The event date lives on `date` (stored as an ISO
+// string; recurring events have date:null). Client-side because Firestore
+// allows only one range field per query and `featuredUntil` already uses it.
+// A 12h grace keeps an event visible through the day it runs; undated
+// (recurring) events are never hidden.
+const eventStartMs = (e) => {
+  const d = e.date ?? e.startAt ?? e.eventDate;
+  if (!d) return Infinity; // undated / recurring → don't hide it
+  const ms = d?.toMillis ? d.toMillis() : new Date(d).getTime();
+  return Number.isNaN(ms) ? Infinity : ms; // unparseable → keep, don't hide
+};
+
 /**
- * Fetch currently-featured events (promotion not expired).
+ * Currently-featured events (promotion not expired, not cancelled, not
+ * already finished), newest promotion first. Shared by getFeaturedEvents
+ * and getFeaturedEventsNearby so the eligibility rules live in one place.
+ * @returns {Promise<Array>}
+ */
+const fetchFeaturedEventDocs = async () => {
+  const q = query(
+    collection(db, "events"),
+    where("featuredUntil", ">", Timestamp.now()),
+    orderBy("featuredUntil", "desc")
+  );
+  const snapshot = await getDocs(q);
+  const cutoffMs = Date.now() - 12 * 60 * 60 * 1000;
+  return snapshot.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((e) => e.status !== "cancelled")
+    .filter((e) => eventStartMs(e) >= cutoffMs); // drop events already finished
+};
+
+/**
+ * Fetch currently-featured events (promotion not expired). Used by
+ * MyEventsScreen's "Popular" carousel — no city filter, unchanged behavior.
  * @param {number} [max] limit
  * @returns {Promise<Array>}
  */
 export const getFeaturedEvents = async (max = 10) => {
   try {
-    const q = query(
-      collection(db, "events"),
-      where("featuredUntil", ">", Timestamp.now()),
-      orderBy("featuredUntil", "desc")
-    );
-    const snapshot = await getDocs(q);
-    // BUG 37: `featuredUntil` is only the paid promo window (7/14/30 days) and
-    // is independent of when the event actually happens, so a past-dated event
-    // lingers in the carousel until its promo expires. Also drop events whose
-    // date has already passed. The event date lives on `date` (stored as an ISO
-    // string; recurring events have date:null). Client-side because Firestore
-    // allows only one range field per query and `featuredUntil` already uses it.
-    // A 12h grace keeps an event visible through the day it runs; undated
-    // (recurring) events are never hidden.
-    const cutoffMs = Date.now() - 12 * 60 * 60 * 1000;
-    const eventStartMs = (e) => {
-      const d = e.date ?? e.startAt ?? e.eventDate;
-      if (!d) return Infinity; // undated / recurring → don't hide it
-      const ms = d?.toMillis ? d.toMillis() : new Date(d).getTime();
-      return Number.isNaN(ms) ? Infinity : ms; // unparseable → keep, don't hide
-    };
-    return snapshot.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((e) => e.status !== "cancelled")
-      .filter((e) => eventStartMs(e) >= cutoffMs) // drop events already finished
-      .slice(0, max);
+    const docs = await fetchFeaturedEventDocs();
+    return docs.slice(0, max);
   } catch (e) {
     console.error("❌ getFeaturedEvents:", e);
+    return [];
+  }
+};
+
+/**
+ * KIN-184 — Home "Featured Events" carousel: same eligibility as
+ * getFeaturedEvents, plus an optional city filter. City is filtered
+ * client-side, same rule as getMarketplaceListings: an event with no city
+ * matches any city (never hidden just for missing data). No city passed →
+ * no city filter at all (nothing to default to — a host's own city, not a
+ * hardcoded one, drives this via the caller).
+ * @param {{ city?: string, max?: number }} [opts]
+ * @returns {Promise<Array>}
+ */
+export const getFeaturedEventsNearby = async ({ city, max = 10 } = {}) => {
+  try {
+    const docs = await fetchFeaturedEventDocs();
+    const filtered = city ? docs.filter((e) => !e.city || e.city === city) : docs;
+    return filtered.slice(0, max);
+  } catch (e) {
+    console.error("❌ getFeaturedEventsNearby:", e);
     return [];
   }
 };

@@ -17,9 +17,8 @@ import { useMode } from "../contexts/ModeContext";
 import { LinearGradient } from "expo-linear-gradient";
 import { BRAND, ELEVATION } from "../constants/theme-tokens";
 import { useFocusEffect } from "@react-navigation/native";
-import EventsRow from "../components/EventsRow";
 import BirthdayReminders from "../components/BirthdayReminders";
-import MarketplaceRow from "../components/MarketplaceRow";
+import FeaturedEventsRow from "../components/FeaturedEventsRow";
 import { EVENT_CATEGORIES } from "../utils/eventCategories";
 import Icon, { getCategoryIcon } from "../components/Icon";
 import RatingModal from "../components/RatingModal";
@@ -27,10 +26,15 @@ import { getPendingRatings } from "../services/ratingService";
 import GradientBackground from "../components/GradientBackground";
 import { BVCard } from "../components/BoldPop";
 
-// Home order: greeting → digest → search → Events near you → Services near you →
-// Rate experiences → Browse by community (+ host-mode Create FAB). Each carousel
-// owns its own loading/empty/error state (no cross-leaking). Admin Dashboard
-// lives in Profile now; the featured carousel + zero-state were retired.
+// Home order: greeting → digest → search → Featured Events → Featured Services
+// (KIN-185, always empty until that ticket wires it) → Rate experiences →
+// Browse by community (+ host-mode Create FAB). KIN-184: Featured Events/
+// Services replace the old organic "Events near you"/"Services near you"
+// carousels (EventsRow/MarketplaceRow, no longer used here — see git history
+// if reviving them). Each bar pushes the next one up and renders nothing
+// when it has no content, so there's never a fixed gap for an absent
+// section. Each carousel still owns its own loading/empty/error state (no
+// cross-leaking). Admin Dashboard lives in Profile now.
 export default function HomeScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t, i18n } = useTranslation();
@@ -46,8 +50,16 @@ export default function HomeScreen({ navigation }) {
   // refreshing them from here goes through the imperative `reload()` each
   // exposes via ref, not by lifting their state up.
   const [refreshing, setRefreshing] = useState(false);
-  const eventsRowRef = useRef(null);
-  const marketplaceRowRef = useRef(null);
+  const featuredEventsRowRef = useRef(null);
+
+  // KIN-184: the organic "Events near you" / "Services near you" carousels
+  // (EventsRow/MarketplaceRow) are replaced by up to three horizontal bars —
+  // Featured Events, Featured Services, Browse by Community — that push up
+  // when a bar above has nothing to show. This ticket builds the Events
+  // side only; Featured Services (KIN-185) isn't built here — the slot
+  // below is deliberately left so KIN-185 doesn't have to touch this
+  // layout again, just populate setFeaturedServices from its own service.
+  const [featuredServices] = useState([]);
 
   const loadUser = useCallback(async () => {
     if (!auth.currentUser) return;
@@ -87,8 +99,7 @@ export default function HomeScreen({ navigation }) {
       await Promise.all([
         loadUser(),
         loadPendingRatings(),
-        eventsRowRef.current?.reload(),
-        marketplaceRowRef.current?.reload(),
+        featuredEventsRowRef.current?.reload(),
       ]);
     } finally {
       setRefreshing(false);
@@ -114,6 +125,9 @@ export default function HomeScreen({ navigation }) {
   const isAdmin = user?.role === "admin";
   const isHost = user?.role === "host";
   const canCreateEvents = isAdmin || isHost;
+  // KIN-184: same field precedence as the public user projection
+  // (src/services/userService.js) — city, falling back to location.
+  const userCity = user?.city || user?.location || undefined;
 
   const styles = createStyles(colors, isDark);
 
@@ -176,11 +190,21 @@ export default function HomeScreen({ navigation }) {
         {/* Birthday reminders (social gifting Board 2a) — renders nothing if none */}
         <BirthdayReminders navigation={navigation} />
 
-        {/* Events near you (M0) — own loading/empty/error state */}
-        <EventsRow ref={eventsRowRef} navigation={navigation} />
+        {/* Featured Events (KIN-184) — paid placement, city-filtered; renders
+            nothing when there's none. Gated on `user` so the city filter is
+            never applied a beat late (city comes off the user doc). */}
+        {user && <FeaturedEventsRow ref={featuredEventsRowRef} navigation={navigation} city={userCity} />}
 
-        {/* Services near you (M0) — own loading/empty/error state */}
-        <MarketplaceRow ref={marketplaceRowRef} navigation={navigation} />
+        {/* Featured Services slot (KIN-185) — reserved so that ticket doesn't
+            need to touch this layout; always empty until KIN-185 wires
+            setFeaturedServices from its own service. */}
+        {featuredServices.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitleInline, { color: colors.textTertiary }]}>
+              {t("home.featuredServices.title")}
+            </Text>
+          </View>
+        )}
 
         {/* Rate experiences — nudge to rate past events */}
         {pendingRatingEvents.length > 0 && (
