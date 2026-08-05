@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { forwardRef, useState, useCallback, useImperativeHandle } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
@@ -7,6 +7,7 @@ import Icon from "./Icon";
 import { formatCentavos } from "../utils/pricing";
 import { getMarketplaceListings } from "../services/marketplaceService";
 import { VERTICAL_META } from "../screens/MarketplaceExploreScreen";
+import { useFocusRefresh } from "../hooks/useFocusRefresh";
 
 /**
  * Home "Services near you" carousel (Marketplace M0). Read-only + navigation:
@@ -16,29 +17,23 @@ import { VERTICAL_META } from "../screens/MarketplaceExploreScreen";
  *
  * NOTE: "near you" ordering isn't implemented (no geolocation source yet) — the
  * row shows listings in query order; distance sort is a follow-up.
+ *
+ * KIN-150: refetches on every tab focus (via useFocusRefresh), not just on
+ * mount — see EventsRow.js for the full rationale (same fix, same pattern).
+ * Exposes `reload` via ref for HomeScreen's pull-to-refresh.
  */
-export default function MarketplaceRow({ navigation }) {
+const MarketplaceRow = forwardRef(function MarketplaceRow({ navigation }, ref) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const s = createStyles(colors);
 
   const [listings, setListings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    try {
-      setListings(await getMarketplaceListings({ max: 8 }));
-    } catch (e) {
-      setError(true);
-    }
-    setLoading(false);
+    setListings(await getMarketplaceListings({ max: 8 }));
   }, []);
-  useEffect(() => {
-    load();
-  }, [load]);
+  const { loading, error, reload } = useFocusRefresh(load);
+  useImperativeHandle(ref, () => ({ reload }), [reload]);
 
   const goServices = () => navigation.navigate("ServicesTab");
   const goRentals = () => navigation.navigate("RentalHub");
@@ -59,7 +54,7 @@ export default function MarketplaceRow({ navigation }) {
           ))}
         </ScrollView>
       ) : error ? (
-        <TouchableOpacity style={[s.stateCard, { borderColor: colors.border }]} onPress={load} activeOpacity={0.85}>
+        <TouchableOpacity style={[s.stateCard, { borderColor: colors.border }]} onPress={reload} activeOpacity={0.85}>
           <Icon name="close" size={20} color={colors.error} />
           <Text style={[s.stateTxt, { color: colors.textSecondary }]}>{t("home.marketplace.error")}</Text>
           <Text style={[s.stateAction, { color: colors.primary }]}>{t("home.marketplace.retry")}</Text>
@@ -112,7 +107,9 @@ export default function MarketplaceRow({ navigation }) {
       )}
     </View>
   );
-}
+});
+
+export default MarketplaceRow;
 
 function createStyles(colors) {
   return StyleSheet.create({
