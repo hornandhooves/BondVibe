@@ -190,6 +190,48 @@ const hmToMin = (t) => {
   return h * 60 + m;
 };
 
+// KIN-154: a personal host has no business, so no bizId — getDayItems
+// (and everything it fetches: listHostEvents, listClasses, listBookings,
+// listAgendaBlocks) requires one and returns nothing without it. That made
+// checkInstructorAvailability silently find zero conflicts for any
+// non-business host, no matter how badly double-booked they were.
+//
+// "Is this person double-booked" can't be a business-scoped question — the
+// same uid can be instructor on a business's class AND on their own personal
+// event, and events already carry instructorUid regardless of who created
+// them. This queries the top-level `events` collection directly by
+// instructorUid, with no bizId involved, so it works identically whether or
+// not the instructor has a business. businessAgendaService now CONSUMES
+// this as one more source of conflict items, rather than owning the only
+// source (which is what "sin negocio" broke) — see the union + dedupe in
+// checkInstructorAvailability below.
+async function getInstructorEventsOnDate(instructorUid, date) {
+  if (!instructorUid) return [];
+  try {
+    const snap = await getDocs(
+      query(collection(db, "events"), where("instructorUid", "==", instructorUid)),
+    );
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((e) => e.date && sameDay(new Date(e.date), date))
+      .map((e) => {
+        const start = new Date(e.date);
+        return {
+          id: `event_${e.id}`,
+          source: AGENDA_ITEM_SOURCE.EVENT,
+          kind: kindForEvent(e),
+          start,
+          end: new Date(start.getTime() + (e.durationMinutes || 180) * 60000),
+          title: e.title || "Event",
+          instructorUid,
+        };
+      });
+  } catch (e) {
+    console.error("getInstructorEventsOnDate failed:", e?.message || e);
+    return [];
+  }
+}
+
 /**
  * Whether an instructor is free for the window [start, start+durationMin)
  * (round-5 BUG 6). Tests the FULL window for overlap against every non-blocked
@@ -204,17 +246,26 @@ export async function checkInstructorAvailability(
   bizId = getMyBizId()
 ) {
   const result = { conflict: false, conflictItem: null, outOfHours: false, workingHours: null };
-  if (!bizId || !instructorUid || !(start instanceof Date) || Number.isNaN(start.getTime())) {
+  // KIN-154: bizId is no longer required — only a real instructor + a valid
+  // start time are. Business-scoped items (classes/bookings/blocks) below
+  // still gate on bizId themselves, since a personal host genuinely has none.
+  if (!instructorUid || !(start instanceof Date) || Number.isNaN(start.getTime())) {
     return result;
   }
   const dur = Math.max(5, parseInt(durationMin, 10) || 60);
   const startMs = start.getTime();
   const endMs = startMs + dur * 60000;
 
-  const [items, staff] = await Promise.all([
-    getDayItems(instructorUid, instructorName, start, bizId),
-    listStaff(bizId).catch(() => []),
+  const [crossCuttingEvents, bizItems, staff] = await Promise.all([
+    getInstructorEventsOnDate(instructorUid, start),
+    bizId ? getDayItems(instructorUid, instructorName, start, bizId) : Promise.resolve([]),
+    bizId ? listStaff(bizId).catch(() => []) : Promise.resolve([]),
   ]);
+  // getDayItems's own event-sourced items (source: EVENT) would double-count
+  // the same doc the business-agnostic query above already found — both use
+  // the `event_{id}` id scheme, so dedupe by it.
+  const seen = new Set(crossCuttingEvents.map((it) => it.id));
+  const items = [...crossCuttingEvents, ...bizItems.filter((it) => !seen.has(it.id))];
 
   // BUG 30 Gap A: block-off / "Unavailable" slots now count as conflicts — a
   // block is the instructor saying "don't book me here", the strongest conflict.

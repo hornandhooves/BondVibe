@@ -656,7 +656,8 @@
       "outOfHours": "fuera del horario laboral",
       "bookAnyway": "Reservar de todos modos",
       "skip": "Omitir fechas en conflicto",
-      "goBack": "Volver"
+      "goBack": "Volver",
+      "probeLimited": "Sólo se revisaron las primeras {{checked}} de {{total}} fechas de esta serie en busca de conflictos."
     },
     "draft": {
       "resumeTitle": "¿Retomar borrador?",
