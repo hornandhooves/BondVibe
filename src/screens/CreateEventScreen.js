@@ -57,6 +57,7 @@ import { generateRecurringDates, getRecurrenceSummary } from "../utils/recurrenc
 import DraftWithAI from "../components/ai/DraftWithAI";
 import DurationWheelModal, { formatDuration } from "../components/DurationWheelModal";
 import { formatDate as fmtDate } from "../utils/formatDate";
+import { parsePositiveNumber, isValidNumberInProgress } from "../utils/validation";
 
 // Recurrence handled by modal
 
@@ -531,6 +532,12 @@ export default function CreateEventScreen({ navigation, route }) {
   // existing single-price usage is unchanged; the two-tier inputs pass their own
   // setter to reuse the SAME Stripe guard (kinlo_business/05 §B).
   const handlePriceChange = (priceText, setter = setPrice) => {
+    // KIN-151: reject a keystroke that could never become a valid price
+    // (a lone ".", a second decimal separator, a letter) before it ever
+    // reaches state — cheaper and better UX than letting it through and
+    // catching it later at submit time.
+    if (!isValidNumberInProgress(priceText)) return;
+
     const priceNumber = parseInt(priceText) || 0;
 
     if (priceNumber > 0) {
@@ -652,15 +659,19 @@ export default function CreateEventScreen({ navigation, route }) {
         return;
       }
     }
+    // KIN-151: parsePositiveNumber rejects NaN (a lone ".", "abc", ...) —
+    // the previous `parseFloat(price) <= 0` / `parseInt(priceLocal, 10) <= 0`
+    // guards silently PASSED on invalid input, because any comparison
+    // against NaN is always false, and the raw NaN went on to get persisted.
     if (!isBlocked && !isFree && twoTier) {
-      if (!priceLocal || parseInt(priceLocal, 10) <= 0 || !priceGeneral || parseInt(priceGeneral, 10) <= 0) {
+      if (parsePositiveNumber(priceLocal) === null || parsePositiveNumber(priceGeneral) === null) {
         Alert.alert(
           t("createEvent.validation.invalidPriceTitle"),
           t("createEvent.twoTier.invalidMsg")
         );
         return;
       }
-    } else if (!isBlocked && !isFree && (!price || parseFloat(price) <= 0)) {
+    } else if (!isBlocked && !isFree && parsePositiveNumber(price) === null) {
       Alert.alert(
         t("createEvent.validation.invalidPriceTitle"),
         t("createEvent.validation.invalidPriceMsg")
@@ -884,8 +895,12 @@ export default function CreateEventScreen({ navigation, route }) {
         maxPeople: parseInt(maxPeople) || 0,
         // General price stays canonical (everything that reads `price` keeps
         // working). `priceLocal`/`twoTier` are additive (kinlo_business/05 §B).
-        price: isFree ? 0 : twoTier ? parseInt(priceGeneral, 10) : parseFloat(price),
-        priceLocal: !isFree && twoTier ? parseInt(priceLocal, 10) : null,
+        // KIN-151: never persist a raw parseFloat/parseInt result — the
+        // validation gate above already guarantees these parse to a valid
+        // positive number when !isFree, but `?? 0` keeps this line safe on
+        // its own even if that invariant ever changes.
+        price: isFree ? 0 : twoTier ? (parsePositiveNumber(priceGeneral) ?? 0) : (parsePositiveNumber(price) ?? 0),
+        priceLocal: !isFree && twoTier ? (parsePositiveNumber(priceLocal) ?? 0) : null,
         twoTier: !isFree && twoTier,
         currency: "MXN",
         // Instructor binding (kinlo_business/06 FIX 3): persist on the event too

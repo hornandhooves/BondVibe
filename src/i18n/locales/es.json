@@ -156,7 +156,6 @@
       "subtitle": "Únete a Kinlo y empieza a conectar",
       "namePlaceholder": "Nombre completo",
       "createPasswordPlaceholder": "Crea una contraseña",
-      "confirmPasswordPlaceholder": "Confirmar contraseña",
       "createAccount": "Crear cuenta",
       "creatingAccount": "Creando cuenta...",
       "signUp": "Regístrate",
@@ -176,8 +175,6 @@
       "errors": {
         "missingInfoTitle": "Error",
         "missingInfoMsg": "Completa todos los campos",
-        "passwordMismatchTitle": "Error",
-        "passwordMismatchMsg": "Las contraseñas no coinciden",
         "weakPasswordTitle": "Contraseña débil",
         "weakPasswordMsgPrefix": "La contraseña debe tener: ",
         "weakPasswordShort": "La contraseña debe tener al menos 6 caracteres.",
