@@ -1,15 +1,18 @@
 /**
- * Zero-cost crash/error reporting into Firestore (reuses your existing Firebase
- * — no third party, no native module). Captures unhandled JS errors globally
- * and React render errors (via ErrorBoundary). Writes to the `crashes`
+ * Zero-cost crash/error reporting into Firestore (reuses your existing
+ * Firebase — no third party). Captures unhandled JS errors globally and
+ * React render errors (via ErrorBoundary). Writes to the `crashes`
  * collection (write-only for users; admins read it in the Firebase console).
  *
  * Note: catches JS crashes (the ones behind most "white screens"), not low-level
  * native crashes. Works in Expo Go, dev client and production builds.
+ *
+ * KIN-182: appVersion/buildNumber come from expo-application (the native
+ * binary), not app.json — see the comment at the writeDoc call below.
  */
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { Platform } from "react-native";
-import Constants from "expo-constants";
+import { nativeApplicationVersion, nativeBuildVersion } from "expo-application";
 import { db, auth } from "./firebase";
 
 let installed = false;
@@ -24,7 +27,13 @@ export async function logCrash(error, context = {}) {
       screen: context.screen || null,
       userId: auth.currentUser?.uid || null,
       platform: Platform.OS,
-      appVersion: Constants.expoConfig?.version || null,
+      // KIN-182: read from the native binary (expo-application), not
+      // Constants.expoConfig?.version — that's app.json's static "version"
+      // field, unrelated to which actual build produced this crash.
+      // eas.json has appVersionSource:"remote" with autoIncrement, so the
+      // real build number only ever exists on EAS/the installed binary.
+      appVersion: nativeApplicationVersion || null,
+      buildNumber: nativeBuildVersion || null,
       createdAt: serverTimestamp(),
     });
   } catch (e) {
