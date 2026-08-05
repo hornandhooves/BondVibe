@@ -156,7 +156,6 @@
       "subtitle": "Join Kinlo and start connecting",
       "namePlaceholder": "Full Name",
       "createPasswordPlaceholder": "Create a password",
-      "confirmPasswordPlaceholder": "Confirm Password",
       "createAccount": "Create Account",
       "creatingAccount": "Creating account...",
       "signUp": "Sign Up",
@@ -176,8 +175,6 @@
       "errors": {
         "missingInfoTitle": "Error",
         "missingInfoMsg": "Please fill in all fields",
-        "passwordMismatchTitle": "Error",
-        "passwordMismatchMsg": "Passwords do not match",
         "weakPasswordTitle": "Weak Password",
         "weakPasswordMsgPrefix": "Password must have: ",
         "weakPasswordShort": "Password should be at least 6 characters.",
