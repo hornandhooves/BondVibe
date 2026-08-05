@@ -607,7 +607,11 @@ export default function CreateEventScreen({ navigation, route }) {
     if (!skipAvailabilityCheck && checkUid) {
       const durationMin = parseInt(durationMinutes, 10) || 180;
       const hm = (d) => { const x = new Date(d); return `${String(x.getHours()).padStart(2, "0")}:${String(x.getMinutes()).padStart(2, "0")}`; };
-      // Probe up to a horizon so a long/unbounded series stays snappy.
+      // Probe up to a horizon so a long/unbounded series stays snappy. A
+      // series longer than this (a 52-occurrence weekly series, say) has
+      // dates that were never actually checked — the recurring alert below
+      // says so explicitly when this cap is what limited the check (KIN-154),
+      // rather than implying every date was verified.
       const probe = occurrences.slice(0, 26);
       const conflicts = [];
       for (const occ of probe) {
@@ -620,13 +624,17 @@ export default function CreateEventScreen({ navigation, route }) {
       }
 
       if (conflicts.length > 0) {
-        // Single (non-recurring) event → the existing Cancel / Book anyway prompt.
+        // Single (non-recurring) event → Cancel / Book anyway — UNLESS the
+        // conflict is a same-instructor double-booking (c.item), which is a
+        // hard block per product spec (KIN-154): no bypass button. An
+        // outOfHours-only warning keeps the existing warn-and-allow.
         if (!isRecurringSubmit) {
           const c = conflicts[0];
           const msgs = [];
+          const isHardBlock = !!c.item;
           if (c.item) {
-            const isBlocked = c.item.kind === AGENDA_ITEM_KIND.BLOCKED;
-            msgs.push(t(isBlocked ? "business.agenda.conflictBlockedMsg" : "business.agenda.conflictMsg", {
+            const isBlockedSlot = c.item.kind === AGENDA_ITEM_KIND.BLOCKED;
+            msgs.push(t(isBlockedSlot ? "business.agenda.conflictBlockedMsg" : "business.agenda.conflictMsg", {
               name: instructorName || t("business.agenda.you"),
               title: c.item.title,
               range: `${hm(c.item.start)}–${hm(c.item.end)}`,
@@ -635,14 +643,22 @@ export default function CreateEventScreen({ navigation, route }) {
           if (c.outOfHours) {
             msgs.push(t("business.agenda.outOfHoursMsg", { start: c.outOfHours.start, end: c.outOfHours.end }));
           }
-          Alert.alert(t("business.agenda.placementWarnTitle"), msgs.join("\n\n"), [
-            { text: t("business.common.cancel"), style: "cancel" },
-            { text: t("business.agenda.continueAnyway"), onPress: () => handleCreateEvent(true) },
-          ]);
+          const buttons = isHardBlock
+            ? [{ text: t("business.common.cancel"), style: "cancel" }]
+            : [
+                { text: t("business.common.cancel"), style: "cancel" },
+                { text: t("business.agenda.continueAnyway"), onPress: () => handleCreateEvent(true) },
+              ];
+          Alert.alert(t("business.agenda.placementWarnTitle"), msgs.join("\n\n"), buttons);
           return;
         }
 
         // Recurring → per-date summary + Book anyway / Skip conflicting / Go back.
+        // KIN-154: "Book anyway" would create events INTO a same-instructor
+        // double-booking, so it's dropped entirely when any date has a hard
+        // (c.item) conflict — "Skip conflicting dates" stays available
+        // either way, since it excludes those dates rather than booking
+        // into them.
         const fmtDate = (d) =>
           new Date(d).toLocaleDateString(i18n.language, { weekday: "short", month: "short", day: "numeric" });
         const lines = conflicts.map((c) =>
@@ -652,17 +668,25 @@ export default function CreateEventScreen({ navigation, route }) {
         );
         const skipIso = conflicts.map((c) => c.date.toISOString());
         const cleanCount = occurrences.length - conflicts.length;
-        const buttons = [
-          { text: t("createEvent.recurringConflict.bookAnyway"), onPress: () => handleCreateEvent(true) },
-        ];
+        const hasHardBlock = conflicts.some((c) => c.item);
+        const buttons = [];
+        if (!hasHardBlock) {
+          buttons.push({ text: t("createEvent.recurringConflict.bookAnyway"), onPress: () => handleCreateEvent(true) });
+        }
         if (cleanCount > 0) {
           buttons.push({ text: t("createEvent.recurringConflict.skip"), onPress: () => handleCreateEvent(true, skipIso) });
         }
         buttons.push({ text: t("createEvent.recurringConflict.goBack"), style: "cancel" });
+        // KIN-154: probe.length < occurrences.length means the 26-date cap
+        // actually kicked in — say so, instead of implying every date in a
+        // longer series was checked.
+        const probeCaveat = probe.length < occurrences.length
+          ? "\n\n" + t("createEvent.recurringConflict.probeLimited", { checked: probe.length, total: occurrences.length })
+          : "";
         Alert.alert(
           t("createEvent.recurringConflict.title"),
-          t("createEvent.recurringConflict.summary", { count: conflicts.length, total: occurrences.length }) +
-            "\n\n" + lines.join("\n"),
+          t("createEvent.recurringConflict.summary", { count: conflicts.length, total: probe.length }) +
+            "\n\n" + lines.join("\n") + probeCaveat,
           buttons,
         );
         return;

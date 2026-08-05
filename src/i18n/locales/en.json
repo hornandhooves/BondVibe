@@ -654,7 +654,8 @@
       "outOfHours": "outside working hours",
       "bookAnyway": "Book anyway",
       "skip": "Skip conflicting dates",
-      "goBack": "Go back"
+      "goBack": "Go back",
+      "probeLimited": "Only the first {{checked}} of {{total}} dates in this series were checked for conflicts."
     },
     "draft": {
       "resumeTitle": "Resume draft?",
