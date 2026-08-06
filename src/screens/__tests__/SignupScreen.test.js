@@ -151,5 +151,5 @@ describe("SignupScreen — password field is the last field", () => {
       ),
     );
     await waitFor(() => expect(setDoc).toHaveBeenCalled());
-  }, 15000);
+  });
 });

@@ -19,6 +19,11 @@ jobs:
   test:
     name: Lint + Jest + i18n parity
     runs-on: ubuntu-latest
+    # A wedged jest worker used to sit here until someone noticed and cancelled
+    # by hand (one run burned 70 min of queue, another 10+). The whole job is
+    # ~4 min when healthy, so 20 min means a wedge fails fast and visibly
+    # instead of silently eating the runner queue.
+    timeout-minutes: 20
     # Run in a non-UTC zone (before the node process starts) — duration.test.js's
     # round-5 BUG 4 tz-regression tests require it; setting process.env.TZ at
     # runtime isn't reliably picked up by Node, so it must come from the env.
@@ -50,8 +55,13 @@ jobs:
       - name: EN/ES i18n parity
         run: node scripts/check-i18n-parity.js
 
+      # --maxWorkers=2: the runner has 4 vCPU, so jest's default (cpus-1 = 3)
+      #   oversubscribes it with three RN+firebase+i18n module registries.
+      # --workerIdleMemoryLimit: restarts a worker that balloons instead of
+      #   letting it wedge — the failure mode here was 72 of 73 suites passing
+      #   and the run then sitting forever with live orphan node processes.
       - name: Jest
-        run: CI=true npx jest
+        run: CI=true npx jest --maxWorkers=2 --workerIdleMemoryLimit=512MB
 
       # ── Security + money suites (Firebase Emulator Suite) ─────────────────────
       # test:rules (firestore + storage security rules) and test:payments (money
