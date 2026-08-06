@@ -10,6 +10,7 @@ import {
   Alert,
   Platform,
   Modal,
+  AppState,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
@@ -64,6 +65,10 @@ import { parsePositiveNumber, isValidNumberInProgress } from "../utils/validatio
 // AsyncStorage key for the in-progress event draft (preserved across the
 // "create a membership plan" detour so the host never loses their data).
 const EVENT_DRAFT_KEY = "eventDraft";
+// KIN-153: how long the form must sit idle before the debounced autosave
+// below writes a draft. Named here (not inlined) per Regla 9 — one place to
+// tune it, not a magic number buried in a useEffect.
+const DRAFT_SAVE_DEBOUNCE_MS = 3000;
 
 export default function CreateEventScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
@@ -403,6 +408,48 @@ export default function CreateEventScreen({ navigation, route }) {
     });
     return unsub;
   }, [navigation, persistDraft]);
+
+  // KIN-153: beforeRemove only fires on in-app navigation (header back,
+  // swipe-back) — it never fires if the process is killed while this screen
+  // is still on-screen (swipe-up from the app switcher, or a crash), so a
+  // draft in progress could vanish with zero save attempt. Two
+  // complementary saves close that gap, both reusing the SAME persistDraft
+  // ("backout") — the existing Resume/Discard dialog doesn't change, it
+  // just now reliably finds something written:
+  //
+  // 1) Debounced autosave: after DRAFT_SAVE_DEBOUNCE_MS of no further edits,
+  //    write a draft. This makes AppState timing (below) irrelevant for the
+  //    stated bug — the draft is never more than one debounce window stale,
+  //    kill-with-no-warning included.
+  useEffect(() => {
+    if (submittedRef.current) return;
+    const s = formStateRef.current;
+    const hasContent = !!(s.title?.trim() || s.description?.trim());
+    if (!hasContent) return;
+    const timer = setTimeout(() => persistDraft("backout"), DRAFT_SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [
+    title, description, selectedCategory, selectedLanguages, selectedCity,
+    eventDate, recurrenceConfig, locationDetail, venueAddress, locationCoords,
+    placeId, durationMinutes, maxPeople, isFree, price, eventImages,
+    acceptsMembership, agendaType, listedPublicly, persistDraft,
+  ]);
+
+  // 2) AppState: save immediately on backgrounding, instead of waiting out
+  //    the debounce window — most real app kills go through background/
+  //    inactive first (iOS/Android both suspend before terminating), so this
+  //    is the primary, near-instant guard; the debounced save above is the
+  //    backstop for the narrower true-foreground-kill/crash case.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (nextState) => {
+      if (nextState !== "background" && nextState !== "inactive") return;
+      if (submittedRef.current) return;
+      const s = formStateRef.current;
+      const hasContent = !!(s.title?.trim() || s.description?.trim());
+      if (hasContent) persistDraft("backout");
+    });
+    return () => sub.remove();
+  }, [persistDraft]);
 
   const formatDate = (date) =>
     fmtDate(date, { month: "short", day: "numeric", year: "numeric" });
