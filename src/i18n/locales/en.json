@@ -269,6 +269,12 @@
       "empty": "No upcoming events",
       "error": "Couldn't load events",
       "retry": "Retry"
+    },
+    "featuredEvents": {
+      "title": "Featured events near you"
+    },
+    "featuredServices": {
+      "title": "Featured services near you"
     }
   },
   "wall": {

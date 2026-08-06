@@ -90,10 +90,24 @@ describe("HomeScreen", () => {
     expect(queryByText("Admin Dashboard")).toBeNull();
   });
 
-  it("renders the Events and Services carousels", async () => {
+  it("KIN-184: no longer renders the retired organic Events/Services carousels", async () => {
+    const { queryByText, getByText } = render(<HomeScreen navigation={nav} />);
+    // Something from the screen must be on-screen before asserting an
+    // absence means anything (otherwise this would pass on a blank screen).
+    await waitFor(() => expect(getByText("Test User")).toBeTruthy());
+    expect(queryByText("Events near you")).toBeNull();
+    expect(queryByText("Services near you")).toBeNull();
+  });
+
+  it("KIN-184: Featured Events renders nothing when there are no featured events (no fixed gap)", async () => {
+    const { queryByText, getByText } = render(<HomeScreen navigation={nav} />);
+    await waitFor(() => expect(getByText("Test User")).toBeTruthy());
+    expect(queryByText("Featured events near you")).toBeNull();
+  });
+
+  it("KIN-184: Browse by Community always renders, regardless of Featured Events", async () => {
     const { getByText } = render(<HomeScreen navigation={nav} />);
-    await waitFor(() => expect(getByText("Events near you")).toBeTruthy());
-    expect(getByText("Services near you")).toBeTruthy();
+    await waitFor(() => expect(getByText("BROWSE BY COMMUNITY")).toBeTruthy());
   });
 
   it("navigates to a category when its card is pressed", async () => {

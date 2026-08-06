@@ -269,6 +269,12 @@
       "empty": "No hay eventos próximos",
       "error": "No se pudieron cargar los eventos",
       "retry": "Reintentar"
+    },
+    "featuredEvents": {
+      "title": "Destacados cerca de ti"
+    },
+    "featuredServices": {
+      "title": "Servicios destacados cerca de ti"
     }
   },
   "wall": {
