@@ -19,6 +19,7 @@ import { BRAND, ELEVATION } from "../constants/theme-tokens";
 import { useFocusEffect } from "@react-navigation/native";
 import BirthdayReminders from "../components/BirthdayReminders";
 import FeaturedEventsRow from "../components/FeaturedEventsRow";
+import FeaturedServicesRow from "../components/FeaturedServicesRow";
 import { EVENT_CATEGORIES } from "../utils/eventCategories";
 import Icon, { getCategoryIcon } from "../components/Icon";
 import RatingModal from "../components/RatingModal";
@@ -27,7 +28,7 @@ import GradientBackground from "../components/GradientBackground";
 import { BVCard } from "../components/BoldPop";
 
 // Home order: greeting → digest → search → Featured Events → Featured Services
-// (KIN-185, always empty until that ticket wires it) → Rate experiences →
+// → Rate experiences →
 // Browse by community (+ host-mode Create FAB). KIN-184: Featured Events/
 // Services replace the old organic "Events near you"/"Services near you"
 // carousels (EventsRow/MarketplaceRow, no longer used here — see git history
@@ -51,15 +52,14 @@ export default function HomeScreen({ navigation }) {
   // exposes via ref, not by lifting their state up.
   const [refreshing, setRefreshing] = useState(false);
   const featuredEventsRowRef = useRef(null);
+  const featuredServicesRowRef = useRef(null);
 
-  // KIN-184: the organic "Events near you" / "Services near you" carousels
-  // (EventsRow/MarketplaceRow) are replaced by up to three horizontal bars —
-  // Featured Events, Featured Services, Browse by Community — that push up
-  // when a bar above has nothing to show. This ticket builds the Events
-  // side only; Featured Services (KIN-185) isn't built here — the slot
-  // below is deliberately left so KIN-185 doesn't have to touch this
-  // layout again, just populate setFeaturedServices from its own service.
-  const [featuredServices] = useState([]);
+  // KIN-184/185: the organic "Events near you" / "Services near you"
+  // carousels (EventsRow/MarketplaceRow) are replaced by up to three
+  // horizontal bars — Featured Events, Featured Services, Browse by
+  // Community — that push up when a bar above has nothing to show. Each bar
+  // owns its own data and returns null when empty, which is what makes them
+  // close the gap; Home holds only their refs, for pull-to-refresh.
 
   const loadUser = useCallback(async () => {
     if (!auth.currentUser) return;
@@ -100,6 +100,7 @@ export default function HomeScreen({ navigation }) {
         loadUser(),
         loadPendingRatings(),
         featuredEventsRowRef.current?.reload(),
+        featuredServicesRowRef.current?.reload(),
       ]);
     } finally {
       setRefreshing(false);
@@ -195,15 +196,16 @@ export default function HomeScreen({ navigation }) {
             never applied a beat late (city comes off the user doc). */}
         {user && <FeaturedEventsRow ref={featuredEventsRowRef} navigation={navigation} city={userCity} />}
 
-        {/* Featured Services slot (KIN-185) — reserved so that ticket doesn't
-            need to touch this layout; always empty until KIN-185 wires
-            setFeaturedServices from its own service. */}
-        {featuredServices.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitleInline, { color: colors.textTertiary }]}>
-              {t("home.featuredServices.title")}
-            </Text>
-          </View>
+        {/* Featured Services (KIN-185) — fills the slot KIN-184 reserved.
+            Owns its own data and renders null when empty, so the bars above
+            and below still close the gap. Gated on `user` for the same
+            reason as Featured Events: the city comes off the user doc. */}
+        {user && (
+          <FeaturedServicesRow
+            ref={featuredServicesRowRef}
+            navigation={navigation}
+            city={userCity}
+          />
         )}
 
         {/* Rate experiences — nudge to rate past events */}

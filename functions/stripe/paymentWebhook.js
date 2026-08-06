@@ -192,7 +192,13 @@ async function handlePaymentSuccess(paymentIntent) {
   }
 
   if (type === "promotion") {
-    return handlePromotionPurchase(paymentIntent);
+    // KIN-185: promotions now cover services too. `target` is absent on every
+    // event promotion sold before this shipped, so undefined must keep meaning
+    // "event" — otherwise an in-flight PaymentIntent bought minutes before the
+    // deploy would land in the wrong handler.
+    return metadata.target === "service" ?
+      handleServicePromotionPurchase(paymentIntent) :
+      handlePromotionPurchase(paymentIntent);
   }
 
   if (type === "rental") {
@@ -362,6 +368,110 @@ async function handlePromotionPurchase(paymentIntent) {
   }
 
   console.log("✅ Promotion processing complete; featured until", expiresAt);
+}
+
+/**
+ * KIN-185 — the service equivalent of handlePromotionPurchase: feature a
+ * public sessionType for the purchased window. Same shared catalog, same
+ * "platform keeps 100%", same extend-don't-reset rule for a listing that is
+ * still featured. Kept separate from the event handler because the document
+ * being featured lives somewhere else entirely
+ * (businesses/{bizId}/sessionTypes/{id}, not events/{id}).
+ * @param {Object} paymentIntent - Stripe PaymentIntent object
+ * @return {Promise<void>}
+ */
+async function handleServicePromotionPurchase(paymentIntent) {
+  const {id: paymentIntentId, amount, currency, metadata} = paymentIntent;
+  const {bizId, sessionTypeId, serviceName, planId, tier, hostId} = metadata;
+  const days = parseInt(metadata.days, 10) || 7;
+
+  console.log("⭐ Processing service promotion:", paymentIntentId);
+  if (!bizId || !sessionTypeId || !hostId) {
+    throw new Error("Missing service promotion metadata in payment intent");
+  }
+
+  // Idempotency — Stripe retries this webhook, and a second delivery must not
+  // extend the window a second time.
+  const existing = await db.collection("payments").doc(paymentIntentId).get();
+  if (existing.exists) {
+    console.log("⏭️ Service promotion already processed, skipping");
+    return;
+  }
+
+  const now = new Date();
+  const stRef = db.collection("businesses").doc(bizId)
+    .collection("sessionTypes").doc(sessionTypeId);
+  // Extend from the current expiry when still featured, so buying more time
+  // adds to it instead of resetting (and shortening) it.
+  const stSnap = await stRef.get();
+  const curUntil = stSnap.exists ? stSnap.data().featuredUntil : null;
+  const curMs = curUntil && curUntil.toMillis ? curUntil.toMillis() : 0;
+  const base = curMs > now.getTime() ? new Date(curMs) : now;
+  const expiresAt = new Date(base);
+  expiresAt.setDate(expiresAt.getDate() + days);
+
+  // 1. Payment record
+  await db.collection("payments").doc(paymentIntentId).set({
+    paymentIntentId,
+    userId: hostId,
+    hostId,
+    bizId,
+    sessionTypeId,
+    serviceName: serviceName || "",
+    planId,
+    type: "promotion",
+    target: "service",
+    amount,
+    currency,
+    status: "succeeded",
+    createdAt: FieldValue.serverTimestamp(),
+    metadata,
+  });
+
+  // 2. Feature the listing (server-only fields)
+  await stRef.update({
+    featured: true,
+    featuredTier: tier || "standard",
+    featuredUntil: Timestamp.fromDate(expiresAt),
+  });
+
+  // 3. Promotion record
+  await db.collection("promotions").add({
+    hostId,
+    bizId,
+    sessionTypeId,
+    target: "service",
+    serviceName: serviceName || "",
+    planId,
+    tier: tier || "standard",
+    amountCentavos: amount,
+    startsAt: Timestamp.fromDate(now),
+    expiresAt: Timestamp.fromDate(expiresAt),
+    paymentId: paymentIntentId,
+    status: "active",
+    createdAt: FieldValue.serverTimestamp(),
+  });
+
+  // 4. Notify the host. BUG 34: forward key + params, never a pre-rendered
+  // string — the reader picks the language, not the writer.
+  {
+    const params = {event: serviceName || "", days};
+    await db.collection("notifications").add({
+      userId: hostId,
+      type: "promotion_active",
+      title: tPush("notifications.payment.featured.title", "en", params),
+      message: tPush("notifications.payment.featured.body", "en", params),
+      titleKey: "notifications.payment.featured.title",
+      bodyKey: "notifications.payment.featured.body",
+      params,
+      icon: "⭐",
+      read: false,
+      createdAt: FieldValue.serverTimestamp(),
+      metadata: {bizId, sessionTypeId},
+    });
+  }
+
+  console.log("✅ Service promotion complete; featured until", expiresAt);
 }
 
 /**

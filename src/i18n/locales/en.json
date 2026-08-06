@@ -1509,6 +1509,8 @@
       "city": "City",
       "publishCta": "Publish to marketplace",
       "saveCta": "Save changes",
+      "featureCta": "Feature this service",
+      "featureHint": "Paid placement on Home for people near you.",
       "nameRequired": "Give your service a name.",
       "categoryRequired": "Pick a category.",
       "verifyBlock": "Get your business verified + insured to publish at-home services.",
