@@ -19,6 +19,11 @@ jobs:
   test:
     name: Lint + Jest + i18n parity
     runs-on: ubuntu-latest
+    # A wedged jest worker used to sit here until someone noticed and cancelled
+    # by hand (one run burned 70 min of queue, another 10+). The whole job is
+    # ~4 min when healthy, so 20 min means a wedge fails fast and visibly
+    # instead of silently eating the runner queue.
+    timeout-minutes: 20
     # Run in a non-UTC zone (before the node process starts) — duration.test.js's
     # round-5 BUG 4 tz-regression tests require it; setting process.env.TZ at
     # runtime isn't reliably picked up by Node, so it must come from the env.
@@ -50,8 +55,20 @@ jobs:
       - name: EN/ES i18n parity
         run: node scripts/check-i18n-parity.js
 
+      # --runInBand: no worker processes at all. The hang this replaces was
+      # ALWAYS a wedged worker, never a wedged test — every run got 71-72 of
+      # 72 suites reporting PASS in ~75 s and then sat in total silence until
+      # cancelled (11 min once), with live orphan `node` workers at cleanup.
+      # The stuck suite was a different one each time (personalityInterpret,
+      # then businessSessions.marketplace), so no test was at fault: it was
+      # whichever suite the last worker happened to hold. testTimeout never
+      # fired because the wedge isn't inside a test body, so no per-test
+      # timeout can rescue it — the only reliable fix is not forking workers.
+      # It costs little: 72 suites / 746 tests run in-band in ~32 s locally
+      # vs ~21 s with workers, and the parallel version's real-world cost was
+      # a 20-minute hang.
       - name: Jest
-        run: CI=true npx jest
+        run: CI=true npx jest --runInBand
 
       # ── Security + money suites (Firebase Emulator Suite) ─────────────────────
       # test:rules (firestore + storage security rules) and test:payments (money
