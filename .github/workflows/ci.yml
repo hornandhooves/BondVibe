@@ -55,13 +55,20 @@ jobs:
       - name: EN/ES i18n parity
         run: node scripts/check-i18n-parity.js
 
-      # --maxWorkers=2: the runner has 4 vCPU, so jest's default (cpus-1 = 3)
-      #   oversubscribes it with three RN+firebase+i18n module registries.
-      # --workerIdleMemoryLimit: restarts a worker that balloons instead of
-      #   letting it wedge — the failure mode here was 72 of 73 suites passing
-      #   and the run then sitting forever with live orphan node processes.
+      # --runInBand: no worker processes at all. The hang this replaces was
+      # ALWAYS a wedged worker, never a wedged test — every run got 71-72 of
+      # 72 suites reporting PASS in ~75 s and then sat in total silence until
+      # cancelled (11 min once), with live orphan `node` workers at cleanup.
+      # The stuck suite was a different one each time (personalityInterpret,
+      # then businessSessions.marketplace), so no test was at fault: it was
+      # whichever suite the last worker happened to hold. testTimeout never
+      # fired because the wedge isn't inside a test body, so no per-test
+      # timeout can rescue it — the only reliable fix is not forking workers.
+      # It costs little: 72 suites / 746 tests run in-band in ~32 s locally
+      # vs ~21 s with workers, and the parallel version's real-world cost was
+      # a 20-minute hang.
       - name: Jest
-        run: CI=true npx jest --maxWorkers=2 --workerIdleMemoryLimit=512MB
+        run: CI=true npx jest --runInBand
 
       # ── Security + money suites (Firebase Emulator Suite) ─────────────────────
       # test:rules (firestore + storage security rules) and test:payments (money
