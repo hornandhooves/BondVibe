@@ -1509,6 +1509,8 @@
       "city": "Ciudad",
       "publishCta": "Publicar en el marketplace",
       "saveCta": "Guardar cambios",
+      "featureCta": "Destacar este servicio",
+      "featureHint": "Colocación pagada en Inicio para quienes están cerca de ti.",
       "nameRequired": "Ponle un nombre a tu servicio.",
       "categoryRequired": "Elige una categoría.",
       "verifyBlock": "Verifica y asegura tu negocio para publicar servicios a domicilio.",

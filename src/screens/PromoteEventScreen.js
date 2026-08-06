@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Icon from "../components/Icon";
 import {
   View,
@@ -20,21 +20,47 @@ import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import {
   PROMOTION_PLANS,
+  getFeaturedPlans,
   formatPromoPrice,
   createPromotionPaymentIntent,
+  createServicePromotionPaymentIntent,
 } from "../services/promotionService";
 
 export default function PromoteEventScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const { confirmPayment } = useConfirmPayment();
-  const { eventId, eventTitle } = route.params || {};
+  // KIN-185: this screen now sells featured placement for EITHER an event or
+  // a service — same ladder, same charge, same webhook. A service is
+  // identified by bizId + sessionTypeId; with neither present this behaves
+  // exactly as it did for events.
+  const { eventId, eventTitle, bizId, sessionTypeId, serviceName } =
+    route.params || {};
+  const isService = !!(bizId && sessionTypeId);
+  const targetTitle = isService ? serviceName : eventTitle;
 
+  // Seeded with the bundled fallback so the ladder renders immediately, then
+  // replaced by config/featuredPricing — never an empty list or a "$0" flash.
+  const [plans, setPlans] = useState(PROMOTION_PLANS);
   const [selectedPlan, setSelectedPlan] = useState(PROMOTION_PLANS[0].id);
   const [cardComplete, setCardComplete] = useState(false);
   const [processing, setProcessing] = useState(false);
 
-  const plan = PROMOTION_PLANS.find((p) => p.id === selectedPlan);
+  useEffect(() => {
+    let alive = true;
+    // Display-only: the server re-reads the same catalog when it builds the
+    // PaymentIntent, so a stale price here can misdisplay but never mischarge.
+    getFeaturedPlans()
+      .then((live) => {
+        if (alive && live.length) setPlans(live);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const plan = plans.find((p) => p.id === selectedPlan) || plans[0];
 
   const handlePay = async () => {
     if (!cardComplete) {
@@ -44,7 +70,9 @@ export default function PromoteEventScreen({ route, navigation }) {
     Keyboard.dismiss();
     setProcessing(true);
     try {
-      const intent = await createPromotionPaymentIntent(eventId, selectedPlan);
+      const intent = isService
+        ? await createServicePromotionPaymentIntent(bizId, sessionTypeId, selectedPlan)
+        : await createPromotionPaymentIntent(eventId, selectedPlan);
       if (!intent.success) {
         Alert.alert(t("promoteEvent.couldntStartTitle"), intent.error || t("promoteEvent.tryAgain"));
         setProcessing(false);
@@ -61,7 +89,7 @@ export default function PromoteEventScreen({ route, navigation }) {
       await new Promise((r) => setTimeout(r, 2000));
       Alert.alert(
         t("promoteEvent.featuredTitle"),
-        t("promoteEvent.featuredMsg", { title: eventTitle, days: plan.days }),
+        t("promoteEvent.featuredMsg", { title: targetTitle, days: plan.days }),
         [{ text: t("promoteEvent.done"), onPress: () => navigation.goBack() }]
       );
     } catch (e) {
@@ -106,9 +134,9 @@ export default function PromoteEventScreen({ route, navigation }) {
                 <Text style={[styles.heroSub, { color: colors.textSecondary }]}>
                   {t("promoteEvent.heroSub")}
                 </Text>
-                {!!eventTitle && (
+                {!!targetTitle && (
                   <Text style={[styles.eventName, { color: colors.primary }]} numberOfLines={1}>
-                    {eventTitle}
+                    {targetTitle}
                   </Text>
                 )}
               </View>
@@ -116,7 +144,7 @@ export default function PromoteEventScreen({ route, navigation }) {
               <Text style={[styles.label, { color: colors.textSecondary }]}>
                 {t("promoteEvent.chooseDuration")}
               </Text>
-              {PROMOTION_PLANS.map((p) => {
+              {plans.map((p) => {
                 const selected = p.id === selectedPlan;
                 return (
                   <TouchableOpacity

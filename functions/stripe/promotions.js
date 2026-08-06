@@ -1,21 +1,35 @@
 /**
- * Featured-event promotion plans (platform-owned catalog).
+ * Featured-EVENT promotion plans.
+ *
+ * KIN-185 moved the catalog itself to ./featuredPricing, which events and
+ * services now share (one admin-editable ladder instead of two that drift).
+ * This module stays as the events-facing entry point so existing callers keep
+ * their import, and so the events surface has somewhere to put anything that
+ * is genuinely event-only later.
+ *
  * The platform keeps 100% of these fees — they are NOT split with the host.
  */
 
-const PROMOTION_PLANS = {
-  feat_7: {id: "feat_7", days: 7, priceCentavos: 9900, tier: "standard", label: "7 days featured"},
-  feat_14: {id: "feat_14", days: 14, priceCentavos: 17900, tier: "standard", label: "14 days featured"},
-  feat_30: {id: "feat_30", days: 30, priceCentavos: 29900, tier: "standard", label: "30 days featured"},
-};
+const {
+  FEATURED_PLAN_DEFAULTS,
+  getFeaturedCatalog,
+  getFeaturedPlan,
+} = require("./featuredPricing");
 
 /**
- * Look up a promotion plan by id.
+ * Look up a promotion plan by id, with the admin config applied.
+ * ASYNC as of KIN-185 — the price now comes from config/featuredPricing.
  * @param {string} planId
- * @return {object|null}
+ * @return {Promise<Object|null>}
  */
 function getPromotionPlan(planId) {
-  return PROMOTION_PLANS[planId] || null;
+  return getFeaturedPlan(planId);
 }
 
-module.exports = {PROMOTION_PLANS, getPromotionPlan};
+module.exports = {
+  // Kept as the fallback ladder for anything that needs the shape without a
+  // Firestore read; the live prices come from getPromotionPlan/getFeaturedCatalog.
+  PROMOTION_PLANS: FEATURED_PLAN_DEFAULTS,
+  getPromotionPlan,
+  getFeaturedCatalog,
+};
