@@ -146,10 +146,12 @@ describe("CreateEventScreen — KIN-153 draft persistence", () => {
 
   it("debounced autosave: writes a draft after DRAFT_SAVE_DEBOUNCE_MS of no further edits (no AppState transition needed)", async () => {
     jest.useFakeTimers();
+    // Held so the finally can unmount BEFORE real timers come back — see below.
+    let view;
     try {
-      const { getByPlaceholderText } = render(<CreateEventScreen navigation={navigation} route={route} />);
+      view = render(<CreateEventScreen navigation={navigation} route={route} />);
       await act(async () => {
-        fireEvent.changeText(getByPlaceholderText("What's your event called?"), "Debounced Event");
+        fireEvent.changeText(view.getByPlaceholderText("What's your event called?"), "Debounced Event");
       });
 
       expect(AsyncStorage.setItem).not.toHaveBeenCalled();
@@ -162,6 +164,18 @@ describe("CreateEventScreen — KIN-153 draft persistence", () => {
       const [, payload] = AsyncStorage.setItem.mock.calls.find(([k]) => k === "eventDraft");
       expect(JSON.parse(payload).title).toBe("Debounced Event");
     } finally {
+      // This teardown order is load-bearing, not tidiness: this file used to
+      // just call useRealTimers() here and let RNTL's afterEach unmount
+      // afterwards. That left the screen mounted across the swap, so React's
+      // scheduler kept work queued against a fake clock that no longer
+      // advances — and the whole jest PROCESS wedged right after this suite
+      // reported PASS. On CI that ate 20-minute runs (in-band: 10 of 72
+      // suites, then 19 min of silence; with workers: whichever suite that
+      // worker was holding never ran). It never reproduced locally, where
+      // the pending work happened to drain. Unmount under the fake clock,
+      // drop what's still queued, and only then hand the timers back.
+      if (view) view.unmount();
+      jest.clearAllTimers();
       jest.useRealTimers();
     }
   });
