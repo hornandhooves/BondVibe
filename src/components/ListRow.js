@@ -7,7 +7,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import Icon from "./Icon";
 import { useTheme } from "../contexts/ThemeContext";
-import { TYPE, SPACING, RADII } from "../constants/theme-tokens";
+import { TYPE, SPACING, RADII, FONTS } from "../constants/theme-tokens";
 
 export default function ListRow({
   icon,
@@ -89,6 +89,6 @@ const styles = StyleSheet.create({
   textWrap: { flex: 1, gap: 1 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   badge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 7 },
-  badgeText: { fontSize: 10, fontWeight: "800", letterSpacing: 0.3, textTransform: "uppercase" },
+  badgeText: { fontFamily: FONTS.bodyExtra, fontSize: 10, letterSpacing: 0.3, textTransform: "uppercase" },
   divider: { height: StyleSheet.hairlineWidth, marginLeft: 64 },
 });

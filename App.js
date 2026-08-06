@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Platform, Linking, LogBox } from "react-native";
 import "./src/i18n"; // initialize i18next before any screen renders
 import { joinGroupByCode } from "./src/services/hostGroupService";
@@ -8,6 +8,7 @@ import { ThemeProvider } from "./src/contexts/ThemeContext";
 import { BusinessScopeProvider } from "./src/contexts/BusinessScopeContext";
 import { BusinessProvider } from "./src/contexts/BusinessContext";
 import AppNavigator from "./src/navigation/AppNavigator";
+import AppSplash from "./src/components/AppSplash";
 import KeyboardAccessory from "./src/components/KeyboardAccessory";
 import ErrorBoundary from "./src/components/ErrorBoundary";
 import { installCrashLogger } from "./src/services/crashLogger";
@@ -31,16 +32,17 @@ initAppCheck();
 LogBox.ignoreAllLogs(true);
 import { useFonts } from "expo-font";
 import {
-  SpaceGrotesk_600SemiBold,
-  SpaceGrotesk_700Bold,
-} from "@expo-google-fonts/space-grotesk";
+  Domine_400Regular,
+  Domine_600SemiBold,
+  Domine_700Bold,
+} from "@expo-google-fonts/domine";
 import {
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
-} from "@expo-google-fonts/plus-jakarta-sans";
+  PublicSans_400Regular,
+  PublicSans_500Medium,
+  PublicSans_600SemiBold,
+  PublicSans_700Bold,
+  PublicSans_800ExtraBold,
+} from "@expo-google-fonts/public-sans";
 
 // Configure how notifications are handled when app is in foreground
 Notifications.setNotificationHandler({
@@ -77,14 +79,25 @@ function App() {
   const responseListener = useRef();
 
   const [fontsLoaded] = useFonts({
-    SpaceGrotesk_600SemiBold,
-    SpaceGrotesk_700Bold,
-    PlusJakartaSans_400Regular,
-    PlusJakartaSans_500Medium,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_700Bold,
-    PlusJakartaSans_800ExtraBold,
+    Domine_400Regular,
+    Domine_600SemiBold,
+    Domine_700Bold,
+    PublicSans_400Regular,
+    PublicSans_500Medium,
+    PublicSans_600SemiBold,
+    PublicSans_700Bold,
+    PublicSans_800ExtraBold,
   });
+
+  // Fonts (especially on a warm cache) can resolve in well under 200ms —
+  // too fast for the splash's pulse to ever actually be seen. A short
+  // minimum hold gives the brand moment an intentional presence instead of
+  // an imperceptible flash.
+  const [minSplashElapsed, setMinSplashElapsed] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setMinSplashElapsed(true), 900);
+    return () => clearTimeout(id);
+  }, []);
 
   useEffect(() => {
     // Verify Stripe key on app start
@@ -331,7 +344,7 @@ function App() {
     }
   };
 
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded || !minSplashElapsed) return <AppSplash />;
 
   return (
     <ErrorBoundary>

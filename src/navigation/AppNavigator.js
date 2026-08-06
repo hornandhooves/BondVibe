@@ -23,6 +23,7 @@ import useCanManageBusiness from "../hooks/useCanManageBusiness";
 import SuccessModal from "../components/SuccessModal";
 import AppHeader from "../components/AppHeader";
 import Icon from "../components/Icon";
+import { FONTS } from "../constants/theme-tokens";
 
 // Auth Screens
 import WelcomeScreen from "../screens/WelcomeScreen";
@@ -265,7 +266,7 @@ function MainTabs() {
           component={BusinessTabPlaceholder}
           options={{
             tabBarBadge: "PRO",
-            tabBarBadgeStyle: { backgroundColor: colors.primary, color: "#fff", fontSize: 8, fontWeight: "800" },
+            tabBarBadgeStyle: { backgroundColor: colors.primary, color: "#fff", fontSize: 8, fontFamily: FONTS.bodyExtra },
           }}
           listeners={({ navigation }) => ({
             tabPress: (e) => {

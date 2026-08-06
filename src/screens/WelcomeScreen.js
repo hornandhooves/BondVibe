@@ -2,196 +2,165 @@ import React from 'react';
 import {
   View,
   Text,
+  Image,
+  ImageBackground,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import { useTheme } from '../contexts/ThemeContext';
 import { useTranslation } from "react-i18next";
-import GradientBackground from "../components/GradientBackground";
-import BondVibeLogo from "../components/BondVibeLogo";
-import BondMark from "../components/BondMark";
-import Icon from "../components/Icon";
-import LanguagePill from "../components/LanguagePill";
+import { FONTS, WORDMARK_FONT } from '../constants/theme-tokens';
+
+// PIXEL-FIDELITY SPEC: coral sampled from the Kinlo mark's terracotta petal
+// (assets/kinlo-logo-icon.png) — not a theme token, this screen is a fixed
+// photo hero and doesn't adapt to light/dark theme.
+const CORAL = '#C86D4A';
+// 07/Buttons spec: Pressed = a darker shade of the default fill (~20% darker),
+// same pattern as the design system's dark-green primary button.
+const CORAL_PRESSED = '#A0573B';
 
 export default function WelcomeScreen({ navigation }) {
-  const { colors, isDark } = useTheme();
   const { t } = useTranslation();
 
-  const styles = createStyles(colors);
-
   return (
-    <GradientBackground>
-      <StatusBar style={isDark ? "light" : "dark"} />
+    <View style={styles.container}>
+      <StatusBar style="light" />
+      <ImageBackground
+        source={require('../../assets/welcome-page-ui-mobile.png')}
+        style={styles.background}
+        resizeMode="cover"
+      >
+        <LinearGradient
+          colors={['rgba(8,6,5,0.05)', 'rgba(8,6,5,0.35)', 'rgba(6,5,4,0.94)']}
+          locations={[0, 0.55, 1]}
+          style={StyleSheet.absoluteFillObject}
+        />
 
-      {/* Language pill — top-right, pre-filled from device locale */}
-      <View style={styles.topBar}>
-        <LanguagePill />
-      </View>
-
-      {/* Content */}
-      <View style={styles.content}>
-        {/* Logo/Hero */}
-        <View style={styles.heroSection}>
-          <View style={styles.heroLogo}>
-            <BondVibeLogo size={96} variant="withBackground" />
+        <View style={styles.content}>
+          {/* Hero mark */}
+          <View style={styles.heroSection}>
+            <Image
+              source={require('../../assets/kinlo-logo-icon-white.png')}
+              style={styles.logoMark}
+              resizeMode="contain"
+            />
+            <Text style={styles.wordmark}>KINLO</Text>
           </View>
-          <Text style={[styles.appName, { color: colors.text }]}>Kinlo</Text>
-          <Text style={[styles.tagline, { color: colors.textSecondary }]}>
-            {t("welcome.tagline")}
-          </Text>
+
+          {/* Copy + actions */}
+          <View style={styles.bottomSection}>
+            <Text style={styles.headline}>{t("welcome.headline")}</Text>
+            <Text style={styles.subtitle}>{t("welcome.subtitle")}</Text>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.primaryButton,
+                pressed && styles.primaryButtonPressed,
+              ]}
+              onPress={() => navigation.navigate('Signup')}
+            >
+              <Text style={styles.primaryButtonText}>{t("welcome.getStarted")}</Text>
+            </Pressable>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Login')}
+              activeOpacity={0.7}
+              style={styles.loginRow}
+            >
+              <Text style={styles.loginText}>
+                {t("welcome.haveAccountPrompt")}{' '}
+                <Text style={styles.loginLink}>{t("welcome.login")}</Text>
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-
-        {/* Features */}
-        <View style={styles.featuresSection}>
-          <View style={styles.feature}>
-            <View style={styles.featureIconTile}>
-              <Icon name="users" size={22} color={colors.primary} />
-            </View>
-            <Text style={[styles.featureText, { color: colors.text }]}>
-              {t("welcome.groupEvents")}
-            </Text>
-          </View>
-          <View style={styles.feature}>
-            <View style={styles.featureIconTile}>
-              <BondMark size={22} />
-            </View>
-            <Text style={[styles.featureText, { color: colors.text }]}>
-              {t("welcome.personalityMatching")}
-            </Text>
-          </View>
-          <View style={styles.feature}>
-            <View style={styles.featureIconTile}>
-              <Icon name="privacy" size={22} color={colors.primary} />
-            </View>
-            <Text style={[styles.featureText, { color: colors.text }]}>
-              {t("welcome.safeAndInclusive")}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Bottom Actions */}
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate('Signup')}
-        >
-          <View style={[styles.primaryGlass, {
-            backgroundColor: `${colors.primary}33`,
-            borderColor: `${colors.primary}66`
-          }]}>
-            <Text style={[styles.primaryButtonText, { color: colors.primary }]}>
-              {t("welcome.getStarted")}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={() => navigation.navigate('Login')}
-        >
-          <View style={[styles.secondaryGlass, {
-            backgroundColor: colors.surfaceGlass,
-            borderColor: colors.border
-          }]}>
-            <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
-              {t("welcome.haveAccount")}
-            </Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-    </GradientBackground>
+      </ImageBackground>
+    </View>
   );
 }
 
-function createStyles(colors) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    topBar: {
-      flexDirection: "row",
-      justifyContent: "flex-end",
-      paddingHorizontal: 20,
-      paddingTop: 60,
-    },
-    content: {
-      flex: 1,
-      justifyContent: 'center',
-      paddingHorizontal: 32,
-    },
-    heroSection: {
-      alignItems: 'center',
-      marginBottom: 60,
-    },
-    heroLogo: {
-      marginBottom: 24,
-    },
-    appName: {
-      fontSize: 48,
-      fontWeight: '700',
-      marginBottom: 12,
-      letterSpacing: -1,
-    },
-    tagline: {
-      fontSize: 16,
-      textAlign: 'center',
-      lineHeight: 24,
-    },
-    featuresSection: {
-      gap: 20,
-    },
-    feature: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 16,
-    },
-    featureIconTile: {
-      width: 44,
-      height: 44,
-      borderRadius: 12,
-      backgroundColor: colors.brandSoft,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    featureText: {
-      fontSize: 16,
-      fontWeight: '600',
-      letterSpacing: -0.2,
-    },
-    actions: {
-      paddingHorizontal: 32,
-      paddingBottom: 50,
-      gap: 12,
-    },
-    primaryButton: {
-      borderRadius: 16,
-      overflow: 'hidden',
-    },
-    primaryGlass: {
-      borderWidth: 1,
-      paddingVertical: 18,
-      alignItems: 'center',
-    },
-    primaryButtonText: {
-      fontSize: 17,
-      fontWeight: '700',
-      letterSpacing: -0.2,
-    },
-    secondaryButton: {
-      borderRadius: 16,
-      overflow: 'hidden',
-    },
-    secondaryGlass: {
-      borderWidth: 1,
-      paddingVertical: 18,
-      alignItems: 'center',
-    },
-    secondaryButtonText: {
-      fontSize: 17,
-      fontWeight: '600',
-      letterSpacing: -0.2,
-    },
-  });
-}
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  background: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  heroSection: {
+    alignItems: 'center',
+    paddingTop: 140,
+  },
+  logoMark: {
+    width: 88,
+    height: 88,
+    marginBottom: 16,
+  },
+  wordmark: {
+    fontFamily: WORDMARK_FONT,
+    fontSize: 22,
+    color: '#FFFFFF',
+    letterSpacing: 6,
+    // RN's <Text> has no native stroke — approximated with a soft dark halo
+    // in place of the spec's 1pt stroke, for legibility over the photo.
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 1,
+  },
+  bottomSection: {
+    // Mobile Grid spec: 390×844 screen, margin 16px.
+    paddingHorizontal: 16,
+    paddingBottom: 50,
+  },
+  headline: {
+    fontFamily: FONTS.heroSerif,
+    fontSize: 30,
+    lineHeight: 36,
+    color: '#FFFFFF',
+    marginBottom: 12,
+  },
+  subtitle: {
+    fontFamily: FONTS.heroSans,
+    fontSize: 14,
+    lineHeight: 20,
+    color: 'rgba(255,255,255,0.78)',
+    marginBottom: 28,
+  },
+  primaryButton: {
+    backgroundColor: CORAL,
+    // 07/Buttons spec, LG size (primary CTA): height 48, radius 12 — the
+    // per-component button chart, more specific than the general Corner
+    // Radius overview (which lists a generic Button:16).
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  primaryButtonPressed: {
+    backgroundColor: CORAL_PRESSED,
+  },
+  primaryButtonText: {
+    fontFamily: FONTS.heroSansBold,
+    fontSize: 14,
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+  },
+  loginRow: {
+    alignItems: 'center',
+    marginTop: 18,
+  },
+  loginText: {
+    fontFamily: FONTS.heroSans,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.78)',
+  },
+  loginLink: {
+    fontFamily: FONTS.heroSansBold,
+    color: '#FFFFFF',
+  },
+});

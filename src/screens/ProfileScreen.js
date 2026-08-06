@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
-import { TYPE, SPACING } from "../constants/theme-tokens";
+import { TYPE, SPACING, FONTS, RADII } from "../constants/theme-tokens";
 import {
   doc,
   getDoc,
@@ -366,31 +366,38 @@ export default function ProfileScreen({ navigation }) {
               </AvatarFrame>
               <Text style={[s.name, { color: colors.text }]}>{profile.fullName}</Text>
               {!!(profile.handle || profile.handleLower) && (
-                <Text style={[s.handle, { color: colors.primary }]}>@{profile.handle || profile.handleLower}</Text>
+                <Text style={[s.handle, { color: colors.accent }]}>@{profile.handle || profile.handleLower}</Text>
               )}
               <Text style={[s.email, { color: colors.textSecondary }]}>{auth.currentUser?.email}</Text>
 
-              {profile.role === "host" && (
-                <View style={[s.badge, { backgroundColor: "#E1F5EC" }]}>
-                  <Icon name="verified" size={13} color="#1F8A6E" />
-                  <Text style={[s.badgeText, { color: "#1F8A6E" }]}>{t("profile.verifiedHost")}</Text>
-                </View>
-              )}
-              {profile.role === "admin" && (
-                <View style={[s.badge, { backgroundColor: colors.brandSoft }]}>
-                  <Icon name="pro" size={13} color={colors.primary} />
-                  <Text style={[s.badgeText, { color: colors.primary }]}>{t("profile.admin")}</Text>
-                </View>
-              )}
+              <View style={s.badgeRow}>
+                {profile.role === "host" && (
+                  <View style={[s.badge, { backgroundColor: colors.successBg }]}>
+                    <Icon name="verified" size={13} color={colors.success} />
+                    <Text style={[s.badgeText, { color: colors.success }]}>{t("profile.verifiedHost")}</Text>
+                  </View>
+                )}
+                {profile.role === "admin" && (
+                  <View style={[s.badge, { backgroundColor: colors.brandSoft }]}>
+                    <Icon name="pro" size={13} color={colors.primary} />
+                    <Text style={[s.badgeText, { color: colors.primary }]}>{t("profile.admin")}</Text>
+                  </View>
+                )}
+                {!!profile.location && (
+                  <View style={[s.badge, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}>
+                    <Icon name="location" size={13} color={colors.text} />
+                    <Text style={[s.badgeText, { color: colors.text }]}>{profile.location}</Text>
+                  </View>
+                )}
+              </View>
             </View>
 
             {/* ── Identity card (hosts) ── */}
             {canManageStripe && (
-              <View style={[s.identityCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={[s.identityCard, { backgroundColor: colors.brandSoft }]}>
                 <Icon name="lock" size={18} color={colors.primary} />
                 <Text style={[s.identityText, { color: colors.textSecondary }]}>
-                  <Text style={{ fontWeight: "700", color: colors.text }}>{t("profile.identityVerified")}</Text>
-                  {profile.location ? ` · ${profile.location}` : ""}
+                  <Text style={[s.identityTextBold, { color: colors.text }]}>{t("profile.identityVerified")}</Text>
                 </Text>
               </View>
             )}
@@ -468,16 +475,16 @@ export default function ProfileScreen({ navigation }) {
                 activeOpacity={0.85}
                 testID="profile-pro-banner"
               >
-                <View style={s.proBanner}>
-                  <View style={[s.proIconCircle, { backgroundColor: "rgba(148,97,247,0.2)" }]}>
-                    <Icon name="pro" size={22} color="#b48dff" />
+                <View style={[s.proBanner, { backgroundColor: colors.dark }]}>
+                  <View style={[s.proIconCircle, { backgroundColor: `${colors.clay}33` }]}>
+                    <Icon name="pro" size={22} color={colors.clay} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                       <Text style={s.proTitle}>{t("profile.kinloProTitle")}</Text>
                       {isPremium && (
-                        <View style={s.proActiveBadge}>
-                          <Text style={s.proActiveBadgeText}>{t("profile.kinloProActive")}</Text>
+                        <View style={[s.proActiveBadge, { backgroundColor: `${colors.success}33` }]}>
+                          <Text style={[s.proActiveBadgeText, { color: colors.success }]}>{t("profile.kinloProActive")}</Text>
                         </View>
                       )}
                     </View>
@@ -618,7 +625,7 @@ function createStyles(colors, isDark) {
       paddingBottom: 16,
     },
     headerLeft: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
-    headerTitle: { fontSize: 20, fontWeight: "800", letterSpacing: -0.4 },
+    headerTitle: { fontFamily: FONTS.display, fontSize: 20, letterSpacing: -0.4 },
     editPill: {
       flexDirection: "row",
       alignItems: "center",
@@ -627,16 +634,17 @@ function createStyles(colors, isDark) {
       paddingVertical: 7,
       borderRadius: 20,
     },
-    editPillText: { fontSize: 14, fontWeight: "700" },
+    editPillText: { fontFamily: FONTS.bodyBold, fontSize: 14 },
 
     // Scroll
     scroll: { paddingHorizontal: 20, paddingBottom: 48 },
 
     // User section
     userSection: { alignItems: "center", marginBottom: 16, gap: 6 },
-    name: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5, marginTop: 8 },
-    handle: { fontSize: 14, fontWeight: "700", letterSpacing: -0.2, marginTop: -2 },
-    email: { fontSize: 13 },
+    name: { fontFamily: FONTS.display, fontSize: 22, letterSpacing: -0.5, marginTop: 8 },
+    handle: { fontFamily: FONTS.bodyBold, fontSize: 14, letterSpacing: -0.2, marginTop: -2 },
+    email: { fontFamily: FONTS.body, fontSize: 13 },
+    badgeRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 4 },
     badge: {
       flexDirection: "row",
       alignItems: "center",
@@ -644,21 +652,20 @@ function createStyles(colors, isDark) {
       paddingHorizontal: 12,
       paddingVertical: 5,
       borderRadius: 20,
-      marginTop: 2,
     },
-    badgeText: { fontSize: 12, fontWeight: "700" },
+    badgeText: { fontFamily: FONTS.bodyBold, fontSize: 12 },
 
     // Identity card
     identityCard: {
       flexDirection: "row",
       alignItems: "flex-start",
       gap: 10,
-      borderWidth: 1,
-      borderRadius: 16,
+      borderRadius: RADII.card,
       padding: 14,
       marginBottom: 14,
     },
-    identityText: { flex: 1, fontSize: 13, lineHeight: 19 },
+    identityText: { flex: 1, fontFamily: FONTS.body, fontSize: 13, lineHeight: 19 },
+    identityTextBold: { fontFamily: FONTS.bodyBold },
 
     // T5: Followers · Follows · Rating meta row
     metaRow: {
@@ -671,8 +678,8 @@ function createStyles(colors, isDark) {
     },
     metaCell: { flex: 1, alignItems: "center", paddingVertical: 16 },
     metaNumRow: { flexDirection: "row", alignItems: "center", gap: 3 },
-    metaNum: { fontSize: 21, fontWeight: "800", letterSpacing: -0.5 },
-    metaLabel: { fontSize: 12, marginTop: 3, fontWeight: "500" },
+    metaNum: { fontFamily: FONTS.display, fontSize: 21, letterSpacing: -0.5 },
+    metaLabel: { fontFamily: FONTS.bodyMedium, fontSize: 12, marginTop: 3 },
     metaDivider: { width: 1, height: 30, alignSelf: "center" },
     // T5: stats grid (Hosted · Published · Carpool · Communities)
     statsGrid: {
@@ -684,23 +691,23 @@ function createStyles(colors, isDark) {
     gridCell: {
       width: "48.5%",
       borderWidth: 1,
-      borderRadius: 16,
+      borderRadius: RADII.card - 4,
       paddingVertical: 16,
       paddingHorizontal: 14,
       marginBottom: 10,
       alignItems: "flex-start",
       gap: 6,
     },
-    gridNum: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5 },
-    gridLabel: { fontSize: 12.5, fontWeight: "600" },
+    gridNum: { fontFamily: FONTS.display, fontSize: 22, letterSpacing: -0.5 },
+    gridLabel: { fontFamily: FONTS.bodySemibold, fontSize: 12.5 },
 
-    // Kinlo Pro banner
+    // Kinlo Pro banner — always a fixed dark surface (colors.dark) regardless
+    // of light/dark theme, same as the paywall/QR "punctual dark surfaces".
     proBanner: {
       flexDirection: "row",
       alignItems: "center",
       gap: 14,
-      backgroundColor: "#160F22",
-      borderRadius: 20,
+      borderRadius: RADII.card,
       padding: 16,
       marginBottom: 20,
     },
@@ -708,20 +715,19 @@ function createStyles(colors, isDark) {
       width: 44, height: 44, borderRadius: 22,
       justifyContent: "center", alignItems: "center",
     },
-    proTitle: { fontSize: 16, fontWeight: "800", color: "#F0EEFB", letterSpacing: -0.3 },
-    proSub: { fontSize: 12, color: "rgba(240,238,251,0.55)", marginTop: 2 },
+    proTitle: { fontFamily: FONTS.display, fontSize: 16, color: "#FFFFFF", letterSpacing: -0.3 },
+    proSub: { fontFamily: FONTS.body, fontSize: 12, color: "rgba(255,255,255,0.55)", marginTop: 2 },
     proActiveBadge: {
-      backgroundColor: "rgba(52,199,89,0.2)",
       borderRadius: 6,
       paddingHorizontal: 7,
       paddingVertical: 2,
     },
-    proActiveBadgeText: { fontSize: 10, fontWeight: "800", color: "#34C759", letterSpacing: 0.4 },
+    proActiveBadgeText: { fontFamily: FONTS.bodyExtra, fontSize: 10, letterSpacing: 0.4 },
 
     // Section labels
     sectionLabel: {
+      fontFamily: FONTS.bodyBold,
       fontSize: 11,
-      fontWeight: "700",
       letterSpacing: 0.8,
       marginBottom: 10,
       marginTop: 4,
@@ -738,7 +744,7 @@ function createStyles(colors, isDark) {
       paddingVertical: 11,
     },
     modeDot: { width: 8, height: 8, borderRadius: 4 },
-    modeText: { fontSize: 14, fontWeight: "800" },
+    modeText: { fontFamily: FONTS.bodyExtra, fontSize: 14 },
     // Tool grid
     toolGrid: {
       flexDirection: "row",
@@ -758,10 +764,10 @@ function createStyles(colors, isDark) {
       justifyContent: "center", alignItems: "center",
       marginBottom: 2,
     },
-    toolTitle: { fontSize: 14, fontWeight: "700" },
-    toolSub: { fontSize: 12, lineHeight: 16 },
+    toolTitle: { fontFamily: FONTS.bodyBold, fontSize: 14 },
+    toolSub: { fontFamily: FONTS.body, fontSize: 12, lineHeight: 16 },
     activeDot: { marginTop: 4 },
-    activeDotText: { fontSize: 11, fontWeight: "700", color: "#1F8A6E" },
+    activeDotText: { fontFamily: FONTS.bodyBold, fontSize: 11, color: colors.success },
 
     // Matchmaking entry (row card)
     personalityPrompt: {
@@ -787,8 +793,8 @@ function createStyles(colors, isDark) {
       gap: 12,
       padding: 14,
     },
-    ajustesLabel: { flex: 1, fontSize: 15, fontWeight: "600" },
-    ajustesSub: { fontSize: 12 },
+    ajustesLabel: { flex: 1, fontFamily: FONTS.bodySemibold, fontSize: 15 },
+    ajustesSub: { fontFamily: FONTS.body, fontSize: 12 },
     separator: { height: 1, marginLeft: 58 },
 
     // Logout / delete
@@ -799,22 +805,23 @@ function createStyles(colors, isDark) {
       gap: 8,
       paddingVertical: 16,
     },
-    logoutText: { fontSize: 15, fontWeight: "700" },
+    logoutText: { fontFamily: FONTS.bodyBold, fontSize: 15 },
     deleteRow: { alignItems: "center", paddingVertical: 12, marginBottom: 8 },
-    deleteText: { fontSize: 13 },
+    deleteText: { fontFamily: FONTS.body, fontSize: 13 },
 
     // Edit mode
     avatarEditWrap: { alignItems: "center", marginBottom: 28, gap: 8 },
-    avatarEditHint: { fontSize: 13, fontWeight: "600" },
+    avatarEditHint: { fontFamily: FONTS.bodySemibold, fontSize: 13 },
     formGroup: { marginBottom: 16 },
-    inputLabel: { fontSize: 13, fontWeight: "600", marginBottom: 6 },
+    inputLabel: { fontFamily: FONTS.bodySemibold, fontSize: 13, marginBottom: 6 },
     input: {
-      borderWidth: 1, borderRadius: 12,
+      borderWidth: 1, borderRadius: RADII.input,
       paddingHorizontal: 16, paddingVertical: 14,
+      fontFamily: FONTS.body,
       fontSize: 15,
     },
     cancelRow: { alignItems: "center", paddingVertical: 16 },
-    cancelText: { fontSize: 15, fontWeight: "600" },
+    cancelText: { fontFamily: FONTS.bodySemibold, fontSize: 15 },
 
     // Modals
     modalOverlay: {
@@ -833,17 +840,17 @@ function createStyles(colors, isDark) {
     },
     modalIconCircle: {
       width: 60, height: 60, borderRadius: 30,
-      backgroundColor: "rgba(194,91,91,0.12)",
+      backgroundColor: `${colors.error}1F`,
       justifyContent: "center", alignItems: "center",
       marginBottom: 16,
     },
-    modalTitle: { fontSize: 20, fontWeight: "800", marginBottom: 8, letterSpacing: -0.3 },
-    modalBody: { fontSize: 14, textAlign: "center", marginBottom: 24, lineHeight: 20 },
+    modalTitle: { fontFamily: FONTS.display, fontSize: 20, marginBottom: 8, letterSpacing: -0.3 },
+    modalBody: { fontFamily: FONTS.body, fontSize: 14, textAlign: "center", marginBottom: 24, lineHeight: 20 },
     modalBtns: { flexDirection: "row", gap: 12, width: "100%" },
     modalBtn: {
       flex: 1, borderWidth: 1, borderRadius: 14,
       paddingVertical: 13, alignItems: "center",
     },
-    modalBtnText: { fontSize: 15, fontWeight: "700" },
+    modalBtnText: { fontFamily: FONTS.bodyBold, fontSize: 15 },
   });
 }

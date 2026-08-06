@@ -36,11 +36,11 @@
   },
   "welcome": {
     "tagline": "Belong anywhere",
-    "groupEvents": "Group Events",
-    "personalityMatching": "Personality Matching",
-    "safeAndInclusive": "Safe & Inclusive",
-    "getStarted": "Get started",
-    "haveAccount": "I already have an account"
+    "headline": "Find your people.\nAnywhere.",
+    "subtitle": "Discover experiences. Join communities.\nBelong anywhere.",
+    "getStarted": "Get Started",
+    "haveAccountPrompt": "Already have an account?",
+    "login": "Log in"
   },
   "settings": {
     "title": "Settings",
@@ -123,6 +123,8 @@
   "auth": {
     "emailPlaceholder": "Email",
     "passwordPlaceholder": "Password",
+    "emailExample": "you@example.com",
+    "enterPassword": "Enter your password",
     "or": "or",
     "login": {
       "logIn": "Log In",
@@ -130,6 +132,7 @@
       "signUp": "Sign Up",
       "forgotPassword": "Forgot your password? ",
       "reset": "Reset",
+      "forgotPasswordLink": "Forgot password?",
       "createAccount": "Create Account",
       "resetPassword": "Reset Password",
       "errors": {
@@ -162,6 +165,10 @@
       "signUp": "Sign Up",
       "haveAccount": "Already have an account? ",
       "logIn": "Log In",
+      "termsPrefix": "By creating an account, you agree to Kinlo's ",
+      "termsOfService": "Terms of Service",
+      "termsAnd": " and ",
+      "privacyPolicy": "Privacy Policy",
       "requirements": {
         "minLength": "At least 8 characters",
         "uppercase": "One uppercase letter",
@@ -3473,6 +3480,7 @@
   },
   "socialAuthButtons": {
     "or": "or",
+    "orContinueWith": "or continue with",
     "continueWithGoogle": "Continue with Google",
     "appleUnavailableTitle": "Apple Sign-In unavailable",
     "appleUnavailableMessage": "Sign in with Apple often fails on the iOS Simulator. Please try on a real device.",

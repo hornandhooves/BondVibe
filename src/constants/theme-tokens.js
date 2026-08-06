@@ -6,104 +6,133 @@ import { Platform } from 'react-native';
 // and ADDS Bold-Pop tokens (borderStrong, hardShadow, ink, onInk, onPrimary)
 // plus the refined brand gradient.
 
-// Typography — Space Grotesk for display/wordmark/numbers, Plus Jakarta Sans
-// for UI/body. Names match the @expo-google-fonts weights loaded in App.js.
+// Typography — Domine (serif) for display/headings, Public Sans for UI/body,
+// per the Kinlo design-system "02/Typography" sheet. Replaces the earlier
+// Space Grotesk / Plus Jakarta Sans pairing app-wide. Names match the
+// @expo-google-fonts weights loaded in App.js.
 export const FONTS = {
-  display: 'SpaceGrotesk_700Bold',
-  displaySemibold: 'SpaceGrotesk_600SemiBold',
-  body: 'PlusJakartaSans_400Regular',
-  bodyMedium: 'PlusJakartaSans_500Medium',
-  bodySemibold: 'PlusJakartaSans_600SemiBold',
-  bodyBold: 'PlusJakartaSans_700Bold',
-  bodyExtra: 'PlusJakartaSans_800ExtraBold',
+  display: 'Domine_700Bold',
+  displaySemibold: 'Domine_600SemiBold',
+  body: 'PublicSans_400Regular',
+  bodyMedium: 'PublicSans_500Medium',
+  bodySemibold: 'PublicSans_600SemiBold',
+  bodyBold: 'PublicSans_700Bold',
+  bodyExtra: 'PublicSans_800ExtraBold',
+  // heroSerif/heroSans/heroSansBold: kept as their own named entries (values
+  // now identical to display/body/bodyBold above) because WelcomeScreen
+  // imports them by these exact names — do not rename or remove.
+  heroSerif: 'Domine_700Bold',
+  heroSans: 'PublicSans_400Regular',
+  heroSansBold: 'PublicSans_700Bold',
 };
+
+// KINLO wordmark spec: Avenir Next DemiBold — an Apple system font, free on
+// iOS, not a Google Font we can bundle. Android has no equivalent installed,
+// so it falls back to our loaded Plus Jakarta Sans Bold there. Shared by
+// WelcomeScreen and LoginScreen (and any other screen showing the wordmark).
+export const WORDMARK_FONT = Platform.select({
+  ios: 'AvenirNext-DemiBold',
+  default: FONTS.bodyBold,
+});
 
 export const BRAND = {
   // Fixed brand signature — same in every theme (logo, icon, splash, marketing).
-  // Refined: dropped the cold indigo; ends on Aurora's exact magenta.
-  gradient: ['#7C3AED', '#C026D3', '#FF3E9A'],
-  // Optional warm bridge — Warmth hero moments only (contains both theme accents).
-  gradientWarm: ['#E91E8C', '#F0573D'],
-  violet: '#7C3AED',
-  magenta: '#E91E8C',
+  // Deep Jungle → Ocean Teal, matching the shipped app icon (assets/icon.png)
+  // and the Kinlo "Color Palette" sheet. Replaces the old violet/magenta pair.
+  gradient: ['#1e4d45', '#2f8f8d'],
+  // Warm bridge — Sunset Clay → Ocean Teal.
+  gradientWarm: ['#c86d4a', '#2f8f8d'],
 };
 
-// Clean (day/light) — fuente de verdad: Kinlo Design System §2
+// Clean (day/light) — Kinlo Color Palette sheet: Warm Sand / Limestone /
+// Ocean Teal / Deep Jungle / Sunset Clay / Charcoal. Same token names as
+// before so every screen already on `colors.*` recolors automatically.
 export const WARMTH = {
-  background: '#F1F0F4',
-  surface: '#FFFFFF',
+  background: '#f4f0e8', // Warm Sand — bg-page
+  surface: '#FFFFFF', // bg-surface
   surfaceElevated: '#FFFFFF',
   surfaceGlass: 'rgba(255, 255, 255, 0.90)',
-  sunken: '#F7F5FB',
-  frame: '#DDDAE4',
-  text: '#1a1d29',
-  textSecondary: '#5b6072',
-  textTertiary: '#8a8f9c',
-  primary: '#7C3AED',
-  primaryLight: '#9461f7',
-  primaryDark: '#6320c4',
-  brand: '#7C3AED',
-  brandSoft: '#F1E9FE',
-  secondary: '#1F8A6E',
-  secondaryLight: '#2FA888',
-  accent: '#7C3AED',
+  sunken: '#e3ddd2', // Limestone — bg-sunken
+  frame: '#DDD6C7',
+  text: '#2b2b2b', // Charcoal 100%
+  textSecondary: 'rgba(43, 43, 43, 0.62)', // Charcoal 62%
+  textTertiary: 'rgba(43, 43, 43, 0.42)', // Charcoal 42%
+  primary: '#1e4d45', // Deep Jungle — color-primary
+  primaryLight: '#3a6b61',
+  primaryDark: '#153a34',
+  brand: '#1e4d45',
+  brandSoft: '#E4EDE9',
+  secondary: '#2f8f8d', // Ocean Teal
+  secondaryLight: '#4aa39e',
+  accent: '#2f8f8d', // Ocean Teal — color-accent
   success: '#1F8A6E',
   successBg: '#E1F5EC',
   warning: '#B45309',
   warnSoft: '#FBEFD6',
   error: '#c25b5b',
-  border: '#EEEDF2',
-  borderLight: '#F7F5FB',
-  borderStrong: '#DDDAE4',
-  hardShadow: 'rgba(0,0,0,0.08)',
-  ink: '#1a1d29',
+  clay: '#c86d4a', // Sunset Clay — color-clay (badges, warm accents)
+  claySoft: '#F3E3DA',
+  border: '#EAE4D8',
+  borderLight: '#F2EDE3',
+  borderStrong: '#DDD6C7',
+  hardShadow: 'rgba(43, 43, 43, 0.08)',
+  ink: '#2b2b2b',
   onInk: '#FFFFFF',
   onPrimary: '#FFFFFF',
-  glow: 'rgba(124, 58, 237, 0.15)',
-  glowCyan: 'rgba(31, 138, 110, 0.15)',
-  shadow: 'rgba(0,0,0,0.06)',
+  glow: 'rgba(30, 77, 69, 0.15)',
+  glowCyan: 'rgba(47, 143, 141, 0.15)',
+  shadow: 'rgba(43, 43, 43, 0.06)',
   gradientPrimary: BRAND.gradient,
   // Superficies oscuras puntuales (QR, paywall, banner Pro)
-  dark: '#160F22',
+  dark: '#0F2622',
   lilac: '#C792EA',
 };
 
 // Aurora (dark) — mismo sistema Kinlo, versión nocturna. Sin rosa neón.
+// Aurora (dark) — Kinlo "Tokens" dark sheet: Night Page/Surface/Sunken, Ocean
+// Teal promoted to primary (Deep Jungle reads too low-contrast on near-black),
+// Sunset Clay brightened for accent. `border` is the sheet's literal
+// `oklch(from #f4f0e8 l c h / 0.14)` — a relative-color expression that just
+// takes Warm Sand's own hue/lightness at 14% alpha, i.e. exactly
+// rgba(244,240,232,0.14); written that way since RN's style engine doesn't
+// parse oklch()/relative-color CSS syntax.
 export const AURORA = {
-  background: '#160F22',
-  surface: '#1E1438',
-  surfaceElevated: '#261A48',
-  surfaceGlass: 'rgba(30, 20, 56, 0.85)',
-  sunken: '#12092E',
-  frame: '#2D2050',
-  text: '#F0EEFB',
-  textSecondary: '#A89BC8',
-  textTertiary: '#7A6F96',
-  primary: '#9461f7',
-  primaryLight: '#b48dff',
-  primaryDark: '#7C3AED',
-  brand: '#9461f7',
-  brandSoft: '#2D1A6E',
-  secondary: '#1F8A6E',
-  secondaryLight: '#2FA888',
-  accent: '#9461f7',
-  success: '#3DE0A0',
-  successBg: '#0F3A2E',
+  background: '#1b1815', // Night Page
+  surface: '#262219', // Night Surface
+  surfaceElevated: '#262219',
+  surfaceGlass: 'rgba(38, 34, 25, 0.85)',
+  sunken: '#141210', // Night Sunken
+  frame: 'rgba(244, 240, 232, 0.14)',
+  text: '#f4f0e8', // Text — Warm Sand
+  textSecondary: 'rgba(244, 240, 232, 0.62)',
+  textTertiary: 'rgba(244, 240, 232, 0.42)',
+  primary: '#2f8f8d', // Ocean Teal
+  primaryLight: '#4aa3a0',
+  primaryDark: '#1f6f6d',
+  brand: '#2f8f8d',
+  brandSoft: '#1E3B39',
+  secondary: '#dd8659', // Sunset Clay, brightened
+  secondaryLight: '#e79b74',
+  accent: '#dd8659',
+  success: '#52ac89',
+  successBg: '#16302A',
   warning: '#FFB23D',
   warnSoft: '#3A2800',
-  error: '#FF6B6B',
-  border: 'rgba(255, 255, 255, 0.08)',
-  borderLight: 'rgba(255, 255, 255, 0.04)',
-  borderStrong: 'rgba(255, 255, 255, 0.12)',
+  error: '#e2695c',
+  clay: '#dd8659',
+  claySoft: '#3A2418',
+  border: 'rgba(244, 240, 232, 0.14)',
+  borderLight: 'rgba(244, 240, 232, 0.08)',
+  borderStrong: 'rgba(244, 240, 232, 0.20)',
   hardShadow: 'rgba(0, 0, 0, 0.40)',
-  ink: '#F0EEFB',
-  onInk: '#160F22',
+  ink: '#f4f0e8',
+  onInk: '#1b1815',
   onPrimary: '#FFFFFF',
-  glow: 'rgba(148, 97, 247, 0.30)',
-  glowCyan: 'rgba(31, 138, 110, 0.25)',
+  glow: 'rgba(47, 143, 141, 0.30)',
+  glowCyan: 'rgba(82, 172, 137, 0.25)',
   shadow: 'rgba(0, 0, 0, 0.35)',
   gradientPrimary: BRAND.gradient,
-  dark: '#0A0515',
+  dark: '#141210',
   lilac: '#C792EA',
 };
 
@@ -130,9 +159,25 @@ export const TYPE = {
     textTransform: 'uppercase',
   },
   caption: { fontFamily: FONTS.bodyMedium, fontSize: 11.5, lineHeight: 16 },
+
+  // "02/Typography" Type Scale sheet — exact sizes/weights, additive (the
+  // entries above stay as-is since existing screens already consume them).
+  heroTitle: { fontFamily: FONTS.display, fontSize: 24, lineHeight: 32 },
+  heading1: { fontFamily: FONTS.display, fontSize: 20, lineHeight: 28 },
+  heading2: { fontFamily: FONTS.displaySemibold, fontSize: 18, lineHeight: 26 },
+  subtitle: { fontFamily: FONTS.bodySemibold, fontSize: 16, lineHeight: 24 },
+  bodySpec: { fontFamily: FONTS.body, fontSize: 14, lineHeight: 20 },
+  buttonText: { fontFamily: FONTS.bodySemibold, fontSize: 14, lineHeight: 20 },
+  chipMd: { fontFamily: FONTS.bodySemibold, fontSize: 14, lineHeight: 20 },
+  chipSm: { fontFamily: FONTS.bodySemibold, fontSize: 13, lineHeight: 18 },
+  inputText: { fontFamily: FONTS.body, fontSize: 14, lineHeight: 20 },
+  inputLabel: { fontFamily: FONTS.bodySemibold, fontSize: 13, lineHeight: 18 },
+  captionSpec: { fontFamily: FONTS.body, fontSize: 12, lineHeight: 16 },
+  tabLabel: { fontFamily: FONTS.bodySemibold, fontSize: 11, lineHeight: 16 },
 };
 
 // §3.3 Spacing (4pt base) & radius. Use these — never ad-hoc numbers.
+// Scale matches the "05/Spacing, Radius" sheet (4/8/12/16/24/32/48/64).
 export const SPACING = {
   xs: 4,
   sm: 8,
@@ -141,17 +186,42 @@ export const SPACING = {
   xl: 20,
   xxl: 24,
   xxxl: 32,
+  xxxxl: 48,
+  xxxxxl: 64,
   screen: 20, // horizontal screen padding
   card: 16, // card padding
 };
 
+// Corner Radius sheet: Input 14, Button 16, Card 20, Image 24.
 export const RADII = {
   pill: 999,
-  card: 18,
+  card: 20,
   cardLg: 22,
-  button: 27,
+  button: 16,
   tile: 12,
   sheet: 28, // bottom-sheet top corners
+  input: 14,
+  image: 24,
+};
+
+// 07/Buttons spec — per-size height/radius/padding for the shared <Button>
+// component (src/components/Button.js). "Width: Auto" per spec — a button
+// hugs its label unless <Button fullWidth /> is passed.
+export const BUTTON_SIZES = {
+  lg: { height: 48, borderRadius: 12, paddingHorizontal: 12, fontSize: 16 },
+  md: { height: 40, borderRadius: 12, paddingHorizontal: 12, fontSize: 15 },
+  sm: { height: 32, borderRadius: 8, paddingHorizontal: 12, fontSize: 13, gap: 16 },
+};
+
+// Mobile Grid spec — reference values for screen layout math (column widths,
+// etc). Existing SPACING.screen (20) is untouched for the same reason as
+// RADII above; use GRID.margin where a screen is being newly built to spec.
+export const GRID = {
+  screenWidth: 390,
+  screenHeight: 844,
+  columns: 4,
+  margin: 16,
+  gutter: 12,
 };
 
 // §3.4 AI signature surfaces — intentionally dark in BOTH themes
@@ -196,8 +266,13 @@ const shadow = (color, offsetY, radius, opacity, elevation) =>
 
 export const ELEVATION = {
   card: shadow('#000000', 1, 3, 0.06, 2),
-  floatingBrand: shadow('#7C3AED', 9, 22, 0.28, 8),
+  floatingBrand: shadow('#1e4d45', 9, 22, 0.28, 8),
   floatingNeutral: shadow('#1E1432', 10, 30, 0.14, 10),
+  // "06/Shadows" sheet — charcoal-based, named per surface.
+  topBar: shadow('#2b2b2b', 2, 6, 0.08, 3),
+  component: shadow('#2b2b2b', 1, 4, 0.06, 2),
+  modal: shadow('#2b2b2b', 4, 16, 0.16, 8),
+  navBar: shadow('#2b2b2b', -4, 12, 0.08, 3),
 };
 
 // In ThemeContext.js:

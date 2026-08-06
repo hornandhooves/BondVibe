@@ -3,68 +3,24 @@
  * Apple uses the official AppleAuthenticationButton (App Store requirement) and
  * only shows on iOS 13+. On success the app's auth listener routes the user.
  */
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Platform,
 } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { useTheme } from "../contexts/ThemeContext";
 import { useTranslation } from "react-i18next";
-import {
-  signInWithGoogle,
-  signInWithApple,
-  isAppleAvailable,
-} from "../services/socialAuth";
+import useSocialAuth from "../hooks/useSocialAuth";
 
 export default function SocialAuthButtons() {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
-  const [busy, setBusy] = useState(null); // "google" | "apple" | null
-  const [appleReady, setAppleReady] = useState(false);
-
-  useEffect(() => {
-    isAppleAvailable()
-      .then(setAppleReady)
-      .catch(() => {});
-  }, []);
-
-  const run = async (which, fn) => {
-    setBusy(which);
-    try {
-      await fn();
-      // The onAuthStateChanged listener in AppNavigator routes on success.
-    } catch (e) {
-      const msg = e?.message || "";
-      const cancelled =
-        /cancel/i.test(msg) ||
-        e?.code === "ERR_REQUEST_CANCELED" ||
-        e?.code === "12501" || // Google: user cancelled
-        e?.code === "-5"; // Google: in progress/cancelled
-      if (cancelled) return;
-      // Apple Sign-In is unreliable on the iOS Simulator: it fails with error
-      // 1000 ("unknown reason") even when correctly configured. Guide the tester
-      // to a real device instead of surfacing Apple's cryptic message.
-      const appleUnknown =
-        which === "apple" &&
-        (e?.code === "ERR_REQUEST_UNKNOWN" || /unknown reason/i.test(msg));
-      if (appleUnknown) {
-        Alert.alert(
-          t("socialAuthButtons.appleUnavailableTitle"),
-          t("socialAuthButtons.appleUnavailableMessage")
-        );
-        return;
-      }
-      Alert.alert(t("socialAuthButtons.signInFailedTitle"), msg || t("socialAuthButtons.tryAgain"));
-    } finally {
-      setBusy(null);
-    }
-  };
+  const { busy, appleReady, runGoogle, runApple } = useSocialAuth();
 
   const styles = createStyles(colors);
 
@@ -78,7 +34,7 @@ export default function SocialAuthButtons() {
 
       <TouchableOpacity
         style={[styles.googleBtn, { borderColor: colors.border, backgroundColor: colors.surfaceGlass }]}
-        onPress={() => run("google", signInWithGoogle)}
+        onPress={runGoogle}
         disabled={!!busy}
         activeOpacity={0.85}
       >
@@ -104,7 +60,7 @@ export default function SocialAuthButtons() {
           }
           cornerRadius={12}
           style={styles.appleBtn}
-          onPress={() => run("apple", signInWithApple)}
+          onPress={runApple}
         />
       )}
     </View>

@@ -118,6 +118,16 @@ import {
   Flower2,
   Dog,
   Disc3,
+  ShoppingCart,
+  Mic,
+  Percent,
+  HelpCircle,
+  Store,
+  Upload,
+  Smartphone,
+  ArrowRight,
+  ArrowLeft,
+  ClipboardCheck,
 } from "lucide-react-native";
 import { useTheme } from "../contexts/ThemeContext";
 
@@ -267,6 +277,18 @@ const NAME_TO_COMPONENT = {
   meh: Meh,
   smile: Smile,
   party: Party,
+  // "03/Iconography" sheet gaps — not yet used anywhere, kept so the full
+  // reference set resolves to a real glyph instead of falling back to Circle.
+  cart: ShoppingCart,
+  mic: Mic,
+  percent: Percent,
+  help: HelpCircle,
+  store: Store,
+  upload: Upload,
+  smartphone: Smartphone,
+  arrowRight: ArrowRight,
+  arrowLeft: ArrowLeft,
+  clipboardCheck: ClipboardCheck,
 };
 
 // Lookup lowercases the requested name, but several semantic keys are

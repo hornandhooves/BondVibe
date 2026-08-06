@@ -18,7 +18,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#7C3AED"
+      "backgroundColor": "#f4f0e8"
     },
     "plugins": [
       "./plugins/withStorePermissions",
@@ -45,7 +45,7 @@
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#7C3AED"
+          "color": "#C86D4A"
         }
       ],
       "expo-web-browser",
@@ -103,7 +103,7 @@
       "package": "com.kinlo.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#7C3AED"
+        "backgroundColor": "#1F4D45"
       },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
