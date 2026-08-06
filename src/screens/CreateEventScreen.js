@@ -58,6 +58,7 @@ import { generateRecurringDates, getRecurrenceSummary } from "../utils/recurrenc
 import DraftWithAI from "../components/ai/DraftWithAI";
 import DurationWheelModal, { formatDuration } from "../components/DurationWheelModal";
 import { formatDate as fmtDate } from "../utils/formatDate";
+import { parsePositiveNumber, isValidNumberInProgress } from "../utils/validation";
 
 // Recurrence handled by modal
 
@@ -89,9 +90,14 @@ export default function CreateEventScreen({ navigation, route }) {
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("social");
+  // KIN-152: Community/City must NOT come pre-filled — a host publishing
+  // without ever touching these dropdowns is exactly the bug (they used to
+  // default to "social"/"tulum", so the required-field check could never
+  // fire). Empty string is also what SelectDropdown already treats as
+  // "show the placeholder", so no other prop change was needed there.
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedLanguages, setSelectedLanguages] = useState(["es", "en"]);
-  const [selectedCity, setSelectedCity] = useState("tulum");
+  const [selectedCity, setSelectedCity] = useState("");
 
   // Initialize with tomorrow's date and default time — or a prefill from the
   // Agenda "+" (date + tapped hour), when opened from there (kinlo_business/07).
@@ -99,6 +105,18 @@ export default function CreateEventScreen({ navigation, route }) {
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(19, 0, 0, 0); // 7 PM
   const prefillStart = route?.params?.prefillStart ? new Date(route.params.prefillStart) : null;
+
+  // KIN-152: eventDate itself STAYS a real Date (recurrence generation,
+  // conflict checks, and half a dozen other call sites assume a valid Date —
+  // making it nullable would ripple through the whole file). Instead, two
+  // shadow flags track whether the host has actually confirmed a date/time,
+  // independently of the picker's internal default. They start true only
+  // when prefillStart carries an explicit choice already made elsewhere (the
+  // Agenda "+" tap) — draft-restore and edit-existing-class also flip them
+  // true at their own setEventDate call sites, since those load a real,
+  // previously-chosen date/time.
+  const [hasSetDate, setHasSetDate] = useState(!!prefillStart);
+  const [hasSetTime, setHasSetTime] = useState(!!prefillStart);
 
   const [eventDate, setEventDate] = useState(prefillStart || tomorrow);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -134,7 +152,12 @@ export default function CreateEventScreen({ navigation, route }) {
   const [locationCoords, setLocationCoords] = useState(null); // { latitude, longitude }
   const [placeId, setPlaceId] = useState(null);
   const [maxPeople, setMaxPeople] = useState("");
-  const [durationMinutes, setDurationMinutes] = useState("180"); // 3h default
+  // KIN-152: was a "180" default (3h) — required, but the guard could never
+  // fire because the field was never actually empty. The `|| 180` fallbacks
+  // at every downstream parseInt(durationMinutes, 10) site stay as a safety
+  // net (draft/edit loads, belt-and-suspenders); the validation gate is what
+  // now actually enforces "the host must choose one" for a new event.
+  const [durationMinutes, setDurationMinutes] = useState("");
   const [showDurationModal, setShowDurationModal] = useState(false);
   // Feature-at-creation: when on, we route the host to the paid promotion flow
   // right after the event is created (featured is set server-side only).
@@ -245,6 +268,10 @@ export default function CreateEventScreen({ navigation, route }) {
       const base = c.date ? new Date(c.date) : new Date(eventDate);
       base.setHours(h, mn, 0, 0);
       setEventDate(base);
+      // KIN-152: editing an existing class already has a real date/time —
+      // it must count as "chosen", not trip the new required-field guard.
+      setHasSetDate(true);
+      setHasSetTime(true);
       if (Array.isArray(c.weekdays) && c.weekdays.length) {
         setRecurrenceConfig((cfg) => ({ ...cfg, type: "weekly", selectedDays: c.weekdays }));
       }
@@ -299,7 +326,14 @@ export default function CreateEventScreen({ navigation, route }) {
     if (d.selectedCategory) setSelectedCategory(d.selectedCategory);
     if (Array.isArray(d.selectedLanguages)) setSelectedLanguages(d.selectedLanguages);
     if (d.selectedCity) setSelectedCity(d.selectedCity);
-    if (d.eventDate) setEventDate(new Date(d.eventDate));
+    if (d.eventDate) {
+      setEventDate(new Date(d.eventDate));
+      // KIN-152: a restored draft's date/time was already chosen before the
+      // app died — don't make the host re-confirm it just to re-trip the
+      // required-field guard.
+      setHasSetDate(true);
+      setHasSetTime(true);
+    }
     if (d.recurrenceConfig) setRecurrenceConfig(d.recurrenceConfig);
     if (typeof d.locationDetail === "string") setLocationDetail(d.locationDetail);
     if (typeof d.venueAddress === "string") setVenueAddress(d.venueAddress);
@@ -441,6 +475,7 @@ export default function CreateEventScreen({ navigation, route }) {
       setShowDatePicker(false);
       if (event.type === "set" && selectedDate) {
         setEventDate(selectedDate);
+        setHasSetDate(true);
       }
     } else {
       if (selectedDate) {
@@ -451,7 +486,27 @@ export default function CreateEventScreen({ navigation, route }) {
 
   const confirmDateSelection = () => {
     setEventDate(tempDate);
+    setHasSetDate(true);
     setShowDatePicker(false);
+  };
+
+  // KIN-152 Hallazgo C: the date picker already refuses a past DAY
+  // (minimumDate on the native picker), but a same-day time selection could
+  // still land in the past — the rejection didn't fire until Save. Reject it
+  // right here, at selection, same alert as the submit-time date guard
+  // (createEvent.validation.invalidDateTitle/Msg) so there's one message for
+  // "this event starts in the past", not two.
+  const applyTimeSelection = (newDate) => {
+    if (newDate <= new Date()) {
+      Alert.alert(
+        t("createEvent.validation.invalidDateTitle"),
+        t("createEvent.validation.invalidDateMsg")
+      );
+      return false;
+    }
+    setEventDate(newDate);
+    setHasSetTime(true);
+    return true;
   };
 
   // Time picker handlers
@@ -462,7 +517,7 @@ export default function CreateEventScreen({ navigation, route }) {
         const newDate = new Date(eventDate);
         newDate.setHours(selectedTime.getHours());
         newDate.setMinutes(selectedTime.getMinutes());
-        setEventDate(newDate);
+        applyTimeSelection(newDate);
       }
     } else {
       if (selectedTime) {
@@ -475,8 +530,9 @@ export default function CreateEventScreen({ navigation, route }) {
     const newDate = new Date(eventDate);
     newDate.setHours(tempDate.getHours());
     newDate.setMinutes(tempDate.getMinutes());
-    setEventDate(newDate);
-    setShowTimePicker(false);
+    if (applyTimeSelection(newDate)) setShowTimePicker(false);
+    // Invalid: leave the picker open so the host can pick a different time
+    // instead of silently closing on a rejected selection.
   };
 
   // Toggle "accept membership credits". Requires the host to have at least one
@@ -523,6 +579,12 @@ export default function CreateEventScreen({ navigation, route }) {
   // existing single-price usage is unchanged; the two-tier inputs pass their own
   // setter to reuse the SAME Stripe guard (kinlo_business/05 §B).
   const handlePriceChange = (priceText, setter = setPrice) => {
+    // KIN-151: reject a keystroke that could never become a valid price
+    // (a lone ".", a second decimal separator, a letter) before it ever
+    // reaches state — cheaper and better UX than letting it through and
+    // catching it later at submit time.
+    if (!isValidNumberInProgress(priceText)) return;
+
     const priceNumber = parseInt(priceText) || 0;
 
     if (priceNumber > 0) {
@@ -552,6 +614,66 @@ export default function CreateEventScreen({ navigation, route }) {
 
   // Generate recurring dates handled by recurrenceUtils
 
+  // KIN-152 — ONE declarative list drives both the required-field asterisk
+  // (requiredLabel, used at every render site below) and the submit-time
+  // alert (the loop inside handleCreateEvent). Before this, the asterisk
+  // lived hand-typed in the i18n string and the validation lived hand-typed
+  // here — nothing kept them in sync, which is exactly how maxPeopleLabel
+  // lost its "*" while the field stayed required. Community/City/Date/
+  // Time/Event length used to come pre-filled with a default the host never
+  // chose, so their "required" check could never actually fire — see the
+  // empty-string/hasSetDate/hasSetTime defaults above.
+  const requiredFields = [
+    {
+      key: "community",
+      labelKey: "createEvent.communityLabel",
+      isFilled: !!selectedCategory,
+      alertTitleKey: "createEvent.validation.missingInfoTitle",
+      alertMsgKey: "createEvent.validation.missingCommunityMsg",
+    },
+    {
+      key: "city",
+      labelKey: "createEvent.cityLabel",
+      isFilled: !!selectedCity,
+      alertTitleKey: "createEvent.validation.missingInfoTitle",
+      alertMsgKey: "createEvent.validation.missingCityMsg",
+    },
+    {
+      key: "date",
+      labelKey: "createEvent.dateLabel",
+      isFilled: hasSetDate,
+      alertTitleKey: "createEvent.validation.missingInfoTitle",
+      alertMsgKey: "createEvent.validation.missingDateMsg",
+    },
+    {
+      key: "time",
+      labelKey: "createEvent.timeLabel",
+      isFilled: hasSetTime,
+      alertTitleKey: "createEvent.validation.missingInfoTitle",
+      alertMsgKey: "createEvent.validation.missingTimeMsg",
+    },
+    {
+      key: "eventLength",
+      labelKey: "createEvent.eventLength",
+      isFilled: !!durationMinutes,
+      alertTitleKey: "createEvent.validation.missingInfoTitle",
+      alertMsgKey: "createEvent.validation.missingDurationMsg",
+    },
+    {
+      key: "maxPeople",
+      labelKey: "createEvent.maxPeople",
+      // A blocked/OOO slot needs no capacity (BUG 27.1) — same exception
+      // this check has always carried. Kept as the original
+      // parseInt(maxPeople) < 1 check here (not KIN-151's parsePositiveNumber
+      // helper) — that fix lives on its own branch/ticket; folding it in here
+      // would blur the two diffs. They'll compose fine once both merge.
+      isFilled: isBlocked || (!!maxPeople && parseInt(maxPeople, 10) >= 1),
+      alertTitleKey: "createEvent.validation.invalidMaxPeopleTitle",
+      alertMsgKey: "createEvent.validation.invalidMaxPeopleMsg",
+    },
+  ];
+  const requiredLabel = (labelKey) => `${t(labelKey)} *`;
+
   const handleCreateEvent = async (skipAvailabilityCheck = false, skipDatesIso = null) => {
     console.log("✨ Create Event clicked");
 
@@ -575,20 +697,28 @@ export default function CreateEventScreen({ navigation, route }) {
       );
       return;
     }
-    // A blocked/OOO slot needs no capacity or price (BUG 27.1) — relax those.
-    if (!isBlocked && (!maxPeople || parseInt(maxPeople) < 1)) {
-      Alert.alert(t("createEvent.validation.invalidMaxPeopleTitle"), t("createEvent.validation.invalidMaxPeopleMsg"));
-      return;
+    // KIN-152: Community/City/Date/Time/Event length/Max People, driven by
+    // the same declarative list the labels' asterisks come from — see
+    // requiredFields above.
+    for (const field of requiredFields) {
+      if (!field.isFilled) {
+        Alert.alert(t(field.alertTitleKey), t(field.alertMsgKey));
+        return;
+      }
     }
+    // KIN-151: parsePositiveNumber rejects NaN (a lone ".", "abc", ...) —
+    // the previous `parseFloat(price) <= 0` / `parseInt(priceLocal, 10) <= 0`
+    // guards silently PASSED on invalid input, because any comparison
+    // against NaN is always false, and the raw NaN went on to get persisted.
     if (!isBlocked && !isFree && twoTier) {
-      if (!priceLocal || parseInt(priceLocal, 10) <= 0 || !priceGeneral || parseInt(priceGeneral, 10) <= 0) {
+      if (parsePositiveNumber(priceLocal) === null || parsePositiveNumber(priceGeneral) === null) {
         Alert.alert(
           t("createEvent.validation.invalidPriceTitle"),
           t("createEvent.twoTier.invalidMsg")
         );
         return;
       }
-    } else if (!isBlocked && !isFree && (!price || parseFloat(price) <= 0)) {
+    } else if (!isBlocked && !isFree && parsePositiveNumber(price) === null) {
       Alert.alert(
         t("createEvent.validation.invalidPriceTitle"),
         t("createEvent.validation.invalidPriceMsg")
@@ -654,7 +784,11 @@ export default function CreateEventScreen({ navigation, route }) {
     if (!skipAvailabilityCheck && checkUid) {
       const durationMin = parseInt(durationMinutes, 10) || 180;
       const hm = (d) => { const x = new Date(d); return `${String(x.getHours()).padStart(2, "0")}:${String(x.getMinutes()).padStart(2, "0")}`; };
-      // Probe up to a horizon so a long/unbounded series stays snappy.
+      // Probe up to a horizon so a long/unbounded series stays snappy. A
+      // series longer than this (a 52-occurrence weekly series, say) has
+      // dates that were never actually checked — the recurring alert below
+      // says so explicitly when this cap is what limited the check (KIN-154),
+      // rather than implying every date was verified.
       const probe = occurrences.slice(0, 26);
       const conflicts = [];
       for (const occ of probe) {
@@ -667,13 +801,17 @@ export default function CreateEventScreen({ navigation, route }) {
       }
 
       if (conflicts.length > 0) {
-        // Single (non-recurring) event → the existing Cancel / Book anyway prompt.
+        // Single (non-recurring) event → Cancel / Book anyway — UNLESS the
+        // conflict is a same-instructor double-booking (c.item), which is a
+        // hard block per product spec (KIN-154): no bypass button. An
+        // outOfHours-only warning keeps the existing warn-and-allow.
         if (!isRecurringSubmit) {
           const c = conflicts[0];
           const msgs = [];
+          const isHardBlock = !!c.item;
           if (c.item) {
-            const isBlocked = c.item.kind === AGENDA_ITEM_KIND.BLOCKED;
-            msgs.push(t(isBlocked ? "business.agenda.conflictBlockedMsg" : "business.agenda.conflictMsg", {
+            const isBlockedSlot = c.item.kind === AGENDA_ITEM_KIND.BLOCKED;
+            msgs.push(t(isBlockedSlot ? "business.agenda.conflictBlockedMsg" : "business.agenda.conflictMsg", {
               name: instructorName || t("business.agenda.you"),
               title: c.item.title,
               range: `${hm(c.item.start)}–${hm(c.item.end)}`,
@@ -682,14 +820,22 @@ export default function CreateEventScreen({ navigation, route }) {
           if (c.outOfHours) {
             msgs.push(t("business.agenda.outOfHoursMsg", { start: c.outOfHours.start, end: c.outOfHours.end }));
           }
-          Alert.alert(t("business.agenda.placementWarnTitle"), msgs.join("\n\n"), [
-            { text: t("business.common.cancel"), style: "cancel" },
-            { text: t("business.agenda.continueAnyway"), onPress: () => handleCreateEvent(true) },
-          ]);
+          const buttons = isHardBlock
+            ? [{ text: t("business.common.cancel"), style: "cancel" }]
+            : [
+                { text: t("business.common.cancel"), style: "cancel" },
+                { text: t("business.agenda.continueAnyway"), onPress: () => handleCreateEvent(true) },
+              ];
+          Alert.alert(t("business.agenda.placementWarnTitle"), msgs.join("\n\n"), buttons);
           return;
         }
 
         // Recurring → per-date summary + Book anyway / Skip conflicting / Go back.
+        // KIN-154: "Book anyway" would create events INTO a same-instructor
+        // double-booking, so it's dropped entirely when any date has a hard
+        // (c.item) conflict — "Skip conflicting dates" stays available
+        // either way, since it excludes those dates rather than booking
+        // into them.
         const fmtDate = (d) =>
           new Date(d).toLocaleDateString(i18n.language, { weekday: "short", month: "short", day: "numeric" });
         const lines = conflicts.map((c) =>
@@ -699,17 +845,25 @@ export default function CreateEventScreen({ navigation, route }) {
         );
         const skipIso = conflicts.map((c) => c.date.toISOString());
         const cleanCount = occurrences.length - conflicts.length;
-        const buttons = [
-          { text: t("createEvent.recurringConflict.bookAnyway"), onPress: () => handleCreateEvent(true) },
-        ];
+        const hasHardBlock = conflicts.some((c) => c.item);
+        const buttons = [];
+        if (!hasHardBlock) {
+          buttons.push({ text: t("createEvent.recurringConflict.bookAnyway"), onPress: () => handleCreateEvent(true) });
+        }
         if (cleanCount > 0) {
           buttons.push({ text: t("createEvent.recurringConflict.skip"), onPress: () => handleCreateEvent(true, skipIso) });
         }
         buttons.push({ text: t("createEvent.recurringConflict.goBack"), style: "cancel" });
+        // KIN-154: probe.length < occurrences.length means the 26-date cap
+        // actually kicked in — say so, instead of implying every date in a
+        // longer series was checked.
+        const probeCaveat = probe.length < occurrences.length
+          ? "\n\n" + t("createEvent.recurringConflict.probeLimited", { checked: probe.length, total: occurrences.length })
+          : "";
         Alert.alert(
           t("createEvent.recurringConflict.title"),
-          t("createEvent.recurringConflict.summary", { count: conflicts.length, total: occurrences.length }) +
-            "\n\n" + lines.join("\n"),
+          t("createEvent.recurringConflict.summary", { count: conflicts.length, total: probe.length }) +
+            "\n\n" + lines.join("\n") + probeCaveat,
           buttons,
         );
         return;
@@ -812,8 +966,12 @@ export default function CreateEventScreen({ navigation, route }) {
         maxPeople: parseInt(maxPeople) || 0,
         // General price stays canonical (everything that reads `price` keeps
         // working). `priceLocal`/`twoTier` are additive (kinlo_business/05 §B).
-        price: isFree ? 0 : twoTier ? parseInt(priceGeneral, 10) : parseFloat(price),
-        priceLocal: !isFree && twoTier ? parseInt(priceLocal, 10) : null,
+        // KIN-151: never persist a raw parseFloat/parseInt result — the
+        // validation gate above already guarantees these parse to a valid
+        // positive number when !isFree, but `?? 0` keeps this line safe on
+        // its own even if that invariant ever changes.
+        price: isFree ? 0 : twoTier ? (parsePositiveNumber(priceGeneral) ?? 0) : (parsePositiveNumber(price) ?? 0),
+        priceLocal: !isFree && twoTier ? (parsePositiveNumber(priceLocal) ?? 0) : null,
         twoTier: !isFree && twoTier,
         currency: "MXN",
         // Instructor binding (kinlo_business/06 FIX 3): persist on the event too
@@ -1234,7 +1392,7 @@ export default function CreateEventScreen({ navigation, route }) {
 
         {/* Category Dropdown */}
         <SelectDropdown
-          label={t("createEvent.communityLabel")}
+          label={requiredLabel("createEvent.communityLabel")}
           value={selectedCategory}
           onValueChange={setSelectedCategory}
           options={EVENT_CATEGORIES}
@@ -1255,7 +1413,7 @@ export default function CreateEventScreen({ navigation, route }) {
 
         {/* City Dropdown */}
         <SelectDropdown
-          label={t("createEvent.cityLabel")}
+          label={requiredLabel("createEvent.cityLabel")}
           value={selectedCity}
           onValueChange={setSelectedCity}
           options={cityOptions}
@@ -1336,7 +1494,9 @@ export default function CreateEventScreen({ navigation, route }) {
         <View style={styles.row}>
           <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
             <Text style={[styles.label, { color: colors.text }]}>
-              {recurrenceConfig.type !== "none" ? t("createEvent.startDateLabel") : t("createEvent.dateLabel")}
+              {recurrenceConfig.type !== "none"
+                ? requiredLabel("createEvent.startDateLabel")
+                : requiredLabel("createEvent.dateLabel")}
             </Text>
             <TouchableOpacity
               style={[
@@ -1351,8 +1511,8 @@ export default function CreateEventScreen({ navigation, route }) {
                 setShowDatePicker(true);
               }}
             >
-              <Text style={[styles.pickerText, { color: colors.text }]}>
-                {formatDate(eventDate)}
+              <Text style={[styles.pickerText, { color: hasSetDate ? colors.text : colors.textTertiary }]}>
+                {hasSetDate ? formatDate(eventDate) : t("createEvent.selectDate")}
               </Text>
               <Icon
                 name="calendar"
@@ -1364,7 +1524,7 @@ export default function CreateEventScreen({ navigation, route }) {
           </View>
 
           <View style={[styles.field, { flex: 1, marginLeft: 8 }]}>
-            <Text style={[styles.label, { color: colors.text }]}>{t("createEvent.timeLabel")}</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{requiredLabel("createEvent.timeLabel")}</Text>
             <TouchableOpacity
               style={[
                 styles.pickerButton,
@@ -1378,8 +1538,8 @@ export default function CreateEventScreen({ navigation, route }) {
                 setShowTimePicker(true);
               }}
             >
-              <Text style={[styles.pickerText, { color: colors.text }]}>
-                {formatTime(eventDate)}
+              <Text style={[styles.pickerText, { color: hasSetTime ? colors.text : colors.textTertiary }]}>
+                {hasSetTime ? formatTime(eventDate) : t("createEvent.selectTime")}
               </Text>
               <Icon
                 name="clock"
@@ -1665,7 +1825,7 @@ export default function CreateEventScreen({ navigation, route }) {
 
         {/* Event length — sets the end time; drives when Community Matching opens */}
         <View style={styles.field}>
-          <Text style={[styles.label, { color: colors.text }]}>{t("createEvent.eventLength")}</Text>
+          <Text style={[styles.label, { color: colors.text }]}>{requiredLabel("createEvent.eventLength")}</Text>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setShowDurationModal(true)}
@@ -1684,8 +1844,8 @@ export default function CreateEventScreen({ navigation, route }) {
               type="ui"
               style={{ marginRight: 12 }}
             />
-            <Text style={[styles.input, { color: colors.text }]}>
-              {formatDuration(durationMinutes)}
+            <Text style={[styles.input, { color: durationMinutes ? colors.text : colors.textTertiary }]}>
+              {durationMinutes ? formatDuration(durationMinutes) : t("createEvent.selectDuration")}
             </Text>
             <Icon name="down" size={20} color={colors.textSecondary} type="ui" />
           </TouchableOpacity>
@@ -1695,7 +1855,7 @@ export default function CreateEventScreen({ navigation, route }) {
         <View style={styles.row}>
           <View style={[styles.field, { flex: 1, marginRight: !isFree && twoTier ? 0 : 8 }]}>
             <Text style={[styles.label, { color: colors.text }]}>
-              {t("createEvent.maxPeople")}
+              {requiredLabel("createEvent.maxPeople")}
             </Text>
             <View
               style={[
@@ -1901,6 +2061,7 @@ export default function CreateEventScreen({ navigation, route }) {
             const newDate = new Date(config.startDate);
             newDate.setHours(eventDate.getHours(), eventDate.getMinutes(), 0, 0);
             setEventDate(newDate);
+            setHasSetDate(true);
           }
         }}
         initialConfig={{

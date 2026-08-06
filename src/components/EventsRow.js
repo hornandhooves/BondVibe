@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { forwardRef, useState, useCallback, useImperativeHandle } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import { FONTS } from "../constants/theme-tokens";
 import Icon from "./Icon";
 import { getUpcomingEvents } from "../services/eventsFeedService";
+import { useFocusRefresh } from "../hooks/useFocusRefresh";
 
 /**
  * Home "Events near you" carousel (M0). Same pattern as MarketplaceRow, with its
@@ -13,29 +14,24 @@ import { getUpcomingEvents } from "../services/eventsFeedService";
  * the Events tab; a card opens that event's detail. Read-only + navigation.
  *
  * "near you" ordering is a follow-up (no geolocation source) — soonest-first for now.
+ *
+ * KIN-150: refetches on every tab focus (via useFocusRefresh), not just on
+ * mount — previously this only ever loaded once, the whole life of the app
+ * process, because HomeScreen stays mounted as a tab root. Exposes `reload`
+ * via ref so HomeScreen's pull-to-refresh can force an immediate refetch.
  */
-export default function EventsRow({ navigation }) {
+const EventsRow = forwardRef(function EventsRow({ navigation }, ref) {
   const { colors } = useTheme();
   const { t, i18n } = useTranslation();
   const s = createStyles(colors);
 
   const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    try {
-      setEvents(await getUpcomingEvents(8));
-    } catch (e) {
-      setError(true);
-    }
-    setLoading(false);
+    setEvents(await getUpcomingEvents(8));
   }, []);
-  useEffect(() => {
-    load();
-  }, [load]);
+  const { loading, error, reload } = useFocusRefresh(load);
+  useImperativeHandle(ref, () => ({ reload }), [reload]);
 
   const goEvents = () => navigation.navigate("EventsTab");
   const fmtDate = (iso) =>
@@ -59,7 +55,7 @@ export default function EventsRow({ navigation }) {
           ))}
         </ScrollView>
       ) : error ? (
-        <TouchableOpacity style={[s.stateCard, { borderColor: colors.border }]} onPress={load} activeOpacity={0.85}>
+        <TouchableOpacity style={[s.stateCard, { borderColor: colors.border }]} onPress={reload} activeOpacity={0.85}>
           <Icon name="close" size={20} color={colors.error} />
           <Text style={[s.stateTxt, { color: colors.textSecondary }]}>{t("home.events.error")}</Text>
           <Text style={[s.stateAction, { color: colors.primary }]}>{t("home.events.retry")}</Text>
@@ -96,7 +92,9 @@ export default function EventsRow({ navigation }) {
       )}
     </View>
   );
-}
+});
+
+export default EventsRow;
 
 function createStyles(colors) {
   return StyleSheet.create({
