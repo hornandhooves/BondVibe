@@ -6,6 +6,7 @@
  */
 import {
   collection, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, updateDoc, query, where,
+  writeBatch, serverTimestamp,
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
@@ -155,6 +156,81 @@ export function staffDisplayName(s, fallback = "Staff member") {
 export async function removeStaff(staffUid, bizId = getMyBizId()) {
   if (!bizId || !staffUid) return;
   await deleteDoc(doc(db, "businesses", bizId, "staff", staffUid));
+}
+
+// ── Placeholder staff (KIN-190) ──────────────────────────────────────────────
+// A staff doc's ID is normally the member's real Firebase Auth uid, because the
+// rules read it as an exact path (staff/{request.auth.uid}), not as a query. A
+// placeholder deliberately breaks that: it has a GENERATED id and no `uid`
+// field, so it can name a real person who has no account yet without ever
+// looking like an authenticated member. It can be pointed at by an event
+// (instructorUid is an opaque string to getInstructorEventsOnDate, so Agenda
+// conflict detection works on placeholders too) but it can never authenticate
+// or be granted anything.
+//
+// Same id shape as branchId() in businessService.js — one generator pattern in
+// this codebase, not two.
+const placeholderStaffId = () => `st_${Math.random().toString(36).slice(2, 8)}`;
+
+/**
+ * Create a named placeholder for someone who isn't in the app yet.
+ * @param {string} name
+ * @param {string} [role]
+ * @param {string} [bizId]
+ * @returns {Promise<{id:string,name:string,role:string}|null>} null without a bizId
+ */
+export async function addPlaceholderStaff(name, role = "instructor", bizId = getMyBizId()) {
+  if (!bizId) return null;
+  const clean = (name || "").trim();
+  if (!clean) return null;
+  const id = placeholderStaffId();
+  // No `uid` field at all — its absence is what marks this doc unauthenticatable.
+  await setDoc(doc(db, "businesses", bizId, "staff", id), {
+    name: clean,
+    role,
+    claimed: false,
+    createdAt: serverTimestamp(),
+  });
+  return { id, name: clean, role };
+}
+
+/**
+ * Replace a placeholder with a real staff doc once the person has an account.
+ *
+ * The placeholder is NOT annotated in place: every business rule keys off the
+ * staff doc's ID being the acting user's real uid, so the record has to be
+ * re-created at staff/{realUid} and the placeholder dropped. Both writes go in
+ * ONE batch — a half-applied claim would leave either a duplicate (person
+ * listed twice) or an orphan (event pointing at a deleted placeholder).
+ *
+ * @param {string} placeholderId
+ * @param {string} realUid
+ * @param {string} [role] explicit role for the real doc; falls back to the
+ *   placeholder's. Passed by the caller because claiming someone who is
+ *   ALREADY staff here must not silently change the role they were given.
+ * @param {string} [bizId]
+ * @returns {Promise<{ok:boolean, error?:string}>}
+ */
+export async function claimPlaceholderStaff(placeholderId, realUid, role = null, bizId = getMyBizId()) {
+  if (!bizId || !placeholderId || !realUid) return { ok: false, error: "missing_args" };
+  const phRef = doc(db, "businesses", bizId, "staff", placeholderId);
+  const snap = await getDoc(phRef);
+  if (!snap.exists()) return { ok: false, error: "not_found" };
+
+  // claimed/createdAt describe the PLACEHOLDER's lifecycle, not the person's —
+  // they're replaced below rather than carried over.
+  const { claimed, createdAt, role: placeholderRole, ...carried } = snap.data();
+  const batch = writeBatch(db);
+  // merge:true so claiming someone who is ALREADY staff here adds the carried
+  // fields instead of wiping what they already have (working hours, etc.).
+  batch.set(
+    doc(db, "businesses", bizId, "staff", realUid),
+    { ...carried, role: role || placeholderRole, uid: realUid, claimed: true, claimedAt: serverTimestamp() },
+    { merge: true },
+  );
+  batch.delete(phRef);
+  await batch.commit();
+  return { ok: true };
 }
 
 // ── Roles & permissions (kinlo_business/07 FIX 4) ────────────────────────────
