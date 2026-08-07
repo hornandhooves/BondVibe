@@ -220,6 +220,13 @@ export async function claimPlaceholderStaff(placeholderId, realUid, role = null,
   // claimed/createdAt describe the PLACEHOLDER's lifecycle, not the person's —
   // they're replaced below rather than carried over.
   const { claimed, createdAt, role: placeholderRole, ...carried } = snap.data();
+
+  // Repoint existing events BEFORE the placeholder is deleted. The order is the
+  // whole safety argument: if this fails, nothing has been touched yet and the
+  // claim can simply be retried. Doing it after the delete would, on failure,
+  // strand events pointing at a staff doc that no longer exists.
+  const backfilled = await backfillInstructorUid(placeholderId, realUid, carried.name);
+
   const batch = writeBatch(db);
   // merge:true so claiming someone who is ALREADY staff here adds the carried
   // fields instead of wiping what they already have (working hours, etc.).
@@ -230,7 +237,83 @@ export async function claimPlaceholderStaff(placeholderId, realUid, role = null,
   );
   batch.delete(phRef);
   await batch.commit();
-  return { ok: true };
+  return { ok: true, backfilled };
+}
+
+/**
+ * Normalized for name comparison: lowercased, accent-stripped, spaces collapsed.
+ * Deliberately NOT fuzzy — this only decides whether to ASK the owner, and a
+ * near-miss that stays silent is better than a wrong automatic merge.
+ */
+const normalizeName = (n) =>
+  String(n || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+/**
+ * Find an UNCLAIMED placeholder that plausibly names the same person (KIN-190
+ * etapa 4). Exact normalized match, or one name fully containing the other
+ * ("Ana" vs "Ana Torres") — the owner is always asked to confirm, so a false
+ * positive costs one dialog, never a wrong merge.
+ *
+ * @param {string} name the invitee's name
+ * @param {string} [bizId]
+ * @returns {Promise<{id:string,name:string,role:string}|null>}
+ */
+export async function findUnclaimedPlaceholderByName(name, bizId = getMyBizId()) {
+  const target = normalizeName(name);
+  if (!target || !bizId) return null;
+  const staff = await listStaff(bizId);
+  const hit = staff.find((s) => {
+    // A claimed doc, or any doc with a real uid, is not a placeholder.
+    if (s.claimed === true || s.uid) return false;
+    const cand = normalizeName(s.name);
+    if (!cand) return false;
+    return cand === target || cand.includes(target) || target.includes(cand);
+  });
+  return hit ? { id: hit.id, name: hit.name, role: hit.role } : null;
+}
+
+/**
+ * Repoint events that named the placeholder at the person's real uid.
+ *
+ * Client-side on purpose: firestore.rules lets the event's creator write any
+ * field except the server-owned ones (the featured fields, the rating
+ * aggregates, matching, approxCoords, area) — instructorUid is NOT among them,
+ * so this needs no rule change and no Cloud Function.
+ *
+ * The same rule is why creatorId is filtered here: the owner can only update
+ * events THEY created. An event created by a staff member that points at this
+ * placeholder is left alone rather than attempted and denied — see the caller's
+ * return value if you need to surface how many were actually moved.
+ *
+ * @returns {Promise<number>} how many events were repointed
+ */
+async function backfillInstructorUid(placeholderId, realUid, instructorName) {
+  const me = auth.currentUser?.uid;
+  if (!me) return 0;
+  try {
+    const snap = await getDocs(
+      query(collection(db, "events"), where("instructorUid", "==", placeholderId))
+    );
+    const mine = snap.docs.filter((d) => d.data().creatorId === me);
+    await Promise.all(
+      mine.map((d) =>
+        updateDoc(d.ref, {
+          instructorUid: realUid,
+          // Keep the cached display label in step with the id it labels.
+          ...(instructorName ? { instructorName } : {}),
+        })
+      )
+    );
+    return mine.length;
+  } catch (e) {
+    console.error("backfillInstructorUid failed:", e?.message || e);
+    throw e; // the caller must NOT delete the placeholder if this failed
+  }
 }
 
 // ── Roles & permissions (kinlo_business/07 FIX 4) ────────────────────────────

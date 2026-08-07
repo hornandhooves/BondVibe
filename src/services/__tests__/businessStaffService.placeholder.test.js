@@ -24,16 +24,42 @@ jest.mock("firebase/functions", () => ({
 let mockStore = {};
 let mockCommittedBatches = 0;
 let mockOpenBatchOps = null;
+// events the backfill query will see, plus a switch to make it blow up.
+let mockEvents = [];
+let mockGetDocsThrows = false;
 
 jest.mock("firebase/firestore", () => ({
   collection: (_db, ...segs) => ({ __path: segs.join("/") }),
   doc: (_db, ...segs) => ({ __path: segs.join("/") }),
   addDoc: jest.fn(),
   deleteDoc: jest.fn(),
-  updateDoc: jest.fn(),
-  query: jest.fn(),
-  where: jest.fn(),
-  getDocs: jest.fn(async () => ({ docs: [] })),
+  updateDoc: async (ref, patch) => {
+    mockStore[ref.__path] = { ...mockStore[ref.__path], ...patch };
+  },
+  query: (colRef, ...clauses) => ({ __path: colRef.__path, __clauses: clauses }),
+  where: (field, op, value) => ({ field, op, value }),
+  getDocs: async (q) => {
+    if (mockGetDocsThrows) throw new Error("permission-denied");
+    if (q && q.__path === "businesses/biz1/staff") {
+      return {
+        docs: Object.entries(mockStore)
+          .filter(([k]) => k.startsWith("businesses/biz1/staff/"))
+          .map(([k, v]) => ({ id: k.split("/").pop(), data: () => v })),
+      };
+    }
+    if (q && q.__path === "events") {
+      const clause = q.__clauses[0];
+      const hits = mockEvents.filter((e) => e[clause.field] === clause.value);
+      return {
+        docs: hits.map((e) => ({
+          id: e.id,
+          ref: { __path: `events/${e.id}` },
+          data: () => e,
+        })),
+      };
+    }
+    return { docs: [] };
+  },
   serverTimestamp: () => "SERVER_TS",
   getDoc: async (ref) => {
     const data = mockStore[ref.__path];
@@ -62,6 +88,7 @@ jest.mock("firebase/firestore", () => ({
 const {
   addPlaceholderStaff,
   claimPlaceholderStaff,
+  findUnclaimedPlaceholderByName,
 } = require("../businessStaffService");
 
 const PH = "businesses/biz1/staff/ph1";
@@ -75,6 +102,8 @@ beforeEach(() => {
   mockStore = {};
   mockCommittedBatches = 0;
   mockOpenBatchOps = null;
+  mockEvents = [];
+  mockGetDocsThrows = false;
 });
 
 describe("addPlaceholderStaff", () => {
@@ -108,7 +137,7 @@ describe("claimPlaceholderStaff", () => {
   it("THE PLACEHOLDER IS GONE after a successful claim (no duplicate row)", async () => {
     seedPlaceholder();
     const res = await claimPlaceholderStaff("ph1", "uid_real");
-    expect(res).toEqual({ ok: true });
+    expect(res).toMatchObject({ ok: true });
     expect(mockStore[PH]).toBeUndefined(); // ← the regression this file exists for
     expect(mockStore[REAL]).toBeTruthy();
   });
@@ -166,5 +195,78 @@ describe("claimPlaceholderStaff", () => {
     expect(await claimPlaceholderStaff("ph1", "")).toEqual({ ok: false, error: "missing_args" });
     expect(await claimPlaceholderStaff("", "uid_real")).toEqual({ ok: false, error: "missing_args" });
     expect(mockCommittedBatches).toBe(0);
+  });
+});
+
+describe("claimPlaceholderStaff — backfilling past events (KIN-190 etapa 3)", () => {
+  it("repoints the owner's own events from the placeholder to the real uid", async () => {
+    seedPlaceholder();
+    mockEvents = [
+      { id: "e1", instructorUid: "ph1", creatorId: "owner1", instructorName: "Ana" },
+      { id: "e2", instructorUid: "ph1", creatorId: "owner1" },
+    ];
+    const res = await claimPlaceholderStaff("ph1", "uid_real");
+    expect(res).toEqual({ ok: true, backfilled: 2 });
+    expect(mockStore["events/e1"]).toMatchObject({ instructorUid: "uid_real", instructorName: "Ana" });
+    expect(mockStore["events/e2"]).toMatchObject({ instructorUid: "uid_real" });
+  });
+
+  it("leaves events created by SOMEONE ELSE alone — the rules would deny that write", async () => {
+    seedPlaceholder();
+    mockEvents = [
+      { id: "mine", instructorUid: "ph1", creatorId: "owner1" },
+      { id: "theirs", instructorUid: "ph1", creatorId: "someone_else" },
+    ];
+    const res = await claimPlaceholderStaff("ph1", "uid_real");
+    expect(res.backfilled).toBe(1);
+    expect(mockStore["events/mine"]).toMatchObject({ instructorUid: "uid_real" });
+    expect(mockStore["events/theirs"]).toBeUndefined(); // never written
+  });
+
+  it("does not touch events pointing at a DIFFERENT placeholder", async () => {
+    seedPlaceholder();
+    mockEvents = [{ id: "other", instructorUid: "ph_other", creatorId: "owner1" }];
+    const res = await claimPlaceholderStaff("ph1", "uid_real");
+    expect(res.backfilled).toBe(0);
+    expect(mockStore["events/other"]).toBeUndefined();
+  });
+
+  it("KEEPS THE PLACEHOLDER when the backfill fails — never strand an event on a deleted doc", async () => {
+    seedPlaceholder();
+    mockGetDocsThrows = true;
+    await expect(claimPlaceholderStaff("ph1", "uid_real")).rejects.toThrow();
+    // Order is the safety argument: nothing was committed, so a retry is clean.
+    expect(mockStore[PH]).toBeTruthy();
+    expect(mockStore[REAL]).toBeUndefined();
+    expect(mockCommittedBatches).toBe(0);
+  });
+});
+
+describe("findUnclaimedPlaceholderByName (KIN-190 etapa 4)", () => {
+  it("matches ignoring case and accents", async () => {
+    mockStore["businesses/biz1/staff/ph1"] = { name: "Ana Torres", role: "instructor", claimed: false };
+    expect(await findUnclaimedPlaceholderByName("  ana torres ")).toMatchObject({ id: "ph1" });
+    expect(await findUnclaimedPlaceholderByName("ANA TÓRRES")).toMatchObject({ id: "ph1" });
+  });
+
+  it("matches when one name contains the other (asks the owner, never merges alone)", async () => {
+    mockStore["businesses/biz1/staff/ph1"] = { name: "Ana", role: "instructor", claimed: false };
+    expect(await findUnclaimedPlaceholderByName("Ana Torres")).toMatchObject({ id: "ph1" });
+  });
+
+  it("NEVER returns a real staff member — a doc with a uid is not a placeholder", async () => {
+    mockStore["businesses/biz1/staff/uid_real"] = { name: "Ana Torres", uid: "uid_real", role: "instructor" };
+    expect(await findUnclaimedPlaceholderByName("Ana Torres")).toBeNull();
+  });
+
+  it("skips an already-claimed placeholder", async () => {
+    mockStore["businesses/biz1/staff/ph1"] = { name: "Ana", role: "instructor", claimed: true };
+    expect(await findUnclaimedPlaceholderByName("Ana")).toBeNull();
+  });
+
+  it("returns null for an unrelated name, and for a blank one", async () => {
+    mockStore["businesses/biz1/staff/ph1"] = { name: "Ana", role: "instructor", claimed: false };
+    expect(await findUnclaimedPlaceholderByName("Beto")).toBeNull();
+    expect(await findUnclaimedPlaceholderByName("   ")).toBeNull();
   });
 });

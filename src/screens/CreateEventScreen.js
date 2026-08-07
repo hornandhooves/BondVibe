@@ -686,7 +686,12 @@ export default function CreateEventScreen({ navigation, route }) {
       Alert.alert(t("createEvent.validation.missingInfoTitle"), t("createEvent.validation.missingDescriptionMsg"));
       return;
     }
-    if (isClass && !instructorUid) {
+    // KIN-190: required for EVERY event, not just classes. instructorUid may be
+    // a real staff uid or a placeholder id — both name a real person. Note the
+    // check is on the ID, never on instructorName: that field is only the
+    // picker's cached label for display, so treating it as a second source of
+    // truth would let a blank/stale name pass as "filled".
+    if (!instructorUid) {
       Alert.alert(t("createEvent.validation.missingInfoTitle"), t("createEvent.validation.missingInstructorMsg"));
       return;
     }
@@ -1380,12 +1385,13 @@ export default function CreateEventScreen({ navigation, route }) {
           </Text>
         </View>
 
-        {/* Instructor (kinlo_business/06 FIX 3) — required for a class, optional
-            for an event. Binds the item to a staff member for the Agenda. */}
+        {/* Instructor (kinlo_business/06 FIX 3) — KIN-190: required for EVERY
+            event, not just classes, so an event always names a real person.
+            Binds the item to a staff member (or placeholder) for the Agenda. */}
         <InstructorPicker
           value={instructorUid}
           onChange={(uid, name) => { setInstructorUid(uid); setInstructorName(name); }}
-          label={isClass ? t("createEvent.instructorLabel") : t("createEvent.instructorOptionalLabel")}
+          label={requiredLabel("createEvent.instructorLabel")}
           placeholder={t("createEvent.instructorPlaceholder")}
           t={t}
         />
