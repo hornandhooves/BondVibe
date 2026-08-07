@@ -19,12 +19,11 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../contexts/ThemeContext";
 import { useTranslation } from "react-i18next";
 import * as ImagePicker from "expo-image-picker";
 import Icon from "./Icon";
-import { BRAND } from "../constants/theme-tokens";
+import { AVATAR_PASTELS } from "../constants/theme-tokens";
 
 export default function AvatarPicker({
   visible,
@@ -203,7 +202,19 @@ const initialFrom = (name) => {
   return ch ? ch.toUpperCase() : null;
 };
 
+// Deterministic pastel pick per the "09/Event Cards & Avatar" spec ("Photo or
+// initials, 5 pastel tones") — same name always lands on the same tone.
+const pastelFor = (key) => {
+  if (!key) return AVATAR_PASTELS[0];
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  }
+  return AVATAR_PASTELS[hash % AVATAR_PASTELS.length];
+};
+
 export const AvatarDisplay = ({ avatar, size = 50, style, name }) => {
+  const { colors } = useTheme();
   // Real photo (local uri while picking, or uploaded url).
   const uri =
     avatar && avatar.type === "photo" && (avatar.uri || avatar.url)
@@ -219,18 +230,16 @@ export const AvatarDisplay = ({ avatar, size = 50, style, name }) => {
   }
 
   // Everything else (missing, legacy emoji value, legacy abstract id):
-  // branded gradient circle with the person's initial — or a line glyph.
+  // a pastel circle with the person's initial — or a line glyph.
   const initial = initialFrom(name);
   return (
-    <LinearGradient
-      colors={BRAND.gradient}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+    <View
       style={[
         {
           width: size,
           height: size,
           borderRadius: size / 2,
+          backgroundColor: pastelFor(name),
           alignItems: "center",
           justifyContent: "center",
         },
@@ -240,7 +249,7 @@ export const AvatarDisplay = ({ avatar, size = 50, style, name }) => {
       {initial ? (
         <Text
           style={{
-            color: "#FFFFFF",
+            color: colors.text,
             fontSize: size * 0.42,
             fontWeight: "700",
           }}
@@ -248,9 +257,9 @@ export const AvatarDisplay = ({ avatar, size = 50, style, name }) => {
           {initial}
         </Text>
       ) : (
-        <Icon name="user" size={size * 0.5} color="#FFFFFF" />
+        <Icon name="user" size={size * 0.5} color={colors.textSecondary} />
       )}
-    </LinearGradient>
+    </View>
   );
 };
 

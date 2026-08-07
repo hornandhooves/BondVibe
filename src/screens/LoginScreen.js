@@ -6,8 +6,8 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  Image,
   StyleSheet,
-  ActivityIndicator,
   Modal,
   KeyboardAvoidingView,
   ScrollView,
@@ -15,42 +15,47 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
 } from "react-native";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
-import {
-  signInWithEmailAndPassword,
-  sendPasswordResetEmail,
-} from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { auth, db } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
-import GradientBackground from "../components/GradientBackground";
 import KeyboardAccessory from "../components/KeyboardAccessory";
 import SuccessModal from "../components/SuccessModal";
-import SocialAuthButtons from "../components/SocialAuthButtons";
-import BondVibeLogo from "../components/BondVibeLogo";
+import Button from "../components/Button";
+import GoogleIcon from "../components/GoogleIcon";
+import useSocialAuth from "../hooks/useSocialAuth";
+import { FONTS, RADII, ELEVATION } from "../constants/theme-tokens";
 
-// BUG 12.1: the static header (logo + title + subtitle) is hoisted to module
-// scope and memoized so typing the email/password no longer re-renders it — the
-// BondVibeLogo stops re-rasterizing ("blinking") on every keystroke.
-const LoginHeader = React.memo(function LoginHeader({ colors, isDark, t, styles }) {
+// Lighter than WelcomeScreen's shared WORDMARK_FONT (DemiBold) — the mockup's
+// standalone heading treatment here reads as a moderate weight, not heavy.
+// (Font choice only — colors now come entirely from the theme tokens below.)
+const LOGIN_WORDMARK_FONT = Platform.select({
+  ios: 'AvenirNext-Medium',
+  default: FONTS.bodySemibold,
+});
+
+// BUG 12.1: the static header (logo + wordmark + tagline) is hoisted to its
+// own memoized component so typing the email/password doesn't re-render it.
+const LoginHeader = React.memo(function LoginHeader({ t, styles }) {
   return (
     <View style={styles.header}>
-      {/* New Echo Logo - adapts to theme */}
-      <View style={styles.logoContainer}>
-        <BondVibeLogo size={80} variant="adaptive" isDark={isDark} />
-      </View>
-      <Text style={[styles.title, { color: colors.text }]}>Kinlo</Text>
-      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        {t("welcome.tagline")}
-      </Text>
+      <Image
+        source={require('../../assets/kinlo-logo-icon.png')}
+        style={styles.logoImage}
+        resizeMode="contain"
+      />
+      <Text style={styles.wordmark}>KINLO</Text>
+      <Text style={styles.tagline}>{t("welcome.tagline")}.</Text>
     </View>
   );
 });
 
 export default function LoginScreen({ navigation }) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -62,6 +67,7 @@ export default function LoginScreen({ navigation }) {
     message: "",
     showSignup: false,
   });
+  const { busy, appleReady, runGoogle, runApple } = useSocialAuth();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -232,8 +238,8 @@ export default function LoginScreen({ navigation }) {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={{ flex: 1 }}
     >
-      <GradientBackground>
-        <StatusBar style={isDark ? "light" : "dark"} />
+      <View style={styles.container}>
+        <StatusBar style="dark" />
 
         {/* accessible={false}: keyboard-dismiss wrapper must not collapse its
             children into one a11y element (blocks VoiceOver and E2E drivers). */}
@@ -243,18 +249,11 @@ export default function LoginScreen({ navigation }) {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <LoginHeader colors={colors} isDark={isDark} t={t} styles={styles} />
+            <LoginHeader t={t} styles={styles} />
 
             <View style={styles.form}>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  {
-                    backgroundColor: colors.surfaceGlass,
-                    borderColor: colors.border,
-                  },
-                ]}
-              >
+              <Text style={styles.fieldLabel}>{t("auth.emailPlaceholder")}</Text>
+              <View style={styles.inputWrapper}>
                 <Icon
                   name="mail"
                   size={18}
@@ -263,8 +262,8 @@ export default function LoginScreen({ navigation }) {
                 />
                 <TextInput
                   testID="login-email"
-                  style={[styles.input, { color: colors.text }]}
-                  placeholder={t("auth.emailPlaceholder")}
+                  style={styles.input}
+                  placeholder={t("auth.emailExample")}
                   placeholderTextColor={colors.textTertiary}
                   value={email}
                   onChangeText={setEmail}
@@ -274,15 +273,8 @@ export default function LoginScreen({ navigation }) {
                 />
               </View>
 
-              <View
-                style={[
-                  styles.inputWrapper,
-                  {
-                    backgroundColor: colors.surfaceGlass,
-                    borderColor: colors.border,
-                  },
-                ]}
-              >
+              <Text style={styles.fieldLabel}>{t("auth.passwordPlaceholder")}</Text>
+              <View style={styles.inputWrapper}>
                 <Icon
                   name="lock"
                   size={18}
@@ -291,8 +283,8 @@ export default function LoginScreen({ navigation }) {
                 />
                 <TextInput
                   testID="login-password"
-                  style={[styles.input, { color: colors.text }]}
-                  placeholder={t("auth.passwordPlaceholder")}
+                  style={styles.input}
+                  placeholder={t("auth.enterPassword")}
                   placeholderTextColor={colors.textTertiary}
                   value={password}
                   onChangeText={setPassword}
@@ -313,86 +305,61 @@ export default function LoginScreen({ navigation }) {
               </View>
 
               <TouchableOpacity
-                style={styles.loginButton}
-                onPress={handleLogin}
-                disabled={loading}
+                onPress={handleResetPassword}
+                style={styles.forgotRow}
               >
-                <View
-                  style={[
-                    styles.loginGlass,
-                    {
-                      backgroundColor: `${colors.primary}33`,
-                      borderColor: `${colors.primary}66`,
-                    },
-                  ]}
-                >
-                  {loading ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <Text style={[styles.loginText, { color: colors.primary }]}>
-                      {t("auth.login.logIn")}
-                    </Text>
-                  )}
-                </View>
+                <Text style={styles.forgotLink}>
+                  {t("auth.login.forgotPasswordLink")}
+                </Text>
               </TouchableOpacity>
 
-              <SocialAuthButtons />
+              <Button
+                label={t("auth.login.logIn")}
+                onPress={handleLogin}
+                loading={loading}
+                fullWidth
+                size="lg"
+                style={styles.loginButton}
+              />
 
               <View style={styles.divider}>
-                <View
-                  style={[
-                    styles.dividerLine,
-                    { backgroundColor: colors.border },
-                  ]}
-                />
-                <Text
-                  style={[styles.dividerText, { color: colors.textTertiary }]}
-                >
-                  {t("auth.or")}
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>
+                  {t("socialAuthButtons.orContinueWith")}
                 </Text>
-                <View
-                  style={[
-                    styles.dividerLine,
-                    { backgroundColor: colors.border },
-                  ]}
-                />
+                <View style={styles.dividerLine} />
               </View>
 
+              <Button
+                label={t("socialAuthButtons.continueWithGoogle")}
+                onPress={runGoogle}
+                loading={busy === "google"}
+                disabled={!!busy}
+                color={colors.surface}
+                textColor={colors.text}
+                fullWidth
+                size="lg"
+                icon={<GoogleIcon size={18} />}
+                style={styles.socialButton}
+              />
+
+              {Platform.OS === "ios" && appleReady && (
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
+                  cornerRadius={12}
+                  style={styles.appleButton}
+                  onPress={runApple}
+                />
+              )}
+
               <TouchableOpacity
-                style={styles.signupButton}
                 onPress={() => navigation.navigate("Signup")}
+                style={styles.signupRow}
               >
-                <View
-                  style={[
-                    styles.signupGlass,
-                    {
-                      backgroundColor: colors.surfaceGlass,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                >
-                  <Text style={[styles.signupText, { color: colors.text }]}>
-                    {t("auth.login.noAccount")}
-                    <Text style={{ color: colors.primary, fontWeight: "700" }}>
-                      {t("auth.login.signUp")}
-                    </Text>
-                  </Text>
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.forgotPassword}
-                onPress={handleResetPassword}
-              >
-                <Text
-                  style={[
-                    styles.forgotPasswordText,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {t("auth.login.forgotPassword")}
-                  <Text style={{ color: colors.primary, fontWeight: "700" }}>
-                    {t("auth.login.reset")}
-                  </Text>
+                <Text style={styles.signupText}>
+                  {t("auth.login.noAccount")}
+                  <Text style={styles.signupLink}>{t("auth.login.signUp")}</Text>
                 </Text>
               </TouchableOpacity>
             </View>
@@ -434,51 +401,19 @@ export default function LoginScreen({ navigation }) {
                   {errorModal.message}
                 </Text>
                 <View style={styles.modalButtonsColumn}>
-                  <TouchableOpacity
-                    style={styles.modalFullButton}
+                  <Button
+                    label={t("auth.login.createAccount")}
                     onPress={handleSignupClick}
-                    activeOpacity={0.7}
-                  >
-                    <View
-                      style={[
-                        styles.modalButtonGlass,
-                        {
-                          backgroundColor: `${colors.primary}33`,
-                          borderColor: `${colors.primary}66`,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.modalButtonText,
-                          { color: colors.primary },
-                        ]}
-                      >
-                        {t("auth.login.createAccount")}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.modalFullButton}
+                    fullWidth
+                    size="lg"
+                  />
+                  <Button
+                    label={t("auth.login.resetPassword")}
                     onPress={handleResetPassword}
-                    activeOpacity={0.7}
-                  >
-                    <View
-                      style={[
-                        styles.modalButtonGlass,
-                        {
-                          backgroundColor: colors.surfaceGlass,
-                          borderColor: colors.border,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[styles.modalButtonText, { color: colors.text }]}
-                      >
-                        {t("auth.login.resetPassword")}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
+                    variant="secondary"
+                    fullWidth
+                    size="lg"
+                  />
                   <TouchableOpacity
                     style={styles.modalFullButton}
                     onPress={handleCancel}
@@ -511,52 +446,89 @@ export default function LoginScreen({ navigation }) {
             tone="error"
           />
         )}
-      </GradientBackground>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 function createStyles(colors) {
   return StyleSheet.create({
-    container: { flex: 1 },
+    container: { flex: 1, backgroundColor: colors.background },
     scrollContent: {
       flexGrow: 1,
       paddingHorizontal: 24,
-      paddingTop: 120,
+      paddingTop: 80,
       paddingBottom: 40,
     },
-    header: { alignItems: "center", marginBottom: 48 },
-    logoContainer: {
-      marginBottom: 16,
+    header: { alignItems: "center", marginBottom: 40 },
+    logoImage: { width: 72, height: 72, marginBottom: 12 },
+    wordmark: {
+      fontFamily: LOGIN_WORDMARK_FONT,
+      fontSize: 30,
+      color: colors.text,
+      letterSpacing: 1,
     },
-    title: {
-      fontSize: 32,
-      fontWeight: "700",
-      marginBottom: 8,
-      letterSpacing: -0.5,
+    tagline: {
+      fontFamily: FONTS.heroSans,
+      fontSize: 14,
+      color: colors.accent,
+      marginTop: 4,
     },
-    subtitle: { fontSize: 15, textAlign: "center" },
     form: { width: "100%", maxWidth: 400, alignSelf: "center" },
+    fieldLabel: {
+      fontFamily: FONTS.bodySemibold,
+      fontSize: 14,
+      color: colors.text,
+      marginBottom: 8,
+    },
     inputWrapper: {
-      borderWidth: 1,
-      borderRadius: 16,
+      backgroundColor: colors.sunken,
+      borderRadius: RADII.input,
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: 16,
       marginBottom: 16,
     },
-    inputIcon: { marginRight: 12 },
+    inputIcon: { marginRight: 10 },
     eyeButton: { padding: 8, marginLeft: 4 },
-    input: { flex: 1, fontSize: 16, paddingVertical: 16 },
-    loginButton: { borderRadius: 16, overflow: "hidden", marginBottom: 20 },
-    loginGlass: { borderWidth: 1, paddingVertical: 16, alignItems: "center" },
-    loginText: { fontSize: 17, fontWeight: "700", letterSpacing: -0.2 },
+    input: {
+      flex: 1,
+      fontFamily: FONTS.body,
+      fontSize: 16,
+      color: colors.text,
+      paddingVertical: 16,
+    },
+    forgotRow: { alignItems: "flex-end", marginBottom: 24 },
+    forgotLink: {
+      fontFamily: FONTS.bodyBold,
+      fontSize: 13,
+      color: colors.accent,
+    },
+    loginButton: { marginBottom: 24 },
     divider: { flexDirection: "row", alignItems: "center", marginBottom: 20 },
-    dividerLine: { flex: 1, height: 1 },
-    dividerText: { marginHorizontal: 16, fontSize: 14 },
-    signupButton: { borderRadius: 16, overflow: "hidden" },
-    signupGlass: { borderWidth: 1, paddingVertical: 16, alignItems: "center" },
-    signupText: { fontSize: 15 },
+    dividerLine: { flex: 1, height: 1, backgroundColor: colors.borderStrong },
+    dividerText: {
+      fontFamily: FONTS.body,
+      fontSize: 13,
+      color: colors.textTertiary,
+      marginHorizontal: 12,
+    },
+    socialButton: {
+      borderWidth: 1,
+      borderColor: colors.borderStrong,
+      marginBottom: 12,
+    },
+    appleButton: { width: "100%", height: 48, marginBottom: 20 },
+    signupRow: { alignItems: "center", marginTop: 4 },
+    signupText: {
+      fontFamily: FONTS.body,
+      fontSize: 14,
+      color: colors.textTertiary,
+    },
+    signupLink: {
+      fontFamily: FONTS.bodyBold,
+      color: colors.accent,
+    },
 
     // Modal
     modalOverlay: {
@@ -578,11 +550,7 @@ function createStyles(colors) {
       borderRadius: 24,
       padding: 32,
       alignItems: "center",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 20 },
-      shadowOpacity: 0.3,
-      shadowRadius: 30,
-      elevation: 20,
+      ...ELEVATION.modal,
     },
     modalIconTile: {
       width: 72,
@@ -594,36 +562,26 @@ function createStyles(colors) {
       marginBottom: 20,
     },
     modalTitle: {
+      fontFamily: FONTS.bodyBold,
       fontSize: 24,
-      fontWeight: "700",
       marginBottom: 12,
       textAlign: "center",
       letterSpacing: -0.4,
     },
     modalMessage: {
+      fontFamily: FONTS.body,
       fontSize: 15,
       textAlign: "center",
       lineHeight: 22,
       marginBottom: 28,
     },
-    modalButtons: { flexDirection: "row", gap: 12, width: "100%" },
     modalButtonsColumn: { width: "100%", gap: 12 },
     modalFullButton: { width: "100%" },
     modalLinkText: {
+      fontFamily: FONTS.bodyMedium,
       fontSize: 15,
-      fontWeight: "500",
       textAlign: "center",
       paddingVertical: 8,
     },
-    forgotPassword: { alignItems: "center", marginTop: 16, marginBottom: 8 },
-    forgotPasswordText: { fontSize: 14, fontWeight: "600" },
-    orText: { textAlign: "center", fontSize: 14, marginVertical: 12 },
-    modalButton: { flex: 1, borderRadius: 16, overflow: "hidden" },
-    modalButtonGlass: {
-      borderWidth: 1,
-      paddingVertical: 14,
-      alignItems: "center",
-    },
-    modalButtonText: { fontSize: 16, fontWeight: "700" },
   });
 }

@@ -91,7 +91,7 @@ describe("SignupScreen — Confirm Password removed", () => {
 
   it("still runs validatePassword — a weak password is rejected even with email filled", () => {
     const { getByText, getByPlaceholderText } = setup();
-    fireEvent.changeText(getByPlaceholderText("Email"), "test@example.com");
+    fireEvent.changeText(getByPlaceholderText("you@example.com"), "test@example.com");
     fireEvent.changeText(getByPlaceholderText("Create a password"), WEAK_PASSWORD);
     fireEvent.press(getByText("Sign Up"));
     expect(Alert.alert).toHaveBeenCalledWith(
@@ -135,7 +135,7 @@ describe("SignupScreen — password requirements visibility (focus-driven)", () 
 describe("SignupScreen — password field is the last field", () => {
   it("onSubmitEditing on the password field triggers handleSignup", async () => {
     const { getByPlaceholderText } = setup();
-    fireEvent.changeText(getByPlaceholderText("Email"), "test@example.com");
+    fireEvent.changeText(getByPlaceholderText("you@example.com"), "test@example.com");
     const field = getByPlaceholderText("Create a password");
     fireEvent.changeText(field, STRONG_PASSWORD);
 

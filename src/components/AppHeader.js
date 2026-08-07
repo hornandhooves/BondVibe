@@ -20,7 +20,7 @@ import { useMode } from "../contexts/ModeContext";
 import useUserRole from "../hooks/useUserRole";
 import { useBusiness } from "../contexts/BusinessContext";
 import { useInboxBadges } from "../hooks/useInboxBadge";
-import { TYPE, SPACING, RADII } from "../constants/theme-tokens";
+import { TYPE, SPACING, RADII, FONTS } from "../constants/theme-tokens";
 
 export default function AppHeader({ title, navigation }) {
   const { colors } = useTheme();
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   tagDot: { width: 7, height: 7, borderRadius: 4 },
-  tagText: { fontSize: 12, fontWeight: "700" },
+  tagText: { fontFamily: FONTS.bodyBold, fontSize: 12 },
   actions: { flexDirection: "row", alignItems: "center", gap: SPACING.lg },
   badge: {
     position: "absolute",
@@ -149,5 +149,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  badgeText: { color: "#FFFFFF", fontSize: 9, fontWeight: "800" },
+  badgeText: { color: "#FFFFFF", fontFamily: FONTS.bodyExtra, fontSize: 9 },
 });

@@ -36,11 +36,11 @@
   },
   "welcome": {
     "tagline": "Belong anywhere",
-    "groupEvents": "Eventos grupales",
-    "personalityMatching": "Emparejamiento por personalidad",
-    "safeAndInclusive": "Seguro e inclusivo",
+    "headline": "Encuentra a tu gente.\nEn cualquier lugar.",
+    "subtitle": "Descubre experiencias. Únete a comunidades.\nPertenece donde sea.",
     "getStarted": "Empezar",
-    "haveAccount": "Ya tengo cuenta"
+    "haveAccountPrompt": "¿Ya tienes cuenta?",
+    "login": "Inicia sesión"
   },
   "settings": {
     "title": "Ajustes",
@@ -123,6 +123,8 @@
   "auth": {
     "emailPlaceholder": "Correo electrónico",
     "passwordPlaceholder": "Contraseña",
+    "emailExample": "tucorreo@ejemplo.com",
+    "enterPassword": "Ingresa tu contraseña",
     "or": "o",
     "login": {
       "logIn": "Iniciar sesión",
@@ -130,6 +132,7 @@
       "signUp": "Regístrate",
       "forgotPassword": "¿Olvidaste tu contraseña? ",
       "reset": "Restablecer",
+      "forgotPasswordLink": "¿Olvidaste tu contraseña?",
       "createAccount": "Crear cuenta",
       "resetPassword": "Restablecer contraseña",
       "errors": {
@@ -161,6 +164,10 @@
       "signUp": "Regístrate",
       "haveAccount": "¿Ya tienes cuenta? ",
       "logIn": "Iniciar sesión",
+      "termsPrefix": "Al crear una cuenta, aceptas los ",
+      "termsOfService": "Términos de Servicio",
+      "termsAnd": " y el ",
+      "privacyPolicy": "Aviso de Privacidad",
       "requirements": {
         "minLength": "Al menos 8 caracteres",
         "uppercase": "Una letra mayúscula",
@@ -3488,6 +3495,7 @@
   },
   "socialAuthButtons": {
     "or": "o",
+    "orContinueWith": "o continúa con",
     "continueWithGoogle": "Continuar con Google",
     "appleUnavailableTitle": "Inicio de sesión con Apple no disponible",
     "appleUnavailableMessage": "Iniciar sesión con Apple suele fallar en el simulador de iOS. Prueba en un dispositivo real.",

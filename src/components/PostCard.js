@@ -16,6 +16,7 @@ import MentionText from "./MentionText";
 import { useTranslation } from "react-i18next";
 import { AvatarDisplay } from "./AvatarPicker";
 import { useTheme } from "../contexts/ThemeContext";
+import { FONTS } from "../constants/theme-tokens";
 import { auth } from "../services/firebase";
 import {
   hasLiked,
@@ -290,7 +291,7 @@ function StatCell({ label, value }) {
 }
 
 const statCellStyles = StyleSheet.create({
-  value: { fontFamily: "SpaceGrotesk_700Bold", fontSize: 16, color: "#FFFFFF", letterSpacing: -0.5 },
+  value: { fontFamily: FONTS.display, fontSize: 16, color: "#FFFFFF", letterSpacing: -0.5 },
   label: { fontSize: 10.5, color: "#C792EA", marginTop: 2 },
 });
 

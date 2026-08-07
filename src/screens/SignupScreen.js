@@ -6,35 +6,46 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  Image,
   StyleSheet,
   Alert,
-  ActivityIndicator,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
 } from "react-native";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import {
   createUserWithEmailAndPassword,
-  sendEmailVerification,
   signOut,
 } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { auth, db } from "../services/firebase";
 import { useTheme } from "../contexts/ThemeContext";
-import GradientBackground from "../components/GradientBackground";
 import LanguagePill from "../components/LanguagePill";
-import SocialAuthButtons from "../components/SocialAuthButtons";
+import Button from "../components/Button";
+import GoogleIcon from "../components/GoogleIcon";
+import useSocialAuth from "../hooks/useSocialAuth";
 import { useAuthContext } from "../contexts/AuthContext";
 import SuccessModal from "../components/SuccessModal";
-import BondVibeLogo from "../components/BondVibeLogo";
+import { FONTS, RADII } from "../constants/theme-tokens";
+
+// Single source of truth for both the live checklist and validatePassword —
+// used to be two independently-hand-written copies of the same 5 regexes.
+const PASSWORD_REQUIREMENTS = [
+  { key: "minLength", test: (pwd) => pwd.length >= 8 },
+  { key: "uppercase", test: (pwd) => /[A-Z]/.test(pwd) },
+  { key: "lowercase", test: (pwd) => /[a-z]/.test(pwd) },
+  { key: "number", test: (pwd) => /[0-9]/.test(pwd) },
+  { key: "special", test: (pwd) => /[!@#$%^&*(),.?":{}|<>]/.test(pwd) },
+];
 
 export default function SignupScreen({ navigation }) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { t } = useTranslation();
   const { setSignupInProgress } = useAuthContext();
   const [email, setEmail] = useState("");
@@ -43,18 +54,12 @@ export default function SignupScreen({ navigation }) {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const { busy, appleReady, runGoogle, runApple } = useSocialAuth();
 
-  // Validate password strength
-  const validatePassword = (pwd) => {
-    const errors = [];
-    if (pwd.length < 8) errors.push(t("auth.signup.requirements.minLength").toLowerCase());
-    if (!/[A-Z]/.test(pwd)) errors.push(t("auth.signup.requirements.uppercase").toLowerCase());
-    if (!/[a-z]/.test(pwd)) errors.push(t("auth.signup.requirements.lowercase").toLowerCase());
-    if (!/[0-9]/.test(pwd)) errors.push(t("auth.signup.requirements.number").toLowerCase());
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(pwd))
-      errors.push(t("auth.signup.requirements.special").toLowerCase());
-    return errors;
-  };
+  const validatePassword = (pwd) =>
+    PASSWORD_REQUIREMENTS.filter((r) => !r.test(pwd)).map((r) =>
+      t(`auth.signup.requirements.${r.key}`).toLowerCase()
+    );
 
   // Shown while the password field has focus, or if the host tabs away with
   // a password that still doesn't pass — never hide an unresolved error.
@@ -172,45 +177,35 @@ export default function SignupScreen({ navigation }) {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={{ flex: 1 }}
     >
-      <GradientBackground>
-        <StatusBar style={isDark ? "light" : "dark"} />
+      <View style={styles.container}>
+        <StatusBar style="dark" />
 
-        <View style={[styles.header, { flexDirection: "row", alignItems: "center", justifyContent: "space-between" }]}>
+        <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Icon name="back" size={26} color={colors.text} />
+            <Icon name="back" size={24} color={colors.text} />
           </TouchableOpacity>
           <LanguagePill />
         </View>
 
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           <ScrollView
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.titleSection}>
-              {/* New Echo Logo - adapts to theme */}
-              <View style={styles.logoContainer}>
-                <BondVibeLogo size={72} variant="adaptive" isDark={isDark} />
-              </View>
-              <Text style={[styles.title, { color: colors.text }]}>
-                {t("auth.signup.title")}
-              </Text>
-              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                {t("auth.signup.subtitle")}
-              </Text>
+              <Image
+                source={require('../../assets/kinlo-logo-icon.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+              <Text style={styles.title}>{t("auth.signup.title")}</Text>
+              <Text style={styles.subtitle}>{t("auth.signup.subtitle")}</Text>
             </View>
 
             <View style={styles.form}>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  {
-                    backgroundColor: colors.surfaceGlass,
-                    borderColor: colors.border,
-                  },
-                ]}
-              >
+              <Text style={styles.fieldLabel}>{t("auth.emailPlaceholder")}</Text>
+              <View style={styles.inputWrapper}>
                 <Icon
                   name="mail"
                   size={18}
@@ -218,8 +213,8 @@ export default function SignupScreen({ navigation }) {
                   style={styles.inputIcon}
                 />
                 <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  placeholder={t("auth.emailPlaceholder")}
+                  style={styles.input}
+                  placeholder={t("auth.emailExample")}
                   placeholderTextColor={colors.textTertiary}
                   value={email}
                   onChangeText={setEmail}
@@ -229,15 +224,8 @@ export default function SignupScreen({ navigation }) {
                 />
               </View>
 
-              <View
-                style={[
-                  styles.inputWrapper,
-                  {
-                    backgroundColor: colors.surfaceGlass,
-                    borderColor: colors.border,
-                  },
-                ]}
-              >
+              <Text style={styles.fieldLabel}>{t("auth.signup.createPasswordPlaceholder")}</Text>
+              <View style={styles.inputWrapper}>
                 <Icon
                   name="lock"
                   size={18}
@@ -245,7 +233,7 @@ export default function SignupScreen({ navigation }) {
                   style={styles.inputIcon}
                 />
                 <TextInput
-                  style={[styles.input, { color: colors.text }]}
+                  style={styles.input}
                   placeholder={t("auth.signup.createPasswordPlaceholder")}
                   placeholderTextColor={colors.textTertiary}
                   value={password}
@@ -268,197 +256,93 @@ export default function SignupScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
 
-              {/* Password Requirements — only while the field has focus, or if
-                  the host tabs away without meeting them (never hide an
-                  unresolved error). */}
+              {/* Password requirements — live checklist, shown only while the
+                  field has focus, or if the host tabs away without meeting
+                  them (never hide an unresolved error). */}
               {showPasswordRequirements && (
-              <View style={styles.passwordRequirements}>
-                <View style={styles.requirementRow}>
-                  <View style={styles.requirementIcon}>
-                    <Icon
-                      name={password.length >= 8 ? "check" : "circle"}
-                      size={14}
-                      color={
-                        password.length >= 8
-                          ? colors.success
-                          : colors.textTertiary
-                      }
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.requirementText,
-                      {
-                        color:
-                          password.length >= 8
-                            ? colors.success
-                            : colors.textTertiary,
-                      },
-                    ]}
-                  >
-                    {t("auth.signup.requirements.minLength")}
-                  </Text>
+                <View style={styles.requirements}>
+                  {PASSWORD_REQUIREMENTS.map((req) => {
+                    const met = req.test(password);
+                    return (
+                      <View key={req.key} style={styles.requirementRow}>
+                        <View
+                          style={[
+                            styles.requirementDot,
+                            met
+                              ? { backgroundColor: colors.success }
+                              : { borderWidth: 1.5, borderColor: colors.borderStrong },
+                          ]}
+                        >
+                          {met && <Icon name="check" size={10} color="#FFFFFF" />}
+                        </View>
+                        <Text
+                          style={[
+                            styles.requirementText,
+                            { color: met ? colors.success : colors.textTertiary },
+                          ]}
+                        >
+                          {t(`auth.signup.requirements.${req.key}`)}
+                        </Text>
+                      </View>
+                    );
+                  })}
                 </View>
-                <View style={styles.requirementRow}>
-                  <View style={styles.requirementIcon}>
-                    <Icon
-                      name={/[A-Z]/.test(password) ? "check" : "circle"}
-                      size={14}
-                      color={
-                        /[A-Z]/.test(password)
-                          ? colors.success
-                          : colors.textTertiary
-                      }
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.requirementText,
-                      {
-                        color: /[A-Z]/.test(password)
-                          ? colors.success
-                          : colors.textTertiary,
-                      },
-                    ]}
-                  >
-                    {t("auth.signup.requirements.uppercase")}
-                  </Text>
-                </View>
-                <View style={styles.requirementRow}>
-                  <View style={styles.requirementIcon}>
-                    <Icon
-                      name={/[a-z]/.test(password) ? "check" : "circle"}
-                      size={14}
-                      color={
-                        /[a-z]/.test(password)
-                          ? colors.success
-                          : colors.textTertiary
-                      }
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.requirementText,
-                      {
-                        color: /[a-z]/.test(password)
-                          ? colors.success
-                          : colors.textTertiary,
-                      },
-                    ]}
-                  >
-                    {t("auth.signup.requirements.lowercase")}
-                  </Text>
-                </View>
-                <View style={styles.requirementRow}>
-                  <View style={styles.requirementIcon}>
-                    <Icon
-                      name={/[0-9]/.test(password) ? "check" : "circle"}
-                      size={14}
-                      color={
-                        /[0-9]/.test(password)
-                          ? colors.success
-                          : colors.textTertiary
-                      }
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.requirementText,
-                      {
-                        color: /[0-9]/.test(password)
-                          ? colors.success
-                          : colors.textTertiary,
-                      },
-                    ]}
-                  >
-                    {t("auth.signup.requirements.number")}
-                  </Text>
-                </View>
-                <View style={styles.requirementRow}>
-                  <View style={styles.requirementIcon}>
-                    <Icon
-                      name={
-                        /[!@#$%^&*(),.?":{}|<>]/.test(password)
-                          ? "check"
-                          : "circle"
-                      }
-                      size={14}
-                      color={
-                        /[!@#$%^&*(),.?":{}|<>]/.test(password)
-                          ? colors.success
-                          : colors.textTertiary
-                      }
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.requirementText,
-                      {
-                        color: /[!@#$%^&*(),.?":{}|<>]/.test(password)
-                          ? colors.success
-                          : colors.textTertiary,
-                      },
-                    ]}
-                  >
-                    {t("auth.signup.requirements.special")}
-                  </Text>
-                </View>
+              )}
+
+              <Text style={styles.termsText}>
+                {t("auth.signup.termsPrefix")}
+                <Text style={styles.termsLink}>{t("auth.signup.termsOfService")}</Text>
+                {t("auth.signup.termsAnd")}
+                <Text style={styles.termsLink}>{t("auth.signup.privacyPolicy")}</Text>.
+              </Text>
+
+              <Button
+                label={loading ? t("auth.signup.creatingAccount") : t("auth.signup.signUp")}
+                onPress={handleSignup}
+                loading={loading}
+                fullWidth
+                size="lg"
+                style={styles.signupButton}
+              />
+
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>
+                  {t("socialAuthButtons.orContinueWith")}
+                </Text>
+                <View style={styles.dividerLine} />
               </View>
+
+              <Button
+                label={t("socialAuthButtons.continueWithGoogle")}
+                onPress={runGoogle}
+                loading={busy === "google"}
+                disabled={!!busy}
+                color={colors.surface}
+                textColor={colors.text}
+                fullWidth
+                size="lg"
+                icon={<GoogleIcon size={18} />}
+                style={styles.socialButton}
+              />
+
+              {Platform.OS === "ios" && appleReady && (
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
+                  cornerRadius={12}
+                  style={styles.appleButton}
+                  onPress={runApple}
+                />
               )}
 
               <TouchableOpacity
-                style={styles.signupButton}
-                onPress={handleSignup}
-                disabled={loading}
-              >
-                <View
-                  style={[
-                    styles.signupGlass,
-                    {
-                      backgroundColor: `${colors.primary}33`,
-                      borderColor: `${colors.primary}66`,
-                      opacity: loading ? 0.7 : 1,
-                    },
-                  ]}
-                >
-                  {loading ? (
-                    <View style={styles.loadingRow}>
-                      <ActivityIndicator size="small" color={colors.primary} />
-                      <Text
-                        style={[
-                          styles.signupText,
-                          { color: colors.primary, marginLeft: 12 },
-                        ]}
-                      >
-                        {t("auth.signup.creatingAccount")}
-                      </Text>
-                    </View>
-                  ) : (
-                    <Text
-                      style={[styles.signupText, { color: colors.primary }]}
-                    >
-                      {t("auth.signup.signUp")}
-                    </Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-
-              <SocialAuthButtons />
-
-              <TouchableOpacity
-                style={styles.loginLink}
+                style={styles.loginRow}
                 onPress={() => navigation.navigate("Login")}
               >
-                <Text
-                  style={[
-                    styles.loginLinkText,
-                    { color: colors.textSecondary },
-                  ]}
-                >
+                <Text style={styles.loginText}>
                   {t("auth.signup.haveAccount")}
-                  <Text style={{ color: colors.primary, fontWeight: "600" }}>
-                    {t("auth.signup.logIn")}
-                  </Text>
+                  <Text style={styles.loginLink}>{t("auth.signup.logIn")}</Text>
                 </Text>
               </TouchableOpacity>
             </View>
@@ -476,70 +360,117 @@ export default function SignupScreen({ navigation }) {
           icon="mail"
           tone="brand"
         />
-      </GradientBackground>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 function createStyles(colors) {
   return StyleSheet.create({
-    container: { flex: 1 },
-    header: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20 },
+    container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 24,
+      paddingTop: 60,
+      paddingBottom: 12,
+    },
     scrollContent: {
       flexGrow: 1,
-      justifyContent: "center",
       paddingHorizontal: 24,
       paddingBottom: 40,
     },
-    titleSection: { alignItems: "center", marginBottom: 48 },
-    logoContainer: {
-      marginBottom: 16,
-    },
+    titleSection: { alignItems: "center", marginBottom: 32 },
+    logoImage: { width: 64, height: 64, marginBottom: 12 },
     title: {
-      fontSize: 28,
-      fontWeight: "700",
-      marginBottom: 8,
-      letterSpacing: -0.4,
+      fontFamily: FONTS.display,
+      fontSize: 26,
+      color: colors.text,
+      marginBottom: 6,
     },
-    subtitle: { fontSize: 15, textAlign: "center" },
+    subtitle: {
+      fontFamily: FONTS.body,
+      fontSize: 15,
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
     form: { width: "100%", maxWidth: 400, alignSelf: "center" },
+    fieldLabel: {
+      fontFamily: FONTS.bodySemibold,
+      fontSize: 14,
+      color: colors.text,
+      marginBottom: 8,
+    },
     inputWrapper: {
-      borderWidth: 1,
-      borderRadius: 16,
+      backgroundColor: colors.sunken,
+      borderRadius: RADII.input,
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: 16,
       marginBottom: 16,
     },
-    inputIcon: { marginRight: 12 },
+    inputIcon: { marginRight: 10 },
     eyeButton: { padding: 8, marginLeft: 4 },
-    input: { flex: 1, fontSize: 16, paddingVertical: 16 },
-    signupButton: {
-      borderRadius: 16,
-      overflow: "hidden",
-      marginTop: 8,
-      marginBottom: 20,
+    input: {
+      flex: 1,
+      fontFamily: FONTS.body,
+      fontSize: 16,
+      color: colors.text,
+      paddingVertical: 16,
     },
-    signupGlass: { borderWidth: 1, paddingVertical: 16, alignItems: "center" },
-    loadingRow: { flexDirection: "row", alignItems: "center" },
-    signupText: { fontSize: 17, fontWeight: "700", letterSpacing: -0.2 },
-    passwordRequirements: {
+    requirements: {
       marginBottom: 16,
-      paddingHorizontal: 4,
+      marginTop: -4,
+      gap: 8,
     },
-    requirementRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 6,
-    },
-    requirementIcon: {
-      marginRight: 8,
+    requirementRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    requirementDot: {
       width: 16,
+      height: 16,
+      borderRadius: 8,
+      alignItems: "center",
+      justifyContent: "center",
     },
     requirementText: {
-      fontSize: 12,
+      fontFamily: FONTS.body,
+      fontSize: 13,
     },
-    loginLink: { alignItems: "center", paddingVertical: 12 },
-    loginLinkText: { fontSize: 15 },
+    termsText: {
+      fontFamily: FONTS.body,
+      fontSize: 12,
+      color: colors.textSecondary,
+      lineHeight: 18,
+      marginBottom: 20,
+    },
+    termsLink: {
+      fontFamily: FONTS.bodySemibold,
+      color: colors.accent,
+    },
+    signupButton: { marginBottom: 24 },
+    divider: { flexDirection: "row", alignItems: "center", marginBottom: 20 },
+    dividerLine: { flex: 1, height: 1, backgroundColor: colors.borderStrong },
+    dividerText: {
+      fontFamily: FONTS.body,
+      fontSize: 13,
+      color: colors.textTertiary,
+      marginHorizontal: 12,
+    },
+    socialButton: {
+      borderWidth: 1,
+      borderColor: colors.borderStrong,
+      marginBottom: 12,
+    },
+    appleButton: { width: "100%", height: 48, marginBottom: 20 },
+    loginRow: { alignItems: "center", marginTop: 4 },
+    loginText: {
+      fontFamily: FONTS.body,
+      fontSize: 14,
+      color: colors.textTertiary,
+    },
+    loginLink: {
+      fontFamily: FONTS.bodyBold,
+      color: colors.accent,
+    },
   });
 }
