@@ -2,17 +2,24 @@
  * AiOptInScreen — "Meet Kinlo AI" one-time opt-in (§2.1). Gates ALL AI.
  * Shown at the end of first-run onboarding and reachable from Settings.
  * Writes users/{uid}.aiOptIn; declining is a first-class choice ("Not now").
+ *
+ * PIXEL-FIDELITY SPEC: redesigned onto the new Kinlo palette — deliberately
+ * OFF the AI.* "signature dark surface" tokens (see their own comment in
+ * theme-tokens.js) per this screen's new mock, which puts it on the normal
+ * light/dark theme background with a solid colors.primary icon tile. AI.*
+ * itself, and its other consumers (AICard, AskKinloScreen, etc.), are
+ * untouched — this is a scoped exception for this one screen, not a
+ * reversal of the "don't silently repaint the AI signature" rule.
  */
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
-import GradientBackground from "../components/GradientBackground";
 import Icon from "../components/Icon";
+import Button from "../components/Button";
 import { useTheme } from "../contexts/ThemeContext";
 import useAiOptIn from "../hooks/useAiOptIn";
-import { TYPE, SPACING, RADII, BRAND, AI, ELEVATION } from "../constants/theme-tokens";
+import { TYPE, SPACING } from "../constants/theme-tokens";
 
 export default function AiOptInScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
@@ -41,17 +48,12 @@ export default function AiOptInScreen({ navigation, route }) {
   };
 
   return (
-    <GradientBackground>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={isDark ? "light" : "dark"} />
       <View style={styles.wrap}>
-        <LinearGradient
-          colors={AI.panel}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.orb, ELEVATION.floatingNeutral]}
-        >
-          <Icon name="ai" size={44} color={AI.accent} />
-        </LinearGradient>
+        <View style={[styles.orb, { backgroundColor: colors.primary }]}>
+          <Icon name="ai" size={40} color="#FFFFFF" />
+        </View>
 
         <Text style={[TYPE.display, styles.title, { color: colors.text }]}>
           {t("aiOptIn.title")}
@@ -73,31 +75,31 @@ export default function AiOptInScreen({ navigation, route }) {
           ))}
         </View>
 
-        <TouchableOpacity onPress={() => finish(true)} disabled={busy} activeOpacity={0.85} testID="ai-opt-in">
-          <LinearGradient
-            colors={BRAND.gradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={[styles.cta, ELEVATION.floatingBrand]}
-          >
-            <Text style={[TYPE.label, styles.ctaText]}>{t("aiOptIn.cta")}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+        <Button
+          label={t("aiOptIn.cta")}
+          onPress={() => finish(true)}
+          disabled={busy}
+          fullWidth
+          size="lg"
+          style={styles.cta}
+          testID="ai-opt-in"
+        />
 
         <TouchableOpacity onPress={() => finish(false)} disabled={busy} style={styles.later} testID="ai-not-now">
           <Text style={[TYPE.label, { color: colors.textTertiary }]}>{t("aiOptIn.notNow")}</Text>
         </TouchableOpacity>
       </View>
-    </GradientBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1 },
   wrap: { flex: 1, justifyContent: "center", paddingHorizontal: SPACING.xxl, gap: SPACING.md },
   orb: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 104,
+    height: 104,
+    borderRadius: 52,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
@@ -105,14 +107,8 @@ const styles = StyleSheet.create({
   },
   title: { textAlign: "center" },
   subtitle: { textAlign: "center", marginBottom: SPACING.sm },
-  points: { gap: SPACING.sm, marginVertical: SPACING.lg, alignSelf: "center" },
+  points: { gap: SPACING.md, marginVertical: SPACING.lg, alignSelf: "center" },
   pointRow: { flexDirection: "row", alignItems: "center", gap: SPACING.sm },
-  cta: {
-    height: 54,
-    borderRadius: RADII.button,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ctaText: { color: "#FFFFFF", fontSize: 16 },
+  cta: { marginTop: SPACING.sm },
   later: { alignItems: "center", paddingVertical: SPACING.md },
 });
