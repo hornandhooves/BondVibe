@@ -106,7 +106,7 @@ export default function AppHeader({ title, navigation }) {
         <TouchableOpacity
           onPress={() => navigation.navigate("Profile")}
           hitSlop={hit}
-          testID="header-profile"
+          testID="home.avatar"
         >
           <AvatarDisplay avatar={avatar} size={30} name={fullName} />
         </TouchableOpacity>

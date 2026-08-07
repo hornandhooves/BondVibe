@@ -56,6 +56,7 @@ export default function KeyboardAccessory() {
           onPress={() => Keyboard.dismiss()}
           style={styles.btn}
           accessibilityLabel={t("keyboardAccessory.dismiss")}
+          testID="keyboard.done"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Text style={[styles.txt, { color: colors.primary }]}>{t("keyboardAccessory.done")}</Text>

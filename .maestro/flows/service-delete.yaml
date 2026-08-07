@@ -1,0 +1,49 @@
+appId: com.kinlo.app  # confirmado: app.json → expo.ios.bundleIdentifier
+tags:
+  - smoke
+  - services
+---
+# ============================================================================
+# service-delete.yaml   (S-obs-1: borrado duro con copy claro)
+# Borra un servicio desde "Mis servicios" y verifica que la confirmación deja
+# claro que es PERMANENTE ("no se puede deshacer"). También limpia el dato de
+# prueba que dejó provider-publish-photo.
+#
+# PREREQUISITO: host aprobado con un servicio "Masaje E2E" (córrelo después de
+#   provider-publish-photo, o seedéalo). README → seed.
+# ============================================================================
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 40000
+- tapOn:
+    id: "tab-services"
+- tapOn:
+    id: "services-my-link"      # link "Mis servicios" en el marketplace
+# La tarjeta es un TouchableOpacity que colapsa el nombre en el a11y tree → el texto
+# "Masaje E2E" NO es matchable; espera el testID del botón de menú, que codifica el
+# nombre y prueba que la lista async ya cargó.
+- extendedWaitUntil:
+    visible:
+      id: "myservice.menu.Masaje E2E"
+    timeout: 15000
+
+# Menú "..." de la tarjeta → Eliminar
+- tapOn:
+    id: "myservice.menu.Masaje E2E"   # testID myservice.menu.<nombre> (MyServicesScreen)
+- assertVisible: "Eliminar servicio"
+- tapOn: "Eliminar servicio"
+
+# El copy de confirmación advierte que es permanente. Maestro hace full-match del
+# texto del elemento; "Esto no se puede deshacer" es substring del mensaje completo
+# ("Se quitará del marketplace. Esto no se puede deshacer.") → usa regex .*…*.
+- assertVisible: "¿Eliminar este servicio?"
+- assertVisible: ".*no se puede deshacer.*"
+- tapOn: "Eliminar servicio"
+
+# Desapareció (el testID del menú de esa tarjeta ya no existe).
+- assertNotVisible:
+    id: "myservice.menu.Masaje E2E"
+- takeScreenshot: service-deleted

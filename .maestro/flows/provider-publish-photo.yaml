@@ -1,0 +1,76 @@
+appId: com.kinlo.app  # confirmado: app.json → expo.ios.bundleIdentifier
+tags:
+  - smoke
+  - services
+---
+# ============================================================================
+# provider-publish-photo.yaml
+# Un anfitrión APROBADO publica un servicio con foto y lo ve en "Mis servicios".
+# Cubre el upload a Storage (storage.rules) end-to-end — el recorrido que se
+# probó a mano y que NO debe volver a probarse a mano.
+#
+# PREREQUISITO: sesión iniciada como host aprobado (README → seed).
+# SELECTORES: texto visible en ES; sustituir por testID donde se pueda (README).
+# FOTO: pre-concedo el permiso; para CI determinista, stub del picker (README).
+# ============================================================================
+- launchApp:
+    permissions:
+      photos: allow
+    clearState: false            # conserva la sesión seed
+# Tras el relaunch el shell (dev-client) reconecta y re-monta; espera Home.
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 40000
+
+# La etiqueta del bottom-tab no se expone como texto localizable → usa el testID
+# (tab-services, de tabBarTestID en AppNavigator).
+- tapOn:
+    id: "tab-services"
+# El CTA de publicar es un FAB (services-publish-fab).
+- tapOn:
+    id: "services-publish-fab"
+- assertVisible: "Publicar un servicio"   # si sale el gate aquí, el seed NO es host aprobado
+
+# Nombre + categoría. El chip de categoría queda visible por encima del teclado.
+- tapOn:
+    id: "publish.name"
+- inputText: "Masaje E2E"
+- tapOn:
+    id: "cat-wellness"          # "Bienestar" — chip testID cat-<vertical>
+# hideKeyboard no funciona con el TextInput de RN → cierra con el botón del
+# KeyboardAccessory (testID keyboard.done), que expone Keyboard.dismiss().
+- tapOn:
+    id: "keyboard.done"
+
+# Foto: build de test con EXPO_PUBLIC_E2E=1 → el botón "Agregar" (service-add-photo)
+# añade un asset fijo del bundle (stub del picker en PublishServiceScreen); sin
+# picker nativo frágil. La sección "Fotos" está más abajo → hacer scroll.
+- scrollUntilVisible:
+    element:
+      id: "service-add-photo"
+    direction: DOWN
+- tapOn:
+    id: "service-add-photo"
+- assertVisible:
+    id: "publish.photo.0"
+
+# Publicar → éxito
+- tapOn:
+    id: "service-publish-cta"   # "Publicar en el marketplace"
+- extendedWaitUntil:
+    visible: "Publicado"
+    timeout: 20000
+- tapOn: "OK"
+
+# Aparece en Mis servicios (link "Mis servicios" en el marketplace → services-my-link).
+# La tarjeta es un TouchableOpacity que colapsa el nombre en el a11y tree → el texto
+# "Masaje E2E" NO es matchable; espera el testID del botón de menú (que codifica el
+# nombre) y que además prueba que la lista async ya cargó.
+- tapOn:
+    id: "services-my-link"
+- extendedWaitUntil:
+    visible:
+      id: "myservice.menu.Masaje E2E"
+    timeout: 15000
+- takeScreenshot: publish-photo-success
