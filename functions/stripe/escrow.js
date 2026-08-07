@@ -117,7 +117,18 @@ const {FieldValue} = require("firebase-admin/firestore");
  * @param {number} p.grossAmount total charged (centavos)
  * @param {number} p.hostAmount the host's cut (centavos)
  * @param {number} p.platformFee platform fee (centavos)
- * @param {number} p.stripeFee stripe fee (centavos)
+ * @param {number} p.stripeFee stripe fee (centavos) — the ESTIMATE
+ *   (percent × amount + fixed), computed before the charge settles
+ * @param {number} [p.actualStripeFee] KIN-163: the REAL fee Stripe charged
+ *   (centavos), read from balance_transaction.fee after the charge
+ *   settles. Does NOT replace stripeFee — both are kept, side by side, so
+ *   the estimate can be measured against reality. `null` means "not
+ *   measured" (Stripe lookup failed, or the caller is a flow that hasn't
+ *   wired this yet — rentals/service bookings pass nothing and get null).
+ * @param {number} [p.platformFeeActual] KIN-163: grossAmount − hostAmount −
+ *   actualStripeFee (centavos) — what the platform actually kept, as
+ *   opposed to the intended `platformFee`. `null` when actualStripeFee is
+ *   unmeasured.
  * @param {string} p.currency currency
  * @param {number} p.retentionHours effective retention (already resolved per host)
  * @return {Promise<string|null>} the computed releaseAt (ISO) or null
@@ -144,6 +155,11 @@ async function writeHeldLedger(db, p) {
     hostAmount: p.hostAmount || 0,
     platformFee: p.platformFee || 0,
     stripeFee: p.stripeFee || 0,
+    // KIN-163: measured, not estimated — null until a caller passes it
+    // (currently only the event-ticket webhook does; rentals/service
+    // bookings leave these null).
+    actualStripeFee: Number.isFinite(p.actualStripeFee) ? p.actualStripeFee : null,
+    platformFeeActual: Number.isFinite(p.platformFeeActual) ? p.platformFeeActual : null,
     currency: p.currency || "mxn",
     state: "held",
     frozen: false,

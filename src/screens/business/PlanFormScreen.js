@@ -37,6 +37,7 @@ import {
   sanitizePaymentModes,
 } from "../../constants/plans";
 import { getPlan, createPlan, updatePlan, deletePlan } from "../../services/plansService";
+import { parsePositiveNumber } from "../../utils/validation";
 
 const AUDIENCE_OPTIONS = [
   { value: MEMBERSHIP_AUDIENCE.LOCAL, labelKey: "business.pricingTier.local", icon: "location" },
@@ -121,11 +122,14 @@ export default function PlanFormScreen({ route, navigation }) {
       Alert.alert(t("plans.form.nameRequiredTitle"), t("plans.form.nameRequiredMsg"));
       return;
     }
-    if (!unlimited && (!credits || parseInt(credits, 10) <= 0)) {
+    // KIN-151 sweep: same NaN-passes-validation defect as CreateEventScreen's
+    // price guard — a bare `parseInt(v, 10) <= 0` on invalid input (e.g. a
+    // lone ".") is always false, so it silently passed.
+    if (!unlimited && parsePositiveNumber(credits) === null) {
       Alert.alert(t("plans.form.creditsRequiredTitle"), t("plans.form.creditsRequiredMsg"));
       return;
     }
-    if (!validityDays || parseInt(validityDays, 10) <= 0) {
+    if (parsePositiveNumber(validityDays) === null) {
       Alert.alert(t("plans.form.validityRequiredTitle"), t("plans.form.validityRequiredMsg"));
       return;
     }

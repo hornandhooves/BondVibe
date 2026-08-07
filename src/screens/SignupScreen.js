@@ -50,11 +50,10 @@ export default function SignupScreen({ navigation }) {
   const { setSignupInProgress } = useAuthContext();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const { busy, appleReady, runGoogle, runApple } = useSocialAuth();
 
   const validatePassword = (pwd) =>
@@ -62,16 +61,17 @@ export default function SignupScreen({ navigation }) {
       t(`auth.signup.requirements.${r.key}`).toLowerCase()
     );
 
+  // Shown while the password field has focus, or if the host tabs away with
+  // a password that still doesn't pass — never hide an unresolved error.
+  const passwordRequirementsMet = validatePassword(password).length === 0;
+  const showPasswordRequirements =
+    passwordFocused || (password.length > 0 && !passwordRequirementsMet);
+
   const handleSignup = async () => {
     console.log("📝 Starting signup process...");
 
-    if (!email || !password || !confirmPassword) {
+    if (!email || !password) {
       Alert.alert(t("auth.signup.errors.missingInfoTitle"), t("auth.signup.errors.missingInfoMsg"));
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert(t("auth.signup.errors.passwordMismatchTitle"), t("auth.signup.errors.passwordMismatchMsg"));
       return;
     }
 
@@ -239,7 +239,10 @@ export default function SignupScreen({ navigation }) {
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
-                  returnKeyType="next"
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => setPasswordFocused(false)}
+                  returnKeyType="done"
+                  onSubmitEditing={handleSignup}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
@@ -253,64 +256,38 @@ export default function SignupScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
 
-              {/* Password requirements — live checklist */}
-              <View style={styles.requirements}>
-                {PASSWORD_REQUIREMENTS.map((req) => {
-                  const met = req.test(password);
-                  return (
-                    <View key={req.key} style={styles.requirementRow}>
-                      <View
-                        style={[
-                          styles.requirementDot,
-                          met
-                            ? { backgroundColor: colors.success }
-                            : { borderWidth: 1.5, borderColor: colors.borderStrong },
-                        ]}
-                      >
-                        {met && <Icon name="check" size={10} color="#FFFFFF" />}
+              {/* Password requirements — live checklist, shown only while the
+                  field has focus, or if the host tabs away without meeting
+                  them (never hide an unresolved error). */}
+              {showPasswordRequirements && (
+                <View style={styles.requirements}>
+                  {PASSWORD_REQUIREMENTS.map((req) => {
+                    const met = req.test(password);
+                    return (
+                      <View key={req.key} style={styles.requirementRow}>
+                        <View
+                          style={[
+                            styles.requirementDot,
+                            met
+                              ? { backgroundColor: colors.success }
+                              : { borderWidth: 1.5, borderColor: colors.borderStrong },
+                          ]}
+                        >
+                          {met && <Icon name="check" size={10} color="#FFFFFF" />}
+                        </View>
+                        <Text
+                          style={[
+                            styles.requirementText,
+                            { color: met ? colors.success : colors.textTertiary },
+                          ]}
+                        >
+                          {t(`auth.signup.requirements.${req.key}`)}
+                        </Text>
                       </View>
-                      <Text
-                        style={[
-                          styles.requirementText,
-                          { color: met ? colors.success : colors.textTertiary },
-                        ]}
-                      >
-                        {t(`auth.signup.requirements.${req.key}`)}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
-
-              <Text style={styles.fieldLabel}>{t("auth.signup.confirmPasswordPlaceholder")}</Text>
-              <View style={styles.inputWrapper}>
-                <Icon
-                  name="lock"
-                  size={18}
-                  color={colors.textTertiary}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder={t("auth.signup.confirmPasswordPlaceholder")}
-                  placeholderTextColor={colors.textTertiary}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showConfirmPassword}
-                  returnKeyType="done"
-                  onSubmitEditing={handleSignup}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  style={styles.eyeButton}
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff size={20} color={colors.textTertiary} />
-                  ) : (
-                    <Eye size={20} color={colors.textTertiary} />
-                  )}
-                </TouchableOpacity>
-              </View>
+                    );
+                  })}
+                </View>
+              )}
 
               <Text style={styles.termsText}>
                 {t("auth.signup.termsPrefix")}

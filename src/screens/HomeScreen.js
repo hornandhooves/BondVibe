@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { getGreetingKey } from "../utils/greeting";
 import {
   View,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  RefreshControl,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
@@ -16,9 +17,9 @@ import { useMode } from "../contexts/ModeContext";
 import { LinearGradient } from "expo-linear-gradient";
 import { BRAND, ELEVATION } from "../constants/theme-tokens";
 import { useFocusEffect } from "@react-navigation/native";
-import EventsRow from "../components/EventsRow";
 import BirthdayReminders from "../components/BirthdayReminders";
-import MarketplaceRow from "../components/MarketplaceRow";
+import FeaturedEventsRow from "../components/FeaturedEventsRow";
+import FeaturedServicesRow from "../components/FeaturedServicesRow";
 import { EVENT_CATEGORIES } from "../utils/eventCategories";
 import Icon, { getCategoryIcon } from "../components/Icon";
 import RatingModal from "../components/RatingModal";
@@ -26,10 +27,15 @@ import { getPendingRatings } from "../services/ratingService";
 import GradientBackground from "../components/GradientBackground";
 import { BVCard } from "../components/BoldPop";
 
-// Home order: greeting → digest → search → Events near you → Services near you →
-// Rate experiences → Browse by community (+ host-mode Create FAB). Each carousel
-// owns its own loading/empty/error state (no cross-leaking). Admin Dashboard
-// lives in Profile now; the featured carousel + zero-state were retired.
+// Home order: greeting → digest → search → Featured Events → Featured Services
+// → Rate experiences →
+// Browse by community (+ host-mode Create FAB). KIN-184: Featured Events/
+// Services replace the old organic "Events near you"/"Services near you"
+// carousels (EventsRow/MarketplaceRow, no longer used here — see git history
+// if reviving them). Each bar pushes the next one up and renders nothing
+// when it has no content, so there's never a fixed gap for an absent
+// section. Each carousel still owns its own loading/empty/error state (no
+// cross-leaking). Admin Dashboard lives in Profile now.
 export default function HomeScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { t, i18n } = useTranslation();
@@ -40,6 +46,20 @@ export default function HomeScreen({ navigation }) {
   const [pendingRatingEvents, setPendingRatingEvents] = useState([]);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
+
+  // KIN-150: pull-to-refresh — each carousel owns its own data/state, so
+  // refreshing them from here goes through the imperative `reload()` each
+  // exposes via ref, not by lifting their state up.
+  const [refreshing, setRefreshing] = useState(false);
+  const featuredEventsRowRef = useRef(null);
+  const featuredServicesRowRef = useRef(null);
+
+  // KIN-184/185: the organic "Events near you" / "Services near you"
+  // carousels (EventsRow/MarketplaceRow) are replaced by up to three
+  // horizontal bars — Featured Events, Featured Services, Browse by
+  // Community — that push up when a bar above has nothing to show. Each bar
+  // owns its own data and returns null when empty, which is what makes them
+  // close the gap; Home holds only their refs, for pull-to-refresh.
 
   const loadUser = useCallback(async () => {
     if (!auth.currentUser) return;
@@ -69,6 +89,24 @@ export default function HomeScreen({ navigation }) {
     }, [loadUser, loadPendingRatings]),
   );
 
+  // KIN-150: manual escape hatch — bypasses each carousel's TTL and forces an
+  // immediate refetch. Waits for every reload to actually finish (not just
+  // fire) before dropping the spinner, so pull-to-refresh doesn't lie about
+  // being done while a fetch is still in flight.
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        loadUser(),
+        loadPendingRatings(),
+        featuredEventsRowRef.current?.reload(),
+        featuredServicesRowRef.current?.reload(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadUser, loadPendingRatings]);
+
   const handleRateEvent = (event) => {
     setSelectedEvent(event);
     setShowRatingModal(true);
@@ -88,6 +126,9 @@ export default function HomeScreen({ navigation }) {
   const isAdmin = user?.role === "admin";
   const isHost = user?.role === "host";
   const canCreateEvents = isAdmin || isHost;
+  // KIN-184: same field precedence as the public user projection
+  // (src/services/userService.js) — city, falling back to location.
+  const userCity = user?.city || user?.location || undefined;
 
   const styles = createStyles(colors, isDark);
 
@@ -111,6 +152,14 @@ export default function HomeScreen({ navigation }) {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
         {/* Weekly Digest banner (§2.2 / ai_features/14) */}
         <TouchableOpacity
@@ -142,11 +191,22 @@ export default function HomeScreen({ navigation }) {
         {/* Birthday reminders (social gifting Board 2a) — renders nothing if none */}
         <BirthdayReminders navigation={navigation} />
 
-        {/* Events near you (M0) — own loading/empty/error state */}
-        <EventsRow navigation={navigation} />
+        {/* Featured Events (KIN-184) — paid placement, city-filtered; renders
+            nothing when there's none. Gated on `user` so the city filter is
+            never applied a beat late (city comes off the user doc). */}
+        {user && <FeaturedEventsRow ref={featuredEventsRowRef} navigation={navigation} city={userCity} />}
 
-        {/* Services near you (M0) — own loading/empty/error state */}
-        <MarketplaceRow navigation={navigation} />
+        {/* Featured Services (KIN-185) — fills the slot KIN-184 reserved.
+            Owns its own data and renders null when empty, so the bars above
+            and below still close the gap. Gated on `user` for the same
+            reason as Featured Events: the city comes off the user doc. */}
+        {user && (
+          <FeaturedServicesRow
+            ref={featuredServicesRowRef}
+            navigation={navigation}
+            city={userCity}
+          />
+        )}
 
         {/* Rate experiences — nudge to rate past events */}
         {pendingRatingEvents.length > 0 && (

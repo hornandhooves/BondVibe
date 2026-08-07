@@ -415,6 +415,38 @@ export default function PublishServiceScreen({ navigation, route }) {
             placeholderTextColor={colors.textTertiary}
             testID="service-city"
           />
+          {/* KIN-185 — paid placement. Only offered while EDITING: a service
+              that hasn't been created yet has no id to feature, and the
+              server refuses to promote one that isn't publicListing:true
+              anyway, so offering it at create time would just be a dead
+              button. The purchase itself lives in the shared PromoteEvent
+              screen (same ladder, same charge, same webhook). */}
+          {!!editId && (
+            <TouchableOpacity
+              style={[styles.featureRow, { borderColor: colors.border, backgroundColor: colors.surface }]}
+              activeOpacity={0.85}
+              onPress={() =>
+                navigation.navigate("PromoteEvent", {
+                  bizId: getMyBizId(),
+                  sessionTypeId: editId,
+                  serviceName: name,
+                })
+              }
+              testID="service-feature-cta"
+            >
+              <Icon name="ai" size={18} color={colors.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.featureTitle, { color: colors.text }]}>
+                  {t("services.publish.featureCta")}
+                </Text>
+                <Text style={[styles.featureHint, { color: colors.textSecondary }]}>
+                  {t("services.publish.featureHint")}
+                </Text>
+              </View>
+              <Icon name="forward" size={16} color={colors.textTertiary} />
+            </TouchableOpacity>
+          )}
+
           <View style={{ height: 12 }} />
         </ScrollView>
 
@@ -481,6 +513,10 @@ function createStyles(colors, isDark) {
     photoRemove: { position: "absolute", top: -6, right: -6, width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.border },
     photoAdd: { width: 72, height: 72, borderRadius: 12, borderWidth: 1.5, borderStyle: "dashed", alignItems: "center", justifyContent: "center", gap: 3 },
     photoAddTxt: { fontFamily: FONTS.bodySemibold, fontSize: 11 },
+
+    featureRow: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, paddingVertical: 13, marginTop: 22 },
+    featureTitle: { fontFamily: FONTS.bodyExtra, fontSize: 14 },
+    featureHint: { fontFamily: FONTS.bodyMedium, fontSize: 12, marginTop: 2, lineHeight: 16 },
 
     amberNote: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginTop: 10 },
     amberTxt: { flex: 1, fontFamily: FONTS.bodySemibold, fontSize: 12.5, lineHeight: 17 },

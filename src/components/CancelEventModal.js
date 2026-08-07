@@ -18,6 +18,7 @@ export default function CancelEventModal({
   onClose,
   onConfirm,
   eventTitle,
+  isPaid = false,
 }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -86,6 +87,28 @@ export default function CancelEventModal({
               <Text style={[styles.message, { color: colors.textSecondary }]}>
                 {t("cancelEventModal.message", { eventTitle })}
               </Text>
+
+              {/* KIN-169: paid-event fee warning — only when the event has paid tickets */}
+              {isPaid && (
+                <View
+                  accessible
+                  accessibilityRole="alert"
+                  style={[
+                    styles.paidWarning,
+                    {
+                      backgroundColor: colors.surfaceGlass,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.paidWarningTitle, { color: colors.text }]}>
+                    {t("cancelEventModal.paidWarningTitle")}
+                  </Text>
+                  <Text style={[styles.paidWarningBody, { color: colors.textSecondary }]}>
+                    {t("cancelEventModal.paidWarning")}
+                  </Text>
+                </View>
+              )}
 
               {/* Reason Input */}
               <View style={styles.inputSection}>
@@ -207,6 +230,22 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 24,
+  },
+  paidWarning: {
+    width: "100%",
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  paidWarningTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  paidWarningBody: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   inputSection: {
     width: "100%",

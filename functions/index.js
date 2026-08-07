@@ -1462,8 +1462,10 @@ exports.createPromotionPaymentIntent = onRequest(
         return res.status(400).json({error: "Missing required fields"});
       }
 
+      // KIN-185: async now — the price comes from config/featuredPricing
+      // (shared with services), not from a constant in this process.
       const {getPromotionPlan} = require("./stripe/promotions");
-      const plan = getPromotionPlan(planId);
+      const plan = await getPromotionPlan(planId);
       if (!plan) return res.status(400).json({error: "Invalid promotion plan"});
 
       const eventDoc = await db.collection("events").doc(eventId).get();
@@ -1502,6 +1504,97 @@ exports.createPromotionPaymentIntent = onRequest(
       });
     } catch (error) {
       console.error("❌ Error creating promotion payment intent:", error);
+      res.status(500).json({error: error.message});
+    }
+  },
+);
+
+/**
+ * KIN-185 — the same thing for a SERVICE (a public sessionType). Same shared
+ * catalog, same "platform keeps 100%" charge, same webhook path; only the
+ * target differs. Kept as its own endpoint rather than overloading the event
+ * one so each keeps an ownership check that actually fits its object: an
+ * event is promoted by its creator, a service by the business owner.
+ */
+exports.createServicePromotionPaymentIntent = onRequest(
+  {cors: true, secrets: [stripeSecretKey]},
+  async (req, res) => {
+    if (req.method !== "POST") {
+      return res.status(405).json({error: "Method not allowed"});
+    }
+    try {
+      if (!stripe) {
+        stripe = require("stripe")(stripeSecretKey.value());
+      }
+      const caller = await verifyBearer(req);
+      if (!caller) {
+        return res.status(401).json({error: "unauthenticated"});
+      }
+      if (!caller.email_verified) {
+        return res.status(403).json({error: "email_not_verified"});
+      }
+      const userId = caller.uid;
+      const {bizId, sessionTypeId, planId} = req.body;
+      if (!bizId || !sessionTypeId || !planId) {
+        return res.status(400).json({error: "Missing required fields"});
+      }
+
+      const {getFeaturedPlan} = require("./stripe/featuredPricing");
+      const plan = await getFeaturedPlan(planId);
+      if (!plan) return res.status(400).json({error: "Invalid promotion plan"});
+
+      const stSnap = await db.collection("businesses").doc(bizId)
+        .collection("sessionTypes").doc(sessionTypeId).get();
+      if (!stSnap.exists) {
+        return res.status(404).json({error: "Service not found"});
+      }
+      // Featuring pushes a listing into Home for everyone, so it only makes
+      // sense for one that is actually published — otherwise the host would
+      // pay for placement of something no customer can open.
+      if (stSnap.data().publicListing !== true) {
+        return res.status(400).json({error: "not_public"});
+      }
+
+      // Same source of truth as the transfer/booking paths: the business doc's
+      // ownerUid, falling back to bizId (bizId === ownerUid in v1).
+      const bizSnap = await db.collection("businesses").doc(bizId).get();
+      const ownerUid = (bizSnap.exists && bizSnap.data().ownerUid) || bizId;
+      if (ownerUid !== userId) {
+        return res.status(403).json({
+          error: "Only the business owner can promote this service",
+        });
+      }
+
+      const buyerEmail = await getUserEmail(userId);
+      const serviceName = stSnap.data().name || "";
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: plan.priceCentavos,
+        currency: "mxn",
+        receipt_email: buyerEmail || undefined,
+        // No transfer_data / application_fee → 100% to the platform account.
+        metadata: {
+          type: "promotion",
+          target: "service",
+          bizId,
+          sessionTypeId,
+          serviceName,
+          planId,
+          days: plan.days.toString(),
+          tier: plan.tier,
+          hostId: userId,
+          amount: plan.priceCentavos.toString(),
+        },
+        description: `Featured service: ${serviceName || sessionTypeId}`,
+      });
+
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
+        amountCentavos: plan.priceCentavos,
+      });
+    } catch (error) {
+      console.error("❌ Error creating service promotion intent:", error);
       res.status(500).json({error: error.message});
     }
   },
@@ -4320,9 +4413,16 @@ exports.onNewHostRequest = onDocumentCreated(
 // ============================================
 // MERCADO PAGO — Checkout Pro (single-account, Option B)
 // ============================================
-const mercadopago = require("./mercadopago");
-exports.createMercadoPagoPreference = mercadopago.createMercadoPagoPreference;
-exports.mercadoPagoWebhook = mercadopago.mercadoPagoWebhook;
+// KIN-164: Mercado Pago está desactivado por decisión de producto — hoy la
+// app cobra sólo con Stripe (MERCADOPAGO_ENABLED es false en
+// src/config/featureFlags.js y ninguna pantalla llama a estas funciones).
+// Las dos Cloud Functions de abajo ya fueron borradas a propósito de
+// kinlo-app-dev con `firebase functions:delete`. NO descomentar estas líneas
+// sin una decisión explícita: hacerlo vuelve a publicar dos endpoints HTTP
+// públicos en el siguiente `firebase deploy --only functions`.
+// const mercadopago = require("./mercadopago");
+// exports.createMercadoPagoPreference = mercadopago.createMercadoPagoPreference;
+// exports.mercadoPagoWebhook = mercadopago.mercadoPagoWebhook;
 
 // ============================================
 // ADMIN — user management (master/admin only)

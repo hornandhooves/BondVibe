@@ -578,9 +578,12 @@ export default function EventDetailScreen({ route, navigation }) {
         if (result.data.success) {
           // Localized, count-based confirmation (the server message is English
           // only and is used for logs/API) — host-cancel refunds gross.
+          const n = result.data.refundsProcessed || 0;
           Alert.alert(
             t("eventDetail.alerts.eventCancelledTitle"),
-            t("eventDetail.alerts.hostCancelRefunded", { count: result.data.refundsProcessed || 0 })
+            n > 0
+              ? t("eventDetail.alerts.hostCancelRefunded", { count: n })
+              : t("eventDetail.alerts.hostCancelNoRefunds")
           );
           navigation.navigate("MainTabs", { screen: "HomeTab" });
         } else {
@@ -1736,6 +1739,7 @@ export default function EventDetailScreen({ route, navigation }) {
         onClose={() => setShowCancelModal(false)}
         onConfirm={performCancellation}
         eventTitle={eventTitle}
+        isPaid={!!(event.price && event.price > 0)}
       />
     </GradientBackground>
   );
