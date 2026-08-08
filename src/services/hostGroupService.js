@@ -45,7 +45,7 @@ export const createGroup = async (name, description, memberIds = []) => {
     const uid = auth.currentUser?.uid;
     if (!uid) return { success: false, error: "Not signed in." };
     if (!name?.trim()) return { success: false, error: "Group name is required." };
-    const members = Array.from(new Set([...memberIds]));
+    const members = Array.from(new Set([uid, ...memberIds]));
     const ref = await addDoc(collection(db, "hostGroups"), {
       hostId: uid,
       name: name.trim(),
