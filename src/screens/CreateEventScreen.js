@@ -1998,7 +1998,7 @@ export default function CreateEventScreen({ navigation, route }) {
         <TouchableOpacity
           testID="create-event-submit"
           style={[styles.createButton, { opacity: loading ? 0.7 : 1 }]}
-          onPress={handleCreateEvent}
+          onPress={() => handleCreateEvent()}
           disabled={loading}
         >
           <View
