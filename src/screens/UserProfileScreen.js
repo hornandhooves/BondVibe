@@ -142,6 +142,24 @@ export default function UserProfileScreen({ route, navigation }) {
                   {profile.bio}
                 </Text>
               )}
+              {/* Favorite artists (KIN-200) — read-only here; the whole block
+                  is absent when the list is empty, so a profile that never set
+                  any doesn't get a hollow section. */}
+              {profile?.favoriteArtists?.length > 0 && (
+                <View style={styles.artistChips}>
+                  {profile.favoriteArtists.map((a) => (
+                    <View
+                      key={a.artistId}
+                      style={[styles.artistChip, { backgroundColor: `${colors.primary}14`, borderColor: colors.primary }]}
+                      testID={`profile-artist-${a.artistId}`}
+                    >
+                      <Text style={[styles.artistChipText, { color: colors.primary }]}>
+                        {a.artistName}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
 
             {/* Followers / Following counts */}
@@ -254,6 +272,12 @@ function createStyles(colors, isDark) {
     handle: { fontSize: 14, fontWeight: "700", marginTop: 2 },
     location: { fontSize: 13, marginTop: 4 },
     bio: { fontSize: 14, lineHeight: 20, marginTop: 8, textAlign: "center" },
+    artistChips: {
+      flexDirection: "row", flexWrap: "wrap", gap: 8,
+      justifyContent: "center", marginTop: 12,
+    },
+    artistChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+    artistChipText: { fontSize: 13, fontWeight: "600" },
     statsRow: {
       flexDirection: "row",
       justifyContent: "center",
