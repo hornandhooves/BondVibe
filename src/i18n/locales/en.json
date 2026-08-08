@@ -4441,6 +4441,7 @@
       "conflictMsg": "{{name}} already has \"{{title}}\" {{range}}.",
       "conflictBlockedMsg": "{{name}} is marked unavailable {{range}}.",
       "outOfHoursMsg": "That's outside the working hours ({{start}}–{{end}}).",
+      "notWorkingDayMsg": "That's not a working day for this instructor.",
       "continueAnyway": "Continue anyway",
       "free": "Free",
       "nItems_one": "{{count}} item",

@@ -801,7 +801,7 @@ export default function CreateEventScreen({ navigation, route }) {
         if (avail.conflict && avail.conflictItem) {
           conflicts.push({ date: occ, item: avail.conflictItem });
         } else if (instructorUid && avail.outOfHours && avail.workingHours) {
-          conflicts.push({ date: occ, outOfHours: avail.workingHours });
+          conflicts.push({ date: occ, outOfHours: avail.workingHours, notWorkingDay: avail.notWorkingDay });
         }
       }
 
@@ -823,7 +823,11 @@ export default function CreateEventScreen({ navigation, route }) {
             }));
           }
           if (c.outOfHours) {
-            msgs.push(t("business.agenda.outOfHoursMsg", { start: c.outOfHours.start, end: c.outOfHours.end }));
+            msgs.push(
+              c.notWorkingDay
+                ? t("business.agenda.notWorkingDayMsg")
+                : t("business.agenda.outOfHoursMsg", { start: c.outOfHours.start, end: c.outOfHours.end })
+            );
           }
           const buttons = isHardBlock
             ? [{ text: t("business.common.cancel"), style: "cancel" }]
