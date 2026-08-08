@@ -338,7 +338,7 @@ export default function StaffScreen({ navigation }) {
             <View style={styles.timeRow}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.roleHint, { color: colors.textTertiary, marginTop: 0, marginBottom: 6 }]}>{t("business.staff.startTime")}</Text>
-                <TextInput style={[styles.input, inputStyle, { marginBottom: 0 }]} value={whEdit?.start} onChangeText={(v) => setWhEdit((w) => ({ ...w, start: v }))} placeholder="07:00" placeholderTextColor={colors.textTertiary} />
+                <TextInput style={[styles.input, inputStyle, { marginBottom: 0 }]} value={whEdit?.start} onChangeText={(v) => setWhEdit((w) => ({ ...w, start: v }))} placeholder="07:00" placeholderTextColor={colors.textTertiary} keyboardType="numbers-and-punctuation" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.roleHint, { color: colors.textTertiary, marginTop: 0, marginBottom: 6 }]}>{t("business.staff.endTime")}</Text>
