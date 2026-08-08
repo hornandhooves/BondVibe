@@ -16,6 +16,9 @@ jest.mock("../../services/firebase", () => ({
 jest.mock("../../services/hostGroupService", () => ({
   getGroup: jest.fn(),
   getHostAttendeeCandidates: jest.fn(),
+  // KIN-197: the screen now resolves members who aren't past attendees. Without
+  // this mock the real implementation runs and hits Firebase.
+  getUserProfiles: jest.fn().mockResolvedValue([]),
   ensureInviteCode: jest.fn(),
   regenerateInviteCode: jest.fn(),
   addMembers: jest.fn(),
