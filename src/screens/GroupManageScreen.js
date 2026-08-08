@@ -22,6 +22,7 @@ import GradientBackground from "../components/GradientBackground";
 import AvatarPicker, { AvatarDisplay } from "../components/AvatarPicker";
 import PhoneInput from "../components/PhoneInput";
 import UserSearchField from "../components/UserSearchField";
+import ConnectSpotifyPlaylistButton from "../components/ConnectSpotifyPlaylistButton";
 import { resolveGroupAvatar } from "../services/storageService";
 import {
   getGroup,
@@ -406,9 +407,18 @@ export default function GroupManageScreen({ route, navigation }) {
           </View>
         </TouchableOpacity>
 
-        {/* Spotify playlist */}
+        {/* Spotify playlist — KIN-199: pick from your own account. Both paths
+            end in the same applySpotify(url), so spotifyUrl stays a plain
+            playlist URL string and GroupChatScreen keeps reading it unchanged. */}
         <Text style={[styles.label, { color: colors.textSecondary, marginTop: 20 }]}>
           {t("groupManage.spotifyPlaylist")}
+        </Text>
+        <ConnectSpotifyPlaylistButton
+          onSelect={(url) => { setSpotifyUrl(url); applySpotify(url); }}
+          disabled={savingSpotify}
+        />
+        <Text style={[styles.hint, { color: colors.textTertiary, marginTop: 10, marginBottom: 6 }]}>
+          {t("groupManage.spotifyPickerOrPaste")}
         </Text>
         <View style={styles.nameRow}>
           <TextInput

@@ -2008,7 +2008,17 @@
     "changeEvidence": "Change evidence",
     "addEvidenceOptional": "Add evidence (optional)",
     "blocking": "Blocking…",
-    "blockUser": "Block user"
+    "blockUser": "Block user",
+    "spotifyPickerOrPaste": "…or paste a link manually",
+    "spotifyPicker": {
+      "cta": "Choose from my Spotify",
+      "title": "Your playlists",
+      "empty": "No playlists on this account yet.",
+      "trackCount_one": "{{count}} track",
+      "trackCount_other": "{{count}} tracks",
+      "notConfigured": "Spotify isn't set up in this build yet.",
+      "genericError": "Couldn't load your playlists. Try again."
+    }
   },
   "finance": {
     "title": "Finances",

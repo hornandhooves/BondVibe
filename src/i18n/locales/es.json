@@ -2008,7 +2008,17 @@
     "changeEvidence": "Cambiar evidencia",
     "addEvidenceOptional": "Agregar evidencia (opcional)",
     "blocking": "Bloqueando…",
-    "blockUser": "Bloquear usuario"
+    "blockUser": "Bloquear usuario",
+    "spotifyPickerOrPaste": "…o pega un enlace a mano",
+    "spotifyPicker": {
+      "cta": "Elegir de mi Spotify",
+      "title": "Tus playlists",
+      "empty": "Esta cuenta todavía no tiene playlists.",
+      "trackCount_one": "{{count}} canción",
+      "trackCount_other": "{{count}} canciones",
+      "notConfigured": "Spotify aún no está configurado en esta versión.",
+      "genericError": "No se pudieron cargar tus playlists. Inténtalo de nuevo."
+    }
   },
   "finance": {
     "title": "Finanzas",
