@@ -621,7 +621,6 @@
     "editClassTitle": "Editar clase",
     "createClassButton": "Crear clase",
     "instructorLabel": "Instructor",
-    "instructorOptionalLabel": "Instructor (opcional)",
     "instructorPlaceholder": "Quién la imparte",
     "instructorFallback": "Staff",
     "done": "Listo",
@@ -3812,7 +3811,12 @@
     },
     "instructor": {
       "me": "Yo",
-      "staff": "Staff"
+      "staff": "Staff",
+      "addSomeone": "+ Agregar a alguien",
+      "addTitle": "Agregar a alguien",
+      "namePlaceholder": "Nombre completo",
+      "addConfirm": "Agregar",
+      "cancel": "Cancelar"
     },
     "pricingTier": {
       "title": "Nivel de precio",
@@ -4437,6 +4441,7 @@
       "conflictMsg": "{{name}} ya tiene \"{{title}}\" {{range}}.",
       "conflictBlockedMsg": "{{name}} está marcado como no disponible {{range}}.",
       "outOfHoursMsg": "Está fuera del horario laboral ({{start}}–{{end}}).",
+      "notWorkingDayMsg": "Ese día no es laborable para este instructor.",
       "continueAnyway": "Continuar de todos modos",
       "free": "Libre",
       "nItems_one": "{{count}} elemento",
@@ -4660,7 +4665,13 @@
       "roleHint": {
         "instructor": "Administra miembros, clases y asistencia. Sin finanzas.",
         "reception": "Solo check-in y asistencia. Sin finanzas."
-      }
+      },
+      "samePersonTitle": "¿Es la misma persona?",
+      "samePersonMsg": "Ya tienes a «{{name}}» en tu equipo como marcador. ¿Es la misma persona?",
+      "samePersonYes": "Sí, es la misma",
+      "samePersonNo": "No, agregar aparte",
+      "mergedTitle": "Persona vinculada",
+      "mergedMsg": "«{{name}}» quedó vinculada a su cuenta. Eventos en los que ya estaba asignada: {{count}}."
     },
     "roles": {
       "title": "Roles y permisos",

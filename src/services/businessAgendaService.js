@@ -239,7 +239,9 @@ async function getInstructorEventsOnDate(instructorUid, date) {
  * AND working day.
  * @param {{instructorUid:string, instructorName?:string, start:Date, durationMin:number}} p
  * @param {string} [bizId]
- * @returns {Promise<{conflict:boolean, conflictItem:object|null, outOfHours:boolean}>}
+ * @returns {Promise<{conflict:boolean, conflictItem:object|null, outOfHours:boolean, notWorkingDay:boolean}>}
+ *   notWorkingDay narrows outOfHours: true means the DAY is off, so the hour
+ *   range is irrelevant and quoting it would be misleading (KIN-192).
  */
 export async function checkInstructorAvailability(
   { instructorUid, instructorName, start, durationMin, excludeItemId },
@@ -288,7 +290,12 @@ export async function checkInstructorAvailability(
   const startMin = start.getHours() * 60 + start.getMinutes();
   const endMin = startMin + dur;
   const workingDay = Array.isArray(wh.days) ? wh.days.includes(start.getDay()) : true;
-  if (!workingDay || startMin < hmToMin(wh.start) || endMin > hmToMin(wh.end)) {
+  if (!workingDay) {
+    // KIN-192: a non-working DAY isn't an hours problem — the time itself may be
+    // perfectly in range. Flag it separately so the caller can show the right message.
+    result.outOfHours = true;
+    result.notWorkingDay = true;
+  } else if (startMin < hmToMin(wh.start) || endMin > hmToMin(wh.end)) {
     result.outOfHours = true;
   }
   return result;

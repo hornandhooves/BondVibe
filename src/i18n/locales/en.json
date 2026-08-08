@@ -621,7 +621,6 @@
     "editClassTitle": "Edit Class",
     "createClassButton": "Create Class",
     "instructorLabel": "Instructor",
-    "instructorOptionalLabel": "Instructor (optional)",
     "instructorPlaceholder": "Who teaches it",
     "instructorFallback": "Staff",
     "done": "Done",
@@ -3812,7 +3811,12 @@
     },
     "instructor": {
       "me": "Me",
-      "staff": "Staff"
+      "staff": "Staff",
+      "addSomeone": "+ Add someone",
+      "addTitle": "Add someone",
+      "namePlaceholder": "Full name",
+      "addConfirm": "Add",
+      "cancel": "Cancel"
     },
     "pricingTier": {
       "title": "Pricing tier",
@@ -4437,6 +4441,7 @@
       "conflictMsg": "{{name}} already has \"{{title}}\" {{range}}.",
       "conflictBlockedMsg": "{{name}} is marked unavailable {{range}}.",
       "outOfHoursMsg": "That's outside the working hours ({{start}}–{{end}}).",
+      "notWorkingDayMsg": "That's not a working day for this instructor.",
       "continueAnyway": "Continue anyway",
       "free": "Free",
       "nItems_one": "{{count}} item",
@@ -4660,7 +4665,13 @@
       "roleHint": {
         "instructor": "Manage members, classes and attendance. No finance.",
         "reception": "Check-in and attendance only. No finance."
-      }
+      },
+      "samePersonTitle": "Is this the same person?",
+      "samePersonMsg": "You already have “{{name}}” on your team as a placeholder. Is this the same person?",
+      "samePersonYes": "Yes, it's them",
+      "samePersonNo": "No, add separately",
+      "mergedTitle": "Team member linked",
+      "mergedMsg": "“{{name}}” is now linked to their account. Events they were already assigned to: {{count}}."
     },
     "roles": {
       "title": "Roles & permissions",
