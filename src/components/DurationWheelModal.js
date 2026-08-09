@@ -50,7 +50,7 @@ function nearestIdx(arr, target) {
 }
 
 // A single JS wheel column (Android fallback + Days wheel).
-function WheelColumn({ data, index, onIndexChange, formatter, align, colors }) {
+function WheelColumn({ data, index, onIndexChange, formatter, align, colors, testIDPrefix }) {
   const ref = useRef(null);
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
@@ -89,6 +89,12 @@ function WheelColumn({ data, index, onIndexChange, formatter, align, colors }) {
             onIndexChange(i);
             ref.current?.scrollTo({ y: i * ITEM_H, animated: true });
           }}
+          // Keyed by the VALUE, not the row position, so a handle still points
+          // at "30 minutes" if the range ever changes (KIN-205).
+          testID={testIDPrefix ? `${testIDPrefix}-${item}` : undefined}
+          accessibilityRole="button"
+          accessibilityLabel={formatter(item)}
+          accessibilityState={{ selected: i === index }}
         >
           <Text
             style={[
@@ -153,6 +159,10 @@ export default function DurationWheelModal({ visible, value, onSelect, onClose }
           styles.segment,
           { backgroundColor: active ? colors.primary : "transparent" },
         ]}
+        testID={`duration-mode-${id}`}
+        accessibilityRole="tab"
+        accessibilityLabel={label}
+        accessibilityState={{ selected: active }}
       >
         <Text
           style={{
@@ -181,6 +191,9 @@ export default function DurationWheelModal({ visible, value, onSelect, onClose }
             <TouchableOpacity
               onPress={onClose}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              testID="duration-close"
+              accessibilityRole="button"
+              accessibilityLabel={t("common.close")}
             >
               <Icon name="close" size={22} color={colors.textSecondary} type="ui" />
             </TouchableOpacity>
@@ -218,6 +231,7 @@ export default function DurationWheelModal({ visible, value, onSelect, onClose }
               />
               <WheelColumn
                 data={HOURS}
+                testIDPrefix="duration-hours"
                 index={hIdx}
                 onIndexChange={setHIdx}
                 formatter={(n) => t("durationWheelModal.hoursAbbrev", { n })}
@@ -226,6 +240,7 @@ export default function DurationWheelModal({ visible, value, onSelect, onClose }
               />
               <WheelColumn
                 data={MINUTES}
+                testIDPrefix="duration-minutes"
                 index={mIdx}
                 onIndexChange={setMIdx}
                 formatter={(n) => t("durationWheelModal.minutesAbbrev", { n: String(n).padStart(2, "0") })}
@@ -243,6 +258,7 @@ export default function DurationWheelModal({ visible, value, onSelect, onClose }
               />
               <WheelColumn
                 data={DAYS}
+                testIDPrefix="duration-days"
                 index={dIdx}
                 onIndexChange={setDIdx}
                 formatter={(n) => t(n === 1 ? "durationWheelModal.daySingularAbbrev" : "durationWheelModal.daysPluralAbbrev", { n })}
@@ -256,6 +272,9 @@ export default function DurationWheelModal({ visible, value, onSelect, onClose }
             style={[styles.doneBtn, { backgroundColor: colors.primary }]}
             onPress={done}
             activeOpacity={0.85}
+            testID="duration-done"
+            accessibilityRole="button"
+            accessibilityLabel={t("durationWheelModal.done")}
           >
             <Text style={styles.doneText}>{t("durationWheelModal.done")}</Text>
           </TouchableOpacity>
