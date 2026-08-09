@@ -35,17 +35,11 @@ import { useFocusEffect } from "@react-navigation/native";
 import AvatarPicker, { AvatarDisplay } from "../components/AvatarPicker";
 import GradientBackground from "../components/GradientBackground";
 import { AvatarFrame } from "../components/CategoryIcon";
+import BirthdayWheelModal from "../components/BirthdayWheelModal";
 import { usePremium } from "../hooks/usePremium";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { getFollowers, getFollowing } from "../services/followService";
 import { getMyFleet } from "../services/rentalService";
-
-// Parse a positive int in [1, max] or null (birthday day/month inputs).
-const clampInt = (v, max) => {
-  const n = parseInt(String(v).replace(/[^0-9]/g, ""), 10);
-  if (!Number.isFinite(n) || n < 1) return null;
-  return Math.min(n, max);
-};
 
 export default function ProfileScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -85,6 +79,7 @@ export default function ProfileScreen({ navigation }) {
     return unsub;
   }, []);
 
+  const [birthdayWheel, setBirthdayWheel] = useState(false);
   const [editForm, setEditForm] = useState({
     fullName: "",
     avatar: null,
@@ -266,6 +261,13 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
+  // KIN-207: what the birthday trigger shows and announces. Same composition as
+  // the preview line below it, so the row and the confirmation never disagree.
+  const hasBirthday = !!(editForm.birthDay && editForm.birthMonth);
+  const birthdayLabel = hasBirthday
+    ? `${editForm.birthDay} ${t(`gifting.months.m${editForm.birthMonth}`)}`
+    : t("gifting.birthday.add");
+
   const s = createStyles(colors, isDark);
 
   if (!profile) {
@@ -428,26 +430,26 @@ export default function ProfileScreen({ navigation }) {
               <Text style={[TYPE.caption, { color: colors.textTertiary, marginBottom: SPACING.sm }]}>
                 {t("gifting.birthday.emptyBlurb")}
               </Text>
-              <View style={{ flexDirection: "row", gap: SPACING.sm }}>
-                <TextInput
-                  style={[s.input, { flex: 1, backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
-                  value={editForm.birthDay ? String(editForm.birthDay) : ""}
-                  onChangeText={(v) => setEditForm({ ...editForm, birthDay: clampInt(v, 31) })}
-                  placeholder={t("gifting.birthday.day")}
-                  placeholderTextColor={colors.textTertiary}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                />
-                <TextInput
-                  style={[s.input, { flex: 1, backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
-                  value={editForm.birthMonth ? String(editForm.birthMonth) : ""}
-                  onChangeText={(v) => setEditForm({ ...editForm, birthMonth: clampInt(v, 12) })}
-                  placeholder={t("gifting.birthday.month")}
-                  placeholderTextColor={colors.textTertiary}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                />
-              </View>
+              {/* KIN-207: one wheel picker instead of two free-text fields —
+                  two numbers could spell 30 February, two wheels can't. */}
+              <TouchableOpacity
+                style={[s.input, { backgroundColor: colors.surface, borderColor: colors.border, justifyContent: "center" }]}
+                onPress={() => setBirthdayWheel(true)}
+                testID="birthday-trigger"
+                accessibilityRole="button"
+                accessibilityLabel={`${t("gifting.birthday.sectionTitle")}, ${birthdayLabel}`}
+              >
+                <Text style={{ color: hasBirthday ? colors.text : colors.textTertiary, fontFamily: FONTS.body, fontSize: 15 }}>
+                  {birthdayLabel}
+                </Text>
+              </TouchableOpacity>
+              <BirthdayWheelModal
+                visible={birthdayWheel}
+                day={editForm.birthDay}
+                month={editForm.birthMonth}
+                onSelect={(d, m) => setEditForm({ ...editForm, birthDay: d, birthMonth: m })}
+                onClose={() => setBirthdayWheel(false)}
+              />
               {editForm.birthDay && editForm.birthMonth ? (
                 <>
                   <Text style={[TYPE.caption, { color: colors.textTertiary, marginTop: SPACING.sm }]}>
