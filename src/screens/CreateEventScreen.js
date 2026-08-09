@@ -54,7 +54,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import RecurrenceModal from "../components/RecurrenceModal";
-import { generateRecurringDates, getRecurrenceSummary } from "../utils/recurrenceUtils";
+import { generateRecurringDates, getRecurrenceSummary, MAX_RECURRING_EVENTS } from "../utils/recurrenceUtils";
 import DraftWithAI from "../components/ai/DraftWithAI";
 import DurationWheelModal, { formatDuration } from "../components/DurationWheelModal";
 import { formatDate as fmtDate } from "../utils/formatDate";
@@ -917,11 +917,26 @@ export default function CreateEventScreen({ navigation, route }) {
               .substr(2, 9)}`
           : null;
 
-      // Get all dates for recurring events
-      let eventDates =
-        recurrenceConfig.type !== "none"
-          ? generateRecurringDates(eventDate, recurrenceConfig)
-          : [eventDate];
+      // Get all dates for recurring events.
+      //
+      // KIN-203: generateRecurringDates truncates to the cap internally, so
+      // measuring its output could never tell "exactly 52" from "way over" —
+      // the guard below was dead code and the series was silently cut to 52.
+      // Asking for ONE more than the cap makes the overshoot observable; the
+      // list actually used is still capped, so nothing downstream changes.
+      let eventDates;
+      let exceedsRecurrenceCap = false;
+      if (recurrenceConfig.type !== "none") {
+        const generated = generateRecurringDates(
+          eventDate,
+          recurrenceConfig,
+          MAX_RECURRING_EVENTS + 1
+        );
+        exceedsRecurrenceCap = generated.length > MAX_RECURRING_EVENTS;
+        eventDates = generated.slice(0, MAX_RECURRING_EVENTS);
+      } else {
+        eventDates = [eventDate];
+      }
 
       // BUG 30 Gap B: "Skip conflicting dates" — omit the occurrences the host
       // chose to skip (regeneration is deterministic, so ISO strings match).
@@ -932,8 +947,10 @@ export default function CreateEventScreen({ navigation, route }) {
 
       console.log(`📅 Creating ${eventDates.length} event(s)...`);
 
-      // Limit to prevent too many events
-      if (eventDates.length > 52) {
+      // Limit to prevent too many events. Checked against the REQUESTED series,
+      // not the post-skip list: skipping a conflicting date shouldn't quietly
+      // bring an oversized series under the limit.
+      if (exceedsRecurrenceCap) {
         Alert.alert(
           t("createEvent.validation.tooManyEventsTitle"),
           t("createEvent.validation.tooManyEventsMsg")
