@@ -808,6 +808,12 @@
     "errors": {
       "saveFailedTitle": "Error",
       "saveFailedMsg": "No se pudo guardar el perfil. Intenta de nuevo."
+    },
+    "favoriteArtists": {
+      "label": "Artistas favoritos",
+      "placeholder": "Busca un artista",
+      "searching": "Buscando…",
+      "hint": "Hasta {{max}}. Toca uno para quitarlo."
     }
   },
   "legal": {

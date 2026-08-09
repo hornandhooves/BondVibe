@@ -36,6 +36,7 @@ import AvatarPicker, { AvatarDisplay } from "../components/AvatarPicker";
 import GradientBackground from "../components/GradientBackground";
 import { AvatarFrame } from "../components/CategoryIcon";
 import { usePremium } from "../hooks/usePremium";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { getFollowers, getFollowing } from "../services/followService";
 import { getMyFleet } from "../services/rentalService";
 
@@ -91,6 +92,7 @@ export default function ProfileScreen({ navigation }) {
     birthDay: null,
     birthMonth: null,
     birthdayShareConsent: false,
+    favoriteArtists: [],
   });
 
   useFocusEffect(
@@ -151,12 +153,78 @@ export default function ProfileScreen({ navigation }) {
           birthDay: bDay,
           birthMonth: bMonth,
           birthdayShareConsent: data.birthdayShareConsent === true,
+          favoriteArtists: Array.isArray(data.favoriteArtists) ? data.favoriteArtists : [],
         });
       }
     } catch (error) {
       console.error("Error loading profile:", error);
     }
   };
+
+  // ── Favorite artists (KIN-200) ────────────────────────────────────────────
+  // Self-selected, not imported: no Spotify connection, no scopes, no tokens.
+  // Lookup goes to the public iTunes Search API, which allows ~20 req/min —
+  // hence the debounce and the 2-character floor. Neither is cosmetic: raw
+  // onChangeText would exceed the limit inside one typed word.
+  const MAX_FAVORITE_ARTISTS = 5;
+  const [artistQuery, setArtistQuery] = useState("");
+  const [artistResults, setArtistResults] = useState([]);
+  const [artistSearching, setArtistSearching] = useState(false);
+  const debouncedArtistQuery = useDebouncedValue(artistQuery, 400);
+
+  useEffect(() => {
+    const q = debouncedArtistQuery.trim();
+    if (q.length < 2) {
+      setArtistResults([]);
+      return;
+    }
+    let alive = true;
+    (async () => {
+      // The flag is set INSIDE the async body so it sits under the same
+      // try/finally that resets it — outside, a throw would strand the spinner
+      // (CLAUDE.md §7, and the lint rule that enforces it).
+      setArtistSearching(true);
+      try {
+        const res = await fetch(
+          `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=musicArtist&limit=8`
+        );
+        const json = await res.json();
+        if (!alive) return;
+        // entity=musicArtist returns no artwork (verified against the live API),
+        // so a row is name + genre and nothing else.
+        setArtistResults(
+          (json.results || []).map((a) => ({
+            artistId: a.artistId,
+            artistName: a.artistName,
+            primaryGenreName: a.primaryGenreName || "",
+          }))
+        );
+      } catch (_e) {
+        // A failed lookup just means no suggestions — never block editing.
+        if (alive) setArtistResults([]);
+      } finally {
+        if (alive) setArtistSearching(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [debouncedArtistQuery]);
+
+  const addArtist = (a) => {
+    setEditForm((f) => {
+      const cur = f.favoriteArtists || [];
+      if (cur.length >= MAX_FAVORITE_ARTISTS) return f;
+      if (cur.some((x) => x.artistId === a.artistId)) return f; // no duplicates
+      return { ...f, favoriteArtists: [...cur, a] };
+    });
+    setArtistQuery("");
+    setArtistResults([]);
+  };
+
+  const removeArtist = (artistId) =>
+    setEditForm((f) => ({
+      ...f,
+      favoriteArtists: (f.favoriteArtists || []).filter((x) => x.artistId !== artistId),
+    }));
 
   const handleSave = async () => {
     setSaving(true);
@@ -180,6 +248,7 @@ export default function ProfileScreen({ navigation }) {
         fullName: editForm.fullName.trim(),
         avatar,
         location: editForm.location.trim(),
+        favoriteArtists: editForm.favoriteArtists,
         birthdayShareConsent: hasBday ? !!editForm.birthdayShareConsent : deleteField(),
         // Clean up any legacy day/month left on the main doc from the pre-subdoc
         // version so it isn't world-readable.
@@ -295,6 +364,62 @@ export default function ProfileScreen({ navigation }) {
                 maxLength={50}
               />
             </View>
+            {/* Favorite artists (KIN-200) — self-selected, max 5 */}
+            <View style={s.formGroup}>
+              <Text style={[s.inputLabel, { color: colors.textSecondary }]}>
+                {t("profile.favoriteArtists.label")}
+              </Text>
+              {(editForm.favoriteArtists || []).length > 0 && (
+                <View style={s.artistChips}>
+                  {editForm.favoriteArtists.map((a) => (
+                    <TouchableOpacity
+                      key={a.artistId}
+                      style={[s.artistChip, { backgroundColor: `${colors.primary}14`, borderColor: colors.primary }]}
+                      onPress={() => removeArtist(a.artistId)}
+                      testID={`artist-chip-${a.artistId}`}
+                    >
+                      <Text style={[s.artistChipText, { color: colors.primary }]}>{a.artistName}</Text>
+                      <Icon name="close" size={13} color={colors.primary} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+              {(editForm.favoriteArtists || []).length < MAX_FAVORITE_ARTISTS && (
+                <TextInput
+                  style={[s.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
+                  value={artistQuery}
+                  onChangeText={setArtistQuery}
+                  placeholder={t("profile.favoriteArtists.placeholder")}
+                  placeholderTextColor={colors.textTertiary}
+                  autoCorrect={false}
+                  testID="artist-search-input"
+                />
+              )}
+              {artistSearching && (
+                <Text style={[s.artistHint, { color: colors.textTertiary }]}>
+                  {t("profile.favoriteArtists.searching")}
+                </Text>
+              )}
+              {artistResults.map((a) => (
+                <TouchableOpacity
+                  key={a.artistId}
+                  style={[s.artistResult, { borderColor: colors.border }]}
+                  onPress={() => addArtist(a)}
+                  testID={`artist-result-${a.artistId}`}
+                >
+                  <Text style={[s.artistResultName, { color: colors.text }]} numberOfLines={1}>
+                    {a.artistName}
+                  </Text>
+                  {!!a.primaryGenreName && (
+                    <Text style={[s.artistHint, { color: colors.textTertiary }]}>{a.primaryGenreName}</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+              <Text style={[s.artistHint, { color: colors.textTertiary }]}>
+                {t("profile.favoriteArtists.hint", { max: MAX_FAVORITE_ARTISTS })}
+              </Text>
+            </View>
+
             {/* Social birthday (day+month only, opt-in) — gifting Board 1 */}
             <View style={s.formGroup}>
               <Text style={[s.inputLabel, { color: colors.textSecondary }]}>
@@ -820,6 +945,17 @@ function createStyles(colors, isDark) {
       fontFamily: FONTS.body,
       fontSize: 15,
     },
+    artistChips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 },
+    artistChip: {
+      flexDirection: "row", alignItems: "center", gap: 6,
+      borderWidth: 1, borderRadius: RADII.pill,
+      paddingHorizontal: 12, paddingVertical: 7,
+    },
+    artistChipText: { fontFamily: FONTS.bodySemibold, fontSize: 13 },
+    artistResult: { borderBottomWidth: 1, paddingVertical: 10 },
+    artistResultName: { fontFamily: FONTS.bodySemibold, fontSize: 14 },
+    artistHint: { fontFamily: FONTS.body, fontSize: 12, marginTop: 6 },
+
     cancelRow: { alignItems: "center", paddingVertical: 16 },
     cancelText: { fontFamily: FONTS.bodySemibold, fontSize: 15 },
 
