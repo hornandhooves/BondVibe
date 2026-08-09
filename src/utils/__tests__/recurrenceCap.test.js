@@ -1,19 +1,17 @@
 /**
  * KIN-203 — the 52-occurrence cap on a single recurring series.
  *
- * WHY THIS IS THE UNIT UNDER TEST. The ticket describes the cap as living in
- * CreateEventScreen (`if (eventDates.length > 52)` → alert → return before any
- * write). That guard is unreachable: `generateRecurringDates` is the ONLY source
- * of `eventDates`, it truncates to 52 internally in every branch, and the
- * skip-dates filter downstream can only REMOVE occurrences. So the real cap —
- * the one that decides how many docs can ever reach Firestore — is here, and
- * this is where it has to be locked down.
+ * WHY THIS IS THE UNIT UNDER TEST. The cap is enforced here, not in the screen:
+ * generateRecurringDates is the only source of the date list and truncates to 52
+ * inside every branch, so nothing downstream can ever see more. CreateEventScreen
+ * now REFUSES an oversized series rather than trimming it silently — that half is
+ * covered in CreateEventScreen.recurrenceCap.test.js, and it leans on the
+ * maxEvents override exercised at the bottom of this file.
  *
  * The regression this prevents is expensive and silent: raise `maxEvents`, or
  * drop the `dates.length < maxEvents` condition from one generator while
  * refactoring, and a single form submit fans out into hundreds of event
- * documents. Nothing in the UI would complain, because the screen-level guard
- * that was supposed to catch it never fires.
+ * documents.
  *
  * Every recurrence type is covered separately on purpose. The cap is not
  * implemented once — it is re-implemented in each generator (a loop condition
@@ -98,6 +96,39 @@ describe("generateRecurringDates — the 52-occurrence cap", () => {
       expect(d.getHours()).toBe(10);
       expect(d.getMinutes()).toBe(0);
     }
+  });
+
+  // The screen's block-with-alert guard (KIN-203) rests entirely on this: it
+  // asks for MAX + 1 and treats a 53rd date as proof the series overshot. If the
+  // override stopped being honoured, the guard would go quietly dead again —
+  // exactly the failure this whole ticket is about.
+  describe("maxEvents override", () => {
+    it("yields a 53rd occurrence when asked for one more than the cap", () => {
+      const dates = generateRecurringDates(
+        START,
+        { type: "weekly", selectedDays: [1], endDate: FAR_END },
+        MAX + 1
+      );
+      expect(dates).toHaveLength(MAX + 1);
+    });
+
+    // Lunar matters most here: it is capped in TWO places (lunarUtils' own loop
+    // and the slice in generateLunarDates), so the override has to reach both or
+    // this case silently stays at 52 while the others honour it.
+    it.each(CONFIGS)("honours the override for %s", (_label, config) => {
+      const dates = generateRecurringDates(START, { ...config, endDate: FAR_END }, MAX + 1);
+      expect(dates).toHaveLength(MAX + 1);
+    });
+
+    it("never invents occurrences a shorter series doesn't have", () => {
+      const end = new Date(2026, 0, 5 + 3 * 7, 10, 0); // 4 Mondays
+      const dates = generateRecurringDates(
+        START,
+        { type: "weekly", selectedDays: [1], endDate: end },
+        MAX + 1
+      );
+      expect(dates).toHaveLength(4);
+    });
   });
 
   it("returns a single date when there is no recurrence", () => {

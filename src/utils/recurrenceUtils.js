@@ -6,6 +6,13 @@
 import { generateMoonPhaseDates } from './lunarUtils';
 
 /**
+ * How many occurrences a single recurring series may contain. Exported so the
+ * caller can reason about the limit instead of repeating the literal — and so it
+ * can ask for MAX + 1 to detect a series that overshoots (KIN-203).
+ */
+export const MAX_RECURRING_EVENTS = 52;
+
+/**
  * Generate dates for recurring events
  * @param {Date} startDate - First event date
  * @param {Object} config - Recurrence configuration
@@ -16,9 +23,12 @@ import { generateMoonPhaseDates } from './lunarUtils';
  * @param {number} config.dayOfMonth - For monthly dayOfMonth mode: 1-28
  * @param {string} config.lunarPhase - For lunar: "full" | "new"
  * @param {string} config.endDate - ISO date string for end date
- * @returns {Date[]} Array of event dates
+ * @param {number} [maxEvents] - Ceiling on generated occurrences. Defaults to
+ *   MAX_RECURRING_EVENTS; pass MAX_RECURRING_EVENTS + 1 to find out whether the
+ *   requested series would have overshot the cap (KIN-203).
+ * @returns {Date[]} Array of event dates, never longer than maxEvents
  */
-export function generateRecurringDates(startDate, config) {
+export function generateRecurringDates(startDate, config, maxEvents = MAX_RECURRING_EVENTS) {
   if (!config || config.type === "none") {
     return [new Date(startDate)];
   }
@@ -31,9 +41,6 @@ export function generateRecurringDates(startDate, config) {
   // Preserve time from start date
   const hours = start.getHours();
   const minutes = start.getMinutes();
-
-  // Safety limit
-  const maxEvents = 52;
 
   switch (type) {
     case "daily":
@@ -163,8 +170,11 @@ function generateMonthlyByDateDates(start, end, dayOfMonth, hours, minutes, maxE
  * Generate lunar phase dates
  */
 function generateLunarDates(start, end, lunarPhase, hours, minutes, maxEvents) {
-  const moonDates = generateMoonPhaseDates(start, end, lunarPhase);
-  
+  // The limit has to reach generateMoonPhaseDates, not just the slice below:
+  // that helper caps internally too, so leaving it at its own default would
+  // hide an overshoot from the caller asking for MAX + 1 (KIN-203).
+  const moonDates = generateMoonPhaseDates(start, end, lunarPhase, maxEvents);
+
   // Apply time to each date
   return moonDates.slice(0, maxEvents).map(date => {
     const d = new Date(date);

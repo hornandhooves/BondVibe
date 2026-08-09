@@ -62,6 +62,7 @@ jest.mock("../../utils/eventSearch", () => ({ buildEventSearchKeywords: jest.fn(
 jest.mock("../../utils/recurrenceUtils", () => ({
   generateRecurringDates: jest.fn(() => []),
   getRecurrenceSummary: jest.fn(() => ""),
+  MAX_RECURRING_EVENTS: 52,
 }));
 jest.mock("@react-navigation/native", () => ({
   useFocusEffect: (cb) => {
