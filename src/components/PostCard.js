@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Linking,
 } from "react-native";
 import Icon from "./Icon";
 import MentionText from "./MentionText";
@@ -211,6 +212,7 @@ export default function PostCard({ post, navigation, onChanged }) {
         <MentionText text={post.text} style={[styles.text, { color: colors.text }]} navigation={navigation} />
       )}
       <PostMedia post={post} styles={styles} />
+      <PostMusic post={post} styles={styles} colors={colors} t={t} />
 
       {/* Host CTA (P2) — routes to the real reservation (event / service). */}
       {post.cta?.type && post.cta?.refId && (
@@ -314,6 +316,42 @@ function PostMedia({ post, styles }) {
   return <Image source={{ uri: media[0] }} style={styles.image} />;
 }
 
+/** Attached song (KIN-201) — artwork + track + artist, tapping opens Apple
+ *  Music outside the app. There is deliberately no embedded player: an audio
+ *  library would be a native dependency, and Apple's terms don't allow us to
+ *  cache or persist the preview audio. `previewUrl` is stored as a plain URL
+ *  and never fetched here. Renders independently of photos/video, and is
+ *  simply absent on the posts that predate this field. */
+function PostMusic({ post, styles, colors, t }) {
+  const m = post.music;
+  if (!m?.trackName) return null;
+  const open = () => { if (m.trackViewUrl) Linking.openURL(m.trackViewUrl); };
+  return (
+    <TouchableOpacity
+      style={styles.musicCard}
+      onPress={open}
+      activeOpacity={0.88}
+      disabled={!m.trackViewUrl}
+      testID="post-music"
+    >
+      {!!m.artworkUrl100 && <Image source={{ uri: m.artworkUrl100 }} style={styles.musicArt} />}
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.musicTitle, { color: colors.text }]} numberOfLines={1}>
+          {m.trackName}
+        </Text>
+        <Text style={[styles.musicArtist, { color: colors.textSecondary }]} numberOfLines={1}>
+          {m.artistName}
+        </Text>
+        {/* Attribution required by Apple's Search API terms. */}
+        <Text style={[styles.musicAttrib, { color: colors.textTertiary }]} numberOfLines={1}>
+          {t("postCard.musicAttribution")}
+        </Text>
+      </View>
+      <Icon name="music" size={18} color={colors.textSecondary} />
+    </TouchableOpacity>
+  );
+}
+
 const hit = { top: 8, bottom: 8, left: 8, right: 8 };
 
 function createStyles(colors) {
@@ -355,6 +393,14 @@ function createStyles(colors) {
     ctaSub: { fontSize: 12, marginTop: 2 },
     ctaBtn: { backgroundColor: "#1F8A6E", borderRadius: 19, paddingHorizontal: 16, paddingVertical: 9 },
     ctaBtnText: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" },
+    musicCard: {
+      flexDirection: "row", alignItems: "center", gap: 12,
+      borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 10, marginBottom: 10,
+    },
+    musicArt: { width: 44, height: 44, borderRadius: 8 },
+    musicTitle: { fontSize: 14, fontWeight: "700" },
+    musicArtist: { fontSize: 12, marginTop: 2 },
+    musicAttrib: { fontSize: 10, marginTop: 3 },
     statsStrip: {
       flexDirection: "row", alignItems: "center", gap: 8,
       backgroundColor: "#160F22", borderRadius: 14, padding: 12, marginTop: 12,

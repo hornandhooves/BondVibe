@@ -344,7 +344,10 @@
       "asHost": "Post as host",
       "carousel": "Carousel",
       "video": "Video",
-      "asMoment": "Share as a Moment (24h)"
+      "asMoment": "Share as a Moment (24h)",
+      "song": "Song",
+      "songPlaceholder": "Search a song…",
+      "songSearching": "Searching…"
     },
     "moments": {
       "yours": "Your moment",
@@ -3356,6 +3359,7 @@
     "cancel": "Cancel",
     "postFallback": "Post",
     "eventRecap": "EVENT RECAP",
+    "musicAttribution": "Music courtesy of iTunes",
     "youWereThere": "You were there"
   },
   "ratingModal": {

@@ -38,7 +38,11 @@ const chunk = (arr, n) => {
  * posts without communityId/authorFunnyTag/mediaType still render fine, and the
  * legacy `images` array is preserved alongside the new `mediaUrls`.
  * @param {object} p { text, images?, mediaUrls?, mediaType?, communityId?,
- *   authorFunnyTag?, cta?, isHostPost? }
+ *   authorFunnyTag?, cta?, isHostPost?, music? }
+ *
+ * `music` (KIN-201) is iTunes Search metadata for an attached song — it is
+ * metadata only. Nothing is downloaded and no audio is ever stored; previewUrl
+ * is kept as a plain URL and trackViewUrl is what the card opens externally.
  */
 export const createPost = async ({
   text,
@@ -49,6 +53,7 @@ export const createPost = async ({
   authorFunnyTag,
   cta = null,
   isHostPost = false,
+  music = null,
 }) => {
   const me = uid();
   const body = (text || "").trim();
@@ -87,6 +92,7 @@ export const createPost = async ({
         authorFunnyTag: funnyTag,
         isHostPost: !!isHostPost,
         cta: cta || null,
+        music: music || null,
         likeCount: 0,
         commentCount: 0,
         createdAt: serverTimestamp(),

@@ -344,7 +344,10 @@
       "asHost": "Publicar como host",
       "carousel": "Carrusel",
       "video": "Video",
-      "asMoment": "Compartir como Moment (24h)"
+      "asMoment": "Compartir como Moment (24h)",
+      "song": "Canción",
+      "songPlaceholder": "Busca una canción…",
+      "songSearching": "Buscando…"
     },
     "moments": {
       "yours": "Tu moment",
@@ -3356,6 +3359,7 @@
     "cancel": "Cancelar",
     "postFallback": "Publicación",
     "eventRecap": "RESUMEN DEL EVENTO",
+    "musicAttribution": "Música cortesía de iTunes",
     "youWereThere": "Estuviste aquí"
   },
   "ratingModal": {
