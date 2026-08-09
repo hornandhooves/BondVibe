@@ -6,17 +6,17 @@
  * date/time, no extra native module). Android falls back to JS wheels.
  * A small Hours/Days segment keeps multi-day events selectable.
  */
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Modal,
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   StyleSheet,
   Platform,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import WheelColumn, { ITEM_H, VISIBLE, PAD, clamp } from "./WheelColumn";
 import { useTheme } from "../contexts/ThemeContext";
 import { useTranslation } from "react-i18next";
 import Icon from "./Icon";
@@ -26,15 +26,9 @@ import { formatDuration, durationToDate, dateToMinutes } from "../utils/duration
 // working; the implementations now live in utils/duration for testability.
 export { formatDuration };
 
-const ITEM_H = 44;
-const VISIBLE = 5;
-const PAD = ITEM_H * Math.floor(VISIBLE / 2);
-
 const HOURS = Array.from({ length: 24 }, (_, i) => i); // 0..23
 const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5); // 0,5,..,55
 const DAYS = Array.from({ length: 14 }, (_, i) => i + 1); // 1..14 days
-
-const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 function nearestIdx(arr, target) {
   let best = 0;
@@ -47,70 +41,6 @@ function nearestIdx(arr, target) {
     }
   });
   return best;
-}
-
-// A single JS wheel column (Android fallback + Days wheel).
-function WheelColumn({ data, index, onIndexChange, formatter, align, colors, testIDPrefix }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => {
-      ref.current?.scrollTo({ y: index * ITEM_H, animated: false });
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [index, data]);
-
-  const onEnd = (e) => {
-    const raw = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
-    const c = clamp(raw, 0, data.length - 1);
-    if (c !== index) onIndexChange(c);
-  };
-
-  return (
-    <ScrollView
-      ref={ref}
-      style={{ flex: 1 }}
-      showsVerticalScrollIndicator={false}
-      snapToInterval={ITEM_H}
-      decelerationRate="fast"
-      onMomentumScrollEnd={onEnd}
-      contentContainerStyle={{ paddingVertical: PAD }}
-    >
-      {data.map((item, i) => (
-        <TouchableOpacity
-          key={`${item}-${i}`}
-          activeOpacity={0.7}
-          style={[
-            styles.item,
-            align === "right" ? { alignItems: "flex-end", paddingRight: 14 } : null,
-            align === "left" ? { alignItems: "flex-start", paddingLeft: 14 } : null,
-            align === "center" ? { alignItems: "center" } : null,
-          ]}
-          onPress={() => {
-            onIndexChange(i);
-            ref.current?.scrollTo({ y: i * ITEM_H, animated: true });
-          }}
-          // Keyed by the VALUE, not the row position, so a handle still points
-          // at "30 minutes" if the range ever changes (KIN-205).
-          testID={testIDPrefix ? `${testIDPrefix}-${item}` : undefined}
-          accessibilityRole="button"
-          accessibilityLabel={formatter(item)}
-          accessibilityState={{ selected: i === index }}
-        >
-          <Text
-            style={[
-              styles.itemText,
-              {
-                color: i === index ? colors.primary : colors.textSecondary,
-                fontWeight: i === index ? "700" : "400",
-              },
-            ]}
-          >
-            {formatter(item)}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
-  );
 }
 
 export default function DurationWheelModal({ visible, value, onSelect, onClose }) {
@@ -329,8 +259,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderRadius: 12,
   },
-  item: { height: ITEM_H, justifyContent: "center" },
-  itemText: { fontSize: 22, letterSpacing: -0.2 },
   doneBtn: {
     marginTop: 16,
     paddingVertical: 16,
