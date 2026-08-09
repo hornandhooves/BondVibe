@@ -30,6 +30,7 @@ import {
   removeMember,
   deleteGroup,
   getHostAttendeeCandidates,
+  getUserProfiles,
   ensureInviteCode,
   regenerateInviteCode,
   findUserByEmail,
@@ -48,6 +49,10 @@ export default function GroupManageScreen({ route, navigation }) {
   const { groupId } = route.params || {};
   const [group, setGroup] = useState(null);
   const [candidates, setCandidates] = useState([]);
+  // KIN-197: members who are NOT past attendees (added by @handle/email/phone).
+  // Kept separate from `candidates` so that list keeps meaning exactly what it
+  // always meant — people who attended one of this host's events.
+  const [extraMembers, setExtraMembers] = useState([]);
   const [name, setName] = useState("");
   const [spotifyUrl, setSpotifyUrl] = useState("");
   const [savingSpotify, setSavingSpotify] = useState(false);
@@ -85,6 +90,18 @@ export default function GroupManageScreen({ route, navigation }) {
       setName(g?.name || "");
       setSpotifyUrl(g?.spotifyUrl || "");
       setCandidates(c);
+      // Anyone in memberIds that the attendee query didn't cover has to be
+      // resolved explicitly, or they'd sit in the group invisible and
+      // unmanageable.
+      const known = new Set(c.map((u) => u.id));
+      // The host is excluded for the same reason getHostAttendeeCandidates
+      // excludes them (id !== uid): this list is people the host manages, and
+      // offering yourself a block/remove control is nonsense. They land in
+      // memberIds legitimately (KIN-196) — they just don't belong in this list.
+      const missing = (g?.memberIds || []).filter(
+        (id) => !known.has(id) && id !== g?.hostId
+      );
+      setExtraMembers(missing.length ? await getUserProfiles(missing) : []);
       if (g) setInviteCode(await ensureInviteCode(g));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,6 +181,17 @@ export default function GroupManageScreen({ route, navigation }) {
   };
 
   // Add a member by @handle (spec 10) — the search returns app users directly.
+  // KIN-197: a freshly added member must show up in Members right away. If they
+  // aren't a past attendee they're not in `candidates`, so they go here. The
+  // guard keeps it idempotent — re-adding never duplicates a row.
+  const trackExtraMember = (profile) => {
+    if (!profile?.id) return;
+    if (candidates.some((c) => c.id === profile.id)) return;
+    setExtraMembers((prev) =>
+      prev.some((m) => m.id === profile.id) ? prev : [...prev, profile]
+    );
+  };
+
   const handleAddByHandle = async (user) => {
     if ((group.memberIds || []).includes(user.uid)) {
       Alert.alert(t("groupManage.alreadyAMember"), t("groupManage.alreadyAMemberMessage", { name: user.name || `@${user.handle}` }));
@@ -171,6 +199,9 @@ export default function GroupManageScreen({ route, navigation }) {
     }
     await addMembers(groupId, [user.uid]);
     setGroup((g) => ({ ...g, memberIds: [...(g.memberIds || []), user.uid] }));
+    // This path's object is {uid, name, avatar} — normalize to the {id, fullName}
+    // shape the Members rows render.
+    trackExtraMember({ id: user.uid, fullName: user.name, avatar: user.avatar });
     Alert.alert(t("groupManage.added"), t("groupManage.addedMessage", { name: user.name || `@${user.handle}` }));
   };
 
@@ -197,6 +228,7 @@ export default function GroupManageScreen({ route, navigation }) {
       }
       await addMembers(groupId, [user.id]);
       setGroup((g) => ({ ...g, memberIds: [...(g.memberIds || []), user.id] }));
+      trackExtraMember(user);
       setEmail("");
       Alert.alert(t("groupManage.added"), t("groupManage.addedMessage", { name: user.fullName || target }));
     } catch (e) {
@@ -281,6 +313,7 @@ export default function GroupManageScreen({ route, navigation }) {
       }
       await addMembers(groupId, [user.id]);
       setGroup((g) => ({ ...g, memberIds: [...(g.memberIds || []), user.id] }));
+      trackExtraMember(user);
       setPhone("");
       Alert.alert(t("groupManage.added"), t("groupManage.addedMessage", { name: user.fullName || target }));
     } catch (e) {
@@ -291,6 +324,10 @@ export default function GroupManageScreen({ route, navigation }) {
   };
 
   const memberIds = group?.memberIds || [];
+  // Past attendees (addable + manageable) plus members who came in by
+  // handle/email/phone. `candidates` keeps its original meaning; this is only
+  // what the Members section renders.
+  const membersToShow = [...candidates, ...extraMembers];
 
   const toggleMember = async (uid) => {
     if (memberIds.includes(uid)) {
@@ -497,12 +534,12 @@ export default function GroupManageScreen({ route, navigation }) {
           {t("groupManage.tapAttendeeHint")}
         </Text>
 
-        {candidates.length === 0 ? (
+        {membersToShow.length === 0 ? (
           <Text style={[styles.hint, { color: colors.textSecondary, marginTop: 12 }]}>
             {t("groupManage.noPastAttendeesYet")}
           </Text>
         ) : (
-          candidates.map((u) => {
+          membersToShow.map((u) => {
             const isMember = memberIds.includes(u.id);
             return (
               <TouchableOpacity
