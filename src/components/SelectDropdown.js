@@ -163,8 +163,15 @@ export default function SelectDropdown({
         <Pressable
           style={styles.modalOverlay}
           onPress={() => setModalVisible(false)}
+          // KIN-205: a Pressable with onPress is `accessible` by default, which
+          // collapses everything inside it into ONE accessibility element — the
+          // reason this modal's options were invisible to VoiceOver and to
+          // Maestro alike. Opting out exposes the rows; the press behaviour
+          // (tap-outside-to-close) is untouched.
+          accessible={false}
         >
           <Pressable
+            accessible={false}
             style={[
               styles.modalContent,
               {
@@ -182,6 +189,9 @@ export default function SelectDropdown({
               <TouchableOpacity
                 onPress={() => setModalVisible(false)}
                 style={styles.closeButton}
+                testID="select-dropdown-close"
+                accessibilityRole="button"
+                accessibilityLabel={t("common.close")}
               >
                 <Icon
                   name="close"
@@ -215,6 +225,12 @@ export default function SelectDropdown({
                     ]}
                     onPress={() => handleSelect(option.id)}
                     activeOpacity={0.7}
+                    // Derived from the option's id, not its position: a
+                    // reordered list keeps the same handles.
+                    testID={`select-option-${option.id}`}
+                    accessibilityRole="menuitem"
+                    accessibilityLabel={option.label}
+                    accessibilityState={{ selected: isSelected }}
                   >
                     <View style={styles.optionContent}>
                       {multiSelect ? (
@@ -253,6 +269,9 @@ export default function SelectDropdown({
                 <TouchableOpacity
                   style={[styles.doneButton, { backgroundColor: colors.primary }]}
                   onPress={() => setModalVisible(false)}
+                  testID="select-dropdown-done"
+                  accessibilityRole="button"
+                  accessibilityLabel={t("selectDropdown.done")}
                 >
                   <Text style={styles.doneButtonText}>{t("selectDropdown.done")}</Text>
                 </TouchableOpacity>

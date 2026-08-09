@@ -155,6 +155,8 @@ export default function InstructorPicker({ value, onChange, label, placeholder, 
             </Text>
             <TextInput
               style={[s.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surfaceGlass }]}
+              testID="instructor-new-name"
+              accessibilityLabel={tr("business.instructor.namePlaceholder", "Full name")}
               value={newName}
               onChangeText={setNewName}
               placeholder={tr("business.instructor.namePlaceholder", "Full name")}
@@ -164,7 +166,14 @@ export default function InstructorPicker({ value, onChange, label, placeholder, 
               onSubmitEditing={confirmAdd}
             />
             <View style={s.actions}>
-              <TouchableOpacity onPress={closePrompt} style={s.btn} disabled={saving}>
+              <TouchableOpacity
+                onPress={closePrompt}
+                style={s.btn}
+                disabled={saving}
+                testID="instructor-cancel"
+                accessibilityRole="button"
+                accessibilityLabel={tr("business.instructor.cancel", "Cancel")}
+              >
                 <Text style={[s.btnTxt, { color: colors.textSecondary }]}>
                   {tr("business.instructor.cancel", "Cancel")}
                 </Text>
@@ -173,6 +182,9 @@ export default function InstructorPicker({ value, onChange, label, placeholder, 
                 onPress={confirmAdd}
                 style={[s.btn, s.btnPrimary, { backgroundColor: colors.primary, opacity: newName.trim() && !saving ? 1 : 0.5 }]}
                 disabled={!newName.trim() || saving}
+                testID="instructor-confirm"
+                accessibilityRole="button"
+                accessibilityLabel={tr("business.instructor.addConfirm", "Add")}
               >
                 {saving ? (
                   <ActivityIndicator size="small" color="#fff" />
