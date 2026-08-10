@@ -3497,6 +3497,7 @@
     "or": "or",
     "orContinueWith": "or continue with",
     "continueWithGoogle": "Continue with Google",
+    "continueWithApple": "Continue with Apple",
     "appleUnavailableTitle": "Apple Sign-In unavailable",
     "appleUnavailableMessage": "Sign in with Apple often fails on the iOS Simulator. Please try on a real device.",
     "signInFailedTitle": "Sign-in failed",

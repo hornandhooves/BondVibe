@@ -15,7 +15,6 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
 } from "react-native";
-import * as AppleAuthentication from "expo-apple-authentication";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -27,16 +26,9 @@ import KeyboardAccessory from "../components/KeyboardAccessory";
 import SuccessModal from "../components/SuccessModal";
 import Button from "../components/Button";
 import GoogleIcon from "../components/GoogleIcon";
+import AppleIcon from "../components/AppleIcon";
 import useSocialAuth from "../hooks/useSocialAuth";
-import { FONTS, RADII, ELEVATION } from "../constants/theme-tokens";
-
-// Lighter than WelcomeScreen's shared WORDMARK_FONT (DemiBold) — the mockup's
-// standalone heading treatment here reads as a moderate weight, not heavy.
-// (Font choice only — colors now come entirely from the theme tokens below.)
-const LOGIN_WORDMARK_FONT = Platform.select({
-  ios: 'AvenirNext-Medium',
-  default: FONTS.bodySemibold,
-});
+import { FONTS, RADII, ELEVATION, WORDMARK_FONT } from "../constants/theme-tokens";
 
 // BUG 12.1: the static header (logo + wordmark + tagline) is hoisted to its
 // own memoized component so typing the email/password doesn't re-render it.
@@ -344,12 +336,17 @@ export default function LoginScreen({ navigation }) {
               />
 
               {Platform.OS === "ios" && appleReady && (
-                <AppleAuthentication.AppleAuthenticationButton
-                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
-                  cornerRadius={12}
-                  style={styles.appleButton}
+                <Button
+                  label={t("socialAuthButtons.continueWithApple")}
                   onPress={runApple}
+                  loading={busy === "apple"}
+                  disabled={!!busy}
+                  color={colors.surface}
+                  textColor={colors.text}
+                  fullWidth
+                  size="lg"
+                  icon={<AppleIcon size={18} color={colors.text} />}
+                  style={styles.socialButton}
                 />
               )}
 
@@ -457,28 +454,36 @@ function createStyles(colors) {
     scrollContent: {
       flexGrow: 1,
       paddingHorizontal: 24,
-      paddingTop: 80,
+      paddingTop: 130,
       paddingBottom: 40,
     },
     header: { alignItems: "center", marginBottom: 40 },
-    logoImage: { width: 72, height: 72, marginBottom: 12 },
+    logoImage: { width: 112, height: 112, marginBottom: 12 },
     wordmark: {
-      fontFamily: LOGIN_WORDMARK_FONT,
-      fontSize: 30,
+      fontFamily: WORDMARK_FONT,
+      fontSize: 34,
       color: colors.text,
-      letterSpacing: 1,
+      letterSpacing: 6,
+      // RN's letterSpacing pads *after* every character, including the last —
+      // the layout box is one letterSpacing unit wider than the visible ink,
+      // all on the right, which pulls the centered text left of the (unpadded)
+      // logo image above it. Shifting the box right by letterSpacing re-centers
+      // the ink (a flex-centered child's content shifts right by marginLeft/2).
+      marginLeft: 6,
     },
     tagline: {
       fontFamily: FONTS.heroSans,
-      fontSize: 14,
-      color: colors.accent,
-      marginTop: 4,
+      fontSize: 11,
+      color: colors.primary,
+      letterSpacing: 2.5,
+      marginLeft: 2.5,
+      marginTop: 2,
     },
     form: { width: "100%", maxWidth: 400, alignSelf: "center" },
     fieldLabel: {
       fontFamily: FONTS.bodySemibold,
       fontSize: 14,
-      color: colors.text,
+      color: colors.textSecondary,
       marginBottom: 8,
     },
     inputWrapper: {
@@ -500,7 +505,7 @@ function createStyles(colors) {
     },
     forgotRow: { alignItems: "flex-end", marginBottom: 24 },
     forgotLink: {
-      fontFamily: FONTS.bodyBold,
+      fontFamily: FONTS.body,
       fontSize: 13,
       color: colors.accent,
     },
@@ -518,7 +523,6 @@ function createStyles(colors) {
       borderColor: colors.borderStrong,
       marginBottom: 12,
     },
-    appleButton: { width: "100%", height: 48, marginBottom: 20 },
     signupRow: { alignItems: "center", marginTop: 4 },
     signupText: {
       fontFamily: FONTS.body,
@@ -526,7 +530,7 @@ function createStyles(colors) {
       color: colors.textTertiary,
     },
     signupLink: {
-      fontFamily: FONTS.bodyBold,
+      fontFamily: FONTS.body,
       color: colors.accent,
     },
 

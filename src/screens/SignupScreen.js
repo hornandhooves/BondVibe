@@ -15,7 +15,6 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
 } from "react-native";
-import * as AppleAuthentication from "expo-apple-authentication";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import {
@@ -29,6 +28,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import LanguagePill from "../components/LanguagePill";
 import Button from "../components/Button";
 import GoogleIcon from "../components/GoogleIcon";
+import AppleIcon from "../components/AppleIcon";
 import useSocialAuth from "../hooks/useSocialAuth";
 import { useAuthContext } from "../contexts/AuthContext";
 import SuccessModal from "../components/SuccessModal";
@@ -224,7 +224,7 @@ export default function SignupScreen({ navigation }) {
                 />
               </View>
 
-              <Text style={styles.fieldLabel}>{t("auth.signup.createPasswordPlaceholder")}</Text>
+              <Text style={styles.fieldLabel}>{t("auth.passwordPlaceholder")}</Text>
               <View style={styles.inputWrapper}>
                 <Icon
                   name="lock"
@@ -269,7 +269,7 @@ export default function SignupScreen({ navigation }) {
                           style={[
                             styles.requirementDot,
                             met
-                              ? { backgroundColor: colors.success }
+                              ? { backgroundColor: colors.accent }
                               : { borderWidth: 1.5, borderColor: colors.borderStrong },
                           ]}
                         >
@@ -278,7 +278,7 @@ export default function SignupScreen({ navigation }) {
                         <Text
                           style={[
                             styles.requirementText,
-                            { color: met ? colors.success : colors.textTertiary },
+                            { color: met ? colors.accent : colors.textTertiary },
                           ]}
                         >
                           {t(`auth.signup.requirements.${req.key}`)}
@@ -327,12 +327,17 @@ export default function SignupScreen({ navigation }) {
               />
 
               {Platform.OS === "ios" && appleReady && (
-                <AppleAuthentication.AppleAuthenticationButton
-                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
-                  cornerRadius={12}
-                  style={styles.appleButton}
+                <Button
+                  label={t("socialAuthButtons.continueWithApple")}
                   onPress={runApple}
+                  loading={busy === "apple"}
+                  disabled={!!busy}
+                  color={colors.surface}
+                  textColor={colors.text}
+                  fullWidth
+                  size="lg"
+                  icon={<AppleIcon size={18} color={colors.text} />}
+                  style={styles.socialButton}
                 />
               )}
 
@@ -381,17 +386,17 @@ function createStyles(colors) {
       paddingHorizontal: 24,
       paddingBottom: 40,
     },
-    titleSection: { alignItems: "center", marginBottom: 32 },
-    logoImage: { width: 64, height: 64, marginBottom: 12 },
+    titleSection: { alignItems: "center", paddingTop: 24, marginBottom: 32 },
+    logoImage: { width: 88, height: 88, marginBottom: 12 },
     title: {
       fontFamily: FONTS.display,
-      fontSize: 26,
+      fontSize: 30,
       color: colors.text,
       marginBottom: 6,
     },
     subtitle: {
       fontFamily: FONTS.body,
-      fontSize: 15,
+      fontSize: 16,
       color: colors.textSecondary,
       textAlign: "center",
     },
@@ -399,7 +404,7 @@ function createStyles(colors) {
     fieldLabel: {
       fontFamily: FONTS.bodySemibold,
       fontSize: 14,
-      color: colors.text,
+      color: colors.textSecondary,
       marginBottom: 8,
     },
     inputWrapper: {
@@ -444,7 +449,7 @@ function createStyles(colors) {
       marginBottom: 20,
     },
     termsLink: {
-      fontFamily: FONTS.bodySemibold,
+      fontFamily: FONTS.body,
       color: colors.accent,
     },
     signupButton: { marginBottom: 24 },
@@ -461,7 +466,6 @@ function createStyles(colors) {
       borderColor: colors.borderStrong,
       marginBottom: 12,
     },
-    appleButton: { width: "100%", height: 48, marginBottom: 20 },
     loginRow: { alignItems: "center", marginTop: 4 },
     loginText: {
       fontFamily: FONTS.body,
@@ -469,7 +473,7 @@ function createStyles(colors) {
       color: colors.textTertiary,
     },
     loginLink: {
-      fontFamily: FONTS.bodyBold,
+      fontFamily: FONTS.body,
       color: colors.accent,
     },
   });

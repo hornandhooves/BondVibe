@@ -3497,6 +3497,7 @@
     "or": "o",
     "orContinueWith": "o continúa con",
     "continueWithGoogle": "Continuar con Google",
+    "continueWithApple": "Continuar con Apple",
     "appleUnavailableTitle": "Inicio de sesión con Apple no disponible",
     "appleUnavailableMessage": "Iniciar sesión con Apple suele fallar en el simulador de iOS. Prueba en un dispositivo real.",
     "signInFailedTitle": "Error al iniciar sesión",
