@@ -15,7 +15,7 @@ import { auth } from "../../services/firebase";
 import Icon from "../../components/Icon";
 import GradientBackground from "../../components/GradientBackground";
 import { useTheme } from "../../contexts/ThemeContext";
-import { listStaff, inviteStaff, inviteStaffByHandle, updateStaffRole, setStaffName, removeStaff, getWorkingHours, setWorkingHours, listRoles, listStaffInvites, isValidHM, staffDisplayName, requestOwnerTransfer } from "../../services/businessStaffService";
+import { listStaff, inviteStaff, inviteStaffByHandle, updateStaffRole, setStaffName, removeStaff, getWorkingHours, setWorkingHours, listRoles, listStaffInvites, isValidHM, staffDisplayName, requestOwnerTransfer, findUnclaimedPlaceholderByName, claimPlaceholderStaff } from "../../services/businessStaffService";
 import UserSearchField from "../../components/UserSearchField";
 import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
@@ -88,8 +88,43 @@ export default function StaffScreen({ navigation }) {
 
   const roleName = (id) => roles.find((r) => r.id === id)?.name || t(`business.staff.role.${id}`, { defaultValue: id });
 
+  // KIN-190 etapa 4: before adding someone for real, check whether the owner
+  // already created a PLACEHOLDER for them (an event named them before they had
+  // an account). If so, ask — never merge automatically — and on "yes" claim the
+  // placeholder instead of creating a second row for the same human.
+  // Resolves to true when the claim happened and the caller should stop.
+  const claimedInsteadOfInviting = async (name, uid) => {
+    if (!uid || !name) return false;
+    const ph = await findUnclaimedPlaceholderByName(name);
+    if (!ph) return false;
+    const confirmed = await new Promise((resolve) => {
+      Alert.alert(
+        t("business.staff.samePersonTitle"),
+        t("business.staff.samePersonMsg", { name: ph.name }),
+        [
+          { text: t("business.staff.samePersonNo"), style: "cancel", onPress: () => resolve(false) },
+          { text: t("business.staff.samePersonYes"), onPress: () => resolve(true) },
+        ],
+        { cancelable: false },
+      );
+    });
+    if (!confirmed) return false;
+    const res = await claimPlaceholderStaff(ph.id, uid, role);
+    if (!res.ok) {
+      Alert.alert(t("business.staff.failTitle"), t("business.common.tryAgain"));
+      return true; // handled (and failed) — don't also run the normal invite
+    }
+    setInviting(false); setEmail(""); load();
+    Alert.alert(
+      t("business.staff.mergedTitle"),
+      t("business.staff.mergedMsg", { name: ph.name, count: res.backfilled || 0 }),
+    );
+    return true;
+  };
+
   // Add an existing app user to the team by @handle (spec 10).
   const doInviteByHandle = async (user) => {
+    if (await claimedInsteadOfInviting(user.name || user.handle, user.uid)) return;
     const res = await inviteStaffByHandle(user.handle, role);
     if (res.ok) {
       setInviting(false); setEmail(""); load();
@@ -106,6 +141,10 @@ export default function StaffScreen({ navigation }) {
       setInviting(false); setEmail(""); load();
       Alert.alert(t("business.staff.pendingTitle"), t("business.staff.pendingMsg", { email: email.trim() }));
     } else if (res.ok) {
+      // The uid only exists once the server resolved a real account, so unlike
+      // the @handle path the placeholder check has to run AFTER the invite. A
+      // `pending` invite (branch above) has no account to merge into yet.
+      if (await claimedInsteadOfInviting(res.name || email, res.uid)) return;
       setInviting(false); setEmail(""); load();
       Alert.alert(t("business.staff.invitedTitle"), t("business.staff.invitedMsg", { name: res.name || email }));
     } else {
@@ -299,7 +338,7 @@ export default function StaffScreen({ navigation }) {
             <View style={styles.timeRow}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.roleHint, { color: colors.textTertiary, marginTop: 0, marginBottom: 6 }]}>{t("business.staff.startTime")}</Text>
-                <TextInput style={[styles.input, inputStyle, { marginBottom: 0 }]} value={whEdit?.start} onChangeText={(v) => setWhEdit((w) => ({ ...w, start: v }))} placeholder="07:00" placeholderTextColor={colors.textTertiary} />
+                <TextInput style={[styles.input, inputStyle, { marginBottom: 0 }]} value={whEdit?.start} onChangeText={(v) => setWhEdit((w) => ({ ...w, start: v }))} placeholder="07:00" placeholderTextColor={colors.textTertiary} keyboardType="numbers-and-punctuation" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.roleHint, { color: colors.textTertiary, marginTop: 0, marginBottom: 6 }]}>{t("business.staff.endTime")}</Text>

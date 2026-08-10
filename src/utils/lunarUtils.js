@@ -118,11 +118,14 @@ export function findNextMoonPhase(startDate, phaseType) {
  * @param {'full' | 'new'} phaseType 
  * @returns {Date[]}
  */
-export function generateMoonPhaseDates(startDate, endDate, phaseType) {
+export function generateMoonPhaseDates(startDate, endDate, phaseType, maxEvents = 52) {
   const dates = [];
   let current = findNextMoonPhase(startDate, phaseType);
-  
-  while (current <= endDate && dates.length < 52) {
+
+  // maxEvents is a parameter (KIN-203) so a caller can ask for one MORE than the
+  // real cap and tell "exactly at the limit" apart from "over it". Defaulting to
+  // 52 keeps every existing caller unchanged.
+  while (current <= endDate && dates.length < maxEvents) {
     if (current >= startDate) {
       dates.push(new Date(current));
     }

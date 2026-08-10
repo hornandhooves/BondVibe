@@ -6,6 +6,7 @@
  */
 import {
   collection, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, updateDoc, query, where,
+  writeBatch, serverTimestamp,
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
@@ -155,6 +156,164 @@ export function staffDisplayName(s, fallback = "Staff member") {
 export async function removeStaff(staffUid, bizId = getMyBizId()) {
   if (!bizId || !staffUid) return;
   await deleteDoc(doc(db, "businesses", bizId, "staff", staffUid));
+}
+
+// ── Placeholder staff (KIN-190) ──────────────────────────────────────────────
+// A staff doc's ID is normally the member's real Firebase Auth uid, because the
+// rules read it as an exact path (staff/{request.auth.uid}), not as a query. A
+// placeholder deliberately breaks that: it has a GENERATED id and no `uid`
+// field, so it can name a real person who has no account yet without ever
+// looking like an authenticated member. It can be pointed at by an event
+// (instructorUid is an opaque string to getInstructorEventsOnDate, so Agenda
+// conflict detection works on placeholders too) but it can never authenticate
+// or be granted anything.
+//
+// Same id shape as branchId() in businessService.js — one generator pattern in
+// this codebase, not two.
+const placeholderStaffId = () => `st_${Math.random().toString(36).slice(2, 8)}`;
+
+/**
+ * Create a named placeholder for someone who isn't in the app yet.
+ * @param {string} name
+ * @param {string} [role]
+ * @param {string} [bizId]
+ * @returns {Promise<{id:string,name:string,role:string}|null>} null without a bizId
+ */
+export async function addPlaceholderStaff(name, role = "instructor", bizId = getMyBizId()) {
+  if (!bizId) return null;
+  const clean = (name || "").trim();
+  if (!clean) return null;
+  const id = placeholderStaffId();
+  // No `uid` field at all — its absence is what marks this doc unauthenticatable.
+  await setDoc(doc(db, "businesses", bizId, "staff", id), {
+    name: clean,
+    role,
+    claimed: false,
+    createdAt: serverTimestamp(),
+  });
+  return { id, name: clean, role };
+}
+
+/**
+ * Replace a placeholder with a real staff doc once the person has an account.
+ *
+ * The placeholder is NOT annotated in place: every business rule keys off the
+ * staff doc's ID being the acting user's real uid, so the record has to be
+ * re-created at staff/{realUid} and the placeholder dropped. Both writes go in
+ * ONE batch — a half-applied claim would leave either a duplicate (person
+ * listed twice) or an orphan (event pointing at a deleted placeholder).
+ *
+ * @param {string} placeholderId
+ * @param {string} realUid
+ * @param {string} [role] explicit role for the real doc; falls back to the
+ *   placeholder's. Passed by the caller because claiming someone who is
+ *   ALREADY staff here must not silently change the role they were given.
+ * @param {string} [bizId]
+ * @returns {Promise<{ok:boolean, error?:string}>}
+ */
+export async function claimPlaceholderStaff(placeholderId, realUid, role = null, bizId = getMyBizId()) {
+  if (!bizId || !placeholderId || !realUid) return { ok: false, error: "missing_args" };
+  const phRef = doc(db, "businesses", bizId, "staff", placeholderId);
+  const snap = await getDoc(phRef);
+  if (!snap.exists()) return { ok: false, error: "not_found" };
+
+  // claimed/createdAt describe the PLACEHOLDER's lifecycle, not the person's —
+  // they're replaced below rather than carried over.
+  const { claimed, createdAt, role: placeholderRole, ...carried } = snap.data();
+
+  // Repoint existing events BEFORE the placeholder is deleted. The order is the
+  // whole safety argument: if this fails, nothing has been touched yet and the
+  // claim can simply be retried. Doing it after the delete would, on failure,
+  // strand events pointing at a staff doc that no longer exists.
+  const backfilled = await backfillInstructorUid(placeholderId, realUid, carried.name);
+
+  const batch = writeBatch(db);
+  // merge:true so claiming someone who is ALREADY staff here adds the carried
+  // fields instead of wiping what they already have (working hours, etc.).
+  batch.set(
+    doc(db, "businesses", bizId, "staff", realUid),
+    { ...carried, role: role || placeholderRole, uid: realUid, claimed: true, claimedAt: serverTimestamp() },
+    { merge: true },
+  );
+  batch.delete(phRef);
+  await batch.commit();
+  return { ok: true, backfilled };
+}
+
+/**
+ * Normalized for name comparison: lowercased, accent-stripped, spaces collapsed.
+ * Deliberately NOT fuzzy — this only decides whether to ASK the owner, and a
+ * near-miss that stays silent is better than a wrong automatic merge.
+ */
+const normalizeName = (n) =>
+  String(n || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+/**
+ * Find an UNCLAIMED placeholder that plausibly names the same person (KIN-190
+ * etapa 4). Exact normalized match, or one name fully containing the other
+ * ("Ana" vs "Ana Torres") — the owner is always asked to confirm, so a false
+ * positive costs one dialog, never a wrong merge.
+ *
+ * @param {string} name the invitee's name
+ * @param {string} [bizId]
+ * @returns {Promise<{id:string,name:string,role:string}|null>}
+ */
+export async function findUnclaimedPlaceholderByName(name, bizId = getMyBizId()) {
+  const target = normalizeName(name);
+  if (!target || !bizId) return null;
+  const staff = await listStaff(bizId);
+  const hit = staff.find((s) => {
+    // A claimed doc, or any doc with a real uid, is not a placeholder.
+    if (s.claimed === true || s.uid) return false;
+    const cand = normalizeName(s.name);
+    if (!cand) return false;
+    return cand === target || cand.includes(target) || target.includes(cand);
+  });
+  return hit ? { id: hit.id, name: hit.name, role: hit.role } : null;
+}
+
+/**
+ * Repoint events that named the placeholder at the person's real uid.
+ *
+ * Client-side on purpose: firestore.rules lets the event's creator write any
+ * field except the server-owned ones (the featured fields, the rating
+ * aggregates, matching, approxCoords, area) — instructorUid is NOT among them,
+ * so this needs no rule change and no Cloud Function.
+ *
+ * The same rule is why creatorId is filtered here: the owner can only update
+ * events THEY created. An event created by a staff member that points at this
+ * placeholder is left alone rather than attempted and denied — see the caller's
+ * return value if you need to surface how many were actually moved.
+ *
+ * @returns {Promise<number>} how many events were repointed
+ */
+async function backfillInstructorUid(placeholderId, realUid, instructorName) {
+  const me = auth.currentUser?.uid;
+  if (!me) return 0;
+  try {
+    const snap = await getDocs(
+      query(collection(db, "events"), where("instructorUid", "==", placeholderId))
+    );
+    const mine = snap.docs.filter((d) => d.data().creatorId === me);
+    await Promise.all(
+      mine.map((d) =>
+        updateDoc(d.ref, {
+          instructorUid: realUid,
+          // Keep the cached display label in step with the id it labels.
+          ...(instructorName ? { instructorName } : {}),
+        })
+      )
+    );
+    return mine.length;
+  } catch (e) {
+    console.error("backfillInstructorUid failed:", e?.message || e);
+    throw e; // the caller must NOT delete the placeholder if this failed
+  }
 }
 
 // ── Roles & permissions (kinlo_business/07 FIX 4) ────────────────────────────

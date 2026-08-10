@@ -54,7 +54,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import RecurrenceModal from "../components/RecurrenceModal";
-import { generateRecurringDates, getRecurrenceSummary } from "../utils/recurrenceUtils";
+import { generateRecurringDates, getRecurrenceSummary, MAX_RECURRING_EVENTS } from "../utils/recurrenceUtils";
 import DraftWithAI from "../components/ai/DraftWithAI";
 import DurationWheelModal, { formatDuration } from "../components/DurationWheelModal";
 import { formatDate as fmtDate } from "../utils/formatDate";
@@ -686,7 +686,12 @@ export default function CreateEventScreen({ navigation, route }) {
       Alert.alert(t("createEvent.validation.missingInfoTitle"), t("createEvent.validation.missingDescriptionMsg"));
       return;
     }
-    if (isClass && !instructorUid) {
+    // KIN-190: required for EVERY event, not just classes. instructorUid may be
+    // a real staff uid or a placeholder id — both name a real person. Note the
+    // check is on the ID, never on instructorName: that field is only the
+    // picker's cached label for display, so treating it as a second source of
+    // truth would let a blank/stale name pass as "filled".
+    if (!instructorUid) {
       Alert.alert(t("createEvent.validation.missingInfoTitle"), t("createEvent.validation.missingInstructorMsg"));
       return;
     }
@@ -796,7 +801,7 @@ export default function CreateEventScreen({ navigation, route }) {
         if (avail.conflict && avail.conflictItem) {
           conflicts.push({ date: occ, item: avail.conflictItem });
         } else if (instructorUid && avail.outOfHours && avail.workingHours) {
-          conflicts.push({ date: occ, outOfHours: avail.workingHours });
+          conflicts.push({ date: occ, outOfHours: avail.workingHours, notWorkingDay: avail.notWorkingDay });
         }
       }
 
@@ -818,7 +823,11 @@ export default function CreateEventScreen({ navigation, route }) {
             }));
           }
           if (c.outOfHours) {
-            msgs.push(t("business.agenda.outOfHoursMsg", { start: c.outOfHours.start, end: c.outOfHours.end }));
+            msgs.push(
+              c.notWorkingDay
+                ? t("business.agenda.notWorkingDayMsg")
+                : t("business.agenda.outOfHoursMsg", { start: c.outOfHours.start, end: c.outOfHours.end })
+            );
           }
           const buttons = isHardBlock
             ? [{ text: t("business.common.cancel"), style: "cancel" }]
@@ -908,11 +917,26 @@ export default function CreateEventScreen({ navigation, route }) {
               .substr(2, 9)}`
           : null;
 
-      // Get all dates for recurring events
-      let eventDates =
-        recurrenceConfig.type !== "none"
-          ? generateRecurringDates(eventDate, recurrenceConfig)
-          : [eventDate];
+      // Get all dates for recurring events.
+      //
+      // KIN-203: generateRecurringDates truncates to the cap internally, so
+      // measuring its output could never tell "exactly 52" from "way over" —
+      // the guard below was dead code and the series was silently cut to 52.
+      // Asking for ONE more than the cap makes the overshoot observable; the
+      // list actually used is still capped, so nothing downstream changes.
+      let eventDates;
+      let exceedsRecurrenceCap = false;
+      if (recurrenceConfig.type !== "none") {
+        const generated = generateRecurringDates(
+          eventDate,
+          recurrenceConfig,
+          MAX_RECURRING_EVENTS + 1
+        );
+        exceedsRecurrenceCap = generated.length > MAX_RECURRING_EVENTS;
+        eventDates = generated.slice(0, MAX_RECURRING_EVENTS);
+      } else {
+        eventDates = [eventDate];
+      }
 
       // BUG 30 Gap B: "Skip conflicting dates" — omit the occurrences the host
       // chose to skip (regeneration is deterministic, so ISO strings match).
@@ -923,8 +947,10 @@ export default function CreateEventScreen({ navigation, route }) {
 
       console.log(`📅 Creating ${eventDates.length} event(s)...`);
 
-      // Limit to prevent too many events
-      if (eventDates.length > 52) {
+      // Limit to prevent too many events. Checked against the REQUESTED series,
+      // not the post-skip list: skipping a conflicting date shouldn't quietly
+      // bring an oversized series under the limit.
+      if (exceedsRecurrenceCap) {
         Alert.alert(
           t("createEvent.validation.tooManyEventsTitle"),
           t("createEvent.validation.tooManyEventsMsg")
@@ -1380,12 +1406,13 @@ export default function CreateEventScreen({ navigation, route }) {
           </Text>
         </View>
 
-        {/* Instructor (kinlo_business/06 FIX 3) — required for a class, optional
-            for an event. Binds the item to a staff member for the Agenda. */}
+        {/* Instructor (kinlo_business/06 FIX 3) — KIN-190: required for EVERY
+            event, not just classes, so an event always names a real person.
+            Binds the item to a staff member (or placeholder) for the Agenda. */}
         <InstructorPicker
           value={instructorUid}
           onChange={(uid, name) => { setInstructorUid(uid); setInstructorName(name); }}
-          label={isClass ? t("createEvent.instructorLabel") : t("createEvent.instructorOptionalLabel")}
+          label={requiredLabel("createEvent.instructorLabel")}
           placeholder={t("createEvent.instructorPlaceholder")}
           t={t}
         />
@@ -1992,7 +2019,7 @@ export default function CreateEventScreen({ navigation, route }) {
         <TouchableOpacity
           testID="create-event-submit"
           style={[styles.createButton, { opacity: loading ? 0.7 : 1 }]}
-          onPress={handleCreateEvent}
+          onPress={() => handleCreateEvent()}
           disabled={loading}
         >
           <View

@@ -45,7 +45,7 @@ export const createGroup = async (name, description, memberIds = []) => {
     const uid = auth.currentUser?.uid;
     if (!uid) return { success: false, error: "Not signed in." };
     if (!name?.trim()) return { success: false, error: "Group name is required." };
-    const members = Array.from(new Set([...memberIds]));
+    const members = Array.from(new Set([uid, ...memberIds]));
     const ref = await addDoc(collection(db, "hostGroups"), {
       hostId: uid,
       name: name.trim(),
@@ -349,6 +349,38 @@ export const getHostAttendeeCandidates = async (hostId = null) => {
     return users.filter(Boolean);
   } catch (e) {
     console.error("❌ getHostAttendeeCandidates:", e);
+    return [];
+  }
+};
+
+/**
+ * Resolve user profiles for an explicit list of uids (KIN-197).
+ *
+ * getHostAttendeeCandidates only ever returns people who attended one of the
+ * host's past events, so a member added by @handle / email / phone who never
+ * attended anything had no profile to render — they were in memberIds but
+ * invisible (and therefore unmanageable) in Manage group. This fills that gap
+ * WITHOUT changing what "candidates" means: it resolves exactly the uids it's
+ * given, nothing more.
+ *
+ * Same shape and failure behaviour as getHostAttendeeCandidates: a missing or
+ * unreadable user doc is dropped rather than surfaced as a blank row.
+ * @param {string[]} uids
+ * @returns {Promise<Array<{id:string}>>}
+ */
+export const getUserProfiles = async (uids = []) => {
+  try {
+    const ids = Array.from(new Set(uids.filter(Boolean)));
+    if (!ids.length) return [];
+    const users = await Promise.all(
+      ids.map(async (id) => {
+        const u = await getDoc(doc(db, "users", id));
+        return u.exists() ? { id, ...u.data() } : null;
+      })
+    );
+    return users.filter(Boolean);
+  } catch (e) {
+    console.error("❌ getUserProfiles:", e);
     return [];
   }
 };
