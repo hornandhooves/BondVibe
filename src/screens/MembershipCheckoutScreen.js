@@ -24,6 +24,7 @@ import {
 } from "../services/membershipService";
 import { estimateCheckout } from "../utils/pricing";
 import { getPricingConfig, overridesFor } from "../services/configService";
+import { toAndroidColor } from "../utils/color";
 
 export default function MembershipCheckoutScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
@@ -159,8 +160,8 @@ export default function MembershipCheckoutScreen({ route, navigation }) {
               placeholders={{ number: "4242 4242 4242 4242" }}
               cardStyle={{
                 backgroundColor: isDark ? "#1C1C2E" : "#FFFFFF",
-                textColor: colors.text,
-                placeholderColor: colors.textTertiary,
+                textColor: toAndroidColor(colors.text),
+                placeholderColor: toAndroidColor(colors.textTertiary),
               }}
               style={styles.cardField}
               onCardChange={(d) => setCardComplete(d.complete)}

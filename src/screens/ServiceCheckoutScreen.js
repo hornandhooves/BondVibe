@@ -19,6 +19,7 @@ import DateField from "../components/DateField";
 import { formatCentavos, estimateCheckout } from "../utils/pricing";
 import { getPricingConfig, overridesFor } from "../services/configService";
 import { getListing, reserveServiceBooking } from "../services/marketplaceService";
+import { toAndroidColor } from "../utils/color";
 
 // Presented slot times (no per-host availability store yet — the buyer picks a
 // date + a time; the atomic server guard rejects a taken/over-capacity slot).
@@ -202,7 +203,7 @@ export default function ServiceCheckoutScreen({ route, navigation }) {
               testID="service-card-field"
               postalCodeEnabled={false}
               placeholders={{ number: "4242 4242 4242 4242" }}
-              cardStyle={{ backgroundColor: isDark ? "#1C1C2E" : "#FFFFFF", textColor: colors.text, placeholderColor: colors.textTertiary }}
+              cardStyle={{ backgroundColor: isDark ? "#1C1C2E" : "#FFFFFF", textColor: toAndroidColor(colors.text), placeholderColor: toAndroidColor(colors.textTertiary) }}
               style={s.cardField}
               onCardChange={(d) => setCardComplete(d.complete)}
             />

@@ -22,6 +22,7 @@ import { estimateCheckout, formatCentavos } from "../../utils/pricing";
 import { createGiftPaymentIntent } from "../../services/giftService";
 import { doc, getDoc } from "firebase/firestore";
 import { db, auth } from "../../services/firebase";
+import { toAndroidColor } from "../../utils/color";
 
 // Minimal-beta flag: hide the anonymous option (default = named) until the
 // end-to-end anonymity projection is signed off. The code path is preserved.
@@ -184,7 +185,7 @@ export default function GiftConfirmScreen({ route, navigation }) {
             postalCodeEnabled={false}
             onCardChange={(d) => setCardComplete(d.complete)}
             style={st.cardField}
-            cardStyle={{ backgroundColor: colors.surface, textColor: colors.text, placeholderColor: colors.textTertiary }}
+            cardStyle={{ backgroundColor: toAndroidColor(colors.surface), textColor: toAndroidColor(colors.text), placeholderColor: toAndroidColor(colors.textTertiary) }}
           />
 
           <View style={{ height: SPACING.xl }} />
