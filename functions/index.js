@@ -1002,6 +1002,24 @@ exports.createEventPaymentIntent = onRequest(
 
       const eventData = eventDoc.data();
 
+      // KIN-211: never charge for an event that was called off or is already
+      // over. The client hides its main CTA for past events, but a second entry
+      // point (the Reserve button inside the locked-location card) did not, and
+      // this function validated neither — so a finished event stayed payable
+      // through that door. joinEvent (the free path) has had both checks all
+      // along, which is why only paid joins were affected.
+      //
+      // The "already happened" test is COPIED from joinEvent rather than
+      // invented here, so the two paths can't drift: start time < now. Whether
+      // an in-progress event should still accept joins is an open product
+      // question tracked in KIN-158 — this deliberately does not answer it.
+      if (eventData.status === "cancelled") {
+        return res.status(409).json({error: "event_cancelled"});
+      }
+      if (eventData.date && new Date(eventData.date).getTime() < Date.now()) {
+        return res.status(409).json({error: "event_ended"});
+      }
+
       // OVERSELL: enforce capacity BEFORE charging. Free joins go through
       // joinEvent (atomic capacity), but paid joins skipped this entirely — a
       // sold-out event still took the money. Fail fast here; the webhook adds

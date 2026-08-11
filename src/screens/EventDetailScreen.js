@@ -1028,7 +1028,11 @@ export default function EventDetailScreen({ route, navigation }) {
             event={event}
             eventId={eventId}
             isParticipant={isParticipant}
-            onReserve={isParticipant ? null : handleJoinLeave}
+            // KIN-211: the bottom CTA already hid for past events (see the
+            // !isPastEvent guard below); this one didn't, and it was the door
+            // a finished event was still bookable through. Passing null makes
+            // EventLocationBlock drop the button entirely.
+            onReserve={isParticipant || isPastEvent ? null : handleJoinLeave}
           />
           <TouchableOpacity
             style={styles.infoCard}
