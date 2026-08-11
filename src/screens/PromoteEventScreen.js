@@ -18,6 +18,7 @@ import { CardField, useConfirmPayment } from "@stripe/stripe-react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
+import { toAndroidColor } from "../utils/color";
 import {
   PROMOTION_PLANS,
   getFeaturedPlans,
@@ -193,8 +194,8 @@ export default function PromoteEventScreen({ route, navigation }) {
                 placeholders={{ number: "4242 4242 4242 4242" }}
                 cardStyle={{
                   backgroundColor: isDark ? "#1C1C2E" : "#FFFFFF",
-                  textColor: colors.text,
-                  placeholderColor: colors.textTertiary,
+                  textColor: toAndroidColor(colors.text),
+                  placeholderColor: toAndroidColor(colors.textTertiary),
                 }}
                 style={styles.cardField}
                 onCardChange={(d) => setCardComplete(d.complete)}

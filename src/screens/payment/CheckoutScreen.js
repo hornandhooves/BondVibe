@@ -29,6 +29,7 @@ import { estimateCheckout } from "../../utils/pricing";
 import { getPricingConfig } from "../../services/configService";
 import { startMercadoPagoCheckout } from "../../services/mercadoPagoService";
 import { MERCADOPAGO_ENABLED } from "../../config/featureFlags";
+import { toAndroidColor } from "../../utils/color";
 
 /**
  * Wait until the webhook adds the user to the event's attendees array.
@@ -424,9 +425,9 @@ export default function CheckoutScreen({ route, navigation }) {
                       number: "4242 4242 4242 4242",
                     }}
                     cardStyle={{
-                      backgroundColor: colors.surface,
-                      textColor: colors.text,
-                      placeholderColor: colors.textTertiary,
+                      backgroundColor: toAndroidColor(colors.surface),
+                      textColor: toAndroidColor(colors.text),
+                      placeholderColor: toAndroidColor(colors.textTertiary),
                     }}
                     style={styles.cardField}
                     onCardChange={(cardDetails) => {
