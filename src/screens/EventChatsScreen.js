@@ -94,7 +94,7 @@ export default function EventChatsScreen({ navigation }) {
 
   const filtered = events
     .filter((e) =>
-      tab === "past" ? isEventPast(e.date) : !isEventPast(e.date)
+      tab === "past" ? isEventPast(e) : !isEventPast(e)
     )
     .filter((e) => {
       if (msgFilter === "with") return msgMap[e.id] === true;

@@ -41,6 +41,13 @@ const mockRoute = {
   params: {},
 };
 
+// KIN-158: discovery now hides events whose end time has passed, so these
+// fixtures can no longer be hard-coded calendar dates — they rotted into the
+// past and the screen (correctly) stopped showing them. Relative offsets keep
+// them upcoming forever.
+const FUTURE_0 = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+const FUTURE_1 = new Date(Date.now() + 48 * 3600 * 1000).toISOString();
+
 describe("SearchEventsScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -54,7 +61,7 @@ describe("SearchEventsScreen", () => {
             title: "Social Event",
             category: "Social",
             location: "Test Location",
-            date: "2025-11-29T03:00:00.000Z",
+            date: FUTURE_0,
             time: "7:00 PM",
             price: 0,
             status: "published",
@@ -68,7 +75,7 @@ describe("SearchEventsScreen", () => {
             title: "Sports Game",
             category: "Sports",
             location: "Stadium",
-            date: "2025-12-01T18:00:00.000Z",
+            date: FUTURE_1,
             time: "6:00 PM",
             price: 50,
             status: "published",

@@ -22,6 +22,7 @@ import { FONTS } from "../constants/theme-tokens";
 import FeaturedCarousel from "./FeaturedCarousel";
 import { getFeaturedEventsNearby } from "../services/promotionService";
 import { useFocusRefresh } from "../hooks/useFocusRefresh";
+import { filterDiscoverableEvents } from "../utils/eventFilters";
 
 const FeaturedEventsRow = forwardRef(function FeaturedEventsRow({ navigation, city }, ref) {
   const { colors } = useTheme();
@@ -31,7 +32,8 @@ const FeaturedEventsRow = forwardRef(function FeaturedEventsRow({ navigation, ci
   const [events, setEvents] = useState([]);
 
   const load = useCallback(async () => {
-    setEvents(await getFeaturedEventsNearby({ city, max: 10 }));
+    // KIN-158: a paid placement doesn't keep an event alive past its end.
+    setEvents(filterDiscoverableEvents(await getFeaturedEventsNearby({ city, max: 10 })));
   }, [city]);
   const { reload } = useFocusRefresh(load);
   useImperativeHandle(ref, () => ({ reload }), [reload]);

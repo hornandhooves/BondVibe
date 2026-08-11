@@ -32,6 +32,13 @@ jest.mock("../../contexts/ThemeContext", () => ({
 const mockNavigation = { navigate: jest.fn(), goBack: jest.fn() };
 const mockRoute = { params: {} };
 
+// KIN-158: discovery now hides events whose end time has passed, so these
+// fixtures can no longer be hard-coded calendar dates — they rotted into the
+// past and the screen (correctly) stopped showing them. Relative offsets keep
+// them upcoming forever.
+const FUTURE_0 = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+const FUTURE_1 = new Date(Date.now() + 48 * 3600 * 1000).toISOString();
+
 describe("E2E: Event Discovery Flow", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -44,7 +51,7 @@ describe("E2E: Event Discovery Flow", () => {
             title: "Coffee Meetup",
             category: "social", // lowercase - should be normalized
             location: "Starbucks",
-            date: "2025-12-01T10:00:00.000Z",
+            date: FUTURE_0,
             time: "10:00 AM",
             price: 0,
             status: "published",
@@ -58,7 +65,7 @@ describe("E2E: Event Discovery Flow", () => {
             title: "Taco Tuesday",
             category: "Food",
             location: "La Taqueria",
-            date: "2025-12-05T19:00:00.000Z",
+            date: FUTURE_1,
             time: "7:00 PM",
             price: 200,
             status: "published",

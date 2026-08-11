@@ -255,7 +255,7 @@ export default function MyEventsScreen({ navigation, route }) {
   const styles = createStyles(colors);
 
   const EventCard = ({ event }) => {
-    const isPast = isEventPast(event.date);
+    const isPast = isEventPast(event);
     const showRateButton = isPast && !!checkedInEvents[event.id];
     const existingRating = ratedEvents[event.id];
 
