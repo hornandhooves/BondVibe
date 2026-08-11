@@ -1655,6 +1655,22 @@ exports.reserveMembershipCredit = onCall(async (request) => {
   const eventSnap = await db.collection("events").doc(eventId).get();
   if (!eventSnap.exists) throw new HttpsError("not-found", "Event not found.");
   const eventData = eventSnap.data();
+  // KIN-212: the third and last way into an event, closed to match the other
+  // two. joinEvent has always refused a cancelled or finished event, and
+  // createEventPaymentIntent got the same guard in KIN-211 — leaving this one
+  // open meant a membership credit could still be spent on something that
+  // already happened, which costs the member a credit for nothing.
+  //
+  // Same condition as the other two, copied rather than restated, so the three
+  // paths can't drift. Whether an event ALREADY IN PROGRESS should still accept
+  // joins stays an open product question (KIN-158); this keeps the existing
+  // start-time semantics and does not answer it.
+  if (eventData.status === "cancelled") {
+    throw new HttpsError("failed-precondition", "This event was cancelled.");
+  }
+  if (eventData.date && new Date(eventData.date).getTime() < Date.now()) {
+    throw new HttpsError("failed-precondition", "This event has already happened.");
+  }
   if (eventData.acceptsMembership === false) {
     throw new HttpsError("failed-precondition", "This event doesn't accept memberships.");
   }
