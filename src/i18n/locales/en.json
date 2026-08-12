@@ -5077,5 +5077,14 @@
     "retentionSavedOk": "Retention window updated.",
     "retentionSaveError": "Couldn't save. Check your admin access and try again.",
     "retentionRisk": "Setting this to 0 re-opens refund risk for every host. For instant payout use the Super Host tier — don't lower the global window."
+  },
+  "notif": {
+    "eventCancelled": {
+      "title": "Event Cancelled",
+      "body": "\"{{title}}\" has been cancelled. Reason: {{reason}}"
+    },
+    "eventCancelledNoReason": {
+      "body": "\"{{title}}\" has been cancelled."
+    }
   }
 }

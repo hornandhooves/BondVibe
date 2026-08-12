@@ -5077,5 +5077,14 @@
     "retentionSavedOk": "Ventana de retención actualizada.",
     "retentionSaveError": "No se pudo guardar. Verifica tu acceso de administrador e inténtalo de nuevo.",
     "retentionRisk": "Ponerlo en 0 reabre el riesgo de reembolso para todos los hosts. Para pago instantáneo usa el tier Super Host — no bajes la ventana global."
+  },
+  "notif": {
+    "eventCancelled": {
+      "title": "Evento cancelado",
+      "body": "\"{{title}}\" ha sido cancelado. Motivo: {{reason}}"
+    },
+    "eventCancelledNoReason": {
+      "body": "\"{{title}}\" ha sido cancelado."
+    }
   }
 }
