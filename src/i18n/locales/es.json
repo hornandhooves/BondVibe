@@ -2625,6 +2625,10 @@
         "h2Body": "\"{{event}}\" comienza en unas 2 horas.",
         "h24Title": "Evento mañana ⏰",
         "h24Body": "\"{{event}}\" será dentro de 24 horas."
+      },
+      "detailsChanged": {
+        "title": "Evento actualizado",
+        "body": "El anfitrión actualizó \"{{event}}\". Revisa los detalles más recientes."
       }
     },
     "welcomeTitle": "¡Bienvenido a Kinlo!",
