@@ -33,6 +33,9 @@ import {
 import { db, auth } from "../services/firebase";
 import { findUserByEmail } from "../services/hostGroupService";
 import { checkInstructorAvailability, AGENDA_ITEM_KIND } from "../services/businessAgendaService";
+import InstructorPicker from "../components/business/InstructorPicker";
+import { parsePositiveNumber, isValidNumberInProgress } from "../utils/validation";
+import { getHostMembershipPlans } from "../services/membershipService";
 import { getMyBizId } from "../services/businessService";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
@@ -73,6 +76,12 @@ export default function EditEventScreen({ route, navigation }) {
     durationMinutes: "180",
     maxAttendees: "",
     price: "",
+    // KIN-213: business fields that existed only in Create until now. A host
+    // could set them once and never change them again.
+    acceptsMembership: false,
+    twoTier: false,
+    priceLocal: "",
+    priceGeneral: "",
   });
   const [loading, setLoading] = useState(true);
 
@@ -157,6 +166,15 @@ export default function EditEventScreen({ route, navigation }) {
           maxAttendees:
             data.maxAttendees?.toString() || data.maxPeople?.toString() || "",
           price: data.price?.toString() || "",
+          acceptsMembership: data.acceptsMembership === true,
+          twoTier: data.twoTier === true,
+          priceLocal: data.priceLocal != null ? String(data.priceLocal) : "",
+          priceGeneral:
+            data.priceGeneral != null
+              ? String(data.priceGeneral)
+              : data.price != null
+                ? String(data.price)
+                : "",
         });
         setTempDate(eventDate);
         setAgendaType(data.agendaType || "general");
@@ -379,8 +397,59 @@ export default function EditEventScreen({ route, navigation }) {
     }
   };
 
+  // KIN-213: "paid" is derived, not a separate toggle — Edit has always had a
+  // single price field, and adding an isFree switch here would be a second
+  // source of truth for the same fact.
+  const isPaid = (parsePositiveNumber(form.twoTier ? form.priceGeneral : form.price) ?? 0) > 0;
+  const [checkingPlans, setCheckingPlans] = useState(false);
+
+  /** KIN-151: refuse a keystroke that can never become a price, as Create does. */
+  const onPriceChange = (field) => (text) => {
+    if (!isValidNumberInProgress(text)) return;
+    setForm((f) => ({ ...f, [field]: text }));
+  };
+
+  /** Turning membership ON is meaningless with no active plan, so check first.
+   *  Unlike Create there is no draft to persist — an edit is already saved
+   *  state — so this informs instead of offering a detour. */
+  const toggleMembership = async () => {
+    if (form.acceptsMembership) {
+      setForm((f) => ({ ...f, acceptsMembership: false }));
+      return;
+    }
+    setCheckingPlans(true);
+    try {
+      const plans = await getHostMembershipPlans(auth.currentUser.uid, { activeOnly: true });
+      if (plans.length === 0) {
+        Alert.alert(
+          t("createEvent.membershipPlansAlert.title"),
+          t("createEvent.membershipPlansAlert.msg"),
+        );
+        return;
+      }
+      setForm((f) => ({ ...f, acceptsMembership: true }));
+    } catch (_e) {
+      // A failed lookup must not strand the toggle — leave it off and let the
+      // host retry (CLAUDE.md §7).
+    } finally {
+      setCheckingPlans(false);
+    }
+  };
+
   // Save event(s)
   const saveEvent = async (updateAllFuture, skipAvailabilityCheck = false) => {
+    // KIN-213 + KIN-151: a price that can't parse must never reach Firestore.
+    // parseFloat used to let NaN through here.
+    if (isPaid && form.twoTier) {
+      if (parsePositiveNumber(form.priceLocal) === null || parsePositiveNumber(form.priceGeneral) === null) {
+        Alert.alert(t("createEvent.validation.invalidPriceTitle"), t("createEvent.twoTier.invalidMsg"));
+        return;
+      }
+    } else if (form.price !== "" && parsePositiveNumber(form.price) === null && parseFloat(form.price) !== 0) {
+      Alert.alert(t("createEvent.validation.invalidPriceTitle"), t("createEvent.validation.invalidPriceMsg"));
+      return;
+    }
+
     // BUG 30: warn if moving the event onto an occupied slot (warn-and-allow).
     // Unassigned events live on the owner's agenda day; exclude this event so it
     // doesn't clash with its own current slot.
@@ -457,7 +526,26 @@ export default function EditEventScreen({ route, navigation }) {
         durationMinutes: parseInt(form.durationMinutes, 10) || 180,
         maxAttendees: parseInt(form.maxAttendees) || 10,
         maxPeople: parseInt(form.maxAttendees) || 10,
-        price: parseFloat(form.price) || 0,
+        // With tiers on, General is the canonical price — same rule as Create,
+        // so everything that reads `price` keeps working.
+        price: isPaid
+          ? form.twoTier
+            ? parsePositiveNumber(form.priceGeneral) ?? 0
+            : parsePositiveNumber(form.price) ?? 0
+          : 0,
+        // KIN-213 — written the same way CreateEventScreen writes them, so an
+        // edited event is indistinguishable from a freshly created one.
+        // Deliberately unconditional: the host may turn membership or tiers on
+        // and off with reservations already on the books. That is safe because
+        // createEventPaymentIntent freezes the price into the PaymentIntent at
+        // purchase time, and a redeemed membership credit is never re-read
+        // against acceptsMembership.
+        acceptsMembership: !!form.acceptsMembership,
+        twoTier: isPaid && !!form.twoTier,
+        priceLocal:
+          isPaid && form.twoTier ? parsePositiveNumber(form.priceLocal) ?? 0 : null,
+        instructorUid: eventInstructor.uid || null,
+        instructorName: eventInstructor.name || null,
         images: finalImageUrls,
         // BUG 27 / 27.1: persist visibility + agenda classification. The
         // onEventWritten trigger rebuilds searchKeywords honoring listedPublicly.
@@ -1127,9 +1215,7 @@ export default function EditEventScreen({ route, navigation }) {
                   },
                 ]}
                 value={form.price}
-                onChangeText={(text) =>
-                  setForm({ ...form, price: text.replace(/[^0-9.]/g, "") })
-                }
+                onChangeText={onPriceChange("price")}
                 placeholder="100"
                 placeholderTextColor={colors.textTertiary}
                 keyboardType="decimal-pad"
@@ -1137,6 +1223,122 @@ export default function EditEventScreen({ route, navigation }) {
             </View>
           </View>
         </View>
+
+        {/* KIN-213 — instructor reassignment. The availability check in
+            saveEvent already reads eventInstructor, so changing it here means
+            the NEW instructor's agenda is the one checked, not the old one. */}
+        <View style={styles.section}>
+          <InstructorPicker
+            value={eventInstructor.uid}
+            onChange={(uid, name) => setEventInstructor({ uid, name })}
+            label={t("createEvent.instructorLabel")}
+            placeholder={t("createEvent.instructorPlaceholder")}
+            t={t}
+          />
+        </View>
+
+        {/* KIN-213 — two-tier pricing, only meaningful on a paid event. Same
+            control and copy as CreateEventScreen. */}
+        {isPaid && (
+          <View style={styles.section}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              testID="edit-twotier-toggle"
+              accessibilityRole="switch"
+              accessibilityState={{ checked: !!form.twoTier }}
+              onPress={() => setForm((f) => ({ ...f, twoTier: !f.twoTier }))}
+              style={[
+                styles.membershipToggle,
+                {
+                  backgroundColor: form.twoTier ? `${colors.primary}1A` : colors.surfaceGlass,
+                  borderColor: form.twoTier ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={[styles.label, { color: colors.text, marginBottom: 2 }]}>
+                  {t("createEvent.twoTier.label")}
+                </Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                  {t("createEvent.twoTier.hint")}
+                </Text>
+              </View>
+              <View style={[styles.switchTrack, { backgroundColor: form.twoTier ? colors.primary : colors.border }]}>
+                <View style={[styles.switchKnob, { alignSelf: form.twoTier ? "flex-end" : "flex-start" }]} />
+              </View>
+            </TouchableOpacity>
+
+            {form.twoTier && (
+              <View style={[styles.row, { marginTop: 12 }]}>
+                <View style={[styles.section, { flex: 1, marginRight: 8 }]}>
+                  <Text style={[styles.label, { color: colors.text }]}>
+                    {t("createEvent.twoTier.localLabel")}
+                  </Text>
+                  <View style={styles.inputWrapper}>
+                    <TextInput
+                      testID="edit-price-local"
+                      style={[styles.input, { backgroundColor: colors.surfaceGlass, borderColor: colors.border, color: colors.text }]}
+                      value={form.priceLocal}
+                      onChangeText={onPriceChange("priceLocal")}
+                      placeholder="80"
+                      placeholderTextColor={colors.textTertiary}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+                <View style={[styles.section, { flex: 1, marginLeft: 8 }]}>
+                  <Text style={[styles.label, { color: colors.text }]}>
+                    {t("createEvent.twoTier.generalLabel")}
+                  </Text>
+                  <View style={styles.inputWrapper}>
+                    <TextInput
+                      testID="edit-price-general"
+                      style={[styles.input, { backgroundColor: colors.surfaceGlass, borderColor: colors.border, color: colors.text }]}
+                      value={form.priceGeneral}
+                      onChangeText={onPriceChange("priceGeneral")}
+                      placeholder="120"
+                      placeholderTextColor={colors.textTertiary}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* KIN-213 — membership credits. Only paid events can accept them. */}
+        {isPaid && (
+          <View style={styles.section}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              testID="edit-membership-toggle"
+              accessibilityRole="switch"
+              accessibilityState={{ checked: !!form.acceptsMembership, disabled: checkingPlans }}
+              onPress={toggleMembership}
+              disabled={checkingPlans}
+              style={[
+                styles.membershipToggle,
+                {
+                  backgroundColor: form.acceptsMembership ? `${colors.primary}1A` : colors.surfaceGlass,
+                  borderColor: form.acceptsMembership ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={[styles.label, { color: colors.text, marginBottom: 2 }]}>
+                  {t("createEvent.acceptMembershipCredits")}
+                </Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                  {t("createEvent.membershipLetMembers")}
+                </Text>
+              </View>
+              <View style={[styles.switchTrack, { backgroundColor: form.acceptsMembership ? colors.primary : colors.border }]}>
+                <View style={[styles.switchKnob, { alignSelf: form.acceptsMembership ? "flex-end" : "flex-start" }]} />
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Co-hosts — only the creator manages them */}
         {isCreator && (
@@ -1309,6 +1511,30 @@ function createStyles(colors) {
       marginBottom: 10,
       letterSpacing: -0.1,
     },
+    // KIN-213 — copied verbatim from CreateEventScreen so the toggles and the
+    // tiered-price row look identical on both screens (Regla 22: no new visual
+    // pattern for a control the app already has).
+    membershipToggle: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: 1,
+      borderRadius: 16,
+      padding: 16,
+    },
+    switchTrack: {
+      width: 48,
+      height: 28,
+      borderRadius: 14,
+      padding: 3,
+      justifyContent: "center",
+    },
+    switchKnob: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: "#FFFFFF",
+    },
+    row: { flexDirection: "row", marginBottom: 20 },
     inputWrapper: {
       flexDirection: "row",
       alignItems: "center",
