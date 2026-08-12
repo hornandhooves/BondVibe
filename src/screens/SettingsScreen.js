@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as Updates from "expo-updates";
+import { nativeApplicationVersion, nativeBuildVersion } from "expo-application";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
@@ -47,6 +48,24 @@ function isBetaChannel() {
     return false;
   }
 }
+
+// KIN-216: read-only build/OTA identity for beta reports. This does NOT fix the
+// missing-push bug — it exists so the next report carries the two facts that
+// were always missing from it: which binary the tester is on, and which update
+// that binary actually pulled. Without them a "push doesn't arrive" report
+// can't be tied to a build.
+//
+// Each field is read through its own try/catch, not one around the group:
+// Updates.* can throw outside a real Updates-aware build, and losing all three
+// because one of them threw would defeat the point of a diagnostic.
+const DIAG_EMPTY = "—";
+const safeRead = (read) => {
+  try {
+    return read() || DIAG_EMPTY;
+  } catch {
+    return DIAG_EMPTY;
+  }
+};
 
 export default function SettingsScreen({ navigation }) {
   const { colors, isDark, toggleTheme } = useTheme();
@@ -299,6 +318,20 @@ export default function SettingsScreen({ navigation }) {
                       : t("settings.diagnostics.registered", { platform: Platform.OS })
                     : t("settings.diagnostics.notRegistered", { platform: Platform.OS })
                 }
+              />
+              <ListRow
+                icon="smartphone"
+                title={t("settings.diagnostics.build")}
+                subtitle={`${safeRead(() => nativeApplicationVersion)} (${safeRead(() => nativeBuildVersion)})`}
+              />
+              <ListRow
+                icon="upload"
+                title={t("settings.diagnostics.update")}
+                subtitle={[
+                  safeRead(() => Updates.channel),
+                  safeRead(() => Updates.runtimeVersion),
+                  safeRead(() => Updates.updateId),
+                ].join(" · ")}
                 divider={false}
               />
             </View>

@@ -73,7 +73,9 @@
       "loading": "Cargando…",
       "registered": "Registrado · {{platform}}",
       "registeredWithDate": "Registrado · {{platform}} · {{date}}",
-      "notRegistered": "SIN registrar · {{platform}} — revisa los logs del dispositivo (getExpoPushTokenAsync/getDevicePushTokenAsync)"
+      "notRegistered": "SIN registrar · {{platform}} — revisa los logs del dispositivo (getExpoPushTokenAsync/getDevicePushTokenAsync)",
+      "build": "Build",
+      "update": "Actualización"
     },
     "errors": {
       "deleteErrorTitle": "Error",
