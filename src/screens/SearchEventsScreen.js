@@ -33,7 +33,7 @@ import {
 import { locationMatchesFilter } from "../utils/locations";
 import useCities from "../hooks/useCities";
 import { EVENT_LANGUAGES } from "../utils/eventCategories";
-import { isEventPast } from "../utils/eventFilters";
+import { isEventPast, filterDiscoverableEvents } from "../utils/eventFilters";
 import { useFocusEffect } from "@react-navigation/native";
 import Icon, { getCategoryIcon } from "../components/Icon";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -229,7 +229,11 @@ export default function SearchEventsScreen({ navigation, route }) {
   }, [filteredEvents.length, hasMore, loading, loadingMore]);
 
   const filterEvents = () => {
-    let filtered = events;
+    // KIN-158: drop what has finished or was called off, BEFORE any other
+    // filter. The Firestore query can't do this — it bounds by day, which is a
+    // safe over-fetch but leaves an event that ended this morning in the
+    // results until midnight. Same client-side pattern as the filters below.
+    let filtered = filterDiscoverableEvents(events);
 
     // ✅ FIX: Filter by category using id comparison
     if (selectedCategory !== "all") {
@@ -351,7 +355,7 @@ export default function SearchEventsScreen({ navigation, route }) {
   const styles = createStyles(colors);
 
   const EventCard = ({ event }) => {
-    const isPast = isEventPast(event.date);
+    const isPast = isEventPast(event);
     const CategoryIcon = getCategoryIcon(event.category);
     const loc = coarseLocationLabel(event); // F2: area for gated, never the venue
 
@@ -421,6 +425,20 @@ export default function SearchEventsScreen({ navigation, route }) {
           >
             {event.title}
           </Text>
+
+          {/* Who's running it — same copy key as EventCard so the two surfaces
+              read identically. Hidden entirely when hostName is missing: an
+              empty "Hosted by" or a placeholder "Host" tells the reader less
+              than the line not being there, and older event docs predate the
+              denormalised field. */}
+          {!!event.hostName && (
+            <Text
+              style={[styles.eventHost, { color: colors.textSecondary }]}
+              numberOfLines={1}
+            >
+              {t("eventCard.hostedBy", { name: event.hostName })}
+            </Text>
+          )}
 
           <View style={styles.eventMeta}>
             <Icon
@@ -725,6 +743,7 @@ function createStyles(colors) {
       marginBottom: 10,
       letterSpacing: -0.3,
     },
+    eventHost: { fontSize: 13, marginTop: 2 },
     eventMeta: {
       flexDirection: "row",
       alignItems: "center",

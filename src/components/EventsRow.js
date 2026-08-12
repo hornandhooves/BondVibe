@@ -5,6 +5,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { FONTS } from "../constants/theme-tokens";
 import Icon from "./Icon";
 import { getUpcomingEvents } from "../services/eventsFeedService";
+import { filterDiscoverableEvents } from "../utils/eventFilters";
 import { useFocusRefresh } from "../hooks/useFocusRefresh";
 
 /**
@@ -28,7 +29,9 @@ const EventsRow = forwardRef(function EventsRow({ navigation }, ref) {
   const [events, setEvents] = useState([]);
 
   const load = useCallback(async () => {
-    setEvents(await getUpcomingEvents(8));
+    // KIN-158: the feed query bounds by day, so an event that ended this
+    // morning still comes back. Drop finished/cancelled before rendering.
+    setEvents(filterDiscoverableEvents(await getUpcomingEvents(8)));
   }, []);
   const { loading, error, reload } = useFocusRefresh(load);
   useImperativeHandle(ref, () => ({ reload }), [reload]);
