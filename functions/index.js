@@ -3256,6 +3256,25 @@ exports.onEventWritten = onDocumentWritten("events/{eventId}", async (event) => 
     }
   }
 
+  // KIN-218: the host changed the plan — tell the people who signed up. This
+  // sits ABOVE the steady-state return below on purpose: a date move changes
+  // neither searchKeywords nor the gating fields, so anything placed after that
+  // return would never fire for the very edit that matters most.
+  //
+  // No re-trigger loop: the self-update at the end of this function only writes
+  // searchKeywords/area/approxCoords, so the second invocation sees all six
+  // watched fields unchanged and sends nothing.
+  if (beforeData) {
+    const {notifyRosterOfEventEdit} = require("./notifications/eventEditNotifications");
+    try {
+      await notifyRosterOfEventEdit(db, event.params.eventId, beforeData, data);
+    } catch (e) {
+      // A failed notification must not abort the keyword/gating maintenance
+      // below — that would leave the event unsearchable over a push error.
+      console.error("⚠️ KIN-218 edit notification failed:", e);
+    }
+  }
+
   // F2 Phase A: derive the coarse gated fields (area + approxCoords) and mirror
   // the exact detail into the participant-gated private doc. ADDITIVE — the
   // legacy public location/locationCoords are left in place (Phase B strips
