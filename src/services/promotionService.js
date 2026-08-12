@@ -130,6 +130,40 @@ const eventStartMs = (e) => {
 };
 
 /**
+ * KIN-219 — does this doc's city match the one the viewer is browsing?
+ *
+ * The two sides of this comparison are NOT the same kind of string, which is
+ * the whole bug. An event/listing stores `city` as a normalized lowercase slug
+ * ("tulum"); the viewer's city arrives from HomeScreen as
+ * `user?.city || user?.location`, and `location` is free-text profile input
+ * ("Tulum"). A strict `===` therefore threw away every result, and silently:
+ * both callers swallow into a `console.error` the user never sees, and the
+ * carousels render nothing rather than an empty state. A real $99 promotion
+ * (pi_3U3TqARZsYFCeXAc0BxkLiX7) was invisible for exactly this.
+ *
+ * Both pre-existing rules are preserved deliberately:
+ *   - no city on the doc → matches any city (never hide something for missing
+ *     data),
+ *   - no city from the viewer → no filter at all.
+ *
+ * NOT diacritic-insensitive: "Cancún" still won't match "Cancun". No evidence
+ * yet that it needs to be, and folding accents would be a guess about how city
+ * slugs are generated rather than a fix for something observed.
+ *
+ * @param {string|undefined|null} docCity the city stored on the event/listing
+ * @param {string|undefined|null} userCity the city the viewer is browsing
+ * @returns {boolean} true when the doc should be shown
+ */
+const cityMatches = (docCity, userCity) => {
+  const norm = (s) => (typeof s === "string" ? s.trim().toLowerCase() : "");
+  const wanted = norm(userCity);
+  if (!wanted) return true; // viewer has no city → no filter
+  const have = norm(docCity);
+  if (!have) return true; // doc has no city → matches anything
+  return have === wanted;
+};
+
+/**
  * Currently-featured events (promotion not expired, not cancelled, not
  * already finished), newest promotion first. Shared by getFeaturedEvents
  * and getFeaturedEventsNearby so the eligibility rules live in one place.
@@ -178,8 +212,9 @@ export const getFeaturedEvents = async (max = 10) => {
 export const getFeaturedEventsNearby = async ({ city, max = 10 } = {}) => {
   try {
     const docs = await fetchFeaturedEventDocs();
-    const filtered = city ? docs.filter((e) => !e.city || e.city === city) : docs;
-    return filtered.slice(0, max);
+    // KIN-219: cityMatches also encodes "no city passed → no filter", so the
+    // ternary that used to guard that is gone rather than duplicated.
+    return docs.filter((e) => cityMatches(e.city, city)).slice(0, max);
   } catch (e) {
     console.error("❌ getFeaturedEventsNearby:", e);
     return [];
@@ -220,7 +255,7 @@ export const getFeaturedListings = async ({ city, vertical, max = 10 } = {}) => 
         const ms = u?.toMillis ? u.toMillis() : u ? new Date(u).getTime() : 0;
         return Number.isFinite(ms) && ms > nowMs;
       })
-      .filter((l) => !city || !l.city || l.city === city)
+      .filter((l) => cityMatches(l.city, city)) // KIN-219
       .sort((a, b) => {
         const ms = (u) => (u?.toMillis ? u.toMillis() : 0);
         return ms(b.featuredUntil) - ms(a.featuredUntil);
