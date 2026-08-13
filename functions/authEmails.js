@@ -19,6 +19,8 @@ const admin = require("firebase-admin");
 const {FieldValue} = require("firebase-admin/firestore");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
+// KIN-221: shared with clientErrors.js — one limiter, not two copies.
+const {overLimit} = require("./lib/rateLimit");
 
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
 
@@ -54,29 +56,6 @@ function throttled(key, windowMs) {
     const last = (snap.exists && snap.data().lastMs) || 0;
     if (now - last < windowMs) return true;
     tx.set(ref, {lastMs: now, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
-    return false;
-  });
-}
-
-/**
- * Fixed-window rate limiter backed by Firestore (rateLimit/{key}, server-only).
- * @param {string} key bucket key (a hash, or a constant like "global_reset").
- * @param {number} limit max hits allowed per window.
- * @param {number} windowMs window length in ms.
- * @return {Promise<boolean>} true if over the limit (caller should skip).
- */
-function overLimit(key, limit, windowMs) {
-  const ref = admin.firestore().doc(`rateLimit/${key}`);
-  const now = Date.now();
-  return admin.firestore().runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    const d = (snap.exists && snap.data()) || {};
-    if (now - (d.windowStart || 0) >= windowMs) { // window elapsed → reset
-      tx.set(ref, {windowStart: now, count: 1, updatedAt: FieldValue.serverTimestamp()});
-      return false;
-    }
-    if ((d.count || 0) >= limit) return true;
-    tx.set(ref, {count: (d.count || 0) + 1, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
     return false;
   });
 }

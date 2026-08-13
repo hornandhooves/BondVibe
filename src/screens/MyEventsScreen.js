@@ -42,6 +42,7 @@ import * as ImagePicker from "expo-image-picker";
 import { hasMyCheckin, shareRecapPhoto } from "../services/recapService";
 import FeaturedCarousel from "../components/FeaturedCarousel";
 import { getFeaturedEvents } from "../services/promotionService";
+import { useAsyncLoad } from "../hooks/useAsyncLoad";
 
 export default function MyEventsScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
@@ -88,9 +89,16 @@ export default function MyEventsScreen({ navigation, route }) {
   );
 
   // Popular events for the Discover carousel (F1) — featured/public upcoming.
+  // KIN-221: routed through useAsyncLoad so a failed read reaches Cloud Logging
+  // instead of dying here. The local catch stays ONLY to preserve the current
+  // visual behaviour (a failed load empties the row) and rethrows, because
+  // swallowing it here is exactly the bug this ticket exists to close.
+  const { run: runPopular } = useAsyncLoad(false, {
+    reportAs: "promotionService.getFeaturedEvents",
+  });
   useFocusEffect(
     useCallback(() => {
-      (async () => {
+      runPopular(async () => {
         try {
           const feat = await getFeaturedEvents(10);
           setPopularEvents(
@@ -98,9 +106,10 @@ export default function MyEventsScreen({ navigation, route }) {
           );
         } catch (e) {
           setPopularEvents([]);
+          throw e;
         }
-      })();
-    }, [])
+      });
+    }, [runPopular])
   );
 
   // Keep the attendee's membership summary fresh (credits/passes live here now,

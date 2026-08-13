@@ -121,9 +121,12 @@ describe("getFeaturedListings", () => {
     expect(await getFeaturedListings({})).toEqual([]);
   });
 
-  it("returns [] instead of throwing when the query fails", async () => {
+  // KIN-221 flipped this expectation on purpose — see the note in
+  // promotionService.invariant.test.js. A swallowed error is indistinguishable
+  // from an empty catalog, and that is the bug, not the safety net.
+  it("propagates a failed query instead of hiding it as []", async () => {
     getDocs.mockRejectedValue(new Error("permission-denied"));
-    expect(await getFeaturedListings({})).toEqual([]);
+    await expect(getFeaturedListings({})).rejects.toThrow("permission-denied");
   });
 
   it("caps at max AFTER the featured filter, not before", async () => {

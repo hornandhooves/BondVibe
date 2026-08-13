@@ -38,6 +38,15 @@
  * nav-away during a slow fetch), it won't call setState on an unmounted
  * component.
  *
+ * KIN-221 — optional second argument `{ reportAs }`: name the surface and a
+ * failure is also shipped to Cloud Logging via reportClientError, instead of
+ * dying in a console.error nobody can read. Opt-in, so the 30+ existing call
+ * sites keep behaving exactly as before:
+ *
+ *   const { loading, error, run } = useAsyncLoad(true, {
+ *     reportAs: "promotionService.getFeaturedEventsNearby",
+ *   });
+ *
  * This does NOT replace catching errors you want to react to specifically
  * (e.g. a payment error that should show a particular message) — `run`
  * returns whatever your function returns, or `undefined` on failure, and you
@@ -45,8 +54,9 @@
  * flag can't get stuck.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { reportClientError } from "../utils/reportClientError";
 
-export function useAsyncLoad(initialLoading = true) {
+export function useAsyncLoad(initialLoading = true, { reportAs } = {}) {
   const [loading, setLoading] = useState(initialLoading);
   const [error, setError] = useState(null);
   const mountedRef = useRef(true);
@@ -67,12 +77,18 @@ export function useAsyncLoad(initialLoading = true) {
       return await fn();
     } catch (e) {
       console.error("useAsyncLoad:", e);
+      // KIN-221: opt-in. A console.error on a phone reaches nobody, so a caller
+      // that names its surface also gets the failure into Cloud Logging. Fired
+      // regardless of mount state — the error happened whether or not anyone is
+      // still watching, and an unmounted screen is exactly the case nobody
+      // would otherwise hear about.
+      if (reportAs) reportClientError(reportAs, e);
       if (mountedRef.current) setError(e);
       return undefined;
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, []);
+  }, [reportAs]);
 
   return { loading, error, run, setLoading };
 }

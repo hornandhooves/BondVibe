@@ -136,10 +136,10 @@ const eventStartMs = (e) => {
  * the whole bug. An event/listing stores `city` as a normalized lowercase slug
  * ("tulum"); the viewer's city arrives from HomeScreen as
  * `user?.city || user?.location`, and `location` is free-text profile input
- * ("Tulum"). A strict `===` therefore threw away every result, and silently:
- * both callers swallow into a `console.error` the user never sees, and the
- * carousels render nothing rather than an empty state. A real $99 promotion
- * (pi_3U3TqARZsYFCeXAc0BxkLiX7) was invisible for exactly this.
+ * ("Tulum"). A strict `===` therefore threw away every result, and silently —
+ * a real $99 promotion (pi_3U3TqARZsYFCeXAc0BxkLiX7) was invisible for exactly
+ * this. The silence had a separate cause, fixed in KIN-221: these functions
+ * used to swallow into a `console.error` that never left the device.
  *
  * Both pre-existing rules are preserved deliberately:
  *   - no city on the doc → matches any city (never hide something for missing
@@ -186,17 +186,17 @@ const fetchFeaturedEventDocs = async () => {
 /**
  * Fetch currently-featured events (promotion not expired). Used by
  * MyEventsScreen's "Popular" carousel — no city filter, unchanged behavior.
+ *
+ * KIN-221: no longer catches. A failed read propagates so the caller (via
+ * useAsyncLoad) can surface AND report it; returning [] made a broken query
+ * indistinguishable from "nothing is featured".
  * @param {number} [max] limit
  * @returns {Promise<Array>}
+ * @throws whatever Firestore throws — the caller owns the failure now
  */
 export const getFeaturedEvents = async (max = 10) => {
-  try {
-    const docs = await fetchFeaturedEventDocs();
-    return docs.slice(0, max);
-  } catch (e) {
-    console.error("❌ getFeaturedEvents:", e);
-    return [];
-  }
+  const docs = await fetchFeaturedEventDocs();
+  return docs.slice(0, max);
 };
 
 /**
@@ -206,19 +206,16 @@ export const getFeaturedEvents = async (max = 10) => {
  * matches any city (never hidden just for missing data). No city passed →
  * no city filter at all (nothing to default to — a host's own city, not a
  * hardcoded one, drives this via the caller).
+ * KIN-221: no longer catches — see getFeaturedEvents.
  * @param {{ city?: string, max?: number }} [opts]
  * @returns {Promise<Array>}
+ * @throws whatever Firestore throws — the caller owns the failure now
  */
 export const getFeaturedEventsNearby = async ({ city, max = 10 } = {}) => {
-  try {
-    const docs = await fetchFeaturedEventDocs();
-    // KIN-219: cityMatches also encodes "no city passed → no filter", so the
-    // ternary that used to guard that is gone rather than duplicated.
-    return docs.filter((e) => cityMatches(e.city, city)).slice(0, max);
-  } catch (e) {
-    console.error("❌ getFeaturedEventsNearby:", e);
-    return [];
-  }
+  const docs = await fetchFeaturedEventDocs();
+  // KIN-219: cityMatches also encodes "no city passed → no filter", so the
+  // ternary that used to guard that is gone rather than duplicated.
+  return docs.filter((e) => cityMatches(e.city, city)).slice(0, max);
 };
 
 /**
@@ -232,39 +229,36 @@ export const getFeaturedEventsNearby = async ({ city, max = 10 } = {}) => {
  * new composite index, and the city rule matches getMarketplaceListings
  * anyway: a listing with no city matches any city, never hidden for missing
  * data.
+ * KIN-221: no longer catches — see getFeaturedEvents.
  * @param {{ city?: string, vertical?: string, max?: number }} [opts]
  * @returns {Promise<Array>}
+ * @throws whatever Firestore throws — the caller owns the failure now
  */
 export const getFeaturedListings = async ({ city, vertical, max = 10 } = {}) => {
-  try {
-    const clauses = [where("publicListing", "==", true)];
-    if (vertical) clauses.push(where("vertical", "==", vertical));
-    // Over-fetch before the client-side featured filter: capping at `max` here
-    // would return `max` PUBLIC listings and then likely filter them all away.
-    const q = query(collectionGroup(db, "sessionTypes"), ...clauses, qLimit(200));
-    const snap = await getDocs(q);
-    const nowMs = Date.now();
-    return snap.docs
-      .map((d) => ({
-        ...shapeListing(d),
-        featuredUntil: d.data().featuredUntil || null,
-      }))
-      .filter((l) => l.bizId)
-      .filter((l) => {
-        const u = l.featuredUntil;
-        const ms = u?.toMillis ? u.toMillis() : u ? new Date(u).getTime() : 0;
-        return Number.isFinite(ms) && ms > nowMs;
-      })
-      .filter((l) => cityMatches(l.city, city)) // KIN-219
-      .sort((a, b) => {
-        const ms = (u) => (u?.toMillis ? u.toMillis() : 0);
-        return ms(b.featuredUntil) - ms(a.featuredUntil);
-      })
-      .slice(0, max);
-  } catch (e) {
-    console.error("❌ getFeaturedListings:", e);
-    return [];
-  }
+  const clauses = [where("publicListing", "==", true)];
+  if (vertical) clauses.push(where("vertical", "==", vertical));
+  // Over-fetch before the client-side featured filter: capping at `max` here
+  // would return `max` PUBLIC listings and then likely filter them all away.
+  const q = query(collectionGroup(db, "sessionTypes"), ...clauses, qLimit(200));
+  const snap = await getDocs(q);
+  const nowMs = Date.now();
+  return snap.docs
+    .map((d) => ({
+      ...shapeListing(d),
+      featuredUntil: d.data().featuredUntil || null,
+    }))
+    .filter((l) => l.bizId)
+    .filter((l) => {
+      const u = l.featuredUntil;
+      const ms = u?.toMillis ? u.toMillis() : u ? new Date(u).getTime() : 0;
+      return Number.isFinite(ms) && ms > nowMs;
+    })
+    .filter((l) => cityMatches(l.city, city)) // KIN-219
+    .sort((a, b) => {
+      const ms = (u) => (u?.toMillis ? u.toMillis() : 0);
+      return ms(b.featuredUntil) - ms(a.featuredUntil);
+    })
+    .slice(0, max);
 };
 
 /**

@@ -37,6 +37,8 @@ const {cancelEventAttendance, hostCancelEvent, processRefund} =
 // @handle claiming/checking (server-enforced uniqueness).
 const {claimHandle, checkHandle, adminReassignHandle} = require("./handles");
 const {sendVerificationEmail, sendPasswordResetEmail} = require("./authEmails");
+// KIN-221: client-side failures land in Cloud Logging instead of a phone.
+const clientErrors = require("./clientErrors");
 
 // Import pricing logic
 const {
@@ -3575,6 +3577,7 @@ exports.hostCancelEvent = hostCancelEvent;
 exports.claimHandle = claimHandle;
 exports.checkHandle = checkHandle;
 exports.adminReassignHandle = adminReassignHandle;
+exports.reportClientError = clientErrors.reportClientError;
 exports.sendVerificationEmail = sendVerificationEmail;
 exports.sendPasswordResetEmail = sendPasswordResetEmail;
 

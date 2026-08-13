@@ -33,7 +33,10 @@ const FeaturedServicesRow = forwardRef(function FeaturedServicesRow(
   const load = useCallback(async () => {
     setListings(await getFeaturedListings({ city, max: 10 }));
   }, [city]);
-  const { reload } = useFocusRefresh(load);
+  // KIN-221: same silent-failure shape as Featured Events.
+  const { reload } = useFocusRefresh(load, {
+    reportAs: "promotionService.getFeaturedListings",
+  });
   useImperativeHandle(ref, () => ({ reload }), [reload]);
 
   if (listings.length === 0) return null;
