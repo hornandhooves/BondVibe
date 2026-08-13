@@ -73,7 +73,9 @@
       "loading": "Loading…",
       "registered": "Registered · {{platform}}",
       "registeredWithDate": "Registered · {{platform}} · {{date}}",
-      "notRegistered": "NOT registered · {{platform}} — check device logs (getExpoPushTokenAsync/getDevicePushTokenAsync)"
+      "notRegistered": "NOT registered · {{platform}} — check device logs (getExpoPushTokenAsync/getDevicePushTokenAsync)",
+      "build": "Build",
+      "update": "Update"
     },
     "errors": {
       "deleteErrorTitle": "Error",
