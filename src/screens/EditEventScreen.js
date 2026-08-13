@@ -527,35 +527,10 @@ export default function EditEventScreen({ route, navigation }) {
       ...seriesFields
     } = anchor;
 
-    const batch = writeBatch(db);
-    remove.forEach((occ) => batch.delete(occ.ref));
-    create.forEach((d) => {
-      batch.set(doc(collection(db, "events")), {
-        ...seriesFields,
-        ...updateData,
-        date: d.toISOString(),
-        time: formatTimeDisplay(d),
-        attendees: [],
-        participantCount: 0,
-        status: "active",
-        recurrenceGroupId,
-        isRecurring: true,
-        recurrenceType: recurrenceConfig.type,
-        recurrenceEndDate: recurrenceConfig.endDate || null,
-        recurrenceConfig: {
-          selectedDays: recurrenceConfig.selectedDays || [],
-          weekOfMonth: recurrenceConfig.weekOfMonth || null,
-          monthlyMode: recurrenceConfig.monthlyMode || null,
-          dayOfMonth: recurrenceConfig.dayOfMonth || null,
-          lunarPhase: recurrenceConfig.lunarPhase || null,
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-    });
-    // The edited occurrence carries the series metadata forward; the blocked
-    // ones keep the old pattern on purpose, because untouched means untouched.
-    batch.update(doc(db, "events", eventId), {
+    // What the series IS, as opposed to what any single occurrence is. Built
+    // once and written to every doc that stays in the series, so the three
+    // write sites below can't drift into disagreeing about the pattern.
+    const seriesMeta = {
       recurrenceType: recurrenceConfig.type,
       recurrenceEndDate: recurrenceConfig.endDate || null,
       recurrenceConfig: {
@@ -565,7 +540,37 @@ export default function EditEventScreen({ route, navigation }) {
         dayOfMonth: recurrenceConfig.dayOfMonth || null,
         lunarPhase: recurrenceConfig.lunarPhase || null,
       },
+    };
+
+    const batch = writeBatch(db);
+    remove.forEach((occ) => batch.delete(occ.ref));
+    create.forEach((d) => {
+      batch.set(doc(collection(db, "events")), {
+        ...seriesFields,
+        ...updateData,
+        ...seriesMeta,
+        date: d.toISOString(),
+        time: formatTimeDisplay(d),
+        attendees: [],
+        participantCount: 0,
+        status: "active",
+        recurrenceGroupId,
+        isRecurring: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
     });
+    // The edited occurrence AND the booked ones this change couldn't move.
+    //
+    // A blocked occurrence keeps its DATE — that is the promise, and it holds:
+    // nothing below touches date, time, status, attendees or participantCount.
+    // But it is still part of the series, so it carries the series' pattern.
+    // Leaving it on the old one meant opening Edit on a booked occurrence
+    // rehydrated the modal with a pattern the series no longer follows, and the
+    // summary told the host something untrue — a bug reachable only because
+    // KIN-214 made recurrenceConfig readable in the first place.
+    batch.update(doc(db, "events", eventId), seriesMeta);
+    blocked.forEach((occ) => batch.update(occ.ref, seriesMeta));
     await batch.commit();
     console.log(
       `🔄 Pattern change: -${remove.length} +${create.length}, ${blocked.length} kept`

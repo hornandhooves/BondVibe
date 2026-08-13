@@ -56,7 +56,7 @@ const batchCalls = { set: [], delete: [], update: [] };
 
 jest.mock("../../services/firebase", () => ({ db: {}, auth: { currentUser: { uid: "me" } } }));
 jest.mock("firebase/firestore", () => ({
-  doc: jest.fn(() => ({ __ref: true })),
+  doc: jest.fn(() => ({ __doc: true })),
   getDoc: jest.fn(),
   updateDoc: jest.fn(async () => {}),
   deleteDoc: jest.fn(),
@@ -160,6 +160,19 @@ const save = async (utils) => {
 const createdDates = () => batchCalls.set.map((c) => c[1].date);
 /** The occurrence ids the batch was told to delete. */
 const deletedIds = () => batchCalls.delete.map((c) => c[0]?.__id);
+/** doc(db,"events",id) is mocked to this shape, so it identifies the edited one. */
+const EDITED_REF = "__doc__";
+/**
+ * The payload a given occurrence was updated with.
+ * @param {string} id roster doc id, or EDITED_REF for the occurrence being edited
+ * @returns {object|undefined} the update payload, if any
+ */
+const updateFor = (id) => {
+  const call = batchCalls.update.find(([ref]) =>
+    id === EDITED_REF ? ref?.__doc : ref?.__id === id,
+  );
+  return call && call[1];
+};
 
 const biweekly = { type: "biweekly", selectedDays: [1], endDate: at(90) };
 
@@ -309,14 +322,61 @@ describe("reversion — a booked occurrence survives the save", () => {
     expect(deletedIds()).not.toContain("booked");
   });
 
-  it("is not updated either — its date and pattern stay put", async () => {
+  it("carries the NEW pattern, not the one the series just left", async () => {
+    // It stays on its date, but it is still part of the series. Left on the old
+    // pattern, opening Edit on it rehydrated the modal with a cadence the
+    // series no longer follows and the summary told the host something untrue.
     seedSeries([booked()]);
     const utils = await open();
     await changePattern(utils, biweekly);
     await save(utils);
-    // The only update the pattern change writes is the series metadata on the
-    // occurrence being edited. Nothing else is written by KIN-214's own batch.
-    expect(batchCalls.update).toHaveLength(1);
+
+    const upd = updateFor("booked");
+    expect(upd).toBeTruthy();
+    expect(upd.recurrenceType).toBe("biweekly");
+    expect(upd.recurrenceConfig.selectedDays).toEqual([1]);
+    expect(upd.recurrenceEndDate).toBe(at(90));
+  });
+
+  it("that update touches ONLY series metadata — never its own fields", async () => {
+    // The promise is that a booked date does not move. Writing the pattern is
+    // allowed precisely because it is not a date, a status or a roster; this
+    // asserts that distinction instead of trusting it.
+    seedSeries([booked()]);
+    const utils = await open();
+    await changePattern(utils, biweekly);
+    await save(utils);
+
+    expect(Object.keys(updateFor("booked")).sort()).toEqual([
+      "recurrenceConfig",
+      "recurrenceEndDate",
+      "recurrenceType",
+    ]);
+    for (const [, payload] of batchCalls.update) {
+      for (const own of ["date", "time", "status", "attendees", "participantCount"]) {
+        expect(payload).not.toHaveProperty(own);
+      }
+    }
+  });
+
+  it("the edited occurrence and the booked one get the SAME pattern", async () => {
+    // A series that disagrees with itself about its own cadence is the bug in
+    // a different shape.
+    seedSeries([booked()]);
+    const utils = await open();
+    await changePattern(utils, biweekly);
+    await save(utils);
+
+    expect(batchCalls.update).toHaveLength(2); // edited + blocked
+    expect(updateFor("booked")).toEqual(updateFor(EDITED_REF));
+  });
+
+  it("a PAST occurrence keeps the old pattern — that is history, not staleness", async () => {
+    seedSeries([{ id: "past", ...eventData, date: at(-7) }, booked()]);
+    const utils = await open();
+    await changePattern(utils, biweekly);
+    await save(utils);
+    expect(updateFor("past")).toBeUndefined();
   });
 
   it("no new occurrence lands on the date it holds", async () => {
