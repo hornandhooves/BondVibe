@@ -105,8 +105,12 @@ describe('getFeaturedEvents — BUG 37 past-date filter', () => {
     expect(out).toHaveLength(3);
   });
 
-  it('returns [] on query error', async () => {
+  // KIN-221 flipped this expectation on purpose. Returning [] made a broken
+  // query look exactly like "nothing is featured", which is how a paid
+  // promotion stayed invisible for days. The caller (useAsyncLoad) now owns
+  // the failure, surfaces it and reports it to Cloud Logging.
+  it('propagates a query error instead of hiding it as []', async () => {
     getDocs.mockRejectedValue(new Error('offline'));
-    expect(await getFeaturedEvents()).toEqual([]);
+    await expect(getFeaturedEvents()).rejects.toThrow('offline');
   });
 });

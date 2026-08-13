@@ -25,10 +25,14 @@ import { HOME_CAROUSEL_REFRESH_TTL_MS } from "../constants/homeRefresh";
  * @param {function(): Promise<void>} loadFn stable (useCallback, empty deps) loader
  * @param {object} [opts]
  * @param {number} [opts.ttlMs] freshness window in ms; default HOME_CAROUSEL_REFRESH_TTL_MS
+ * @param {string} [opts.reportAs] surface name; a failure is reported to Cloud Logging (KIN-221)
  * @return {{loading: boolean, error: (Error|null), reload: function(): Promise<*>}}
  */
-export function useFocusRefresh(loadFn, { ttlMs = HOME_CAROUSEL_REFRESH_TTL_MS } = {}) {
-  const { loading, error, run } = useAsyncLoad();
+export function useFocusRefresh(loadFn, { ttlMs = HOME_CAROUSEL_REFRESH_TTL_MS, reportAs } = {}) {
+  // KIN-221: pass `reportAs` straight through. Every Home carousel loads through
+  // this hook, so without the pass-through none of them could report at all —
+  // and the carousels are exactly where the silent failure was found.
+  const { loading, error, run } = useAsyncLoad(true, { reportAs });
   const lastLoadedAtRef = useRef(0);
 
   const reload = useCallback(() => {

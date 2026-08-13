@@ -35,7 +35,11 @@ const FeaturedEventsRow = forwardRef(function FeaturedEventsRow({ navigation, ci
     // KIN-158: a paid placement doesn't keep an event alive past its end.
     setEvents(filterDiscoverableEvents(await getFeaturedEventsNearby({ city, max: 10 })));
   }, [city]);
-  const { reload } = useFocusRefresh(load);
+  // KIN-221: this carousel is where the silent failure was found. Naming the
+  // surface is what gets a failed read into Cloud Logging instead of nowhere.
+  const { reload } = useFocusRefresh(load, {
+    reportAs: "promotionService.getFeaturedEventsNearby",
+  });
   useImperativeHandle(ref, () => ({ reload }), [reload]);
 
   if (events.length === 0) return null;
