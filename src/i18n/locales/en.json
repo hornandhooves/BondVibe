@@ -769,6 +769,14 @@
       "deletedSeriesMsg_other": "{{count}} events deleted successfully",
       "deletedEventMsg": "Event deleted successfully",
       "deleteFailedMsg": "Failed to delete event"
+    },
+    "recurrence": {
+      "changePattern": "Change pattern",
+      "changePatternHint": "Edit how often this series repeats",
+      "pendingWarning": "The new pattern will be applied when you save. Dates with bookings will be kept as they are.",
+      "patternApplied": "Pattern updated: {{removed}} date(s) replaced, {{created}} created.",
+      "keptBooked_one": "1 date was kept because it already has bookings. Coordinate it with your guests in the event chat:",
+      "keptBooked_other": "{{count}} dates were kept because they already have bookings. Coordinate them with your guests in the event chat:"
     }
   },
   "profile": {

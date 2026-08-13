@@ -277,3 +277,99 @@ function getOrdinalSuffix(n) {
   const v = n % 100;
   return s[(v - 20) % 10] || s[v] || s[0];
 }
+
+/**
+ * Does this occurrence have anyone in it? (KIN-214)
+ *
+ * Same reading the rest of the app uses: participantCount is the source of
+ * truth since ROSTER (#55) removed the attendees array, with the legacy
+ * fallbacks EventDetailScreen still carries for old docs. Deliberately NOT a
+ * new definition — a stricter or looser one here would mean the screen and the
+ * split disagree about which dates are safe to move.
+ *
+ * @param {object} occurrence an events/{id} doc
+ * @returns {boolean}
+ */
+export const occurrenceIsBooked = (occurrence) => {
+  const count =
+    occurrence?.participantCount ??
+    occurrence?.attendees?.length ??
+    occurrence?.participants?.length ??
+    0;
+  return count > 0;
+};
+
+/**
+ * Work out what changing a series' recurrence pattern actually does.
+ *
+ * Pure on purpose: the destructive part of KIN-214 is deciding which existing
+ * occurrences get deleted, and that decision should be provable without a
+ * Firestore emulator or a rendered screen.
+ *
+ * The rules, from the closed business decision (KIN-214, 12-ago-2026, regla 39):
+ *
+ *   - The split runs FORWARD from the occurrence being edited. The past and the
+ *     occurrence itself are never touched — a host fixing next month's schedule
+ *     must not rewrite what already happened.
+ *   - A future occurrence with NO bookings is replaced by the new pattern.
+ *   - A future occurrence WITH bookings is left completely alone: same date,
+ *     same time, not cancelled, not refunded. It is reported back so the host
+ *     can coordinate it by hand in the event chat.
+ *   - MAX_RECURRING_EVENTS still caps the FINAL series, counting what was kept.
+ *     Blocked occurrences consume budget precisely because they still exist.
+ *
+ * @param {object} params
+ * @param {object} params.current the occurrence being edited
+ * @param {Array<object>} params.occurrences every doc sharing the recurrenceGroupId
+ * @param {object} params.config the NEW recurrence config
+ * @param {number} [params.maxEvents] cap on the final series
+ * @returns {{keep: Array, remove: Array, create: Array<Date>, blocked: Array}}
+ *   keep = untouched · remove = delete · create = new dates to write ·
+ *   blocked = the subset of keep that survived only because it has bookings
+ */
+export function planRecurrenceUpdate({
+  current,
+  occurrences = [],
+  config,
+  maxEvents = MAX_RECURRING_EVENTS,
+}) {
+  const anchor = new Date(current?.date).getTime();
+  if (!Number.isFinite(anchor)) {
+    // No usable anchor: change nothing rather than guess which end is the past.
+    return { keep: [...occurrences], remove: [], create: [], blocked: [] };
+  }
+
+  const keep = [];
+  const remove = [];
+  const blocked = [];
+
+  for (const occ of occurrences) {
+    const at = new Date(occ?.date).getTime();
+    // <= anchor covers both the past AND the occurrence being edited. An
+    // unparseable date also lands here: never delete what you can't place.
+    if (!Number.isFinite(at) || at <= anchor) {
+      keep.push(occ);
+      continue;
+    }
+    if (occurrenceIsBooked(occ)) {
+      keep.push(occ);
+      blocked.push(occ);
+      continue;
+    }
+    remove.push(occ);
+  }
+
+  // Generate from the anchor with the NEW pattern, then drop anything at or
+  // before it — generateRecurringDates includes the start date itself, and the
+  // current occurrence already exists.
+  const generated = generateRecurringDates(new Date(anchor), config, maxEvents)
+    .filter((d) => d.getTime() > anchor);
+
+  // A kept booked occurrence occupies its slot: regenerating the same instant
+  // would double-book the date.
+  const taken = new Set(keep.map((o) => new Date(o?.date).getTime()));
+  const room = Math.max(0, maxEvents - keep.length);
+  const create = generated.filter((d) => !taken.has(d.getTime())).slice(0, room);
+
+  return { keep, remove, create, blocked };
+}

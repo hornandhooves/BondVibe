@@ -1,7 +1,7 @@
 import Icon from "../components/Icon";
 import PlaceAutocomplete from "../components/PlaceAutocomplete";
 import { geocodeAddress } from "../utils/geocode";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -42,6 +42,12 @@ import GradientBackground from "../components/GradientBackground";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import EventImagePicker from "../components/EventImagePicker";
 import SelectDropdown from "../components/SelectDropdown";
+import RecurrenceModal from "../components/RecurrenceModal";
+import {
+  getRecurrenceSummary,
+  planRecurrenceUpdate,
+  MAX_RECURRING_EVENTS,
+} from "../utils/recurrenceUtils";
 import {
   uploadEventImages,
   deleteEventImage,
@@ -115,6 +121,18 @@ export default function EditEventScreen({ route, navigation }) {
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceGroupId, setRecurrenceGroupId] = useState(null);
   const [futureEventsCount, setFutureEventsCount] = useState(0);
+
+  // KIN-214: the pattern itself is editable now. `recurrenceConfig` is rehydrated
+  // from the doc so RecurrenceModal opens on what the series actually is, and
+  // `patternDirty` gates the destructive path — an unchanged pattern must never
+  // delete and recreate occurrences just because the host opened the modal.
+  const [showRecurrenceModal, setShowRecurrenceModal] = useState(false);
+  const [recurrenceConfig, setRecurrenceConfig] = useState(null);
+  const [patternDirty, setPatternDirty] = useState(false);
+  // The occurrence's date AS STORED. The split anchors here, not on form.date:
+  // if the host also moves this occurrence in the same save, "which occurrences
+  // are in the future" must still be answered against the real series.
+  const originalDateRef = useRef(null);
 
   // Date/Time picker state
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -206,6 +224,19 @@ export default function EditEventScreen({ route, navigation }) {
         if (data.isRecurring && data.recurrenceGroupId) {
           setIsRecurring(true);
           setRecurrenceGroupId(data.recurrenceGroupId);
+
+          // KIN-214: reassemble the config Create split across three fields, so
+          // the modal opens on the real pattern instead of a blank default.
+          originalDateRef.current = data.date;
+          setRecurrenceConfig({
+            type: data.recurrenceType || "weekly",
+            endDate: data.recurrenceEndDate || null,
+            selectedDays: data.recurrenceConfig?.selectedDays || [],
+            weekOfMonth: data.recurrenceConfig?.weekOfMonth || "first",
+            monthlyMode: data.recurrenceConfig?.monthlyMode || "dayOfWeek",
+            dayOfMonth: data.recurrenceConfig?.dayOfMonth || 1,
+            lunarPhase: data.recurrenceConfig?.lunarPhase || "full",
+          });
 
           // Count future events in the series
           const futureQuery = query(
@@ -436,6 +467,138 @@ export default function EditEventScreen({ route, navigation }) {
     }
   };
 
+  /**
+   * KIN-214 — rewrite the series' future occurrences to a new pattern.
+   *
+   * The host changed frequency/days on an event that already exists, so some of
+   * the dates on the calendar are now wrong. planRecurrenceUpdate decides what
+   * that means; this function is only the Firestore half of it — delete what it
+   * says to delete, create what it says to create, and never improvise past its
+   * answer.
+   *
+   * Two things it deliberately does NOT do, both closed decisions (KIN-214):
+   * an occurrence with bookings is not moved, cancelled or refunded, and nobody
+   * is notified automatically — the host coordinates those dates by hand in the
+   * event chat, which is why they come back as a notice.
+   *
+   * @param {object} updateData the field values from this same save, so new
+   *   occurrences are born with the edited values rather than the stale ones
+   * @returns {Promise<string|null>} a message for the success alert, or null
+   */
+  const applyRecurrencePatternChange = async (updateData) => {
+    if (!recurrenceGroupId || !recurrenceConfig) return null;
+
+    const seriesSnapshot = await getDocs(
+      query(
+        collection(db, "events"),
+        where("recurrenceGroupId", "==", recurrenceGroupId),
+        where("status", "==", "active")
+      )
+    );
+    const occurrences = seriesSnapshot.docs.map((d) => ({
+      id: d.id,
+      ref: d.ref,
+      ...d.data(),
+    }));
+
+    const anchor = occurrences.find((o) => o.id === eventId) || {
+      id: eventId,
+      date: originalDateRef.current,
+    };
+    const { remove, create, blocked } = planRecurrenceUpdate({
+      current: anchor,
+      occurrences,
+      config: recurrenceConfig,
+      maxEvents: MAX_RECURRING_EVENTS,
+    });
+
+    // Fields that describe THIS occurrence rather than the series — a new
+    // occurrence gets its own date, and starts with nobody in it.
+    const {
+      date: _date,
+      time: _time,
+      id: _id,
+      ref: _ref,
+      attendees: _attendees,
+      participants: _participants,
+      participantCount: _participantCount,
+      eventIndex: _eventIndex,
+      createdAt: _createdAt,
+      ...seriesFields
+    } = anchor;
+
+    // What the series IS, as opposed to what any single occurrence is. Built
+    // once and written to every doc that stays in the series, so the three
+    // write sites below can't drift into disagreeing about the pattern.
+    const seriesMeta = {
+      recurrenceType: recurrenceConfig.type,
+      recurrenceEndDate: recurrenceConfig.endDate || null,
+      recurrenceConfig: {
+        selectedDays: recurrenceConfig.selectedDays || [],
+        weekOfMonth: recurrenceConfig.weekOfMonth || null,
+        monthlyMode: recurrenceConfig.monthlyMode || null,
+        dayOfMonth: recurrenceConfig.dayOfMonth || null,
+        lunarPhase: recurrenceConfig.lunarPhase || null,
+      },
+    };
+
+    const batch = writeBatch(db);
+    remove.forEach((occ) => batch.delete(occ.ref));
+    create.forEach((d) => {
+      batch.set(doc(collection(db, "events")), {
+        ...seriesFields,
+        ...updateData,
+        ...seriesMeta,
+        date: d.toISOString(),
+        time: formatTimeDisplay(d),
+        attendees: [],
+        participantCount: 0,
+        status: "active",
+        recurrenceGroupId,
+        isRecurring: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    });
+    // The edited occurrence AND the booked ones this change couldn't move.
+    //
+    // A blocked occurrence keeps its DATE — that is the promise, and it holds:
+    // nothing below touches date, time, status, attendees or participantCount.
+    // But it is still part of the series, so it carries the series' pattern.
+    // Leaving it on the old one meant opening Edit on a booked occurrence
+    // rehydrated the modal with a pattern the series no longer follows, and the
+    // summary told the host something untrue — a bug reachable only because
+    // KIN-214 made recurrenceConfig readable in the first place.
+    batch.update(doc(db, "events", eventId), seriesMeta);
+    blocked.forEach((occ) => batch.update(occ.ref, seriesMeta));
+    await batch.commit();
+    console.log(
+      `🔄 Pattern change: -${remove.length} +${create.length}, ${blocked.length} kept`
+    );
+
+    const notice = t("editEvent.recurrence.patternApplied", {
+      removed: remove.length,
+      created: create.length,
+    });
+    if (blocked.length === 0) return notice;
+
+    const dates = blocked
+      .map((o) => new Date(o.date))
+      .sort((a, b) => a - b)
+      .map((d) =>
+        d.toLocaleDateString(i18n.language, {
+          day: "numeric",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      )
+      .join("\n• ");
+    return `${notice}\n\n${t("editEvent.recurrence.keptBooked", {
+      count: blocked.length,
+    })}\n• ${dates}`;
+  };
+
   // Save event(s)
   const saveEvent = async (updateAllFuture, skipAvailabilityCheck = false) => {
     // KIN-213 + KIN-151: a price that can't parse must never reach Firestore.
@@ -480,6 +643,7 @@ export default function EditEventScreen({ route, navigation }) {
       }
     }
     setSaving(true);
+    let successMessage = "";
     try {
       // Process images first
       let finalImageUrls = [];
@@ -585,11 +749,7 @@ export default function EditEventScreen({ route, navigation }) {
         await batch.commit();
         console.log(`✅ Updated ${updatedCount} future events`);
 
-        Alert.alert(
-          t("editEvent.alerts.successTitle"),
-          t("editEvent.alerts.successSeriesMsg", { count: updatedCount }),
-          [{ text: t("editEvent.alerts.ok"), onPress: () => navigation.goBack() }]
-        );
+        successMessage = t("editEvent.alerts.successSeriesMsg", { count: updatedCount });
       } else {
         // Update only this event (including date/time)
         await updateDoc(doc(db, "events", eventId), {
@@ -598,10 +758,24 @@ export default function EditEventScreen({ route, navigation }) {
           time: form.time || formatTimeDisplay(form.date),
         });
 
-        Alert.alert(t("editEvent.alerts.successTitle"), t("editEvent.alerts.eventUpdatedMsg"), [
-          { text: t("editEvent.alerts.ok"), onPress: () => navigation.goBack() },
-        ]);
+        successMessage = t("editEvent.alerts.eventUpdatedMsg");
       }
+
+      // KIN-214: the pattern change runs LAST, after the field update above, so
+      // the occurrences it creates already carry the edited values. Note this is
+      // only about DATES — the "all future" branch may still update fields on a
+      // booked occurrence, which is its existing behaviour and not what KIN-214
+      // protects. What a booked occurrence is guaranteed is that it never moves
+      // and never gets deleted.
+      const patternNotice = patternDirty
+        ? await applyRecurrencePatternChange(updateData)
+        : null;
+
+      Alert.alert(
+        t("editEvent.alerts.successTitle"),
+        patternNotice ? `${successMessage}\n\n${patternNotice}` : successMessage,
+        [{ text: t("editEvent.alerts.ok"), onPress: () => navigation.goBack() }]
+      );
     } catch (error) {
       console.error("Error updating event:", error);
       Alert.alert(t("editEvent.alerts.missingFieldsTitle"), t("editEvent.alerts.updateFailedMsg"));
@@ -872,6 +1046,30 @@ export default function EditEventScreen({ route, navigation }) {
             >
               {t("editEvent.recurringSeriesSubtext")}
             </Text>
+
+            {/* KIN-214: the pattern is editable from here. Only reachable on a
+                recurring event — a one-off has no pattern to change. */}
+            <TouchableOpacity
+              testID="edit-recurrence-pattern"
+              accessibilityRole="button"
+              accessibilityLabel={t("editEvent.recurrence.changePattern")}
+              accessibilityHint={t("editEvent.recurrence.changePatternHint")}
+              style={[styles.patternButton, { borderColor: `${colors.primary}55` }]}
+              onPress={() => setShowRecurrenceModal(true)}
+            >
+              <Text style={[styles.patternSummary, { color: colors.text }]}>
+                {getRecurrenceSummary(recurrenceConfig)}
+              </Text>
+              <Text style={[styles.patternAction, { color: colors.primary }]}>
+                {t("editEvent.recurrence.changePattern")}
+              </Text>
+            </TouchableOpacity>
+
+            {patternDirty && (
+              <Text style={[styles.patternWarning, { color: colors.textSecondary }]}>
+                {t("editEvent.recurrence.pendingWarning")}
+              </Text>
+            )}
           </View>
         )}
 
@@ -1426,6 +1624,20 @@ export default function EditEventScreen({ route, navigation }) {
           onChange={onTimeChange}
         />
       )}
+
+      {/* KIN-214: the same modal Create uses — one pattern editor, not two. */}
+      {isRecurring && (
+        <RecurrenceModal
+          visible={showRecurrenceModal}
+          onClose={() => setShowRecurrenceModal(false)}
+          initialConfig={recurrenceConfig}
+          initialStartDate={form.date}
+          onSave={(config) => {
+            setRecurrenceConfig(config);
+            setPatternDirty(true);
+          }}
+        />
+      )}
     </GradientBackground>
   );
 }
@@ -1492,6 +1704,31 @@ function createStyles(colors) {
     },
     recurringBannerSubtext: {
       fontSize: 13,
+    },
+    // KIN-214 — flat card inside the banner: 1px border, no shadow (§3).
+    patternButton: {
+      marginTop: 12,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderWidth: 1,
+      borderRadius: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 8,
+    },
+    patternSummary: {
+      fontSize: 14,
+      flexShrink: 1,
+    },
+    patternAction: {
+      fontSize: 13,
+      fontWeight: "600",
+    },
+    patternWarning: {
+      marginTop: 8,
+      fontSize: 12,
+      lineHeight: 16,
     },
     section: {
       marginBottom: 20,

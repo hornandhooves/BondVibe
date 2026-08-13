@@ -769,6 +769,14 @@
       "deletedSeriesMsg_other": "{{count}} eventos eliminados con éxito",
       "deletedEventMsg": "Evento eliminado con éxito",
       "deleteFailedMsg": "No se pudo eliminar el evento"
+    },
+    "recurrence": {
+      "changePattern": "Cambiar patrón",
+      "changePatternHint": "Edita cada cuánto se repite esta serie",
+      "pendingWarning": "El nuevo patrón se aplicará al guardar. Las fechas con reservas se mantendrán como están.",
+      "patternApplied": "Patrón actualizado: {{removed}} fecha(s) reemplazada(s), {{created}} creada(s).",
+      "keptBooked_one": "1 fecha se mantuvo porque ya tiene reservas. Coordínala con tus asistentes en el chat del evento:",
+      "keptBooked_other": "{{count}} fechas se mantuvieron porque ya tienen reservas. Coordínalas con tus asistentes en el chat del evento:"
     }
   },
   "profile": {
