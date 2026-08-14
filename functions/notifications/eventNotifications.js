@@ -81,7 +81,8 @@ async function notifyPromoted(eventId, uid, eventTitle) {
   const params = {event: eventTitle || "an event"};
   const tk = "notifications.event.waitlistPromoted.title";
   const bk = "notifications.event.waitlistPromoted.body";
-  await db.collection("notifications").add({
+  // KIN-224: keep the doc id for the push below.
+  const notifRef = await db.collection("notifications").add({
     userId: uid,
     type: "waitlist_promoted",
     title: tPush(tk, "en", params),
@@ -103,7 +104,7 @@ async function notifyPromoted(eventId, uid, eventTitle) {
       titleKey: tk,
       bodyKey: "notifications.event.waitlistPromoted.pushBody",
       params,
-      data: {type: "waitlist_promoted", eventId},
+      data: {type: "waitlist_promoted", eventId, notificationId: notifRef.id},
     }]);
   }
 }
@@ -184,7 +185,8 @@ async function notifyHostOfNewAttendees(
 
     // 1. Always write an in-app notification (the bubble), regardless of push.
     //    This is the single source of "someone joined" for free/paid/membership.
-    await db.collection("notifications").add({
+    // KIN-224: keep the doc id for the push below.
+    const notifRef = await db.collection("notifications").add({
       userId: hostId,
       type: "event_joined",
       title,
@@ -209,7 +211,12 @@ async function notifyHostOfNewAttendees(
           titleKey,
           bodyKey,
           params,
-          data: {type: "event_joined", eventId, eventTitle},
+          data: {
+            type: "event_joined",
+            eventId,
+            eventTitle,
+            notificationId: notifRef.id,
+          },
         },
       ]);
       console.log(

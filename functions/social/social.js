@@ -124,8 +124,9 @@ const onFollowCreated = onDocumentCreated("follows/{docId}", async (event) => {
   const bk = "notifications.social.newFollower.body";
   const params = {name: followerName};
 
-  // Write in-app notification
-  await db.collection("notifications").add({
+  // Write in-app notification. KIN-224: keep the id so tapping the push can
+  // mark this same bubble read.
+  const notifRef = await db.collection("notifications").add({
     userId: followeeId,
     type: "NEW_FOLLOWER",
     fromUserId: followerId,
@@ -152,7 +153,11 @@ const onFollowCreated = onDocumentCreated("follows/{docId}", async (event) => {
         titleKey: tk,
         bodyKey: bk,
         params,
-        data: {type: "NEW_FOLLOWER", fromUserId: followerId},
+        data: {
+          type: "NEW_FOLLOWER",
+          fromUserId: followerId,
+          notificationId: notifRef.id,
+        },
       },
     ]);
   }

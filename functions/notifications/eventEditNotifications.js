@@ -101,9 +101,15 @@ async function notifyRosterOfEventEdit(db, eventId, beforeData, afterData) {
 
   // The in-app bubble first: it's the record, and it must land whether or not
   // the recipient has push enabled.
+  // KIN-224: the ref is generated BEFORE the batch.set so each recipient's push
+  // can carry its own doc id. One id per uid — sharing one would let a tap mark
+  // somebody else's bubble read.
+  const notifIdByUid = {};
   const batch = db.batch();
   for (const uid of uids) {
-    batch.set(db.collection("notifications").doc(), {
+    const notifRef = db.collection("notifications").doc();
+    notifIdByUid[uid] = notifRef.id;
+    batch.set(notifRef, {
       userId: uid,
       type: "event_details_changed",
       // English copies are the write-time fallback only (BUG 34); the client
@@ -136,7 +142,11 @@ async function notifyRosterOfEventEdit(db, eventId, beforeData, afterData) {
       titleKey: TITLE_KEY,
       bodyKey: BODY_KEY,
       params,
-      data: {type: "event_details_changed", eventId},
+      data: {
+        type: "event_details_changed",
+        eventId,
+        notificationId: notifIdByUid[uid],
+      },
     });
   }
   if (entries.length > 0) await sendBatchPushNotifications(entries);

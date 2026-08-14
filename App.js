@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { markAsRead } from "./src/utils/notificationService";
 import { Platform, Linking, LogBox } from "react-native";
 import "./src/i18n"; // initialize i18next before any screen renders
 import { joinGroupByCode } from "./src/services/hostGroupService";
@@ -131,6 +132,7 @@ function App() {
         const data = response.notification.request.content.data;
         console.log("📦 Notification data:", JSON.stringify(data));
 
+        markPushRead(data); // KIN-224
         // ✅ Handle navigation based on notification type
         handleNotificationNavigation(data);
       });
@@ -181,6 +183,8 @@ function App() {
         console.log("🚀 App opened from notification (cold start)");
         const data = response.notification.request.content.data;
 
+        markPushRead(data); // KIN-224 — no depende del navegador, no se difiere
+
         // Poll until navigator is ready instead of using a fixed timeout
         const tryNavigate = (attemptsLeft) => {
           if (navigationRef.current?.isReady()) {
@@ -196,6 +200,20 @@ function App() {
     } catch (error) {
       console.error("Error checking initial notification:", error);
     }
+  };
+
+  // KIN-224: tapping the OS push should also clear the in-app bubble it came
+  // from — until now the two were unrelated and the badge stayed lit.
+  //
+  // Fire-and-forget on purpose: navigating is the point of the tap, and a
+  // failed write must never swallow it. Guarded on notificationId because
+  // pushes already in flight (and the three types that have no in-app bubble
+  // at all) don't carry one — those just stay unread, exactly as before.
+  const markPushRead = (data) => {
+    if (!data?.notificationId) return;
+    markAsRead(data.notificationId).catch((e) =>
+      console.warn("⚠️ Could not mark notification read:", e?.message || e),
+    );
   };
 
   // ✅ NEW: Centralized navigation handler for notifications

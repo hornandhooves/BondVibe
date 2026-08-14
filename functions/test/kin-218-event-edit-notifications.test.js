@@ -26,6 +26,16 @@ process.env.FIRESTORE_EMULATOR_HOST =
 if (!admin.apps.length) admin.initializeApp({projectId: PROJECT});
 const db = admin.firestore();
 
+// KIN-224: intercept the push transport BEFORE the module under test captures
+// it — eventEditNotifications destructures sendBatchPushNotifications at require
+// time, so patching afterwards would do nothing. This is the only thing stubbed
+// in this file, and it exists to read the payload without POSTing to Expo.
+const pushService = require("../notifications/pushService");
+const sentPushes = [];
+pushService.sendBatchPushNotifications = async (entries) => {
+  sentPushes.push(...entries);
+};
+
 const {
   changedEventFields,
   notifyRosterOfEventEdit,
@@ -166,7 +176,7 @@ const seedEvent = async ({activeUids = [], waitlistUids = [], creatorId = "host1
 const notifsFor = async (eventId) => {
   const snap = await db.collection("notifications")
     .where("type", "==", "event_details_changed").get();
-  return snap.docs.map((d) => d.data())
+  return snap.docs.map((d) => ({id: d.id, ...d.data()}))
     .filter((n) => n.metadata && n.metadata.eventId === eventId);
 };
 
@@ -228,4 +238,40 @@ test("an empty roster is not an error", async () => {
   const eventId = await seedEvent({activeUids: []});
   const notified = await notifyRosterOfEventEdit(db, eventId, evt(), evt({title: "x"}));
   assert.deepStrictEqual(notified, []);
+});
+
+// ---------------------------------------------------------------------------
+// KIN-224 — the push has to name the bubble it came from
+// ---------------------------------------------------------------------------
+
+test("KIN-224 each push carries THAT recipient's own notification id", async () => {
+  // The failure this pins is not "the field is missing" but "everyone got the
+  // same id": one shared id would let one person's tap mark somebody else's
+  // notification read.
+  const u1 = `k224a_${nextId()}`;
+  const u2 = `k224b_${nextId()}`;
+  const eventId = await seedEvent({activeUids: [u1, u2]});
+  for (const uid of [u1, u2]) {
+    await db.collection("users").doc(uid)
+      .set({pushToken: `ExponentPushToken[${uid}]`, language: "en"});
+  }
+
+  sentPushes.length = 0;
+  await notifyRosterOfEventEdit(
+    db, eventId, evt(), evt({date: "2026-09-08T15:00:00.000Z"}));
+
+  assert.strictEqual(sentPushes.length, 2, "both recipients should be pushed");
+
+  const byUser = {};
+  for (const n of await notifsFor(eventId)) byUser[n.userId] = n.id;
+
+  for (const entry of sentPushes) {
+    assert.ok(entry.data.notificationId, `no notificationId for ${entry.uid}`);
+    assert.strictEqual(
+      entry.data.notificationId, byUser[entry.uid],
+      `push for ${entry.uid} points at the wrong bubble`);
+  }
+  // ...and the two ids are genuinely different documents.
+  assert.notStrictEqual(
+    sentPushes[0].data.notificationId, sentPushes[1].data.notificationId);
 });
