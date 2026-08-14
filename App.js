@@ -235,6 +235,9 @@ function App() {
       case "event_joined":
       case "event_paid_attendee":
       case "attendee_cancelled":
+      // KIN-218: the host edited the event — same destination, the attendee
+      // needs to see what actually changed.
+      case "event_details_changed":
         // Navigate to EventDetail
         if (data.eventId) {
           console.log(`📍 Navigating to EventDetail: ${data.eventId}`);
