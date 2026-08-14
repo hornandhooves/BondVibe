@@ -123,12 +123,22 @@ export const markAllAsRead = async (userId) => {
     );
     const snapshot = await getDocs(notificationsQuery);
 
-    const promises = snapshot.docs.map((docSnap) =>
-      updateDoc(doc(db, "notifications", docSnap.id), {
+    const promises = snapshot.docs.map((docSnap) => {
+      const data = docSnap.data();
+      const patch = {
         read: true,
         readAt: new Date().toISOString(),
-      })
-    );
+      };
+      // KIN-225: un doc de tipo event_messages agrega su propio contador, y
+      // `read: true` no lo toca. Sin esto, "marcar todo como leído" apagaba la
+      // tarjeta pero dejaba el badge encendido con el conteo viejo. El otro
+      // camino (clearEventMessageNotifications, al abrir el chat) ya lo
+      // reseteaba; este no.
+      if (data.type === "event_messages") {
+        patch.unreadCount = 0;
+      }
+      return updateDoc(doc(db, "notifications", docSnap.id), patch);
+    });
 
     await Promise.all(promises);
     console.log("✅ All notifications marked as read");

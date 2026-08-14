@@ -884,6 +884,12 @@ exports.onNewMessage = onDocumentCreated(
                   eventId: eventId,
                   conversationId: `event_${eventId}`,
                   eventTitle: eventTitle,
+                  // KIN-224 (consistencia): el resto de los 14 tipos ya manda
+                  // notificationId. Aquí el id es DETERMINISTA a propósito — el
+                  // doc in-app se escribe en el segundo loop, después de este
+                  // push, así que no hay ref que capturar; se construye igual
+                  // que abajo.
+                  notificationId: `event_msg_${eventId}_${userId}`,
                 },
                 badge,
               });
