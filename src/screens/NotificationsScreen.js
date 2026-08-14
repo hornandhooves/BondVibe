@@ -304,6 +304,8 @@ export default function NotificationsScreen({ navigation }) {
       case "attendee_cancelled":
       case "event_reminder":
       case "waitlist_promoted":
+      // KIN-218 — same destination as the rest.
+      case "event_details_changed":
         if (notification.metadata?.eventId) {
           navigation.navigate("EventDetail", {
             eventId: notification.metadata.eventId,
