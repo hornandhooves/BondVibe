@@ -383,16 +383,21 @@ async function notifyLocalized(linkedUid, title, bodyKey, params) {
     delete p.whenAt;
   }
 
+  // KIN-224: the push is sent BEFORE the doc is written here, so the ref is
+  // generated up front to get an id without reordering the two writes.
+  const notifRef = db().collection("notifications").doc();
+
   if (data.pushToken) {
     try {
       await sendPushNotification(data.pushToken, {
-        uid: linkedUid, lang, title, bodyKey, params: p, data: {type: "business"},
+        uid: linkedUid, lang, title, bodyKey, params: p,
+        data: {type: "business", notificationId: notifRef.id},
       });
     } catch (e) {
       // best-effort
     }
   }
-  await db().collection("notifications").add({
+  await notifRef.set({
     userId: linkedUid,
     type: "business_message",
     title: title || "Kinlo",

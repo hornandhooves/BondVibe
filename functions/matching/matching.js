@@ -203,7 +203,8 @@ const advanceMatchingWindows = onSchedule(
         const pushes = [];
         for (const p of profiles.docs) {
           const targetUid = p.id;
-          await db.collection("notifications").add({
+          // KIN-224: one id per attendee — never share one across recipients.
+          const notifRef = await db.collection("notifications").add({
             userId: targetUid,
             type: "matching_open",
             title: tPush(tk, "en", params),
@@ -225,7 +226,11 @@ const advanceMatchingWindows = onSchedule(
               titleKey: tk,
               bodyKey: bk,
               params,
-              data: {type: "matching_open", eventId: docSnap.id},
+              data: {
+                type: "matching_open",
+                eventId: docSnap.id,
+                notificationId: notifRef.id,
+              },
             });
           }
         }
@@ -334,8 +339,11 @@ const createLikeAndMaybeMatch = onCall(async (request) => {
     const bk = "notifications.match.new.body";
     const params = {};
     const recipients = [toUid, from];
+    // KIN-224: both halves of the pair get a bubble, but only the passive one
+    // gets a push — keep the ids by uid so the push carries ITS OWN doc id.
+    const notifIdByUid = {};
     for (const ruid of recipients) {
-      await db.collection("notifications").add({
+      const notifRef = await db.collection("notifications").add({
         userId: ruid,
         type: "new_match",
         title: tPush(tk, "en", params),
@@ -348,6 +356,7 @@ const createLikeAndMaybeMatch = onCall(async (request) => {
         createdAt: FieldValue.serverTimestamp(),
         metadata: {eventId, matchId},
       });
+      notifIdByUid[ruid] = notifRef.id;
     }
     // Push ONLY to the passive recipient (toUid). The actor (from) just tapped
     // like and their client surfaces the match synchronously (result.matched),
@@ -361,7 +370,12 @@ const createLikeAndMaybeMatch = onCall(async (request) => {
         titleKey: tk,
         bodyKey: bk,
         params,
-        data: {type: "new_match", eventId, matchId},
+        data: {
+          type: "new_match",
+          eventId,
+          matchId,
+          notificationId: notifIdByUid[toUid],
+        },
       }]);
     }
   }

@@ -1875,7 +1875,8 @@ exports.redeemMembershipCredit = onCall(async (request) => {
         "notifications.creditUsed.body";
       const params = {event: eventTitle, remaining, plan: planName};
 
-      await db.collection("notifications").add({
+      // KIN-224: keep the doc id so tapping the push can mark this bubble read.
+      const notifRef = await db.collection("notifications").add({
         userId: result.memberUid,
         type: "membership_redeemed",
         title: tPush(titleKey, "en", params),
@@ -1909,7 +1910,11 @@ exports.redeemMembershipCredit = onCall(async (request) => {
           titleKey,
           bodyKey,
           params,
-          data: {type: "membership_redeemed", membershipId: result.membershipId},
+          data: {
+            type: "membership_redeemed",
+            membershipId: result.membershipId,
+            notificationId: notifRef.id,
+          },
           badge,
         });
       }
@@ -2004,7 +2009,8 @@ exports.undoMembershipRedemption = onCall(async (request) => {
         "notifications.creditRestored.body";
       const params = {event: eventTitle, remaining, plan: planName};
 
-      await db.collection("notifications").add({
+      // KIN-224: keep the doc id so tapping the push can mark this bubble read.
+      const notifRef = await db.collection("notifications").add({
         userId: result.memberUid,
         type: "membership_restored",
         title: tPush(titleKey, "en", params),
@@ -2036,7 +2042,11 @@ exports.undoMembershipRedemption = onCall(async (request) => {
           titleKey,
           bodyKey,
           params,
-          data: {type: "membership_restored", membershipId: result.membershipId},
+          data: {
+            type: "membership_restored",
+            membershipId: result.membershipId,
+            notificationId: notifRef.id,
+          },
           badge,
         });
       }
@@ -2296,7 +2306,8 @@ exports.sendEventReminders = onSchedule(
       const pushes = [];
       // ROSTER: reminders go to the ACTIVE roster (read from the subcollection).
       for (const uid of await roster.activeUids(db, docSnap.id)) {
-        await db.collection("notifications").add({
+        // KIN-224: one id per recipient — never share one across attendees.
+        const notifRef = await db.collection("notifications").add({
           userId: uid,
           type: "event_reminder",
           title: tPush(titleKey, "en", params), // English fallback
@@ -2318,7 +2329,11 @@ exports.sendEventReminders = onSchedule(
             titleKey,
             bodyKey,
             params,
-            data: {type: "event_reminder", eventId: docSnap.id},
+            data: {
+              type: "event_reminder",
+              eventId: docSnap.id,
+              notificationId: notifRef.id,
+            },
           });
         }
       }
@@ -2730,7 +2745,8 @@ exports.onGroupMessage = onDocumentCreated(
     // preview — so it is NOT keyed/localized (same policy as event-chat/DM bodies).
     const pushes = [];
     for (const uid of recipients) {
-      await db.collection("notifications").add({
+      // KIN-224: one id per recipient.
+      const notifRef = await db.collection("notifications").add({
         userId: uid,
         type: "group_message",
         title: group.name || "Group",
@@ -2746,7 +2762,7 @@ exports.onGroupMessage = onDocumentCreated(
           pushToken: u.data().pushToken,
           title: group.name || "Group",
           body: preview,
-          data: {type: "group_message", groupId},
+          data: {type: "group_message", groupId, notificationId: notifRef.id},
           // Icon badge = their unread total (the notification above is already
           // written, so it's included) — Fix B.
           badge: await unreadTotalForUser(uid),
