@@ -68,7 +68,10 @@ export default function EditEventScreen({ route, navigation }) {
     title: "",
     description: "",
     category: "social", // KIN-231: id, no label — igual que Create Event
-    language: "both",
+    // KIN-232: array, no string. Create escribe `languages` (array) y
+    // SearchEvents filtra por ese campo; Edit escribía `language` (string), que
+    // nadie más leía, así que editar un evento lo sacaba del filtro de idioma.
+    languages: [],
     date: new Date(),
     time: "",
     location: "",
@@ -175,7 +178,7 @@ export default function EditEventScreen({ route, navigation }) {
           // normalizeCategory absorbe los dos formatos, incluidos los eventos
           // que ya quedaron guardados con el label.
           category: normalizeCategory(data.category) || "social",
-          language: data.language || "both",
+          languages: Array.isArray(data.languages) ? data.languages : [],
           date: eventDate,
           time: data.time || "",
           location: data.location || "",
@@ -684,7 +687,7 @@ export default function EditEventScreen({ route, navigation }) {
         title: form.title.trim(),
         description: form.description.trim(),
         category: form.category,
-        language: form.language,
+        languages: form.languages, // KIN-232: mismo campo que escribe Create
         location: form.location.trim(),
         locationCoords: resolvedCoords || null,
         venueAddress: form.venueAddress?.trim() || null,
@@ -1161,54 +1164,16 @@ export default function EditEventScreen({ route, navigation }) {
           placeholder={t("createEvent.agendaType.placeholder")}
         />
 
-        {/* Language */}
-        <View style={styles.field}>
-          <Text style={[styles.label, { color: colors.text }]}>{t("editEvent.languageLabel")}</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ flexGrow: 0 }}
-            contentContainerStyle={styles.categoryScroll}
-          >
-            {EVENT_LANGUAGES.map((lang) => (
-              <TouchableOpacity
-                key={lang.id}
-                style={styles.categoryChip}
-                onPress={() => setForm({ ...form, language: lang.id })}
-              >
-                <View
-                  style={[
-                    styles.categoryChipGlass,
-                    {
-                      backgroundColor:
-                        form.language === lang.id
-                          ? `${colors.primary}33`
-                          : colors.surfaceGlass,
-                      borderColor:
-                        form.language === lang.id
-                          ? colors.primary
-                          : colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.categoryChipText,
-                      {
-                        color:
-                          form.language === lang.id
-                            ? colors.primary
-                            : colors.text,
-                      },
-                    ]}
-                  >
-                    {lang.label}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+        {/* Language — KIN-232: mismo componente multi-select que Create. */}
+        <SelectDropdown
+          label={t("editEvent.languageLabel")}
+          value={form.languages}
+          onValueChange={(v) => setForm({ ...form, languages: v })}
+          options={EVENT_LANGUAGES}
+          placeholder={t("createEvent.selectLanguages")}
+          type="language"
+          multiSelect
+        />
 
         {/* Date & Time with Native Pickers */}
         <View style={styles.rowSection}>

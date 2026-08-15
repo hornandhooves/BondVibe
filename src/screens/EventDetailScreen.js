@@ -29,6 +29,7 @@ import {
 import { db, auth } from "../services/firebase";
 import { formatMXN } from "../utils/pricing";
 import { useTheme } from "../contexts/ThemeContext";
+import { EVENT_LANGUAGES } from "../utils/eventCategories";
 import GradientBackground from "../components/GradientBackground";
 import { AvatarDisplay } from "../components/AvatarPicker";
 import { createNotification } from "../utils/notificationService";
@@ -56,6 +57,32 @@ import { leaveEvent, isOnRoster, getEventRosterUids, getEventCoAttendees } from 
 import { joinFreeEvent } from "../services/eventJoinService";
 import { getMatchInsight } from "../utils/personalityScoring";
 import { getFollowing } from "../services/followService";
+
+/**
+ * KIN-232 — texto del badge de idioma.
+ *
+ * Antes leía `event.language` (string) con un valor especial "both", que sólo
+ * escribía Edit Event y que no existe en el esquema de array que usa Create.
+ * Con el array no hay "both": simplemente hay más de un elemento.
+ *
+ * Un solo idioma se nombra. Varios se listan por código, porque "Bilingual"
+ * deja de ser cierto en cuanto son tres — y hay 14 idiomas en el catálogo, no
+ * dos: el badge anterior mostraba "English" para francés, alemán o japonés.
+ *
+ * @param {string[]} languages códigos guardados en el evento
+ * @param {function} t traductor
+ * @returns {string|null} el texto, o null si no hay idiomas
+ */
+export const languageBadgeText = (languages, t) => {
+  const list = (Array.isArray(languages) ? languages : []).filter(Boolean);
+  if (list.length === 0) return null;
+  if (list.length > 1) return list.map((c) => String(c).toUpperCase()).join(" · ");
+  const code = list[0];
+  if (code === "es") return t("eventDetail.languageSpanish");
+  if (code === "en") return t("eventDetail.languageEnglish");
+  const opt = EVENT_LANGUAGES.find((l) => l.id === code);
+  return opt ? opt.label : String(code).toUpperCase();
+};
 
 export default function EventDetailScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
@@ -910,26 +937,20 @@ export default function EventDetailScreen({ route, navigation }) {
                 </Text>
               </View>
             )}
-            {event.language && event.language !== "both" && (
+            {languageBadgeText(event.languages, t) && (
               <View
                 style={[
                   styles.languageBadge,
-                  { backgroundColor: "rgba(100, 100, 255, 0.15)" },
+                  {
+                    backgroundColor: (event.languages || []).length > 1 ?
+                      "rgba(100, 200, 100, 0.15)" :
+                      "rgba(100, 100, 255, 0.15)",
+                  },
                 ]}
               >
                 <Text style={styles.languageBadgeText}>
-                  {event.language === "es" ? t("eventDetail.languageSpanish") : t("eventDetail.languageEnglish")}
+                  {languageBadgeText(event.languages, t)}
                 </Text>
-              </View>
-            )}
-            {event.language === "both" && (
-              <View
-                style={[
-                  styles.languageBadge,
-                  { backgroundColor: "rgba(100, 200, 100, 0.15)" },
-                ]}
-              >
-                <Text style={styles.languageBadgeText}>{t("eventDetail.bilingual")}</Text>
               </View>
             )}
             {event.averageRating > 0 && (

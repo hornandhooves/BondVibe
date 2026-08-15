@@ -234,3 +234,51 @@ describe("KIN-233 — duración", () => {
     expect(await save(utils)).toHaveProperty("durationMinutes");
   });
 });
+
+// ---------------------------------------------------------------------------
+// KIN-232 — idioma
+// ---------------------------------------------------------------------------
+
+describe("KIN-232 — idioma", () => {
+  it("hidrata desde `languages` (array), el campo que escribe Create", async () => {
+    seed({ languages: ["es", "en"] });
+    const utils = await open();
+    expect(await utils.findByText(/^language:\["es","en"\]/)).toBeTruthy();
+  });
+
+  it("guarda `languages` como array", async () => {
+    seed({ languages: ["es"] });
+    const utils = await open();
+    expect((await save(utils)).languages).toEqual(["es"]);
+  });
+
+  it("deja de escribir el campo `language` (string)", async () => {
+    // Era un campo que sólo Edit llenaba y sólo EventDetail leía. Mantener los
+    // dos en paralelo es cómo volvieron a divergir la primera vez.
+    seed({ languages: ["es"] });
+    const utils = await open();
+    expect(await save(utils)).not.toHaveProperty("language");
+  });
+
+  it("un evento sin `languages` no revienta ni inventa idiomas", async () => {
+    seed({ languages: undefined });
+    const utils = await open();
+    expect((await save(utils)).languages).toEqual([]);
+  });
+
+  it("ignora un `language` string viejo en vez de heredarlo", async () => {
+    // Documenta la decisión: los eventos ya editados con el esquema viejo NO se
+    // migran desde el cliente. Es una decisión de datos, pendiente de Carlos.
+    seed({ language: "both", languages: undefined });
+    const utils = await open();
+    expect((await save(utils)).languages).toEqual([]);
+  });
+
+  it("es multi-select: acepta varios idiomas", async () => {
+    seed({ languages: ["es"] });
+    const utils = await open();
+    fireEvent.press(await utils.findByTestId("dropdown-language"));
+    const written = await save(utils);
+    expect(Array.isArray(written.languages)).toBe(true);
+  });
+});
