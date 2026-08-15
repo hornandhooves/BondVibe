@@ -153,3 +153,40 @@ describe("SignupScreen — password field is the last field", () => {
     await waitFor(() => expect(setDoc).toHaveBeenCalled());
   });
 });
+
+describe("SignupScreen — KIN-229: el email queda en el doc de Firestore", () => {
+  // Vivía sólo en Auth. findUserByEmail consulta where("email","==",...) contra
+  // `users`, así que sin este campo devolvía null para todo el mundo y no se
+  // podía invitar a nadie como co-anfitrión.
+  const signUpWith = async (email) => {
+    const { getByPlaceholderText } = setup();
+    fireEvent.changeText(getByPlaceholderText("you@example.com"), email);
+    const field = getByPlaceholderText("Create a password");
+    fireEvent.changeText(field, STRONG_PASSWORD);
+    await act(async () => {
+      fireEvent(field, "submitEditing");
+    });
+    await waitFor(() => expect(setDoc).toHaveBeenCalled());
+    return setDoc.mock.calls[0][1];
+  };
+
+  it("guarda el email del alta", async () => {
+    expect((await signUpWith("test@example.com")).email).toBe("test@example.com");
+  });
+
+  it("lo normaliza a minúsculas y sin espacios", async () => {
+    // La query compara exacto contra trim+lowercase: guardarlo con mayúsculas
+    // haría invisible a un usuario que sí existe.
+    expect((await signUpWith("  Test@Example.COM  ")).email).toBe("test@example.com");
+  });
+
+  it("sigue escribiendo el resto del perfil", async () => {
+    // Guarda de no-regresión: el campo nuevo no desplazó nada.
+    expect(await signUpWith("test@example.com")).toMatchObject({
+      profileCompleted: false,
+      emailVerified: false,
+      legalAccepted: false,
+      role: "user",
+    });
+  });
+});

@@ -104,6 +104,11 @@ export default function SignupScreen({ navigation }) {
       // 2. Crear documento en Firestore
       console.log("📄 Creating Firestore document...");
       await setDoc(doc(db, "users", user.uid), {
+        // KIN-229: el email nunca se guardaba en el doc, sólo en Auth. Sin él,
+        // findUserByEmail no encuentra a nadie y no se puede invitar a un
+        // co-anfitrión. Normalizado (trim + lowercase) porque esa query compara
+        // exacto contra el mismo formato.
+        email: email.trim().toLowerCase(),
         createdAt: new Date().toISOString(),
         profileCompleted: false,
         emailVerified: false,

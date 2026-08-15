@@ -49,8 +49,14 @@ const ensureUserDoc = async (user, fields = {}) => {
   const ref = doc(db, "users", user.uid);
   const snap = await getDoc(ref);
   if (!snap.exists()) {
+    // KIN-229: mismo campo que escribe el alta por email. Apple con "Hide My
+    // Email" puede no devolver ninguno: en ese caso NO se escribe la clave, en
+    // vez de guardar "" — una cadena vacía es un valor, y sería un valor falso
+    // que además haría match con una búsqueda vacía.
+    const normalizedEmail = (user.email || "").trim().toLowerCase();
     await setDoc(ref, {
       fullName: user.displayName || fields.fullName || "",
+      ...(normalizedEmail ? {email: normalizedEmail} : {}),
       createdAt: new Date().toISOString(),
       profileCompleted: false,
       emailVerified: true,
