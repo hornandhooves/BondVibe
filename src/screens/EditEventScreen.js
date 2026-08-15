@@ -42,6 +42,7 @@ import GradientBackground from "../components/GradientBackground";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import EventImagePicker from "../components/EventImagePicker";
 import SelectDropdown from "../components/SelectDropdown";
+import DurationWheelModal, { formatDuration } from "../components/DurationWheelModal";
 import RecurrenceModal from "../components/RecurrenceModal";
 import {
   getRecurrenceSummary,
@@ -52,16 +53,11 @@ import {
   uploadEventImages,
   deleteEventImage,
 } from "../services/storageService";
-import { EVENT_LANGUAGES, EVENT_DURATIONS } from "../utils/eventCategories";
-
-const CATEGORIES = [
-  "Social",
-  "Sports",
-  "Food",
-  "Arts",
-  "Learning",
-  "Adventure",
-];
+import {
+  EVENT_LANGUAGES,
+  EVENT_CATEGORIES,
+  normalizeCategory,
+} from "../utils/eventCategories";
 
 
 export default function EditEventScreen({ route, navigation }) {
@@ -71,8 +67,11 @@ export default function EditEventScreen({ route, navigation }) {
   const [form, setForm] = useState({
     title: "",
     description: "",
-    category: "Social",
-    language: "both",
+    category: "social", // KIN-231: id, no label — igual que Create Event
+    // KIN-232: array, no string. Create escribe `languages` (array) y
+    // SearchEvents filtra por ese campo; Edit escribía `language` (string), que
+    // nadie más leía, así que editar un evento lo sacaba del filtro de idioma.
+    languages: [],
     date: new Date(),
     time: "",
     location: "",
@@ -135,6 +134,7 @@ export default function EditEventScreen({ route, navigation }) {
   const originalDateRef = useRef(null);
 
   // Date/Time picker state
+  const [showDurationModal, setShowDurationModal] = useState(false); // KIN-233
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [tempDate, setTempDate] = useState(new Date());
@@ -172,8 +172,13 @@ export default function EditEventScreen({ route, navigation }) {
         setForm({
           title: data.title || "",
           description: data.description || "",
-          category: data.category || "Social",
-          language: data.language || "both",
+          // KIN-231: Edit guardaba el LABEL capitalizado ("Social") mientras
+          // Create guarda el id ("social"), así que editar un evento le
+          // cambiaba la categoría a un valor que los filtros no reconocen.
+          // normalizeCategory absorbe los dos formatos, incluidos los eventos
+          // que ya quedaron guardados con el label.
+          category: normalizeCategory(data.category) || "social",
+          languages: Array.isArray(data.languages) ? data.languages : [],
           date: eventDate,
           time: data.time || "",
           location: data.location || "",
@@ -682,7 +687,7 @@ export default function EditEventScreen({ route, navigation }) {
         title: form.title.trim(),
         description: form.description.trim(),
         category: form.category,
-        language: form.language,
+        languages: form.languages, // KIN-232: mismo campo que escribe Create
         location: form.location.trim(),
         locationCoords: resolvedCoords || null,
         venueAddress: form.venueAddress?.trim() || null,
@@ -1132,54 +1137,17 @@ export default function EditEventScreen({ route, navigation }) {
           </Text>
         </View>
 
-        {/* Category */}
-        <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.text }]}>{t("editEvent.communityLabel")}</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ flexGrow: 0 }}
-            contentContainerStyle={styles.categoryScroll}
-          >
-            {CATEGORIES.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={styles.categoryChip}
-                onPress={() => setForm({ ...form, category: cat })}
-              >
-                <View
-                  style={[
-                    styles.categoryChipGlass,
-                    {
-                      backgroundColor:
-                        form.category === cat
-                          ? `${colors.primary}33`
-                          : colors.surfaceGlass,
-                      borderColor:
-                        form.category === cat
-                          ? `${colors.primary}66`
-                          : colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.categoryChipText,
-                      {
-                        color:
-                          form.category === cat
-                            ? colors.primary
-                            : colors.textSecondary,
-                      },
-                    ]}
-                  >
-                    {cat}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+        {/* Category — KIN-231: mismo componente y misma lista que Create
+            Event. Antes eran 6 chips locales con el label como valor; los
+            otros 9 de EVENT_CATEGORIES eran inalcanzables desde Edit. */}
+        <SelectDropdown
+          label={t("editEvent.communityLabel")}
+          value={form.category}
+          onValueChange={(v) => setForm({ ...form, category: v })}
+          options={EVENT_CATEGORIES}
+          placeholder={t("createEvent.selectCommunity")}
+          type="category"
+        />
 
         {/* Type — drives the Agenda category/color (BUG 27.1). "Blocked time"
             (OOO) makes the event private automatically. */}
@@ -1196,54 +1164,16 @@ export default function EditEventScreen({ route, navigation }) {
           placeholder={t("createEvent.agendaType.placeholder")}
         />
 
-        {/* Language */}
-        <View style={styles.field}>
-          <Text style={[styles.label, { color: colors.text }]}>{t("editEvent.languageLabel")}</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ flexGrow: 0 }}
-            contentContainerStyle={styles.categoryScroll}
-          >
-            {EVENT_LANGUAGES.map((lang) => (
-              <TouchableOpacity
-                key={lang.id}
-                style={styles.categoryChip}
-                onPress={() => setForm({ ...form, language: lang.id })}
-              >
-                <View
-                  style={[
-                    styles.categoryChipGlass,
-                    {
-                      backgroundColor:
-                        form.language === lang.id
-                          ? `${colors.primary}33`
-                          : colors.surfaceGlass,
-                      borderColor:
-                        form.language === lang.id
-                          ? colors.primary
-                          : colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.categoryChipText,
-                      {
-                        color:
-                          form.language === lang.id
-                            ? colors.primary
-                            : colors.text,
-                      },
-                    ]}
-                  >
-                    {lang.label}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+        {/* Language — KIN-232: mismo componente multi-select que Create. */}
+        <SelectDropdown
+          label={t("editEvent.languageLabel")}
+          value={form.languages}
+          onValueChange={(v) => setForm({ ...form, languages: v })}
+          options={EVENT_LANGUAGES}
+          placeholder={t("createEvent.selectLanguages")}
+          type="language"
+          multiSelect
+        />
 
         {/* Date & Time with Native Pickers */}
         <View style={styles.rowSection}>
@@ -1335,15 +1265,38 @@ export default function EditEventScreen({ route, navigation }) {
           />
         </View>
 
-        {/* Event length — sets end time; drives when Community Matching opens */}
-        <SelectDropdown
-          label={t("editEvent.eventLengthLabel")}
-          value={form.durationMinutes}
-          onValueChange={(v) => setForm({ ...form, durationMinutes: v })}
-          options={EVENT_DURATIONS}
-          placeholder={t("editEvent.selectDuration")}
-          type="default"
-        />
+        {/* Event length — sets end time; drives when Community Matching opens.
+            KIN-233: la misma rueda que Create. El dropdown anterior sólo ofrecía
+            8 valores fijos, así que una duración creada con la rueda (p.ej. 1h
+            45m) no estaba en la lista y editar el evento la forzaba a otra. */}
+        <View style={styles.section}>
+          <Text style={[styles.label, { color: colors.text }]}>
+            {t("editEvent.eventLengthLabel")}
+          </Text>
+          <TouchableOpacity
+            testID="edit-duration-trigger"
+            activeOpacity={0.8}
+            onPress={() => setShowDurationModal(true)}
+            style={[
+              styles.inputWrapper,
+              {
+                backgroundColor: colors.surfaceGlass,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.input,
+                {color: form.durationMinutes ? colors.text : colors.textTertiary},
+              ]}
+            >
+              {form.durationMinutes ?
+                formatDuration(form.durationMinutes) :
+                t("editEvent.selectDuration")}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* List event publicly — gates discovery/search (BUG 27). Hidden for a
             blocked/OOO slot, which is always private. */}
@@ -1624,6 +1577,14 @@ export default function EditEventScreen({ route, navigation }) {
           onChange={onTimeChange}
         />
       )}
+
+      {/* KIN-233: la misma rueda que Create. `onSelect`, no `onChange`. */}
+      <DurationWheelModal
+        visible={showDurationModal}
+        value={form.durationMinutes}
+        onSelect={(v) => setForm({ ...form, durationMinutes: v })}
+        onClose={() => setShowDurationModal(false)}
+      />
 
       {/* KIN-214: the same modal Create uses — one pattern editor, not two. */}
       {isRecurring && (
