@@ -72,7 +72,8 @@ function changedEventFields(beforeData, afterData) {
 }
 
 /**
- * Notify the active roster that the host edited the event.
+ * Notify everyone attached to the event that it was edited — asistentes,
+ * creador y co-anfitriones — menos quien hizo la edición (KIN-234).
  *
  * One notification per save that touches at least one watched field — no
  * debounce. A host correcting a typo twice sends twice; that's the honest
@@ -83,7 +84,9 @@ function changedEventFields(beforeData, afterData) {
  * @param {string} eventId the event
  * @param {object} beforeData the event doc before the write
  * @param {object} afterData the event doc after the write
- * @return {Promise<string[]>} the uids notified (empty when nothing was sent)
+ * @return {Promise<string[]>} the uids notified (empty when nothing was sent).
+ *   El actor sale de `afterData.lastEditedBy`, que escribe EditEventScreen; un
+ *   trigger de Firestore no tiene request.auth.uid.
  */
 async function notifyRosterOfEventEdit(db, eventId, beforeData, afterData) {
   const changedFields = changedEventFields(beforeData, afterData);
@@ -91,9 +94,24 @@ async function notifyRosterOfEventEdit(db, eventId, beforeData, afterData) {
   // A cancelled event has its own notification; don't also announce the edit.
   if (afterData.status === "cancelled") return [];
 
+  // KIN-234: quién editó DE VERDAD. Antes se asumía que era el creador y se le
+  // excluía a él, lo que dejaba dos huecos: si editaba un co-anfitrión, el
+  // creador no se enteraba de un cambio en su propio evento, y ese co-anfitrión
+  // sí recibía aviso de su propia acción cuando además estaba en el roster.
+  // `lastEditedBy` lo escribe EditEventScreen; los documentos anteriores a este
+  // ticket no lo traen, y para ésos el creador sigue siendo la mejor suposición.
   const creatorId = getEventCreatorId(afterData);
-  const uids = (await roster.activeUids(db, eventId))
-    .filter((uid) => uid && uid !== creatorId); // the host knows, they did it
+  const actorUid = afterData.lastEditedBy || creatorId;
+
+  // Todo el que tiene algo que ver con el evento, menos quien lo editó.
+  const coHosts = Array.isArray(afterData.coHosts) ? afterData.coHosts : [];
+  const audience = new Set([
+    ...(await roster.activeUids(db, eventId)),
+    creatorId,
+    ...coHosts,
+  ]);
+  audience.delete(actorUid); // nadie se autonotifica
+  const uids = [...audience].filter(Boolean);
   if (uids.length === 0) return [];
 
   const params = {event: afterData.title || "an event"};

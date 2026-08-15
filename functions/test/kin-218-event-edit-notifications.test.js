@@ -159,9 +159,9 @@ test("absent, null and empty all mean the same thing", () => {
 // ---------------------------------------------------------------------------
 
 /** Seed an event with an active roster; returns ids for assertions + cleanup. */
-const seedEvent = async ({activeUids = [], waitlistUids = [], creatorId = "host1"} = {}) => {
+const seedEvent = async ({activeUids = [], waitlistUids = [], creatorId = "host1", coHosts} = {}) => {
   const eventId = nextId();
-  await db.collection("events").doc(eventId).set(evt({creatorId}));
+  await db.collection("events").doc(eventId).set(evt({creatorId, ...(coHosts ? {coHosts} : {})}));
   for (const uid of activeUids) {
     await db.collection("events").doc(eventId).collection("roster").doc(uid)
       .set({uid, eventId, status: "active"});
@@ -274,4 +274,78 @@ test("KIN-224 each push carries THAT recipient's own notification id", async () 
   // ...and the two ids are genuinely different documents.
   assert.notStrictEqual(
     sentPushes[0].data.notificationId, sentPushes[1].data.notificationId);
+});
+
+// ---------------------------------------------------------------------------
+// KIN-234 — quién se entera depende de quién editó
+// ---------------------------------------------------------------------------
+
+/**
+ * Quién recibe burbuja para una edición dada.
+ * @param {string} eventId el evento
+ * @param {object} after doc después de la edición (lleva lastEditedBy)
+ * @return {Promise<string[]>} uids notificados, ordenados
+ */
+const notifiedFor = async (eventId, after) =>
+  (await notifyRosterOfEventEdit(db, eventId, evt(), after)).sort();
+
+test("KIN-234 actor = creador: los asistentes se enteran, él no", async () => {
+  // El comportamiento de KIN-218, que no debe cambiar.
+  const eventId = await seedEvent({activeUids: ["a1", "a2"], creatorId: "host1"});
+  const got = await notifiedFor(eventId,
+    evt({creatorId: "host1", lastEditedBy: "host1", title: "otro"}));
+  assert.deepStrictEqual(got, ["a1", "a2"]);
+});
+
+test("KIN-234 actor = co-anfitrión: el CREADOR se entera", async () => {
+  // El hueco principal: alguien cambiaba la fecha del evento de otro y el dueño
+  // no se enteraba.
+  const eventId = await seedEvent({
+    activeUids: ["a1"], creatorId: "host1", coHosts: ["co1"],
+  });
+  const got = await notifiedFor(eventId,
+    evt({creatorId: "host1", coHosts: ["co1"], lastEditedBy: "co1", title: "otro"}));
+  assert.deepStrictEqual(got, ["a1", "host1"]);
+  assert.ok(!got.includes("co1"), "el editor no debe autonotificarse");
+});
+
+test("KIN-234 un co-anfitrión que además asiste no se autonotifica", async () => {
+  // El caso que el filtro viejo no podía cubrir: estaba en el roster, así que
+  // recibía aviso de su propia edición.
+  const eventId = await seedEvent({
+    activeUids: ["co1", "a1"], creatorId: "host1", coHosts: ["co1"],
+  });
+  const got = await notifiedFor(eventId,
+    evt({creatorId: "host1", coHosts: ["co1"], lastEditedBy: "co1", title: "otro"}));
+  assert.ok(!got.includes("co1"), "sigue apareciendo pese a ser el actor");
+  assert.deepStrictEqual(got, ["a1", "host1"]);
+});
+
+test("KIN-234 con varios co-anfitriones, todos menos el actor", async () => {
+  const eventId = await seedEvent({
+    activeUids: ["a1"], creatorId: "host1", coHosts: ["co1", "co2", "co3"],
+  });
+  const got = await notifiedFor(eventId, evt({
+    creatorId: "host1", coHosts: ["co1", "co2", "co3"],
+    lastEditedBy: "co2", title: "otro",
+  }));
+  assert.deepStrictEqual(got, ["a1", "co1", "co3", "host1"]);
+});
+
+test("KIN-234 sin lastEditedBy (doc viejo) se comporta como antes", async () => {
+  // Retrocompatibilidad: se asume el creador, que es lo que hacía KIN-218.
+  const eventId = await seedEvent({activeUids: ["a1"], creatorId: "host1"});
+  const got = await notifiedFor(eventId, evt({creatorId: "host1", title: "otro"}));
+  assert.deepStrictEqual(got, ["a1"]);
+});
+
+test("KIN-234 nadie recibe la burbuja dos veces", async () => {
+  // creador + co-host + roster pueden solaparse; el Set es lo que lo evita.
+  const eventId = await seedEvent({
+    activeUids: ["host1", "co1"], creatorId: "host1", coHosts: ["co1", "co1"],
+  });
+  const got = await notifiedFor(eventId, evt({
+    creatorId: "host1", coHosts: ["co1", "co1"], lastEditedBy: "zzz", title: "otro",
+  }));
+  assert.deepStrictEqual(got, ["co1", "host1"]);
 });
