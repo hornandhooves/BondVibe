@@ -42,6 +42,7 @@ import GradientBackground from "../components/GradientBackground";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import EventImagePicker from "../components/EventImagePicker";
 import SelectDropdown from "../components/SelectDropdown";
+import DurationWheelModal, { formatDuration } from "../components/DurationWheelModal";
 import RecurrenceModal from "../components/RecurrenceModal";
 import {
   getRecurrenceSummary,
@@ -54,7 +55,6 @@ import {
 } from "../services/storageService";
 import {
   EVENT_LANGUAGES,
-  EVENT_DURATIONS,
   EVENT_CATEGORIES,
   normalizeCategory,
 } from "../utils/eventCategories";
@@ -131,6 +131,7 @@ export default function EditEventScreen({ route, navigation }) {
   const originalDateRef = useRef(null);
 
   // Date/Time picker state
+  const [showDurationModal, setShowDurationModal] = useState(false); // KIN-233
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [tempDate, setTempDate] = useState(new Date());
@@ -1299,15 +1300,38 @@ export default function EditEventScreen({ route, navigation }) {
           />
         </View>
 
-        {/* Event length — sets end time; drives when Community Matching opens */}
-        <SelectDropdown
-          label={t("editEvent.eventLengthLabel")}
-          value={form.durationMinutes}
-          onValueChange={(v) => setForm({ ...form, durationMinutes: v })}
-          options={EVENT_DURATIONS}
-          placeholder={t("editEvent.selectDuration")}
-          type="default"
-        />
+        {/* Event length — sets end time; drives when Community Matching opens.
+            KIN-233: la misma rueda que Create. El dropdown anterior sólo ofrecía
+            8 valores fijos, así que una duración creada con la rueda (p.ej. 1h
+            45m) no estaba en la lista y editar el evento la forzaba a otra. */}
+        <View style={styles.section}>
+          <Text style={[styles.label, { color: colors.text }]}>
+            {t("editEvent.eventLengthLabel")}
+          </Text>
+          <TouchableOpacity
+            testID="edit-duration-trigger"
+            activeOpacity={0.8}
+            onPress={() => setShowDurationModal(true)}
+            style={[
+              styles.inputWrapper,
+              {
+                backgroundColor: colors.surfaceGlass,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.input,
+                {color: form.durationMinutes ? colors.text : colors.textTertiary},
+              ]}
+            >
+              {form.durationMinutes ?
+                formatDuration(form.durationMinutes) :
+                t("editEvent.selectDuration")}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* List event publicly — gates discovery/search (BUG 27). Hidden for a
             blocked/OOO slot, which is always private. */}
@@ -1588,6 +1612,14 @@ export default function EditEventScreen({ route, navigation }) {
           onChange={onTimeChange}
         />
       )}
+
+      {/* KIN-233: la misma rueda que Create. `onSelect`, no `onChange`. */}
+      <DurationWheelModal
+        visible={showDurationModal}
+        value={form.durationMinutes}
+        onSelect={(v) => setForm({ ...form, durationMinutes: v })}
+        onClose={() => setShowDurationModal(false)}
+      />
 
       {/* KIN-214: the same modal Create uses — one pattern editor, not two. */}
       {isRecurring && (

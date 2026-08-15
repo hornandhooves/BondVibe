@@ -111,10 +111,10 @@ jest.mock("../../components/SelectDropdown", () => {
 });
 jest.mock("../../components/DurationWheelModal", () => {
   const { Text, TouchableOpacity } = require("react-native");
-  function MockDurationWheelModal({ visible, value, onChange }) {
+  function MockDurationWheelModal({ visible, value, onSelect }) {
     if (!visible) return null;
     return (
-      <TouchableOpacity testID="duration-wheel" onPress={() => onChange(135)}>
+      <TouchableOpacity testID="duration-wheel" onPress={() => onSelect(135)}>
         <Text>{`wheel:${value}`}</Text>
       </TouchableOpacity>
     );
@@ -195,5 +195,42 @@ describe("KIN-231 — categoría", () => {
     seed({ category: "adventure" });
     const utils = await open();
     expect((await save(utils)).category).toBe("adventure");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// KIN-233 — duración
+// ---------------------------------------------------------------------------
+
+describe("KIN-233 — duración", () => {
+  it("muestra la duración actual con formatDuration, no un dropdown", async () => {
+    seed({ durationMinutes: 90 });
+    const utils = await open();
+    expect(await utils.findByText("90min")).toBeTruthy();
+  });
+
+  it("respeta una duración que el dropdown viejo no podía representar", async () => {
+    // El motivo del ticket: la rueda de Create permite 1h45, el dropdown de
+    // Edit sólo tenía 8 valores fijos. Abrir Edit no debe forzarla a otro valor.
+    seed({ durationMinutes: 105 });
+    const utils = await open();
+    expect(await utils.findByText("105min")).toBeTruthy();
+    expect((await save(utils)).durationMinutes).toBe(105);
+  });
+
+  it("la rueda se abre al tocar el campo y guarda lo que devuelve", async () => {
+    const utils = await open();
+    expect(utils.queryByTestId("duration-wheel")).toBeNull(); // cerrada al inicio
+    fireEvent.press(await utils.findByTestId("edit-duration-trigger"));
+    fireEvent.press(await utils.findByTestId("duration-wheel")); // devuelve 135
+    expect((await save(utils)).durationMinutes).toBe(135);
+  });
+
+  it("el campo del modelo no cambia de nombre", async () => {
+    // durationMinutes lo leen escrow, los recordatorios y isEventPast: un
+    // rename aquí rompería el cálculo de fin de evento en media app.
+    seed({ durationMinutes: 60 });
+    const utils = await open();
+    expect(await save(utils)).toHaveProperty("durationMinutes");
   });
 });
