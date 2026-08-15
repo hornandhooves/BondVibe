@@ -2609,6 +2609,12 @@
         "bodyNone": "Cancelaste \"{{event}}\". No había pagos que reembolsar.",
         "bodyOne": "Cancelaste \"{{event}}\". Se procesó 1 reembolso por ${{amount}} MXN.",
         "bodyOther": "Cancelaste \"{{event}}\". Se procesaron {{count}} reembolsos por ${{amount}} MXN."
+      },
+      "hostCancelledCoHost": {
+        "title": "Se canceló un evento que co-organizas",
+        "bodyNone": "Se canceló \"{{event}}\". No había pagos que reembolsar.",
+        "bodyOne": "Se canceló \"{{event}}\". Se procesó 1 reembolso por ${{amount}} MXN.",
+        "bodyOther": "Se canceló \"{{event}}\". Se procesaron {{count}} reembolsos por ${{amount}} MXN."
       }
     },
     "event": {

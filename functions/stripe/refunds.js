@@ -673,6 +673,33 @@ exports.hostCancelEvent = functions.https.onCall(
       }
       if (giftsRefunded) console.log(`↩️ refunded ${giftsRefunded} gifts`);
 
+      // Lo compartido entre el resumen del actor y el de los co-anfitriones se
+      // calcula una vez: los dos describen la MISMA cancelación y sólo cambian
+      // de voz. Duplicarlo es como acaban diciendo cifras distintas.
+      const refundedCentavos = refundResults
+        .reduce((sum, r) => sum + (r.amount || 0), 0);
+      const summaryParams = {
+        event: eventData.title,
+        count: refundResults.length,
+        amount: (refundedCentavos / 100).toFixed(2),
+      };
+      const summaryMetadata = {
+        eventId: eventId,
+        eventTitle: eventData.title,
+        refundsProcessed: refundResults.length,
+        refundedCentavos,
+        failedRefunds: failedRefunds.length,
+      };
+      /**
+       * Variante de cuerpo según cuántos reembolsos hubo. Decir "1 reembolso"
+       * en un evento gratis sería mentir sobre dinero.
+       * @param {string} prefix raíz de la llave i18n
+       * @return {string} la llave concreta
+       */
+      const summaryBodyKey = (prefix) => refundResults.length === 0 ?
+        `${prefix}.bodyNone` :
+        (refundResults.length === 1 ? `${prefix}.bodyOne` : `${prefix}.bodyOther`);
+
       // KIN-226: el host no recibía NADA por cancelar su propio evento. Sólo
       // veía algo por accidente, cuando además había pagado algo en ese evento
       // (p.ej. una promoción Featured) y le tocaba reembolso como pagador.
@@ -682,40 +709,66 @@ exports.hostCancelEvent = functions.https.onCall(
       // propia acción es ruido; lo que sí le sirve es el registro con la cuenta
       // de reembolsos.
       try {
-        const refundedCentavos = refundResults
-          .reduce((sum, r) => sum + (r.amount || 0), 0);
-        const hostParams = {
-          event: eventData.title,
-          count: refundResults.length,
-          amount: (refundedCentavos / 100).toFixed(2),
-        };
-        const hostBodyKey = refundResults.length === 0 ?
-          "notifications.refund.hostCancelled.bodyNone" :
-          (refundResults.length === 1 ?
-            "notifications.refund.hostCancelled.bodyOne" :
-            "notifications.refund.hostCancelled.bodyOther");
+        const hostBodyKey = summaryBodyKey("notifications.refund.hostCancelled");
         await db.collection("notifications").add({
           userId: userId, // el host que canceló
           type: "host_cancelled_event",
-          title: tPush("notifications.refund.hostCancelled.title", "en", hostParams),
-          message: tPush(hostBodyKey, "en", hostParams),
+          title: tPush("notifications.refund.hostCancelled.title", "en", summaryParams),
+          message: tPush(hostBodyKey, "en", summaryParams),
           titleKey: "notifications.refund.hostCancelled.title",
           bodyKey: hostBodyKey,
-          params: hostParams,
+          params: summaryParams,
           icon: "block",
           read: false,
           createdAt: new Date().toISOString(),
-          metadata: {
-            eventId: eventId,
-            eventTitle: eventData.title,
-            refundsProcessed: refundResults.length,
-            refundedCentavos,
-            failedRefunds: failedRefunds.length,
-          },
+          metadata: summaryMetadata,
         });
       } catch (e) {
         // Igual que el push: el resumen no puede tumbar una cancelación hecha.
         console.error("⚠️ KIN-226 host summary failed:", e.message || e);
+      }
+
+      // KIN-227: los co-anfitriones no se enteraban de nada. hostCancelEvent
+      // sólo deja cancelar al creatorId, así que para un co-host la cancelación
+      // SIEMPRE es acción de otra persona — igual que para un asistente. Por eso
+      // aquí sí va push, a diferencia del resumen del actor.
+      const coHosts = Array.isArray(eventData.coHosts) ? eventData.coHosts : [];
+      for (const coHostUid of coHosts) {
+        // El creador ya recibió el suyo arriba; no duplicar si además figura
+        // como co-host por datos viejos.
+        if (!coHostUid || coHostUid === userId) continue;
+        try {
+          const coBodyKey =
+            summaryBodyKey("notifications.refund.hostCancelledCoHost");
+          const notifRef = await db.collection("notifications").add({
+            userId: coHostUid,
+            type: "host_cancelled_event",
+            title: tPush(
+              "notifications.refund.hostCancelledCoHost.title", "en", summaryParams),
+            message: tPush(coBodyKey, "en", summaryParams),
+            titleKey: "notifications.refund.hostCancelledCoHost.title",
+            bodyKey: coBodyKey,
+            params: summaryParams,
+            icon: "block",
+            read: false,
+            createdAt: new Date().toISOString(),
+            metadata: summaryMetadata,
+          });
+          await pushToUser(coHostUid, {
+            titleKey: "notifications.refund.hostCancelledCoHost.title",
+            bodyKey: coBodyKey,
+            params: summaryParams,
+            data: {
+              type: "host_cancelled_event",
+              eventId,
+              notificationId: notifRef.id, // KIN-224
+            },
+          });
+        } catch (e) {
+          // Por co-host: que uno falle no puede dejar sin avisar a los demás.
+          console.error(
+            `⚠️ KIN-227 co-host notify failed (${coHostUid}):`, e.message || e);
+        }
       }
 
       const logMsg =

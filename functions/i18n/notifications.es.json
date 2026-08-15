@@ -75,6 +75,10 @@
   "notifications.refund.hostCancelled.bodyNone": "Cancelaste \"{{event}}\". No había pagos que reembolsar.",
   "notifications.refund.hostCancelled.bodyOne": "Cancelaste \"{{event}}\". Se procesó 1 reembolso por ${{amount}} MXN.",
   "notifications.refund.hostCancelled.bodyOther": "Cancelaste \"{{event}}\". Se procesaron {{count}} reembolsos por ${{amount}} MXN.",
+  "notifications.refund.hostCancelledCoHost.title": "Se canceló un evento que co-organizas",
+  "notifications.refund.hostCancelledCoHost.bodyNone": "Se canceló \"{{event}}\". No había pagos que reembolsar.",
+  "notifications.refund.hostCancelledCoHost.bodyOne": "Se canceló \"{{event}}\". Se procesó 1 reembolso por ${{amount}} MXN.",
+  "notifications.refund.hostCancelledCoHost.bodyOther": "Se canceló \"{{event}}\". Se procesaron {{count}} reembolsos por ${{amount}} MXN.",
 
   "notifications.event.waitlistPromoted.title": "¡Entraste! 🎉",
   "notifications.event.waitlistPromoted.body": "Se liberó un lugar en \"{{event}}\" — quedaste confirmado.",
