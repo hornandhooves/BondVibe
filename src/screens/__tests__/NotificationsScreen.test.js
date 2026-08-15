@@ -155,3 +155,53 @@ describe("KIN-218 — an 'event details changed' notification", () => {
     expect(navigation.navigate).not.toHaveBeenCalled();
   });
 });
+
+// ---------------------------------------------------------------------------
+// KIN-226 — las notificaciones de cancelación también tienen que abrir el evento
+// ---------------------------------------------------------------------------
+
+/**
+ * Un doc de cancelación tal como lo escribe refunds.js.
+ * @param {string} type tipo de notificación
+ * @param {object} [over] campos a sobrescribir
+ * @returns {object} un doc snapshot
+ */
+const cancelDoc = (type, over = {}) => ({
+  id: `c_${type}`,
+  data: () => ({
+    userId: "u1",
+    type,
+    title: "Event Cancelled",
+    message: "algo",
+    read: false,
+    createdAt: new Date().toISOString(),
+    metadata: { eventId: "evt_cancel", eventTitle: "Test Event" },
+    ...over,
+  }),
+});
+
+describe("KIN-226 — notificaciones de cancelación", () => {
+  // Antes de este cambio el tipo event_cancelled_refund no tenía case: la
+  // burbuja se veía y el tap no hacía nada. host_cancelled_event es nuevo y
+  // habría nacido con el mismo problema.
+  for (const type of ["event_cancelled_refund", "host_cancelled_event"]) {
+    it(`${type} abre EventDetail con su eventId`, async () => {
+      const utils = renderWith([cancelDoc(type)]);
+      fireEvent.press(await utils.findByTestId("notification-card-0"));
+
+      await waitFor(() => expect(navigation.navigate).toHaveBeenCalled());
+      expect(navigation.navigate).toHaveBeenCalledWith("EventDetail", {
+        eventId: "evt_cancel",
+      });
+      expect(navigation.navigate).toHaveBeenCalledTimes(1);
+    });
+
+    it(`${type} no navega si falta el eventId`, async () => {
+      const utils = renderWith([cancelDoc(type, { metadata: {} })]);
+      fireEvent.press(await utils.findByTestId("notification-card-0"));
+
+      await waitFor(() => expect(markAsRead).toHaveBeenCalled());
+      expect(navigation.navigate).not.toHaveBeenCalled();
+    });
+  }
+});

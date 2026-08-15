@@ -71,6 +71,10 @@
   "notifications.refund.attendeeCancelled.bodyNoRefund": "{{name}} canceló para \"{{event}}\". Sin reembolso",
   "notifications.refund.eventCancelled.title": "Evento cancelado - Reembolso total",
   "notifications.refund.eventCancelled.body": "\"{{event}}\" fue cancelado por el anfitrión. Se te reembolsó ${{amount}} MXN completo, incluidas todas las comisiones.",
+  "notifications.refund.hostCancelled.title": "Evento cancelado",
+  "notifications.refund.hostCancelled.bodyNone": "Cancelaste \"{{event}}\". No había pagos que reembolsar.",
+  "notifications.refund.hostCancelled.bodyOne": "Cancelaste \"{{event}}\". Se procesó 1 reembolso por ${{amount}} MXN.",
+  "notifications.refund.hostCancelled.bodyOther": "Cancelaste \"{{event}}\". Se procesaron {{count}} reembolsos por ${{amount}} MXN.",
 
   "notifications.event.waitlistPromoted.title": "¡Entraste! 🎉",
   "notifications.event.waitlistPromoted.body": "Se liberó un lugar en \"{{event}}\" — quedaste confirmado.",

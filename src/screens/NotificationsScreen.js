@@ -306,6 +306,9 @@ export default function NotificationsScreen({ navigation }) {
       case "waitlist_promoted":
       // KIN-218 — same destination as the rest.
       case "event_details_changed":
+      // KIN-226 — mismo destino: EventDetail muestra el badge de cancelado.
+      case "event_cancelled_refund":
+      case "host_cancelled_event":
         if (notification.metadata?.eventId) {
           navigation.navigate("EventDetail", {
             eventId: notification.metadata.eventId,

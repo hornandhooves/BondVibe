@@ -71,6 +71,10 @@
   "notifications.refund.attendeeCancelled.bodyNoRefund": "{{name}} cancelled for \"{{event}}\". No refund",
   "notifications.refund.eventCancelled.title": "Event Cancelled - Full Refund",
   "notifications.refund.eventCancelled.body": "\"{{event}}\" was cancelled by the host. You were refunded ${{amount}} MXN in full, including all fees.",
+  "notifications.refund.hostCancelled.title": "Event cancelled",
+  "notifications.refund.hostCancelled.bodyNone": "You cancelled \"{{event}}\". There were no payments to refund.",
+  "notifications.refund.hostCancelled.bodyOne": "You cancelled \"{{event}}\". 1 refund processed for ${{amount}} MXN.",
+  "notifications.refund.hostCancelled.bodyOther": "You cancelled \"{{event}}\". {{count}} refunds processed for ${{amount}} MXN.",
 
   "notifications.event.waitlistPromoted.title": "You're in! 🎉",
   "notifications.event.waitlistPromoted.body": "A spot opened in \"{{event}}\" — you're confirmed.",

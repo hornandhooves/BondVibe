@@ -2603,6 +2603,12 @@
       "eventCancelled": {
         "title": "Evento cancelado - Reembolso total",
         "body": "\"{{event}}\" fue cancelado por el anfitrión. Se te reembolsó ${{amount}} MXN completo, incluidas todas las comisiones."
+      },
+      "hostCancelled": {
+        "title": "Evento cancelado",
+        "bodyNone": "Cancelaste \"{{event}}\". No había pagos que reembolsar.",
+        "bodyOne": "Cancelaste \"{{event}}\". Se procesó 1 reembolso por ${{amount}} MXN.",
+        "bodyOther": "Cancelaste \"{{event}}\". Se procesaron {{count}} reembolsos por ${{amount}} MXN."
       }
     },
     "event": {

@@ -2603,6 +2603,12 @@
       "eventCancelled": {
         "title": "Event Cancelled - Full Refund",
         "body": "\"{{event}}\" was cancelled by the host. You were refunded ${{amount}} MXN in full, including all fees."
+      },
+      "hostCancelled": {
+        "title": "Event cancelled",
+        "bodyNone": "You cancelled \"{{event}}\". There were no payments to refund.",
+        "bodyOne": "You cancelled \"{{event}}\". 1 refund processed for ${{amount}} MXN.",
+        "bodyOther": "You cancelled \"{{event}}\". {{count}} refunds processed for ${{amount}} MXN."
       }
     },
     "event": {
