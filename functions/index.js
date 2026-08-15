@@ -3289,13 +3289,22 @@ exports.onEventWritten = onDocumentWritten("events/{eventId}", async (event) => 
   // searchKeywords/area/approxCoords, so the second invocation sees all six
   // watched fields unchanged and sends nothing.
   if (beforeData) {
-    const {notifyRosterOfEventEdit} = require("./notifications/eventEditNotifications");
+    const {notifyRosterOfEventEdit, notifyNewCoHosts} =
+      require("./notifications/eventEditNotifications");
     try {
       await notifyRosterOfEventEdit(db, event.params.eventId, beforeData, data);
     } catch (e) {
       // A failed notification must not abort the keyword/gating maintenance
       // below — that would leave the event unsearchable over a push error.
       console.error("⚠️ KIN-218 edit notification failed:", e);
+    }
+    // KIN-235: aparte del anterior — sumar a un co-anfitrión no cambia ninguno
+    // de los seis campos vigilados, así que es un aviso distinto, y su fallo no
+    // debe arrastrar al otro.
+    try {
+      await notifyNewCoHosts(db, event.params.eventId, beforeData, data);
+    } catch (e) {
+      console.error("⚠️ KIN-235 co-host notification failed:", e);
     }
   }
 

@@ -39,6 +39,7 @@ pushService.sendBatchPushNotifications = async (entries) => {
 const {
   changedEventFields,
   notifyRosterOfEventEdit,
+  notifyNewCoHosts,
   WATCHED_FIELDS,
 } = require("../notifications/eventEditNotifications");
 
@@ -348,4 +349,82 @@ test("KIN-234 nadie recibe la burbuja dos veces", async () => {
     creatorId: "host1", coHosts: ["co1", "co1"], lastEditedBy: "zzz", title: "otro",
   }));
   assert.deepStrictEqual(got, ["co1", "host1"]);
+});
+
+// ---------------------------------------------------------------------------
+// KIN-235 — te sumaron como co-anfitrión
+// ---------------------------------------------------------------------------
+
+/** @param {string} eventId el evento @return {Promise<Array>} sus burbujas de co-host */
+const coHostNotifs = async (eventId) => {
+  const snap = await db.collection("notifications")
+    .where("type", "==", "added_as_cohost").get();
+  return snap.docs.map((d) => ({id: d.id, ...d.data()}))
+    .filter((n) => n.metadata && n.metadata.eventId === eventId);
+};
+
+test("KIN-235 un co-anfitrión nuevo recibe su burbuja", async () => {
+  const eventId = await seedEvent({});
+  const added = await notifyNewCoHosts(
+    db, eventId, evt({coHosts: []}), evt({coHosts: ["co1"]}));
+
+  assert.deepStrictEqual(added, ["co1"]);
+  const notifs = await coHostNotifs(eventId);
+  assert.strictEqual(notifs.length, 1);
+  assert.strictEqual(notifs[0].userId, "co1");
+  assert.strictEqual(notifs[0].titleKey, "notifications.event.addedAsCoHost.title");
+});
+
+test("KIN-235 agregar dos de una vez avisa a ambos", async () => {
+  const eventId = await seedEvent({});
+  const added = await notifyNewCoHosts(
+    db, eventId, evt({coHosts: []}), evt({coHosts: ["co1", "co2"]}));
+
+  assert.deepStrictEqual(added.sort(), ["co1", "co2"]);
+  const uids = (await coHostNotifs(eventId)).map((n) => n.userId).sort();
+  assert.deepStrictEqual(uids, ["co1", "co2"]);
+});
+
+test("KIN-235 sólo avisa a los NUEVOS, no a los que ya estaban", async () => {
+  const eventId = await seedEvent({});
+  const added = await notifyNewCoHosts(
+    db, eventId, evt({coHosts: ["co1"]}), evt({coHosts: ["co1", "co2"]}));
+
+  assert.deepStrictEqual(added, ["co2"]);
+  assert.deepStrictEqual((await coHostNotifs(eventId)).map((n) => n.userId), ["co2"]);
+});
+
+test("KIN-235 quitar un co-anfitrión NO dispara nada", async () => {
+  const eventId = await seedEvent({});
+  const added = await notifyNewCoHosts(
+    db, eventId, evt({coHosts: ["co1", "co2"]}), evt({coHosts: ["co1"]}));
+
+  assert.deepStrictEqual(added, []);
+  assert.strictEqual((await coHostNotifs(eventId)).length, 0);
+});
+
+test("KIN-235 crear un evento con co-anfitriones no avisa a nadie", async () => {
+  // Sin beforeData no hay nada con qué comparar: nadie fue "agregado". Es el
+  // mismo criterio con el que este archivo ya trata la creación.
+  const eventId = await seedEvent({});
+  const added = await notifyNewCoHosts(db, eventId, null, evt({coHosts: ["co1"]}));
+
+  assert.deepStrictEqual(added, []);
+  assert.strictEqual((await coHostNotifs(eventId)).length, 0);
+});
+
+test("KIN-235 un evento cancelado no suma co-anfitriones", async () => {
+  const eventId = await seedEvent({});
+  const added = await notifyNewCoHosts(
+    db, eventId, evt({coHosts: []}), evt({coHosts: ["co1"], status: "cancelled"}));
+  assert.deepStrictEqual(added, []);
+});
+
+test("KIN-235 un uid duplicado en el array avisa una sola vez", async () => {
+  const eventId = await seedEvent({});
+  const added = await notifyNewCoHosts(
+    db, eventId, evt({coHosts: []}), evt({coHosts: ["co1", "co1"]}));
+
+  assert.deepStrictEqual(added, ["co1"]);
+  assert.strictEqual((await coHostNotifs(eventId)).length, 1);
 });

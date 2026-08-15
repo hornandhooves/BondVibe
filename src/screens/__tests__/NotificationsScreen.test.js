@@ -184,7 +184,7 @@ describe("KIN-226 — notificaciones de cancelación", () => {
   // Antes de este cambio el tipo event_cancelled_refund no tenía case: la
   // burbuja se veía y el tap no hacía nada. host_cancelled_event es nuevo y
   // habría nacido con el mismo problema.
-  for (const type of ["event_cancelled_refund", "host_cancelled_event"]) {
+  for (const type of ["event_cancelled_refund", "host_cancelled_event", "added_as_cohost"]) {
     it(`${type} abre EventDetail con su eventId`, async () => {
       const utils = renderWith([cancelDoc(type)]);
       fireEvent.press(await utils.findByTestId("notification-card-0"));

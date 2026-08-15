@@ -102,6 +102,8 @@
   "notifications.event.reminder.h24Body": "\"{{event}}\" será dentro de 24 horas.",
   "notifications.event.detailsChanged.title": "Evento actualizado",
   "notifications.event.detailsChanged.body": "El anfitrión actualizó \"{{event}}\". Revisa los detalles más recientes.",
+  "notifications.event.addedAsCoHost.title": "Ahora eres co-anfitrión",
+  "notifications.event.addedAsCoHost.body": "Te agregaron como co-anfitrión de \"{{event}}\".",
 
   "notif.eventCancelled.title": "Evento cancelado",
   "notif.eventCancelled.body": "\"{{title}}\" ha sido cancelado. Motivo: {{reason}}",

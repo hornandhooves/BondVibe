@@ -309,6 +309,8 @@ export default function NotificationsScreen({ navigation }) {
       // KIN-226 — mismo destino: EventDetail muestra el badge de cancelado.
       case "event_cancelled_refund":
       case "host_cancelled_event":
+      // KIN-235 — mismo destino.
+      case "added_as_cohost":
         if (notification.metadata?.eventId) {
           navigation.navigate("EventDetail", {
             eventId: notification.metadata.eventId,
