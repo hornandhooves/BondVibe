@@ -52,16 +52,12 @@ import {
   uploadEventImages,
   deleteEventImage,
 } from "../services/storageService";
-import { EVENT_LANGUAGES, EVENT_DURATIONS } from "../utils/eventCategories";
-
-const CATEGORIES = [
-  "Social",
-  "Sports",
-  "Food",
-  "Arts",
-  "Learning",
-  "Adventure",
-];
+import {
+  EVENT_LANGUAGES,
+  EVENT_DURATIONS,
+  EVENT_CATEGORIES,
+  normalizeCategory,
+} from "../utils/eventCategories";
 
 
 export default function EditEventScreen({ route, navigation }) {
@@ -71,7 +67,7 @@ export default function EditEventScreen({ route, navigation }) {
   const [form, setForm] = useState({
     title: "",
     description: "",
-    category: "Social",
+    category: "social", // KIN-231: id, no label — igual que Create Event
     language: "both",
     date: new Date(),
     time: "",
@@ -172,7 +168,12 @@ export default function EditEventScreen({ route, navigation }) {
         setForm({
           title: data.title || "",
           description: data.description || "",
-          category: data.category || "Social",
+          // KIN-231: Edit guardaba el LABEL capitalizado ("Social") mientras
+          // Create guarda el id ("social"), así que editar un evento le
+          // cambiaba la categoría a un valor que los filtros no reconocen.
+          // normalizeCategory absorbe los dos formatos, incluidos los eventos
+          // que ya quedaron guardados con el label.
+          category: normalizeCategory(data.category) || "social",
           language: data.language || "both",
           date: eventDate,
           time: data.time || "",
@@ -1132,54 +1133,17 @@ export default function EditEventScreen({ route, navigation }) {
           </Text>
         </View>
 
-        {/* Category */}
-        <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.text }]}>{t("editEvent.communityLabel")}</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ flexGrow: 0 }}
-            contentContainerStyle={styles.categoryScroll}
-          >
-            {CATEGORIES.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={styles.categoryChip}
-                onPress={() => setForm({ ...form, category: cat })}
-              >
-                <View
-                  style={[
-                    styles.categoryChipGlass,
-                    {
-                      backgroundColor:
-                        form.category === cat
-                          ? `${colors.primary}33`
-                          : colors.surfaceGlass,
-                      borderColor:
-                        form.category === cat
-                          ? `${colors.primary}66`
-                          : colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.categoryChipText,
-                      {
-                        color:
-                          form.category === cat
-                            ? colors.primary
-                            : colors.textSecondary,
-                      },
-                    ]}
-                  >
-                    {cat}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+        {/* Category — KIN-231: mismo componente y misma lista que Create
+            Event. Antes eran 6 chips locales con el label como valor; los
+            otros 9 de EVENT_CATEGORIES eran inalcanzables desde Edit. */}
+        <SelectDropdown
+          label={t("editEvent.communityLabel")}
+          value={form.category}
+          onValueChange={(v) => setForm({ ...form, category: v })}
+          options={EVENT_CATEGORIES}
+          placeholder={t("createEvent.selectCommunity")}
+          type="category"
+        />
 
         {/* Type — drives the Agenda category/color (BUG 27.1). "Blocked time"
             (OOO) makes the event private automatically. */}
