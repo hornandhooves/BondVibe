@@ -7,13 +7,49 @@ const functions = require("firebase-functions/v2");
 const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const {FieldValue} = require("firebase-admin/firestore");
-const {tPush} = require("../i18n"); // BUG 34: localized notification strings
+const {tPush, baseLang} = require("../i18n"); // BUG 34: localized notification strings
+const {sendBatchPushNotifications} = require("../notifications/pushService");
 const roster = require("../utils/roster");
 const {isAdminUid} = require("../lib/auth");
 const db = admin.firestore();
 
 // Define Stripe secret
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
+
+/**
+ * KIN-226 — push for a cancellation notification.
+ *
+ * Cancelling an event wrote in-app bubbles and NOTHING else: there was no push
+ * anywhere in this file, so an attendee whose paid event was cancelled found out
+ * only by opening the app. That is the one notification in this codebase people
+ * most need to receive while the phone is in their pocket.
+ *
+ * NEVER throws. It runs AFTER money has already moved — a refund that succeeded
+ * must not be reported as a failed cancellation because Expo was unreachable.
+ * The in-app bubble is already written by then, so a lost push degrades to
+ * exactly the behaviour we had before this function existed.
+ *
+ * @param {string} uid recipient
+ * @param {object} payload {titleKey, bodyKey, params, data}
+ * @return {Promise<void>} always resolves
+ */
+async function pushToUser(uid, payload) {
+  if (!uid) return;
+  try {
+    const snap = await db.collection("users").doc(uid).get();
+    if (!snap.exists) return;
+    const u = snap.data();
+    if (!u.pushToken) return; // no token → the bubble is all they get
+    await sendBatchPushNotifications([{
+      pushToken: u.pushToken,
+      uid,
+      lang: baseLang(u.language), // recipient's own language, not the actor's
+      ...payload,
+    }]);
+  } catch (e) {
+    console.error("⚠️ KIN-226 push failed (refund unaffected):", e.message || e);
+  }
+}
 
 // ============================================
 // STRIPE FEE CONFIGURATION
@@ -372,7 +408,8 @@ exports.cancelEventAttendance = functions.https.onCall(
         const bodyKey = refundPercentage > 0 ?
           "notifications.refund.attendeeCancelled.bodyRefund" :
           "notifications.refund.attendeeCancelled.bodyNoRefund";
-        await db.collection("notifications").add({
+        // KIN-224: el id viaja en el push para que el tap marque ESTA burbuja.
+        const notifRef = await db.collection("notifications").add({
           userId: eventData.creatorId,
           type: "attendee_cancelled",
           title: tPush("notifications.refund.attendeeCancelled.title", "en", params),
@@ -387,6 +424,19 @@ exports.cancelEventAttendance = functions.https.onCall(
             eventId: eventId,
             eventTitle: eventData.title,
             refundPercentage: pct,
+          },
+        });
+
+        // KIN-226: alguien se dio de baja de SU evento — es acción de otra
+        // persona, así que el push es correcto y era lo que faltaba.
+        await pushToUser(eventData.creatorId, {
+          titleKey: "notifications.refund.attendeeCancelled.title",
+          bodyKey,
+          params,
+          data: {
+            type: "attendee_cancelled",
+            eventId,
+            notificationId: notifRef.id,
           },
         });
       }
@@ -556,7 +606,8 @@ exports.hostCancelEvent = functions.https.onCall(
           const refundPesos = (refundResult.refund.amount / 100).toFixed(2);
           const params = {event: eventData.title, amount: refundPesos};
 
-          await db.collection("notifications").add({
+          // KIN-224: el id viaja en el push (ver abajo).
+          const notifRef = await db.collection("notifications").add({
             userId: paymentData.userId,
             type: "event_cancelled_refund",
             title: tPush("notifications.refund.eventCancelled.title", "en", params),
@@ -573,6 +624,19 @@ exports.hostCancelEvent = functions.https.onCall(
               refundAmount: refundResult.refund.amount,
               stripeFeeRetained: refundResult.refund.stripeFeeRetained,
               reason: cancellationReason || "No reason provided",
+            },
+          });
+
+          // KIN-226: el hueco principal. A alguien le cancelaron un evento que
+          // pagó y sólo se enteraba abriendo la app.
+          await pushToUser(paymentData.userId, {
+            titleKey: "notifications.refund.eventCancelled.title",
+            bodyKey: "notifications.refund.eventCancelled.body",
+            params,
+            data: {
+              type: "event_cancelled_refund",
+              eventId,
+              notificationId: notifRef.id,
             },
           });
 
@@ -608,6 +672,51 @@ exports.hostCancelEvent = functions.https.onCall(
         console.error("gift refund on cancel failed:", e.message);
       }
       if (giftsRefunded) console.log(`↩️ refunded ${giftsRefunded} gifts`);
+
+      // KIN-226: el host no recibía NADA por cancelar su propio evento. Sólo
+      // veía algo por accidente, cuando además había pagado algo en ese evento
+      // (p.ej. una promoción Featured) y le tocaba reembolso como pagador.
+      //
+      // Se escribe la burbuja pero NO se manda push: el host acaba de pulsar el
+      // botón y tiene el teléfono en la mano. Empujarle una notificación por su
+      // propia acción es ruido; lo que sí le sirve es el registro con la cuenta
+      // de reembolsos.
+      try {
+        const refundedCentavos = refundResults
+          .reduce((sum, r) => sum + (r.amount || 0), 0);
+        const hostParams = {
+          event: eventData.title,
+          count: refundResults.length,
+          amount: (refundedCentavos / 100).toFixed(2),
+        };
+        const hostBodyKey = refundResults.length === 0 ?
+          "notifications.refund.hostCancelled.bodyNone" :
+          (refundResults.length === 1 ?
+            "notifications.refund.hostCancelled.bodyOne" :
+            "notifications.refund.hostCancelled.bodyOther");
+        await db.collection("notifications").add({
+          userId: userId, // el host que canceló
+          type: "host_cancelled_event",
+          title: tPush("notifications.refund.hostCancelled.title", "en", hostParams),
+          message: tPush(hostBodyKey, "en", hostParams),
+          titleKey: "notifications.refund.hostCancelled.title",
+          bodyKey: hostBodyKey,
+          params: hostParams,
+          icon: "block",
+          read: false,
+          createdAt: new Date().toISOString(),
+          metadata: {
+            eventId: eventId,
+            eventTitle: eventData.title,
+            refundsProcessed: refundResults.length,
+            refundedCentavos,
+            failedRefunds: failedRefunds.length,
+          },
+        });
+      } catch (e) {
+        // Igual que el push: el resumen no puede tumbar una cancelación hecha.
+        console.error("⚠️ KIN-226 host summary failed:", e.message || e);
+      }
 
       const logMsg =
         "✅ Event cancelled, " +

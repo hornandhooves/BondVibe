@@ -256,6 +256,11 @@ function App() {
       // KIN-218: the host edited the event — same destination, the attendee
       // needs to see what actually changed.
       case "event_details_changed":
+      // KIN-226: cancelación. El evento cancelado sigue abriéndose y muestra su
+      // badge de cancelado, así que EventDetail es el destino correcto: es donde
+      // se ve QUÉ se canceló.
+      case "event_cancelled_refund":
+      case "host_cancelled_event":
         // Navigate to EventDetail
         if (data.eventId) {
           console.log(`📍 Navigating to EventDetail: ${data.eventId}`);
