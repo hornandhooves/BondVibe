@@ -2609,6 +2609,12 @@
         "bodyNone": "You cancelled \"{{event}}\". There were no payments to refund.",
         "bodyOne": "You cancelled \"{{event}}\". 1 refund processed for ${{amount}} MXN.",
         "bodyOther": "You cancelled \"{{event}}\". {{count}} refunds processed for ${{amount}} MXN."
+      },
+      "hostCancelledCoHost": {
+        "title": "An event you co-host was cancelled",
+        "bodyNone": "\"{{event}}\" was cancelled. There were no payments to refund.",
+        "bodyOne": "\"{{event}}\" was cancelled. 1 refund was processed for ${{amount}} MXN.",
+        "bodyOther": "\"{{event}}\" was cancelled. {{count}} refunds were processed for ${{amount}} MXN."
       }
     },
     "event": {

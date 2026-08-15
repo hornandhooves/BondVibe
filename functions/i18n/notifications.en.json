@@ -75,6 +75,10 @@
   "notifications.refund.hostCancelled.bodyNone": "You cancelled \"{{event}}\". There were no payments to refund.",
   "notifications.refund.hostCancelled.bodyOne": "You cancelled \"{{event}}\". 1 refund processed for ${{amount}} MXN.",
   "notifications.refund.hostCancelled.bodyOther": "You cancelled \"{{event}}\". {{count}} refunds processed for ${{amount}} MXN.",
+  "notifications.refund.hostCancelledCoHost.title": "An event you co-host was cancelled",
+  "notifications.refund.hostCancelledCoHost.bodyNone": "\"{{event}}\" was cancelled. There were no payments to refund.",
+  "notifications.refund.hostCancelledCoHost.bodyOne": "\"{{event}}\" was cancelled. 1 refund was processed for ${{amount}} MXN.",
+  "notifications.refund.hostCancelledCoHost.bodyOther": "\"{{event}}\" was cancelled. {{count}} refunds were processed for ${{amount}} MXN.",
 
   "notifications.event.waitlistPromoted.title": "You're in! 🎉",
   "notifications.event.waitlistPromoted.body": "A spot opened in \"{{event}}\" — you're confirmed.",

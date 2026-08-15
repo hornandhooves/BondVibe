@@ -91,9 +91,10 @@ const call = (name, data, token) =>
 /**
  * Evento GRATIS, sin pagos: el camino de cancelación no toca Stripe.
  * @param {string} hostUid dueño del evento
+ * @param {string[]} [coHosts] uids de co-anfitriones (KIN-227)
  * @return {Promise<string>} eventId
  */
-async function seedFreeEvent(hostUid) {
+async function seedFreeEvent(hostUid, coHosts) {
   const eventId = `evt_${nextId()}`;
   await db.collection("events").doc(eventId).set({
     title: "Evento de prueba KIN-226",
@@ -102,6 +103,7 @@ async function seedFreeEvent(hostUid) {
     status: "active",
     date: new Date(Date.now() + 5 * 864e5).toISOString(),
     participantCount: 0,
+    ...(coHosts ? {coHosts} : {}), // KIN-227
   });
   return eventId;
 }
@@ -222,4 +224,113 @@ test("KIN-226 alguien que no es el host no puede cancelar", async () => {
   const ev = (await db.collection("events").doc(eventId).get()).data();
   assert.strictEqual(ev.status, "active", "el evento no debía cancelarse");
   assert.strictEqual((await notifsFor(eventId)).length, 0);
+});
+
+// ---------------------------------------------------------------------------
+// KIN-227 — los co-anfitriones tampoco se enteraban
+// ---------------------------------------------------------------------------
+
+test("KIN-227 un co-anfitrión recibe su propia burbuja, distinta de la del actor", async () => {
+  // "Distinta" se comprueba por el userId de cada documento, no asumiendo que
+  // una sola escritura sirve para los dos: son dos destinatarios y dos docs.
+  const host = `host_${nextId()}`;
+  const cohost = `cohost_${nextId()}`;
+  const token = await tokenFor(host);
+  await tokenFor(cohost);
+  const eventId = await seedFreeEvent(host, [cohost]);
+
+  const res = await call("hostCancelEvent", {eventId}, token);
+  assert.strictEqual(res.status, 200, JSON.stringify(res.body));
+
+  const summaries = (await notifsFor(eventId))
+    .filter((n) => n.type === "host_cancelled_event");
+  assert.strictEqual(summaries.length, 2, "debe haber uno por persona");
+
+  const forHost = summaries.find((n) => n.userId === host);
+  const forCoHost = summaries.find((n) => n.userId === cohost);
+  assert.ok(forHost, "falta el resumen del actor");
+  assert.ok(forCoHost, "falta el resumen del co-anfitrión");
+  assert.notStrictEqual(forHost.id, forCoHost.id, "deben ser docs distintos");
+});
+
+test("KIN-227 el co-anfitrión lo lee en tercera persona, el actor en primera", async () => {
+  // El co-host no canceló nada. Decirle "Cancelaste tu evento" sería acusarlo
+  // de algo que no hizo.
+  const host = `host_${nextId()}`;
+  const cohost = `cohost_${nextId()}`;
+  const token = await tokenFor(host);
+  const eventId = await seedFreeEvent(host, [cohost]);
+
+  await call("hostCancelEvent", {eventId}, token);
+  const summaries = (await notifsFor(eventId))
+    .filter((n) => n.type === "host_cancelled_event");
+
+  assert.strictEqual(
+    summaries.find((n) => n.userId === host).titleKey,
+    "notifications.refund.hostCancelled.title");
+  assert.strictEqual(
+    summaries.find((n) => n.userId === cohost).titleKey,
+    "notifications.refund.hostCancelledCoHost.title");
+});
+
+test("KIN-227 ambos resumen la MISMA cancelación", async () => {
+  // Los dos textos describen un solo hecho: si las cifras se separan, alguien
+  // está leyendo un reembolso que no ocurrió.
+  const host = `host_${nextId()}`;
+  const cohost = `cohost_${nextId()}`;
+  const token = await tokenFor(host);
+  const eventId = await seedFreeEvent(host, [cohost]);
+
+  await call("hostCancelEvent", {eventId}, token);
+  const summaries = (await notifsFor(eventId))
+    .filter((n) => n.type === "host_cancelled_event");
+  const a = summaries.find((n) => n.userId === host);
+  const b = summaries.find((n) => n.userId === cohost);
+
+  assert.deepStrictEqual(a.params, b.params);
+  assert.deepStrictEqual(a.metadata, b.metadata);
+});
+
+test("KIN-227 varios co-anfitriones reciben uno cada uno", async () => {
+  const host = `host_${nextId()}`;
+  const c1 = `cohost_${nextId()}`;
+  const c2 = `cohost_${nextId()}`;
+  const token = await tokenFor(host);
+  const eventId = await seedFreeEvent(host, [c1, c2]);
+
+  await call("hostCancelEvent", {eventId}, token);
+  const uids = (await notifsFor(eventId))
+    .filter((n) => n.type === "host_cancelled_event")
+    .map((n) => n.userId).sort();
+
+  assert.deepStrictEqual(uids, [host, c1, c2].sort());
+});
+
+test("KIN-227 el creador no recibe dos si además figura como co-host", async () => {
+  // Dato viejo plausible: el creador dentro de su propio array de coHosts.
+  const host = `host_${nextId()}`;
+  const token = await tokenFor(host);
+  const eventId = await seedFreeEvent(host, [host]);
+
+  await call("hostCancelEvent", {eventId}, token);
+  const summaries = (await notifsFor(eventId))
+    .filter((n) => n.type === "host_cancelled_event");
+
+  assert.strictEqual(summaries.length, 1, "no debe duplicarse");
+  assert.strictEqual(
+    summaries[0].titleKey, "notifications.refund.hostCancelled.title");
+});
+
+test("KIN-227 sin co-anfitriones no se escribe nada de más", async () => {
+  const host = `host_${nextId()}`;
+  const token = await tokenFor(host);
+  const eventId = await seedFreeEvent(host); // sin campo coHosts
+
+  const res = await call("hostCancelEvent", {eventId}, token);
+  assert.strictEqual(res.status, 200);
+
+  const summaries = (await notifsFor(eventId))
+    .filter((n) => n.type === "host_cancelled_event");
+  assert.strictEqual(summaries.length, 1, "sólo el del actor");
+  assert.strictEqual(summaries[0].userId, host);
 });
