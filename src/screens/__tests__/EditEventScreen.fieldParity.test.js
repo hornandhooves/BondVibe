@@ -84,7 +84,14 @@ jest.mock("../../components/GradientBackground", () => {
 jest.mock("../../components/Icon", () => "Icon");
 jest.mock("../../components/PlaceAutocomplete", () => "PlaceAutocomplete");
 jest.mock("../../components/EventImagePicker", () => "EventImagePicker");
-jest.mock("../../components/business/InstructorPicker", () => "InstructorPicker");
+// KIN-236: el mock expone el bizId recibido — es justo el dato bajo prueba.
+jest.mock("../../components/business/InstructorPicker", () => {
+  const { Text } = require("react-native");
+  function MockInstructorPicker({ bizId }) {
+    return <Text>{`picker-biz:${bizId === undefined ? "undefined" : String(bizId)}`}</Text>;
+  }
+  return MockInstructorPicker;
+});
 jest.mock("@react-native-community/datetimepicker", () => "DateTimePicker");
 jest.mock("../../components/RecurrenceModal", () => "RecurrenceModal");
 
@@ -280,5 +287,38 @@ describe("KIN-232 — idioma", () => {
     fireEvent.press(await utils.findByTestId("dropdown-language"));
     const written = await save(utils);
     expect(Array.isArray(written.languages)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// KIN-236 — la lista de instructores es la del negocio DUEÑO del evento
+// ---------------------------------------------------------------------------
+
+describe("KIN-236 — negocio del evento", () => {
+  it("un evento de negocio usa businessOwnerUid, no el negocio de quien mira", async () => {
+    // El caso del ticket: un co-anfitrión con su propio negocio abría el evento
+    // de otro y veía SU personal. Aquí el evento manda.
+    seed({ businessOwnerUid: "owner1", creatorId: "staff1" });
+    const utils = await open();
+    expect(await utils.findByText("picker-biz:owner1")).toBeTruthy();
+  });
+
+  it("un evento personal cae al creador, sin caso especial", async () => {
+    seed({ businessOwnerUid: null, creatorId: "me" });
+    const utils = await open();
+    expect(await utils.findByText("picker-biz:me")).toBeTruthy();
+  });
+
+  it("un evento sin el campo tampoco es un caso especial", async () => {
+    // No hay migración: el fallback es el mismo que ya usa el servidor.
+    seed({ creatorId: "me" });
+    const utils = await open();
+    expect(await utils.findByText("picker-biz:me")).toBeTruthy();
+  });
+
+  it("el host dueño ve su propia lista, sin cambio de comportamiento", async () => {
+    seed({ businessOwnerUid: "me", creatorId: "me" });
+    const utils = await open();
+    expect(await utils.findByText("picker-biz:me")).toBeTruthy();
   });
 });
