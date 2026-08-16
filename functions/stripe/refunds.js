@@ -17,6 +17,81 @@ const db = admin.firestore();
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
 
 /**
+ * KIN-228 — avisar a los co-anfitriones de que un asistente se dio de baja.
+ *
+ * Hasta ahora sólo se enteraba el creador, pero un co-anfitrión también
+ * gestiona el evento y también necesita saber que se liberó un lugar.
+ *
+ * Vive fuera del callable porque ahí dentro no es alcanzable en pruebas: para
+ * un evento gratis `cancelEventAttendance` retorna antes de llegar aquí, y para
+ * uno pagado hace falta un reembolso real de Stripe. Extraerlo es lo que
+ * permite probar la parte que tiene reglas propias —no duplicar al creador, un
+ * id por destinatario, aislar fallos— sin cobrar nada.
+ *
+ * Sin resumen agregado, a diferencia de KIN-227: aquí es UN asistente, no un
+ * lote, así que los params que ya arma el bloque del creador alcanzan.
+ *
+ * @param {object} p datos de la baja
+ * @param {string} p.eventId el evento
+ * @param {object} p.eventData el documento del evento
+ * @param {object} p.params params i18n ya construidos para el creador
+ * @param {string} p.bodyKey variante de cuerpo (con o sin reembolso)
+ * @param {number} p.pct porcentaje reembolsado, para metadata
+ * @return {Promise<string[]>} los uids avisados
+ */
+async function notifyCoHostsOfAttendeeCancellation({
+  eventId, eventData, params, bodyKey, pct,
+}) {
+  const coHosts = Array.isArray(eventData.coHosts) ? eventData.coHosts : [];
+  const avisados = [];
+  for (const coHostUid of coHosts) {
+    // El creador ya recibió el suyo; no duplicar si además figura como
+    // co-anfitrión por datos viejos.
+    if (!coHostUid || coHostUid === eventData.creatorId) continue;
+    if (avisados.includes(coHostUid)) continue; // uid repetido en el array
+    try {
+      // Su PROPIO doc y su PROPIO id: compartir el del creador dejaría que un
+      // tap marcara leída la burbuja de otro (KIN-224).
+      const coNotifRef = await db.collection("notifications").add({
+        userId: coHostUid,
+        type: "attendee_cancelled",
+        title: tPush(
+          "notifications.refund.attendeeCancelled.title", "en", params),
+        message: tPush(bodyKey, "en", params),
+        titleKey: "notifications.refund.attendeeCancelled.title",
+        bodyKey,
+        params,
+        icon: "🚫",
+        read: false,
+        createdAt: new Date().toISOString(),
+        metadata: {
+          eventId: eventId,
+          eventTitle: eventData.title,
+          refundPercentage: pct,
+        },
+      });
+      await pushToUser(coHostUid, {
+        titleKey: "notifications.refund.attendeeCancelled.title",
+        bodyKey,
+        params,
+        data: {
+          type: "attendee_cancelled",
+          eventId,
+          notificationId: coNotifRef.id,
+        },
+      });
+      avisados.push(coHostUid);
+    } catch (e) {
+      // Por co-anfitrión: que uno falle no puede dejar sin avisar a los demás,
+      // ni tocar un reembolso que ya se completó.
+      console.error(
+        `⚠️ KIN-228 co-host notify failed (${coHostUid}):`, e.message || e);
+    }
+  }
+  return avisados;
+}
+
+/**
  * KIN-226 — push for a cancellation notification.
  *
  * Cancelling an event wrote in-app bubbles and NOTHING else: there was no push
@@ -439,6 +514,10 @@ exports.cancelEventAttendance = functions.https.onCall(
             notificationId: notifRef.id,
           },
         });
+
+        // KIN-228 — ver notifyCoHostsOfAttendeeCancellation.
+        await notifyCoHostsOfAttendeeCancellation(
+          {eventId, eventData, params, bodyKey, pct});
       }
 
       console.log("✅ Cancellation complete");
@@ -798,6 +877,7 @@ exports.hostCancelEvent = functions.https.onCall(
   },
 );
 
+exports.notifyCoHostsOfAttendeeCancellation = notifyCoHostsOfAttendeeCancellation;
 exports.REFUND_POLICY = REFUND_POLICY;
 exports.calculateRefundPercentage = calculateRefundPercentage;
 exports.calculateStripeFee = calculateStripeFee;
