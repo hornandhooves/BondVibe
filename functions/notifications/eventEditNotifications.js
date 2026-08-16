@@ -42,6 +42,10 @@ const WATCHED_FIELDS = Object.freeze([
 const TITLE_KEY = "notifications.event.detailsChanged.title";
 const BODY_KEY = "notifications.event.detailsChanged.body";
 
+/** KIN-235 — alguien te sumó como co-anfitrión. */
+const COHOST_TITLE_KEY = "notifications.event.addedAsCoHost.title";
+const COHOST_BODY_KEY = "notifications.event.addedAsCoHost.body";
+
 /**
  * Missing, null and empty all mean "not set" — an older doc simply lacks the key.
  * @param {*} v the stored value
@@ -72,7 +76,8 @@ function changedEventFields(beforeData, afterData) {
 }
 
 /**
- * Notify the active roster that the host edited the event.
+ * Notify everyone attached to the event that it was edited — asistentes,
+ * creador y co-anfitriones — menos quien hizo la edición (KIN-234).
  *
  * One notification per save that touches at least one watched field — no
  * debounce. A host correcting a typo twice sends twice; that's the honest
@@ -83,7 +88,9 @@ function changedEventFields(beforeData, afterData) {
  * @param {string} eventId the event
  * @param {object} beforeData the event doc before the write
  * @param {object} afterData the event doc after the write
- * @return {Promise<string[]>} the uids notified (empty when nothing was sent)
+ * @return {Promise<string[]>} the uids notified (empty when nothing was sent).
+ *   El actor sale de `afterData.lastEditedBy`, que escribe EditEventScreen; un
+ *   trigger de Firestore no tiene request.auth.uid.
  */
 async function notifyRosterOfEventEdit(db, eventId, beforeData, afterData) {
   const changedFields = changedEventFields(beforeData, afterData);
@@ -91,9 +98,24 @@ async function notifyRosterOfEventEdit(db, eventId, beforeData, afterData) {
   // A cancelled event has its own notification; don't also announce the edit.
   if (afterData.status === "cancelled") return [];
 
+  // KIN-234: quién editó DE VERDAD. Antes se asumía que era el creador y se le
+  // excluía a él, lo que dejaba dos huecos: si editaba un co-anfitrión, el
+  // creador no se enteraba de un cambio en su propio evento, y ese co-anfitrión
+  // sí recibía aviso de su propia acción cuando además estaba en el roster.
+  // `lastEditedBy` lo escribe EditEventScreen; los documentos anteriores a este
+  // ticket no lo traen, y para ésos el creador sigue siendo la mejor suposición.
   const creatorId = getEventCreatorId(afterData);
-  const uids = (await roster.activeUids(db, eventId))
-    .filter((uid) => uid && uid !== creatorId); // the host knows, they did it
+  const actorUid = afterData.lastEditedBy || creatorId;
+
+  // Todo el que tiene algo que ver con el evento, menos quien lo editó.
+  const coHosts = Array.isArray(afterData.coHosts) ? afterData.coHosts : [];
+  const audience = new Set([
+    ...(await roster.activeUids(db, eventId)),
+    creatorId,
+    ...coHosts,
+  ]);
+  audience.delete(actorUid); // nadie se autonotifica
+  const uids = [...audience].filter(Boolean);
   if (uids.length === 0) return [];
 
   const params = {event: afterData.title || "an event"};
@@ -159,9 +181,88 @@ async function notifyRosterOfEventEdit(db, eventId, beforeData, afterData) {
 }
 
 module.exports = {
+  notifyNewCoHosts,
   WATCHED_FIELDS,
   changedEventFields,
   notifyRosterOfEventEdit,
   TITLE_KEY,
   BODY_KEY,
 };
+
+/**
+ * KIN-235 — avisar a quien acaban de sumar como co-anfitrión.
+ *
+ * Se resuelve en el trigger y no en el botón que llama a arrayUnion a
+ * propósito: `coHosts` puede escribirse desde cualquier camino que exista hoy o
+ * mañana —una pantalla de administración, un script, una importación— y un
+ * aviso colgado de un botón concreto sólo cubre ese botón.
+ *
+ * Sólo notifica a los uids NUEVOS. Quitar a alguien (arrayRemove) no dispara
+ * nada, y la creación de un evento con co-anfitriones ya poblados tampoco: sin
+ * `beforeData` no hay nada con qué comparar, igual que trata la creación el
+ * resto de este archivo.
+ *
+ * @param {FirebaseFirestore.Firestore} db admin Firestore
+ * @param {string} eventId el evento
+ * @param {object} beforeData doc antes de la escritura (null en creación)
+ * @param {object} afterData doc después
+ * @return {Promise<string[]>} los uids avisados
+ */
+async function notifyNewCoHosts(db, eventId, beforeData, afterData) {
+  if (!beforeData) return []; // creación: nadie fue "agregado"
+  if (afterData.status === "cancelled") return [];
+
+  const before = new Set(Array.isArray(beforeData.coHosts) ? beforeData.coHosts : []);
+  const after = Array.isArray(afterData.coHosts) ? afterData.coHosts : [];
+  const added = [...new Set(after)].filter((uid) => uid && !before.has(uid));
+  if (added.length === 0) return [];
+
+  const params = {event: afterData.title || "an event"};
+  const metadata = {eventId, eventTitle: afterData.title || ""};
+
+  const notifIdByUid = {};
+  const batch = db.batch();
+  for (const uid of added) {
+    const notifRef = db.collection("notifications").doc();
+    notifIdByUid[uid] = notifRef.id; // KIN-224: un id por destinatario
+    batch.set(notifRef, {
+      userId: uid,
+      type: "added_as_cohost",
+      title: tPush(COHOST_TITLE_KEY, "en", params),
+      message: tPush(COHOST_BODY_KEY, "en", params),
+      titleKey: COHOST_TITLE_KEY,
+      bodyKey: COHOST_BODY_KEY,
+      params,
+      icon: "users",
+      read: false,
+      createdAt: FieldValue.serverTimestamp(),
+      metadata,
+    });
+  }
+  await batch.commit();
+
+  const entries = [];
+  for (const uid of added) {
+    const snap = await db.collection("users").doc(uid).get();
+    if (!snap.exists) continue;
+    const u = snap.data();
+    if (!u.pushToken) continue;
+    entries.push({
+      pushToken: u.pushToken,
+      uid,
+      lang: baseLang(u.language),
+      titleKey: COHOST_TITLE_KEY,
+      bodyKey: COHOST_BODY_KEY,
+      params,
+      data: {
+        type: "added_as_cohost",
+        eventId,
+        notificationId: notifIdByUid[uid],
+      },
+    });
+  }
+  if (entries.length > 0) await sendBatchPushNotifications(entries);
+
+  console.log(`🤝 Event ${eventId}: ${added.length} co-host(s) nuevos avisados`);
+  return added;
+}

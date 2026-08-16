@@ -721,6 +721,10 @@ export default function EditEventScreen({ route, navigation }) {
         listedPublicly: effectiveListedPublicly,
         agendaType,
         updatedAt: new Date().toISOString(),
+        // KIN-234: un trigger de Firestore no tiene request.auth.uid, así que
+        // el actor tiene que viajar en el documento. Sin esto la notificación
+        // de edición no puede excluir a quien editó ni avisar al creador.
+        lastEditedBy: auth.currentUser?.uid || null,
       };
 
       if (updateAllFuture && recurrenceGroupId) {

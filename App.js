@@ -261,6 +261,9 @@ function App() {
       // se ve QUÉ se canceló.
       case "event_cancelled_refund":
       case "host_cancelled_event":
+      // KIN-235: te sumaron como co-anfitrión — abre el evento del que ahora
+      // eres responsable.
+      case "added_as_cohost":
         // Navigate to EventDetail
         if (data.eventId) {
           console.log(`📍 Navigating to EventDetail: ${data.eventId}`);

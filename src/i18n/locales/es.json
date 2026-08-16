@@ -2651,6 +2651,10 @@
       "detailsChanged": {
         "title": "Evento actualizado",
         "body": "El anfitrión actualizó \"{{event}}\". Revisa los detalles más recientes."
+      },
+      "addedAsCoHost": {
+        "title": "Ahora eres co-anfitrión",
+        "body": "Te agregaron como co-anfitrión de \"{{event}}\"."
       }
     },
     "welcomeTitle": "¡Bienvenido a Kinlo!",

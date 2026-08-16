@@ -2651,6 +2651,10 @@
       "detailsChanged": {
         "title": "Event updated",
         "body": "\"{{event}}\" was updated by the host. Check the latest details."
+      },
+      "addedAsCoHost": {
+        "title": "You are now a co-host",
+        "body": "You were added as a co-host of \"{{event}}\"."
       }
     },
     "welcomeTitle": "Welcome to Kinlo!",
