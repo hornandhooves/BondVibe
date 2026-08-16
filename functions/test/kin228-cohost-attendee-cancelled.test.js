@@ -102,17 +102,25 @@ test("KIN-228 varios co-anfitriones reciben uno cada uno, con id propio", async 
 
 test("KIN-228 que uno falle no deja sin avisar a los demás", async () => {
   // Provocar un fallo REAL en una sola iteración cuesta encontrar algo que
-  // Firestore rechace por destinatario: un uid con barras no sirve (el uid es
-  // un valor de campo, no una ruta, y .add() genera su propio id), y una
-  // cadena de 2000 chars tampoco. Lo que sí rechaza es superar el máximo de un
-  // valor de propiedad — y como el uid es el único campo que varía por
-  // destinatario, revienta ESA escritura y ninguna otra. El try/catch por
-  // iteración es lo que impide que se lleve por delante a los demás.
+  // Firestore rechace POR DESTINATARIO: un uid con barras no sirve (el uid es
+  // un valor de campo, no una ruta, y .add() genera su propio id), ni una
+  // cadena larga, ni NaN, ni Infinity.
+  //
+  // Una instancia de clase la rechaza la validación del CLIENTE, en 0 ms y sin
+  // tocar la red. La primera versión de esta prueba usaba una cadena de 1.1 MB
+  // para superar el máximo de un valor de propiedad: funcionaba, pero cada
+  // corrida serializaba y mandaba un megabyte por gRPC. Barato y determinista
+  // le gana a ingenioso.
+  //
+  // El uid es el único campo que varía por destinatario, así que revienta ESA
+  // escritura y ninguna otra: es justo lo que el try/catch por iteración tiene
+  // que aislar.
   const eventId = `evt_${nextId()}`;
+  const noSerializable = new (class UidCorrupto {})();
   const ev = {
     title: "Clase",
     creatorId: "host1",
-    coHosts: ["co1", "z".repeat(1100000), "co2"],
+    coHosts: ["co1", noSerializable, "co2"],
   };
 
   const avisados = await notifyCoHostsOfAttendeeCancellation(args(ev, eventId));
