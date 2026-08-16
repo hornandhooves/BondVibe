@@ -39,7 +39,14 @@ const INSTRUCTOR_ROLES = [STAFF_ROLES[0], STAFF_ROLES[1]]; // owner, instructor
 // value — it must never reach onChange as an instructorUid.
 const ADD_SOMEONE = "__kin190_add_someone__";
 
-export default function InstructorPicker({ value, onChange, label, placeholder, t }) {
+/**
+ * KIN-236 — `bizId` es OPCIONAL a propósito. Sin él se mantiene el default
+ * histórico (el negocio activo de quien mira la pantalla), que es lo correcto
+ * en Create: ahí el host está decidiendo en qué negocio nace el evento. En Edit
+ * el evento ya nació y su negocio es un hecho, así que ahí sí se pasa — y sin
+ * eso, un co-anfitrión veía el personal de SU negocio en el evento de otro.
+ */
+export default function InstructorPicker({ value, onChange, label, placeholder, t, bizId }) {
   const { colors } = useTheme();
   const [options, setOptions] = useState([]);
   const [prompting, setPrompting] = useState(false);
@@ -53,7 +60,7 @@ export default function InstructorPicker({ value, onChange, label, placeholder, 
     (async () => {
       let staff = [];
       try {
-        staff = await listStaff();
+        staff = bizId ? await listStaff(bizId) : await listStaff();
       } catch (_e) {
         staff = [];
       }
@@ -91,7 +98,10 @@ export default function InstructorPicker({ value, onChange, label, placeholder, 
       if (alive) setOptions(rows);
     })();
     return () => { alive = false; };
-  }, [tr]);
+    // KIN-236: `bizId` va en deps porque en Edit llega DESPUÉS del primer
+    // render (sale del evento cargado). Sin él, la lista se quedaría con la del
+    // negocio activo para siempre y el bug seguiría vivo.
+  }, [tr, bizId]);
 
   const closePrompt = () => {
     setPrompting(false);

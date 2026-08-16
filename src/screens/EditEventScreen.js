@@ -35,6 +35,7 @@ import { findUserByEmail } from "../services/hostGroupService";
 import { checkInstructorAvailability, AGENDA_ITEM_KIND } from "../services/businessAgendaService";
 import InstructorPicker from "../components/business/InstructorPicker";
 import { parsePositiveNumber, isValidNumberInProgress } from "../utils/validation";
+import { getEventBusinessId } from "../utils/eventHelpers";
 import { getHostMembershipPlans } from "../services/membershipService";
 import { getMyBizId } from "../services/businessService";
 import { useTheme } from "../contexts/ThemeContext";
@@ -149,6 +150,10 @@ export default function EditEventScreen({ route, navigation }) {
   // BUG 30: the event's instructor (if any), to check the right agenda day when
   // moving it to a new slot. Falls back to the owner's day for unassigned events.
   const [eventInstructor, setEventInstructor] = useState({ uid: "", name: "" });
+  // KIN-236: de qué negocio es ESTE evento, no el negocio activo de quien mira.
+  // Un co-anfitrión con su propio negocio veía su propio personal al editar el
+  // evento de otro, así que host y co-host no coincidían en la misma pantalla.
+  const [eventBizId, setEventBizId] = useState(null);
 
   useEffect(() => {
     loadEvent();
@@ -204,6 +209,10 @@ export default function EditEventScreen({ route, navigation }) {
         setListedPublicly(data.listedPublicly !== false);
         setEventInstructor({ uid: data.instructorUid || "", name: data.instructorName || "" });
         setCreatorId(data.creatorId || data.createdBy || data.hostId || null);
+        // KIN-236: la MISMA fórmula que functions/utils/eventHelpers.js usa
+        // para los pagos (businessOwnerUid || creador). No se reescribe aquí:
+        // se delega, para que cliente y servidor no puedan divergir.
+        setEventBizId(getEventBusinessId(data) || null);
 
         // Load co-hosts (names) for management.
         if (Array.isArray(data.coHosts) && data.coHosts.length) {
@@ -624,13 +633,16 @@ export default function EditEventScreen({ route, navigation }) {
     if (!skipAvailabilityCheck) {
       const checkUid = eventInstructor.uid || getMyBizId();
       if (checkUid) {
+        // KIN-236: acotado al negocio DUEÑO del evento; el default de esta
+        // función es el negocio activo de quien mira, que aquí sería el
+        // equivocado para un co-anfitrión.
         const avail = await checkInstructorAvailability({
           instructorUid: checkUid,
           instructorName: eventInstructor.name,
           start: new Date(form.date),
           durationMin: parseInt(form.durationMinutes, 10) || 180,
           excludeItemId: `event_${eventId}`,
-        });
+        }, eventBizId || undefined);
         if (avail.conflict && avail.conflictItem) {
           const hm = (d) => { const x = new Date(d); return `${String(x.getHours()).padStart(2, "0")}:${String(x.getMinutes()).padStart(2, "0")}`; };
           const isBlocked = avail.conflictItem.kind === AGENDA_ITEM_KIND.BLOCKED;
@@ -1384,6 +1396,7 @@ export default function EditEventScreen({ route, navigation }) {
             the NEW instructor's agenda is the one checked, not the old one. */}
         <View style={styles.section}>
           <InstructorPicker
+            bizId={eventBizId}
             value={eventInstructor.uid}
             onChange={(uid, name) => setEventInstructor({ uid, name })}
             label={t("createEvent.instructorLabel")}

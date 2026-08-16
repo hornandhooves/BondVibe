@@ -62,3 +62,20 @@ export const getHostIdForPayout = (data) => {
   if (!data) return undefined;
   return data.businessOwnerUid || getEventCreatorId(data);
 };
+
+/**
+ * KIN-236 — de qué negocio es este evento.
+ *
+ * Es el MISMO valor que getHostIdForPayout: el dueño del negocio si lo hay, y
+ * si no, el creador. Se expone con su propio nombre porque en el sitio de
+ * llamada "a quién se le paga" no explica por qué se está listando personal,
+ * y un lector que no lo entienda es un lector que lo cambia.
+ *
+ * Delega en vez de repetir la fórmula: son dos líneas, pero es exactamente el
+ * tipo de dos líneas que se copian, se editan una sola vez y quedan
+ * discrepando en silencio con functions/utils/eventHelpers.js.
+ *
+ * @param {object} eventData el documento del evento
+ * @returns {string|undefined} el bizId dueño del evento
+ */
+export const getEventBusinessId = (eventData) => getHostIdForPayout(eventData);
