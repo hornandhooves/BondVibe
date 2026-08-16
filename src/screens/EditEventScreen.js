@@ -32,6 +32,8 @@ import {
 } from "firebase/firestore";
 import { db, auth } from "../services/firebase";
 import { findUserByEmail } from "../services/hostGroupService";
+import { findUserByHandle } from "../services/userService";
+import { listStaff, staffDisplayName } from "../services/businessStaffService";
 import { checkInstructorAvailability, AGENDA_ITEM_KIND } from "../services/businessAgendaService";
 import InstructorPicker from "../components/business/InstructorPicker";
 import { parsePositiveNumber, isValidNumberInProgress } from "../utils/validation";
@@ -60,6 +62,19 @@ import {
   normalizeCategory,
 } from "../utils/eventCategories";
 
+
+/**
+ * KIN-230 — ¿esto es un email o un @handle?
+ *
+ * Se exige una @ con un dominio que tenga punto DESPUÉS. Un handle puede
+ * llevar @ delante ("@ana") y no debe confundirse con un email; un email
+ * siempre tiene dominio. No hay ambigüedad real entre las dos formas: un
+ * handle con punto y sin @ ("ana.torres") se trata como handle, que es lo
+ * correcto — no existe un email sin @.
+ * @param {string} raw lo que escribió el usuario
+ * @returns {boolean} si debe buscarse como email
+ */
+const LOOKS_LIKE_EMAIL = (raw) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(raw || "").trim());
 
 export default function EditEventScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
@@ -154,6 +169,8 @@ export default function EditEventScreen({ route, navigation }) {
   // Un co-anfitrión con su propio negocio veía su propio personal al editar el
   // evento de otro, así que host y co-host no coincidían en la misma pantalla.
   const [eventBizId, setEventBizId] = useState(null);
+  // KIN-230: staff del negocio DUEÑO del evento, para ofrecerlo como co-host.
+  const [bizStaff, setBizStaff] = useState([]);
 
   useEffect(() => {
     loadEvent();
@@ -385,25 +402,84 @@ export default function EditEventScreen({ route, navigation }) {
   // Handle save - check for recurring event
   const isCreator = !!creatorId && auth.currentUser?.uid === creatorId;
 
-  const handleAddCoHost = async () => {
-    const email = coHostEmail.trim().toLowerCase();
-    if (!email) return;
-    setAddingCoHost(true);
-    const user = await findUserByEmail(email);
-    setAddingCoHost(false);
-    if (!user) {
-      Alert.alert(t("editEvent.alerts.notFoundTitle"), t("editEvent.alerts.notFoundMsg"));
-      return;
-    }
-    if (user.id === creatorId || coHosts.some((c) => c.id === user.id)) {
+  /**
+   * KIN-230: los TRES caminos (email, @handle, lista de staff) terminan aquí.
+   * La escritura y el guard de duplicados existen una sola vez — tres copias es
+   * como uno acaba aceptando al creador como su propio co-anfitrión.
+   * @param {string} uid a quién agregar
+   * @param {string} name cómo mostrarlo en la lista
+   * @returns {Promise<boolean>} si se agregó
+   */
+  const addCoHostByUid = async (uid, name) => {
+    if (!uid) return false;
+    if (uid === creatorId || coHosts.some((c) => c.id === uid)) {
       Alert.alert(t("editEvent.alerts.alreadyCoHostTitle"), t("editEvent.alerts.alreadyCoHostMsg"));
-      return;
+      return false;
     }
-    await updateDoc(doc(db, "events", eventId), { coHosts: arrayUnion(user.id) });
-    setCoHosts((c) => [...c, { id: user.id, name: user.fullName || user.name || email }]);
-    setCoHostEmail("");
-    Alert.alert(t("editEvent.alerts.coHostAddedTitle"), t("editEvent.alerts.coHostAddedMsg", { name: user.fullName || email }));
+    await updateDoc(doc(db, "events", eventId), { coHosts: arrayUnion(uid) });
+    setCoHosts((c) => [...c, { id: uid, name }]);
+    Alert.alert(t("editEvent.alerts.coHostAddedTitle"), t("editEvent.alerts.coHostAddedMsg", { name }));
+    return true;
   };
+
+  const handleAddCoHost = async () => {
+    const raw = coHostEmail.trim();
+    if (!raw) return;
+    setAddingCoHost(true);
+    try {
+      // Un solo input para las dos formas. Se trata como email sólo si hay un
+      // dominio con punto después de la @; cualquier otra cosa es un handle,
+      // incluida una @ inicial decorativa (findUserByHandle también la quita).
+      const user = LOOKS_LIKE_EMAIL(raw) ?
+        await findUserByEmail(raw.toLowerCase()) :
+        await findUserByHandle(raw);
+      if (!user) {
+        Alert.alert(t("editEvent.alerts.notFoundTitle"), t("editEvent.alerts.notFoundMsg"));
+        return;
+      }
+      // findUserByEmail devuelve `id`; findUserByHandle, `uid`.
+      const uid = user.id || user.uid;
+      const name = user.fullName || user.name || raw;
+      if (await addCoHostByUid(uid, name)) setCoHostEmail("");
+    } finally {
+      // KIN-92/94/95: sin esto, un fallo de red deja el botón muerto para
+      // siempre. Antes el reset vivía suelto entre dos awaits.
+      setAddingCoHost(false);
+    }
+  };
+
+  // KIN-230: se pide con eventBizId EXPLÍCITO. El default de listStaff es el
+  // negocio activo de quien edita — la misma clase de bug que KIN-236 acaba de
+  // cerrar en InstructorPicker, y aquí sería peor: daría de alta como
+  // co-anfitrión a alguien ajeno al evento.
+  useEffect(() => {
+    let alive = true;
+    if (!eventBizId) {
+      setBizStaff([]);
+      return () => { alive = false; };
+    }
+    (async () => {
+      let rows = [];
+      try {
+        rows = await listStaff(eventBizId);
+      } catch (_e) {
+        rows = [];
+      }
+      // Un co-anfitrión tiene que poder recibir notificaciones y editar el
+      // evento, así que un placeholder no sirve. La ausencia del campo `uid` es
+      // justo lo que marca a un placeholder (ver addPlaceholderStaff, que lo
+      // omite a propósito); un staff real tiene uid y su doc se llama igual.
+      // InstructorPicker SÍ los incluye, y esa diferencia es deliberada: un
+      // instructor puede ser un nombre en una agenda, un co-anfitrión no.
+      if (alive) setBizStaff(rows.filter((r) => r && r.uid));
+    })();
+    return () => { alive = false; };
+  }, [eventBizId]);
+
+  // Lo que queda por ofrecer: ni el creador ni quien ya es co-anfitrión.
+  const availableStaff = bizStaff.filter(
+    (sm) => sm.uid !== creatorId && !coHosts.some((c) => c.id === sm.uid),
+  );
 
   const handleRemoveCoHost = async (id) => {
     await updateDoc(doc(db, "events", eventId), { coHosts: arrayRemove(id) });
@@ -1547,6 +1623,34 @@ export default function EditEventScreen({ route, navigation }) {
                 </Text>
               </TouchableOpacity>
             </View>
+
+            {/* KIN-230: staff del negocio dueño, ya filtrado a cuentas reales y
+                sin quien ya es co-anfitrión. Si el evento no tiene negocio no
+                se renderiza nada: no hay staff que ofrecer. */}
+            {availableStaff.length > 0 && (
+              <View testID="cohost-staff-list">
+                <Text style={[styles.coHostHint, { color: colors.textSecondary }]}>
+                  {t("editEvent.coHostFromStaff")}
+                </Text>
+                {availableStaff.map((sMember) => (
+                  <TouchableOpacity
+                    key={sMember.uid}
+                    testID={`cohost-staff-${sMember.uid}`}
+                    style={[styles.coHostRow, { borderColor: colors.borderStrong }]}
+                    onPress={() =>
+                      addCoHostByUid(sMember.uid, staffDisplayName(sMember))
+                    }
+                  >
+                    <Text style={[styles.coHostName, { color: colors.text }]} numberOfLines={1}>
+                      {staffDisplayName(sMember)}
+                    </Text>
+                    <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                      {t("editEvent.add")}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
