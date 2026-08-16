@@ -738,7 +738,7 @@
     "coHostsLabel": "Co-anfitriones",
     "coHostsHint": "Pueden editar el evento y tomar asistencia (check-in).",
     "remove": "Quitar",
-    "coHostEmailPlaceholder": "correo del co-anfitrión",
+    "coHostEmailPlaceholder": "correo o @usuario del co-anfitrión",
     "add": "Agregar",
     "saving": "Guardando...",
     "saveChanges": "Guardar cambios",
@@ -779,7 +779,8 @@
       "patternApplied": "Patrón actualizado: {{removed}} fecha(s) reemplazada(s), {{created}} creada(s).",
       "keptBooked_one": "1 fecha se mantuvo porque ya tiene reservas. Coordínala con tus asistentes en el chat del evento:",
       "keptBooked_other": "{{count}} fechas se mantuvieron porque ya tienen reservas. Coordínalas con tus asistentes en el chat del evento:"
-    }
+    },
+    "coHostFromStaff": "O elige de tu equipo"
   },
   "profile": {
     "kinloProOpenHub": "Abre tu Business Hub",

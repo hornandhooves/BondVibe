@@ -738,7 +738,7 @@
     "coHostsLabel": "Co-hosts",
     "coHostsHint": "They can edit the event and take attendance (check-in).",
     "remove": "Remove",
-    "coHostEmailPlaceholder": "co-host's email",
+    "coHostEmailPlaceholder": "co-host's email or @handle",
     "add": "Add",
     "saving": "Saving...",
     "saveChanges": "Save Changes",
@@ -779,7 +779,8 @@
       "patternApplied": "Pattern updated: {{removed}} date(s) replaced, {{created}} created.",
       "keptBooked_one": "1 date was kept because it already has bookings. Coordinate it with your guests in the event chat:",
       "keptBooked_other": "{{count}} dates were kept because they already have bookings. Coordinate them with your guests in the event chat:"
-    }
+    },
+    "coHostFromStaff": "Or pick from your staff"
   },
   "profile": {
     "kinloProOpenHub": "Open your Business Hub",
