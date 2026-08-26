@@ -358,6 +358,13 @@ export default function NotificationsScreen({ navigation }) {
         navigation.navigate("AdminDashboard");
         break;
 
+      // KIN-238: caía en el default, así que la invitación llegaba y tocarla no
+      // hacía nada. Inbox no recibe parámetros: resuelve las invitaciones
+      // pendientes del usuario actual por su cuenta.
+      case "staff_invite":
+        navigation.navigate("Inbox");
+        break;
+
       case "membership_purchased":
       case "membership_low_credits":
       case "membership_expiring":

@@ -205,3 +205,47 @@ describe("KIN-226 — notificaciones de cancelación", () => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------
+// KIN-238 — la invitación de staff no llevaba a ningún lado
+// ---------------------------------------------------------------------------
+
+describe("KIN-238 — staff_invite", () => {
+  it("abre Inbox al tocarla", async () => {
+    // Caía en el `default: break`, así que la invitación llegaba, se veía, y
+    // tocarla no hacía absolutamente nada.
+    const utils = renderWith([cancelDoc("staff_invite", {
+      metadata: { bizId: "biz1" },
+    })]);
+    fireEvent.press(await utils.findByTestId("notification-card-0"));
+
+    await waitFor(() => expect(navigation.navigate).toHaveBeenCalled());
+    expect(navigation.navigate).toHaveBeenCalledWith("Inbox");
+  });
+
+  it("navega SIN parámetros — Inbox no los lee", async () => {
+    // InboxScreen({ navigation }) ni recibe `route`: resuelve las invitaciones
+    // pendientes del usuario actual por su cuenta. Pasarle algo sería inventar
+    // un contrato que no existe.
+    const utils = renderWith([cancelDoc("staff_invite", {
+      metadata: { bizId: "biz1" },
+    })]);
+    fireEvent.press(await utils.findByTestId("notification-card-0"));
+
+    await waitFor(() => expect(navigation.navigate).toHaveBeenCalled());
+    expect(navigation.navigate.mock.calls[0]).toEqual(["Inbox"]);
+  });
+
+  it("no se va a EventDetail por error", async () => {
+    // El case nuevo se insertó entre otros; caer en el grupo equivocado también
+    // "navegaría".
+    const utils = renderWith([cancelDoc("staff_invite", {
+      metadata: { bizId: "biz1" },
+    })]);
+    fireEvent.press(await utils.findByTestId("notification-card-0"));
+
+    await waitFor(() => expect(navigation.navigate).toHaveBeenCalled());
+    expect(navigation.navigate).toHaveBeenCalledTimes(1);
+    expect(navigation.navigate.mock.calls[0][0]).not.toBe("EventDetail");
+  });
+});
