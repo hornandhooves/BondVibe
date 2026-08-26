@@ -183,17 +183,47 @@ export async function deleteAvailability(id, bizId = getMyBizId()) {
 }
 
 // ── Bookings ──────────────────────────────────────────────────────────────────
+// KIN-239: estas dos lecturas propagaban la excepción al llamante.
+//
+// El modelo de permisos es correcto y no se toca: un co-anfitrión que NO es
+// staff del negocio dueño del evento no puede leer sus bookings, y las reglas
+// hacen bien en negárselo. Lo que estaba mal era el manejo del error en el
+// cliente.
+//
+// Por qué importa: getDayItems mete listBookings en un Promise.all, y de ahí
+// cuelga checkInstructorAvailability, que saveEvent llama ANTES de su try. Un
+// permission-denied ahí no dejaba el botón girando —setSaving(true) viene
+// después— sino algo peor de diagnosticar: el guardado no ocurría en absoluto,
+// sin alerta, sin error y sin nada en pantalla que lo explicara.
+//
+// Mismo patrón que las hermanas de businessAgendaService (listAgendaBlocks,
+// listStaff): registrar y devolver el vacío del tipo que el llamante espera.
 export async function listBookings(bizId = getMyBizId()) {
   if (!bizId) return [];
-  const snap = await getDocs(col(bizId, "bookings"));
-  return snap.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => new Date(a.start) - new Date(b.start));
+  try {
+    const snap = await getDocs(col(bizId, "bookings"));
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => new Date(a.start) - new Date(b.start));
+  } catch (e) {
+    console.error("listBookings failed:", e?.message || e);
+    return [];
+  }
 }
+// getBooking corre el mismo riesgo y el suyo es peor: SessionDetailScreen hace
+// `setB(await getBooking(id)); setLoading(false);`, así que una excepción deja
+// la pantalla girando para siempre (KIN-92/94/95). `null` ya es su respuesta
+// para "no existe", así que devolverlo aquí no le inventa un caso nuevo al
+// llamante.
 export async function getBooking(id, bizId = getMyBizId()) {
   if (!bizId || !id) return null;
-  const snap = await getDoc(ref(bizId, "bookings", id));
-  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  try {
+    const snap = await getDoc(ref(bizId, "bookings", id));
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  } catch (e) {
+    console.error("getBooking failed:", e?.message || e);
+    return null;
+  }
 }
 
 export async function createBooking(data, bizId = getMyBizId()) {
