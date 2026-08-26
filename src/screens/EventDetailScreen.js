@@ -781,9 +781,14 @@ export default function EventDetailScreen({ route, navigation }) {
           </View>
         </TouchableOpacity>
         <View style={styles.headerActions}>
-          {/* Social gifting: gift THIS paid event to someone (Board 3b). */}
-          {(event?.price || 0) > 0 && !isCreator && (
+          {/* Social gifting: gift THIS paid event to someone (Board 3b).
+              KIN-237 gate 9: tampoco lo ve el co-anfitrión. Regalar es un acto
+              de asistente —comprarle la entrada a otra persona— y quien
+              gestiona el evento no compra su propio evento, igual que no ve la
+              barra de Join/Pay. */}
+          {(event?.price || 0) > 0 && !isManager && (
             <TouchableOpacity
+              testID="event-gift-btn"
               onPress={() =>
                 navigation.navigate("Gifting", {
                   eventId: event.id,

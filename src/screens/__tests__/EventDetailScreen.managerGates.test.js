@@ -208,4 +208,40 @@ describe("KIN-237 — el co-anfitrión gestiona igual que el creador", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// KIN-237 gate 9 — regalar el evento
+// ---------------------------------------------------------------------------
 
+describe("KIN-237 — regalar el evento", () => {
+  it("un asistente SÍ ve el botón en un evento pagado", async () => {
+    // Existe para quien debe: regalar es comprarle la entrada a otra persona.
+    seedEvent({ coHosts: ["cohost1"], price: 200 });
+    const utils = await openAs("randoms");
+    expect(await utils.findByTestId("event-gift-btn")).toBeTruthy();
+  });
+
+  it("el CO-ANFITRIÓN no lo ve", async () => {
+    // El gate 9. Quien gestiona el evento no compra su propio evento, igual que
+    // no ve la barra de Join/Pay.
+    seedEvent({ coHosts: ["cohost1"], price: 200 });
+    const utils = await openAs("cohost1");
+    await waitFor(() => expect(onSnapshot).toHaveBeenCalled());
+    expect(utils.queryByTestId("event-gift-btn")).toBeNull();
+  });
+
+  it("el creador tampoco lo ve (sin cambio)", async () => {
+    seedEvent({ coHosts: ["cohost1"], price: 200 });
+    const utils = await openAs("creator1");
+    await waitFor(() => expect(onSnapshot).toHaveBeenCalled());
+    expect(utils.queryByTestId("event-gift-btn")).toBeNull();
+  });
+
+  it("no aparece en un evento gratis, para nadie", async () => {
+    // El precio > 0 sigue siendo parte del gate: ampliarlo a co-anfitriones no
+    // debe hacer que un evento gratis se pueda "regalar".
+    seedEvent({ coHosts: ["cohost1"], price: 0 });
+    const utils = await openAs("randoms");
+    await waitFor(() => expect(onSnapshot).toHaveBeenCalled());
+    expect(utils.queryByTestId("event-gift-btn")).toBeNull();
+  });
+});
