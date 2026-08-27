@@ -156,6 +156,15 @@ dashboard). App scheme is `kinlo://`; the git repo is still `hornandhooves/BondV
 - **`collectionGroup` queries need a recursive-wildcard rule**
   (`match /{path=**}/members/{memberId}`), not the nested one — and often a
   collection-group index in `firestore.indexes.json`.
+- **A shared `firestore.rules` helper function (e.g. `isEventParticipant`,
+  `isEventHost`) is reused across every collection that calls it — grep for
+  every `match` block using it before changing what it returns.** Broadening
+  (or narrowing) one to fix a single collection silently changes permissions
+  everywhere else it's called too. `isEventParticipant(eventId)` alone gates
+  **8** match blocks — `private` (the exact venue address), messages, typing,
+  checkins, polls, votes, carpools, riders — so a fix aimed only at chat access
+  would have silently opened the exact location, check-in visibility, poll
+  voting and carpool requests to the same set of users too (KIN-240).
 - A **query is rejected** unless the rules can *prove* every result is allowed —
   filter by the field the rule checks (e.g. `where("userId","==",uid)`), don't
   rely on a filter the rule ignores.
