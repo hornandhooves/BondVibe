@@ -362,13 +362,19 @@ export default function EventChatScreen({ route, navigation }) {
           // Verify current user is a participant before entering chat
           const creatorId = getEventCreatorId(eventData);
           const isCreator = creatorId === currentUserId;
+          // KIN-240: un co-anfitrión entra al chat aunque nunca se haya
+          // inscrito — gestiona el evento, no asiste a él. Sale del eventData
+          // que ya está cargado aquí, sin una lectura extra a Firestore.
+          const isCoHost =
+            Array.isArray(eventData.coHosts) &&
+            eventData.coHosts.includes(currentUserId);
           setIsHost(isCreator);
           // ROSTER (#55): participation is the roster subcollection, not the
           // stripped `attendees` array (which now reads empty → everyone locked
           // out). A user reads their OWN roster doc via isOnRoster.
           const isAttendee = await isOnRoster(eventId);
 
-          if (!isCreator && !isAttendee) {
+          if (!isCreator && !isCoHost && !isAttendee) {
             setLoading(false);
             Alert.alert(
               t("eventChat.alerts.accessRestrictedTitle"),

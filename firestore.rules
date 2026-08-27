@@ -45,7 +45,15 @@ service cloud.firestore {
       // PRIVACY (fix/privacy-event-roster): the roster moved off the world-readable
       // event doc into events/{id}/roster/{uid}; membership is proven by the
       // existence of the caller's own roster doc, not `uid in attendees`.
+      // KIN-240: un co-anfitrión participa del evento aunque nunca se haya
+      // inscrito en el roster — gestiona el evento, no asiste a él. Mismo
+      // reconocimiento que ya hace isEventHost.
+      //
+      // OJO al tocar esta función: la usan OCHO bloques match, no sólo el chat
+      // — private (la dirección exacta), messages, typing, checkins, polls,
+      // votes, carpools y riders. Ampliarla los abre todos a la vez.
       return request.auth.uid == eventData.creatorId ||
+             (eventData.coHosts != null && request.auth.uid in eventData.coHosts) ||
              exists(/databases/$(database)/documents/events/$(eventId)/roster/$(request.auth.uid));
     }
 

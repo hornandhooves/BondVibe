@@ -809,8 +809,10 @@ export default function EventDetailScreen({ route, navigation }) {
               </View>
             </TouchableOpacity>
           )}
-          {(isJoined || isCreator) && (
+          {/* KIN-240: el co-anfitrión entra al chat sin estar inscrito. */}
+          {(isJoined || isManager) && (
             <TouchableOpacity
+              testID="event-chat-btn"
               onPress={() =>
                 navigation.navigate("EventChat", {
                   eventId: event.id,
@@ -1139,8 +1141,9 @@ export default function EventDetailScreen({ route, navigation }) {
           <MatchingEntryCard event={event} isHost={isManager} />
         </View>
 
-        {(isJoined || isCreator) && (
-          <View style={styles.chatSection}>
+        {/* KIN-240 — mismo gate, en la sección de chat del cuerpo. */}
+        {(isJoined || isManager) && (
+          <View testID="event-chat-section" style={styles.chatSection}>
             <TouchableOpacity
               style={styles.chatButton}
               onPress={() =>
