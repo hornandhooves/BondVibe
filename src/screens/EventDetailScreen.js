@@ -732,7 +732,9 @@ export default function EventDetailScreen({ route, navigation }) {
     Array.isArray(event.coHosts) && event.coHosts.includes(auth.currentUser.uid);
   const isManager = isCreator || isCoHost;
   const isAdmin = currentUser?.role === "admin";
-  const canSeeAttendees = isCreator || isAdmin;
+  // KIN-237: un co-anfitrión gestiona el evento, así que ve lo mismo que el
+  // creador. isManager = isCreator || isCoHost, ya calculado arriba.
+  const canSeeAttendees = isManager || isAdmin;
   const maxCapacity = event.maxAttendees || event.maxPeople || 0;
   const currentAttendees =
     event.participantCount ?? event.attendees?.length ?? event.participants?.length ?? 0;
@@ -779,9 +781,14 @@ export default function EventDetailScreen({ route, navigation }) {
           </View>
         </TouchableOpacity>
         <View style={styles.headerActions}>
-          {/* Social gifting: gift THIS paid event to someone (Board 3b). */}
-          {(event?.price || 0) > 0 && !isCreator && (
+          {/* Social gifting: gift THIS paid event to someone (Board 3b).
+              KIN-237 gate 9: tampoco lo ve el co-anfitrión. Regalar es un acto
+              de asistente —comprarle la entrada a otra persona— y quien
+              gestiona el evento no compra su propio evento, igual que no ve la
+              barra de Join/Pay. */}
+          {(event?.price || 0) > 0 && !isManager && (
             <TouchableOpacity
+              testID="event-gift-btn"
               onPress={() =>
                 navigation.navigate("Gifting", {
                   eventId: event.id,
@@ -862,8 +869,9 @@ export default function EventDetailScreen({ route, navigation }) {
               </View>
             </TouchableOpacity>
           )}
-          {(isCreator || isAdmin) && eventStatus !== "cancelled" && (
-            <TouchableOpacity onPress={handleCancelEvent}>
+          {/* KIN-237: cancelar también es del co-anfitrión — decisión de producto cerrada. */}
+          {(isManager || isAdmin) && eventStatus !== "cancelled" && (
+            <TouchableOpacity testID="event-cancel-btn" onPress={handleCancelEvent}>
               <View
                 style={[
                   styles.headerButton,
@@ -1128,7 +1136,7 @@ export default function EventDetailScreen({ route, navigation }) {
 
         {/* Community Matching entry — §3 gating (locked → open → closed) */}
         <View style={{ marginBottom: 16 }}>
-          <MatchingEntryCard event={event} isHost={isCreator} />
+          <MatchingEntryCard event={event} isHost={isManager} />
         </View>
 
         {(isJoined || isCreator) && (
@@ -1297,7 +1305,7 @@ export default function EventDetailScreen({ route, navigation }) {
         )}
 
         {/* Membership options — host sells plans and viewer isn't the host */}
-        {hostHasPlans && !isCreator && (
+        {hostHasPlans && !isManager && (
           <View style={[styles.infoCard, { marginBottom: 12 }]}>
             <TouchableOpacity
               onPress={() =>
@@ -1375,9 +1383,9 @@ export default function EventDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Host attendee roster — host only */}
-        {isCreator && (
-          <View style={[styles.infoCard, { marginBottom: 12 }]}>
+        {/* Attendee roster — whoever manages the event (KIN-237) */}
+        {isManager && (
+          <View testID="event-roster-section" style={[styles.infoCard, { marginBottom: 12 }]}>
             <TouchableOpacity
               onPress={() => navigation.navigate("EventRoster", { eventId })}
               activeOpacity={0.85}
@@ -1414,9 +1422,9 @@ export default function EventDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Host check-in / attendance — host only */}
-        {isCreator && (
-          <View style={[styles.infoCard, { marginBottom: 12 }]}>
+        {/* Check-in / attendance — whoever manages the event (KIN-237) */}
+        {isManager && (
+          <View testID="event-checkin-section" style={[styles.infoCard, { marginBottom: 12 }]}>
             <TouchableOpacity
               onPress={() =>
                 navigation.navigate("EventCheckIn", {
@@ -1458,9 +1466,9 @@ export default function EventDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Promote event — host only, upcoming events */}
-        {isCreator && !isPastEvent && (
-          <View style={[styles.infoCard, { marginBottom: 12 }]}>
+        {/* Promote event — whoever manages it, upcoming events (KIN-237) */}
+        {isManager && !isPastEvent && (
+          <View testID="event-promote-section" style={[styles.infoCard, { marginBottom: 12 }]}>
             {(() => {
               const featuredMs = event.featuredUntil?.toMillis
                 ? event.featuredUntil.toMillis()
@@ -1661,8 +1669,9 @@ export default function EventDetailScreen({ route, navigation }) {
         )}
       </ScrollView>
 
-      {!isCreator && eventStatus !== "cancelled" && !isPastEvent && (
-        <View style={styles.bottomAction}>
+      {/* KIN-237: quien gestiona el evento no se une ni paga por él. */}
+      {!isManager && eventStatus !== "cancelled" && !isPastEvent && (
+        <View testID="event-join-bar" style={styles.bottomAction}>
           <View
             style={[
               styles.bottomGlass,
