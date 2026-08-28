@@ -4,8 +4,8 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { db, auth } from "../services/firebase";
+import { auth } from "../services/firebase";
+import { getManagedEvents } from "../services/managedEventsService";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import { checkInFromScan, subscribeCheckins } from "../services/checkinService";
@@ -31,10 +31,10 @@ export default function CheckInScannerScreen({ route, navigation }) {
   const loadHostEvents = useCallback(async () => {
     try {
       const uid = auth.currentUser?.uid;
-      const snap = await getDocs(query(collection(db, "events"), where("creatorId", "==", uid)));
+      const managed = await getManagedEvents(uid);
       const now = Date.now();
-      const rows = snap.docs
-        .map((d) => ({ id: d.id, title: d.data().title || "Event", date: d.data().date }))
+      const rows = managed
+        .map((e) => ({ id: e.id, title: e.title || "Event", date: e.date }))
         .filter((e) => !e.date || new Date(e.date).getTime() >= now - 12 * 3600000)
         .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
       setEvents(rows);
