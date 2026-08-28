@@ -18,11 +18,12 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from "@react-navigation/native";
-import { collection, query, where, getDocs } from "firebase/firestore";
 import { LinearGradient } from "expo-linear-gradient";
-import { auth, db } from "../services/firebase";
+import { auth } from "../services/firebase";
+import { getManagedEvents } from "../services/managedEventsService";
 import GradientBackground from "../components/GradientBackground";
 import Icon from "../components/Icon";
+import RoleBadge from "../components/RoleBadge";
 import { useTheme } from "../contexts/ThemeContext";
 import { TYPE, SPACING, RADII, BRAND, ELEVATION } from "../constants/theme-tokens";
 import { filterUpcomingEvents, filterPastEvents } from "../utils/eventFilters";
@@ -44,10 +45,8 @@ export default function ManageScreen({ navigation }) {
         setEvents([]);
         return;
       }
-      const snap = await getDocs(query(collection(db, "events"), where("creatorId", "==", uid)));
-      setEvents(
-        snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((e) => e.status !== "cancelled"),
-      );
+      const managed = await getManagedEvents(uid);
+      setEvents(managed.filter((e) => e.status !== "cancelled"));
     } catch (e) {
       setEvents([]);
     } finally {
@@ -86,8 +85,11 @@ export default function ManageScreen({ navigation }) {
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.navigate("EventDetail", { eventId: event.id })} activeOpacity={0.85} style={styles.cardBody}>
           <View style={styles.cardTop}>
-            <View style={[styles.catChip, { backgroundColor: `${colors.primary}1A` }]}>
-              <Text style={[styles.catText, { color: colors.primary }]}>{event.category || t("myEvents.event")}</Text>
+            <View style={styles.cardTopLeft}>
+              <View style={[styles.catChip, { backgroundColor: `${colors.primary}1A` }]}>
+                <Text style={[styles.catText, { color: colors.primary }]}>{event.category || t("myEvents.event")}</Text>
+              </View>
+              {!event.isCreator && event.isCoHost && <RoleBadge role="coHost" />}
             </View>
             <Text style={[styles.cardDate, { color: colors.textSecondary }]}>
               {formatISODate(event.date)} · {formatEventTime(event.date, event.time)}
@@ -232,6 +234,7 @@ function createStyles(colors) {
     card: { borderRadius: RADII.card, borderWidth: 1, marginBottom: SPACING.md, overflow: "hidden" },
     cardBody: { padding: 16 },
     cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
+    cardTopLeft: { flexDirection: "row", alignItems: "center", gap: SPACING.xs },
     catChip: { paddingVertical: 4, paddingHorizontal: 12, borderRadius: 8 },
     catText: { fontSize: 11, fontWeight: "700" },
     cardDate: { fontSize: 12.5, fontWeight: "600" },

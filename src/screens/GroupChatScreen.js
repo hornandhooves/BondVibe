@@ -18,8 +18,8 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { db, auth } from "../services/firebase";
+import { auth } from "../services/firebase";
+import { getManagedEvents } from "../services/managedEventsService";
 import { useTheme } from "../contexts/ThemeContext";
 import GradientBackground from "../components/GradientBackground";
 import KeyboardAccessory from "../components/KeyboardAccessory";
@@ -137,12 +137,9 @@ export default function GroupChatScreen({ route, navigation }) {
   };
 
   const openInvite = async () => {
-    const snap = await getDocs(
-      query(collection(db, "events"), where("creatorId", "==", uid))
-    );
+    const managed = await getManagedEvents(uid);
     const now = Date.now();
-    const evs = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
+    const evs = managed
       .filter((e) => e.status !== "cancelled" && new Date(e.date).getTime() > now)
       .sort((a, b) => new Date(a.date) - new Date(b.date));
     setMyEvents(evs);

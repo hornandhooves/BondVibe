@@ -15,9 +15,10 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import { useFocusEffect } from "@react-navigation/native";
-import { collection, query, where, getDocs, limit } from "firebase/firestore";
+import { collection, query, getDocs, limit } from "firebase/firestore";
 import { db, auth } from "../services/firebase";
 import { getMyRosterEvents } from "../services/rosterService";
+import { getManagedEvents } from "../services/managedEventsService";
 import GradientBackground from "../components/GradientBackground";
 import Icon from "../components/Icon";
 import { useTheme } from "../contexts/ThemeContext";
@@ -50,20 +51,19 @@ export default function EventChatsScreen({ navigation }) {
           return;
         }
         try {
-          // Every event whose chat you can see: ones you joined + ones you host.
-          // ROSTER (fix/privacy-event-roster): joined events come from the roster.
-          const [joined, hostSnap] = await Promise.all([
+          // Every event whose chat you can see: ones you joined + ones you
+          // manage (creator or co-host — KIN-242). ROSTER
+          // (fix/privacy-event-roster): joined events come from the roster.
+          const [joined, managed] = await Promise.all([
             getMyRosterEvents(),
-            getDocs(
-              query(collection(db, "events"), where("creatorId", "==", uid))
-            ),
+            getManagedEvents(uid),
           ]);
           const byId = {};
           joined.forEach((e) => {
             byId[e.id] = e;
           });
-          hostSnap.docs.forEach((d) => {
-            byId[d.id] = { id: d.id, ...d.data() };
+          managed.forEach((e) => {
+            byId[e.id] = e;
           });
           const list = Object.values(byId);
           if (alive) setEvents(list);
