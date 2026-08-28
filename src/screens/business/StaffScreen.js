@@ -28,6 +28,8 @@ export default function StaffScreen({ navigation }) {
   const { loading, run } = useAsyncLoad();
   const [inviting, setInviting] = useState(false);
   const [email, setEmail] = useState("");
+  const [selectedUser, setSelectedUser] = useState(null); // KIN-243: picked by @handle, awaiting Send invite
+  const [submitting, setSubmitting] = useState(false);
   const [role, setRole] = useState("reception");
   const [roles, setRoles] = useState([]);
   const [invites, setInvites] = useState([]);
@@ -114,7 +116,7 @@ export default function StaffScreen({ navigation }) {
       Alert.alert(t("business.staff.failTitle"), t("business.common.tryAgain"));
       return true; // handled (and failed) — don't also run the normal invite
     }
-    setInviting(false); setEmail(""); load();
+    setInviting(false); setEmail(""); setSelectedUser(null); load();
     Alert.alert(
       t("business.staff.mergedTitle"),
       t("business.staff.mergedMsg", { name: ph.name, count: res.backfilled || 0 }),
@@ -122,33 +124,55 @@ export default function StaffScreen({ navigation }) {
     return true;
   };
 
-  // Add an existing app user to the team by @handle (spec 10).
-  const doInviteByHandle = async (user) => {
-    if (await claimedInsteadOfInviting(user.name || user.handle, user.uid)) return;
-    const res = await inviteStaffByHandle(user.handle, role);
-    if (res.ok) {
-      setInviting(false); setEmail(""); load();
-      Alert.alert(t("business.staff.invitedTitle"), t("business.staff.invitedMsg", { name: res.name || user.name || `@${user.handle}` }));
-    } else {
-      Alert.alert(t("business.staff.failTitle"), res.error === "self" ? t("business.staff.selfMsg") : t("business.common.tryAgain"));
-    }
+  // Shared failure alert for both invite routes. `already_active` (KIN-243) is
+  // a distinct outcome from `self` (inviting the business owner) — both surface
+  // as the same "already-exists" callable error, so the service layer tags them
+  // apart before this ever sees them.
+  const alertInviteFailure = (error) => {
+    const msg =
+      error === "already_active" ? t("business.staff.alreadyActiveMsg")
+        : error === "self" ? t("business.staff.selfMsg")
+          : t("business.common.tryAgain");
+    Alert.alert(t("business.staff.failTitle"), msg);
   };
 
-  const doInvite = async () => {
-    if (!email.trim()) { Alert.alert(t("business.staff.emailRequired")); return; }
-    const res = await inviteStaff(email, role);
-    if (res.ok && res.pending) {
-      setInviting(false); setEmail(""); load();
-      Alert.alert(t("business.staff.pendingTitle"), t("business.staff.pendingMsg", { email: email.trim() }));
-    } else if (res.ok) {
-      // The uid only exists once the server resolved a real account, so unlike
-      // the @handle path the placeholder check has to run AFTER the invite. A
-      // `pending` invite (branch above) has no account to merge into yet.
-      if (await claimedInsteadOfInviting(res.name || email, res.uid)) return;
-      setInviting(false); setEmail(""); load();
-      Alert.alert(t("business.staff.invitedTitle"), t("business.staff.invitedMsg", { name: res.name || email }));
-    } else {
-      Alert.alert(t("business.staff.failTitle"), res.error === "self" ? t("business.staff.selfMsg") : t("business.common.tryAgain"));
+  // KIN-243: picking a @handle result used to invite immediately (onSelect ran
+  // the callable). Now it only stages the pick — the callable only fires from
+  // "Send invite" below, so a stray tap on a search result can't send anything.
+  const doSendInvite = async () => {
+    if (!selectedUser && !email.trim()) {
+      Alert.alert(t("business.staff.noRecipient"));
+      return;
+    }
+    setSubmitting(true);
+    try {
+      if (selectedUser) {
+        if (await claimedInsteadOfInviting(selectedUser.name || selectedUser.handle, selectedUser.uid)) return;
+        const res = await inviteStaffByHandle(selectedUser.handle, role);
+        if (res.ok) {
+          setInviting(false); setEmail(""); setSelectedUser(null); load();
+          Alert.alert(t("business.staff.invitedTitle"), t("business.staff.invitedMsg", { name: res.name || selectedUser.name || `@${selectedUser.handle}` }));
+        } else {
+          alertInviteFailure(res.error);
+        }
+        return;
+      }
+      const res = await inviteStaff(email, role);
+      if (res.ok && res.pending) {
+        setInviting(false); setEmail(""); setSelectedUser(null); load();
+        Alert.alert(t("business.staff.pendingTitle"), t("business.staff.pendingMsg", { email: email.trim() }));
+      } else if (res.ok) {
+        // The uid only exists once the server resolved a real account, so unlike
+        // the @handle path the placeholder check has to run AFTER the invite. A
+        // `pending` invite (branch above) has no account to merge into yet.
+        if (await claimedInsteadOfInviting(res.name || email, res.uid)) return;
+        setInviting(false); setEmail(""); setSelectedUser(null); load();
+        Alert.alert(t("business.staff.invitedTitle"), t("business.staff.invitedMsg", { name: res.name || email }));
+      } else {
+        alertInviteFailure(res.error);
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -193,7 +217,7 @@ export default function StaffScreen({ navigation }) {
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}><Icon name="back" size={26} color={colors.text} /></TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>{t("business.staff.title")}</Text>
-        <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.primary }]} onPress={() => setInviting(true)}><Icon name="plus" size={20} color="#fff" /></TouchableOpacity>
+        <TouchableOpacity testID="staff-add-btn" style={[styles.addBtn, { backgroundColor: colors.primary }]} onPress={() => setInviting(true)}><Icon name="plus" size={20} color="#fff" /></TouchableOpacity>
       </View>
 
       {loading ? (
@@ -309,12 +333,32 @@ export default function StaffScreen({ navigation }) {
                 return <TouchableOpacity key={r.id} onPress={() => setRole(r.id)} style={[styles.roleChip, { borderColor: on ? colors.primary : colors.border, backgroundColor: on ? `${colors.primary}14` : "transparent" }]}><Text style={[styles.segText, { color: on ? colors.primary : colors.textSecondary }]}>{r.name}</Text></TouchableOpacity>;
               })}
             </View>
-            {/* Add by @handle: search an existing app user → add with the role above. */}
+            {/* Add by @handle: search an existing app user, stage the pick, then
+                confirm with "Send invite" below (KIN-243 — no longer sends on tap). */}
             <Text style={[styles.roleHint, { color: colors.textTertiary, marginBottom: 8 }]}>{t("business.staff.addByHandle")}</Text>
-            <UserSearchField placeholder={t("business.staff.handlePlaceholder")} onSelect={doInviteByHandle} maxHeight={200} />
+            {selectedUser ? (
+              <View style={[styles.selectedUserRow, { backgroundColor: colors.surfaceGlass, borderColor: colors.border }]}>
+                <Icon name="check" size={16} color={colors.success} />
+                <Text style={[styles.selectedUserName, { color: colors.text }]} numberOfLines={1}>
+                  {selectedUser.name || `@${selectedUser.handle}`}
+                </Text>
+                <TouchableOpacity testID="staff-selected-user-clear" onPress={() => setSelectedUser(null)}>
+                  <Icon name="close" size={18} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <UserSearchField placeholder={t("business.staff.handlePlaceholder")} onSelect={setSelectedUser} maxHeight={200} />
+            )}
             <Text style={[styles.roleHint, { color: colors.textTertiary, marginTop: 14, marginBottom: 8 }]}>{t("business.staff.orByEmail")}</Text>
             <TextInput style={[styles.input, inputStyle]} value={email} onChangeText={setEmail} placeholder={t("business.staff.emailPlaceholder")} placeholderTextColor={colors.textTertiary} keyboardType="email-address" autoCapitalize="none" />
-            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primary }]} onPress={doInvite}><Text style={styles.saveText}>{t("business.staff.sendInvite")}</Text></TouchableOpacity>
+            <TouchableOpacity
+              testID="staff-send-invite"
+              style={[styles.saveBtn, { backgroundColor: colors.primary, opacity: submitting ? 0.6 : 1 }]}
+              onPress={doSendInvite}
+              disabled={submitting}
+            >
+              <Text style={styles.saveText}>{submitting ? t("business.staff.sending") : t("business.staff.sendInvite")}</Text>
+            </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -444,6 +488,8 @@ function createStyles(colors) {
     inviteRow: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, marginBottom: 8 },
     inviteEmail: { flex: 1, fontSize: 13.5, fontWeight: "600" },
     inviteRole: { fontSize: 12, fontWeight: "700" },
+    selectedUserRow: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12 },
+    selectedUserName: { flex: 1, fontSize: 14.5, fontWeight: "700" },
     roleWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     roleChip: { borderWidth: 1.5, borderRadius: 12, paddingVertical: 9, paddingHorizontal: 14 },
     roleHint: { fontSize: 12, lineHeight: 17, marginTop: 10 },

@@ -195,3 +195,101 @@ test("SI9 claim SKIPS a poisoned invite whose stored role is forbidden ('owner')
   const staffSnap = await db.collection("businesses").doc(bizId).collection("staff").doc(inviteeUid).get();
   assert.strictEqual(staffSnap.exists, false);
 });
+
+// ===========================================================================
+// KIN-243 — a repeat invite must be idempotent (one notification, no clobber)
+// and must NEVER regress an already-ACCEPTED staff member back to "invited".
+// ===========================================================================
+
+test("SI10 two invites to the same uid (email route) produce exactly ONE notification", async () => {
+  const ownerUid = `owner_${nextId()}`;
+  const ownerToken = await tokenFor(ownerUid, {verified: true});
+  const targetUid = `staff_${nextId()}`;
+  const targetEmail = `target_${nextId()}@kinlo.test`;
+  await tokenFor(targetUid, {verified: true, email: targetEmail}); // account must exist to resolve by email
+
+  // onCall wraps a success body as {result: {...}} on the wire.
+  const first = await post("inviteBusinessStaff", {data: {email: targetEmail, role: "reception"}}, ownerToken);
+  assert.strictEqual(first.status, 200);
+  assert.strictEqual(first.body.result.alreadyInvited, false);
+
+  const second = await post("inviteBusinessStaff", {data: {email: targetEmail, role: "reception"}}, ownerToken);
+  assert.strictEqual(second.status, 200);
+  assert.strictEqual(second.body.result.alreadyInvited, true, "the second call must report it as a no-op alta");
+
+  const notifs = await db.collection("notifications")
+    .where("userId", "==", targetUid).where("type", "==", "staff_invite").get();
+  assert.strictEqual(notifs.size, 1, "a repeat invite must not create a second notification");
+});
+
+test("SI11 a repeat invite does NOT rewrite createdAt or role on an already-invited doc", async () => {
+  const ownerUid = `owner_${nextId()}`;
+  const ownerToken = await tokenFor(ownerUid, {verified: true});
+  const targetUid = `staff_${nextId()}`;
+  const targetEmail = `target_${nextId()}@kinlo.test`;
+  await tokenFor(targetUid, {verified: true, email: targetEmail});
+
+  await post("inviteBusinessStaff", {data: {email: targetEmail, role: "reception"}}, ownerToken);
+  const staffRef = db.collection("businesses").doc(ownerUid).collection("staff").doc(targetUid);
+  const firstCreatedAt = (await staffRef.get()).data().createdAt;
+
+  // A different role on the repeat call: if the old blind merge:true ran, this
+  // is exactly what would silently overwrite it.
+  await post("inviteBusinessStaff", {data: {email: targetEmail, role: "instructor"}}, ownerToken);
+  const after = (await staffRef.get()).data();
+  assert.ok(firstCreatedAt.isEqual(after.createdAt), "createdAt must not change on a repeat invite");
+  assert.strictEqual(after.role, "reception", "role must not change on a repeat invite either");
+});
+
+test("SI12 re-inviting a uid whose staff doc is already ACTIVE throws already-exists and writes NOTHING", async () => {
+  const ownerUid = `owner_${nextId()}`;
+  const ownerToken = await tokenFor(ownerUid, {verified: true});
+  const targetUid = `staff_${nextId()}`;
+  const targetEmail = `target_${nextId()}@kinlo.test`;
+  await tokenFor(targetUid, {verified: true, email: targetEmail});
+
+  const staffRef = db.collection("businesses").doc(ownerUid).collection("staff").doc(targetUid);
+  const acceptedAt = admin.firestore.Timestamp.now();
+  const originalCreatedAt = admin.firestore.Timestamp.fromMillis(acceptedAt.toMillis() - 60000);
+  // Simulates a staff member who already accepted (BUG 32.1's respondToStaffInvite
+  // flips exactly this: status "invited" -> "active").
+  await staffRef.set({
+    uid: targetUid, role: "reception", email: targetEmail, name: "", branchIds: [],
+    status: "active", invitedBy: ownerUid, createdAt: originalCreatedAt, acceptedAt,
+  });
+
+  const res = await post("inviteBusinessStaff", {data: {email: targetEmail, role: "instructor"}}, ownerToken);
+  assert.strictEqual(res.status, 409);
+  // onCall wraps a thrown HttpsError as {error: {message, status}} on the wire.
+  assert.strictEqual(res.body.error.message, "already_active");
+
+  const after = (await staffRef.get()).data();
+  assert.strictEqual(after.status, "active", "status must stay active — not regressed to invited");
+  assert.strictEqual(after.role, "reception", "role must not be stomped by the re-invite's role");
+  assert.ok(originalCreatedAt.isEqual(after.createdAt), "createdAt must be untouched");
+
+  const notifs = await db.collection("notifications")
+    .where("userId", "==", targetUid).where("type", "==", "staff_invite").get();
+  assert.strictEqual(notifs.size, 0, "an already-active target must not be notified again");
+});
+
+test("SI13 the @handle route also rejects re-inviting an already-ACTIVE staff member", async () => {
+  const ownerUid = `owner_${nextId()}`;
+  const ownerToken = await tokenFor(ownerUid, {verified: true});
+  const targetUid = `staff_${nextId()}`;
+  const handle = `handle_${nextId()}`;
+  await tokenFor(targetUid, {verified: true});
+  await db.collection("handles").doc(handle).set({uid: targetUid});
+
+  const staffRef = db.collection("businesses").doc(ownerUid).collection("staff").doc(targetUid);
+  await staffRef.set({
+    uid: targetUid, role: "reception", email: "", name: "", branchIds: [],
+    status: "active", invitedBy: ownerUid, createdAt: admin.firestore.Timestamp.now(),
+  });
+
+  const res = await post("inviteBusinessStaff", {data: {handle, role: "instructor"}}, ownerToken);
+  assert.strictEqual(res.status, 409);
+  // onCall wraps a thrown HttpsError as {error: {message, status}} on the wire.
+  assert.strictEqual(res.body.error.message, "already_active");
+  assert.strictEqual((await staffRef.get()).data().role, "reception");
+});
