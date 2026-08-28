@@ -121,7 +121,7 @@ describe("StaffScreen — invite by @handle needs explicit confirmation (KIN-243
 
     fireEvent.press(utils.getByTestId("staff-send-invite"));
 
-    expect(Alert.alert).toHaveBeenCalledWith("business.staff.noRecipient");
+    expect(Alert.alert).toHaveBeenCalledWith("business.staff.failTitle", "business.staff.noRecipient");
     expect(inviteStaffByHandle).not.toHaveBeenCalled();
     expect(inviteStaff).not.toHaveBeenCalled();
   });
@@ -138,5 +138,21 @@ describe("StaffScreen — invite by @handle needs explicit confirmation (KIN-243
     await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(
       "business.staff.failTitle", "business.staff.alreadyActiveMsg",
     ));
+  });
+
+  it("closing the sheet without sending clears the staged pick (authorized follow-up)", async () => {
+    const utils = setup();
+    await waitFor(() => expect(listRoles).toHaveBeenCalled());
+    fireEvent.press(utils.getByTestId("staff-add-btn"));
+
+    fireEvent.press(utils.getByTestId("fake-search-result"));
+    expect(utils.getByTestId("staff-selected-user-clear")).toBeTruthy();
+
+    fireEvent.press(utils.getByTestId("staff-invite-sheet-close"));
+    fireEvent.press(utils.getByTestId("staff-add-btn")); // reopen
+
+    // The picked user must NOT still be staged — back to the search field.
+    expect(utils.queryByTestId("staff-selected-user-clear")).toBeNull();
+    expect(utils.getByTestId("fake-search-result")).toBeTruthy();
   });
 });

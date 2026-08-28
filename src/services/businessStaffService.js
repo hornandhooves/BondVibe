@@ -60,7 +60,11 @@ export async function listStaff(bizId = getMyBizId()) {
 function mapInviteError(e) {
   const code = e?.code || "";
   if (code.includes("not-found")) return "not_found";
-  if (code.includes("already-exists")) return e?.message === "already_active" ? "already_active" : "self";
+  if (code.includes("already-exists")) {
+    // Both throw sites use a stable message code ("self" / "already_active"),
+    // not English prose — so this doesn't silently break if either is reworded.
+    return e?.message === "already_active" ? "already_active" : "self";
+  }
   return "failed";
 }
 

@@ -141,7 +141,9 @@ export default function StaffScreen({ navigation }) {
   // "Send invite" below, so a stray tap on a search result can't send anything.
   const doSendInvite = async () => {
     if (!selectedUser && !email.trim()) {
-      Alert.alert(t("business.staff.noRecipient"));
+      // Authorized alongside KIN-243: two-arg Alert, matching the rest of this
+      // file's invite alerts — a title-only Alert.alert shows no body text.
+      Alert.alert(t("business.staff.failTitle"), t("business.staff.noRecipient"));
       return;
     }
     setSubmitting(true);
@@ -200,6 +202,13 @@ export default function StaffScreen({ navigation }) {
       setEditStaff(null);
       load();
     }
+  };
+
+  // Authorized alongside KIN-243: closing the sheet without sending used to
+  // leave a stale email/selectedUser draft sitting there for next time it
+  // opens. Reopening now always starts clean, same as a successful send.
+  const closeInviteSheet = () => {
+    setInviting(false); setEmail(""); setSelectedUser(null);
   };
 
   const remove = (s) =>
@@ -322,10 +331,10 @@ export default function StaffScreen({ navigation }) {
         </KeyboardAvoidingView>
       </Modal>
 
-      <Modal visible={inviting} transparent animationType="slide" onRequestClose={() => setInviting(false)}>
+      <Modal visible={inviting} transparent animationType="slide" onRequestClose={closeInviteSheet}>
         <KeyboardAvoidingView style={styles.sheetBackdrop} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <View style={[styles.sheet, { backgroundColor: colors.background }]}>
-            <View style={styles.sheetHeader}><Text style={[styles.sheetTitle, { color: colors.text }]}>{t("business.staff.invite")}</Text><TouchableOpacity onPress={() => setInviting(false)}><Icon name="close" size={22} color={colors.textSecondary} /></TouchableOpacity></View>
+            <View style={styles.sheetHeader}><Text style={[styles.sheetTitle, { color: colors.text }]}>{t("business.staff.invite")}</Text><TouchableOpacity testID="staff-invite-sheet-close" onPress={closeInviteSheet}><Icon name="close" size={22} color={colors.textSecondary} /></TouchableOpacity></View>
             <Text style={[styles.roleHint, { color: colors.textTertiary, marginTop: 0, marginBottom: 8 }]}>{t("business.staff.pickRole")}</Text>
             <View style={styles.roleWrap}>
               {assignable.map((r) => {

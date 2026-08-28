@@ -5459,7 +5459,7 @@ exports.inviteBusinessStaff = onCall(async (request) => {
     const hSnap = await db.collection("handles").doc(handle).get();
     const targetUid = hSnap.exists ? hSnap.data().uid : null;
     if (!targetUid) throw new HttpsError("not-found", "No user with that handle.");
-    if (targetUid === uid) throw new HttpsError("already-exists", "You're already the owner.");
+    if (targetUid === uid) throw new HttpsError("already-exists", "self");
     let u = null;
     try {
       u = await admin.auth().getUser(targetUid);
@@ -5488,7 +5488,7 @@ exports.inviteBusinessStaff = onCall(async (request) => {
 
   if (staff) {
     if (staff.uid === uid) {
-      throw new HttpsError("already-exists", "You're already the owner.");
+      throw new HttpsError("already-exists", "self");
     }
     const {isNew} = await upsertStaffInvite(bizId, staff.uid, role, uid, {
       email,
