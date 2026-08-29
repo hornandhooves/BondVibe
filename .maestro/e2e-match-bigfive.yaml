@@ -1,0 +1,41 @@
+# E2E — smoke for privacy #52: the Big Five renders in the Match Profile view,
+# which only happens when `personality` is read from the GATED subcollection
+# users/{uid}/match/profile (the world-readable users doc no longer carries it).
+# If the subcollection read broke, MatchProfileView shows its empty-state nudge
+# and `match-bigfive` never appears → this flow fails.
+#
+# Assumes a signed-in session whose account HAS completed the Big Five quiz.
+# Run .maestro/p0-login.yaml first (or with clearState:false on a logged-in sim).
+#
+# testIDs used: tab-profile · profile-match-profile · match-bigfive (added on this branch).
+appId: com.kinlo.app
+---
+- launchApp:
+    clearState: false
+# Dismiss any transient dialogs (push perms, etc.).
+- repeat:
+    while:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 120000
+# Profile tab → "My matchmaking profile" entry.
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible:
+      id: "profile-match-profile"
+    timeout: 30000
+- tapOn:
+    id: "profile-match-profile"
+# The assertion: the Big Five section is on screen (personality loaded from the
+# gated subcollection). A blank/incomplete read would show the nudge instead.
+- extendedWaitUntil:
+    visible:
+      id: "match-bigfive"
+    timeout: 30000
+- assertVisible:
+    id: "match-bigfive"
