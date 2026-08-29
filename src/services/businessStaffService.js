@@ -51,6 +51,24 @@ export async function listStaff(bizId = getMyBizId()) {
 }
 
 /**
+ * KIN-243: `inviteBusinessStaff` throws "already-exists" for two DIFFERENT
+ * reasons — inviting yourself (the owner), or inviting a uid whose staff doc
+ * is already `status:"active"`. The server tags the second case with a
+ * distinct message so the client can show the right one instead of collapsing
+ * both into "self".
+ */
+function mapInviteError(e) {
+  const code = e?.code || "";
+  if (code.includes("not-found")) return "not_found";
+  if (code.includes("already-exists")) {
+    // Both throw sites use a stable message code ("self" / "already_active"),
+    // not English prose — so this doesn't silently break if either is reworded.
+    return e?.message === "already_active" ? "already_active" : "self";
+  }
+  return "failed";
+}
+
+/**
  * Invite a staff member by email. Server-side (needs an auth lookup the client
  * can't do). Returns { ok, name?, error? }.
  */
@@ -60,11 +78,7 @@ export async function inviteStaff(email, role) {
     const res = await fn({ email: (email || "").trim(), role });
     return { ok: true, ...(res.data || {}) };
   } catch (e) {
-    const code = e?.code || "";
-    let error = "failed";
-    if (code.includes("not-found")) error = "not_found";
-    else if (code.includes("already-exists")) error = "self";
-    return { ok: false, error };
+    return { ok: false, error: mapInviteError(e) };
   }
 }
 
@@ -78,11 +92,7 @@ export async function inviteStaffByHandle(handle, role) {
     const res = await fn({ handle: (handle || "").trim(), role });
     return { ok: true, ...(res.data || {}) };
   } catch (e) {
-    const code = e?.code || "";
-    let error = "failed";
-    if (code.includes("not-found")) error = "not_found";
-    else if (code.includes("already-exists")) error = "self";
-    return { ok: false, error };
+    return { ok: false, error: mapInviteError(e) };
   }
 }
 

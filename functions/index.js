@@ -5350,6 +5350,56 @@ async function assertAssignableRole(bizId, role) {
 }
 
 /**
+ * KIN-243: create-or-no-op a business's staff doc, reading its current state
+ * FIRST so a repeat invite is idempotent instead of a blind overwrite.
+ *
+ * The old code did `.set({status:"invited", role, createdAt}, {merge:true})`
+ * unconditionally. Re-inviting someone who had already ACCEPTED (status
+ * "active") silently regressed them back to "invited", stomped their role
+ * with whatever the invite form had selected, and erased their original
+ * createdAt — all with no read guarding it, so it happened every time, not
+ * intermittently.
+ *
+ * @param {string} bizId the business id
+ * @param {string} targetUid the staff member's uid
+ * @param {string} role the role to grant (only used on first invite)
+ * @param {string} invitedBy the inviting owner's uid
+ * @param {object} extra doc fields that vary by invite route (email, name)
+ * @return {Promise<{isNew: boolean}>} isNew is true only when the doc didn't
+ *   exist yet and this call created it — the caller notifies only then.
+ * @throws {HttpsError} already-exists (message "already_active") when the
+ *   target is already an active staff member — changing an accepted staff
+ *   member's role is a different flow and out of scope here.
+ */
+async function upsertStaffInvite(bizId, targetUid, role, invitedBy, extra) {
+  const ref = db.collection("businesses").doc(bizId).collection("staff").doc(targetUid);
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) {
+      tx.set(ref, {
+        uid: targetUid,
+        role,
+        branchIds: [],
+        status: "invited",
+        invitedBy,
+        createdAt: FieldValue.serverTimestamp(),
+        ...extra,
+      });
+      return {isNew: true};
+    }
+    const status = snap.data().status;
+    if (status === "active") {
+      throw new HttpsError("already-exists", "already_active");
+    }
+    // "invited", or any other status we don't specifically recognize: leave
+    // status/role/createdAt untouched. Re-inviting is idempotent, not a way to
+    // change someone's role — and an unrecognized status is exactly the case
+    // where guessing what to overwrite is how this bug happened the first time.
+    return {isNew: false};
+  });
+}
+
+/**
  * Invite a staff member to a business (owner-only). Looks up the user by email
  * and grants a scoped role. kinlo_business/01 §7. v1: bizId === owner uid.
  */
@@ -5409,26 +5459,22 @@ exports.inviteBusinessStaff = onCall(async (request) => {
     const hSnap = await db.collection("handles").doc(handle).get();
     const targetUid = hSnap.exists ? hSnap.data().uid : null;
     if (!targetUid) throw new HttpsError("not-found", "No user with that handle.");
-    if (targetUid === uid) throw new HttpsError("already-exists", "You're already the owner.");
+    if (targetUid === uid) throw new HttpsError("already-exists", "self");
     let u = null;
     try {
       u = await admin.auth().getUser(targetUid);
     } catch (e) {
       u = null;
     }
-    await db.collection("businesses").doc(bizId)
-      .collection("staff").doc(targetUid).set({
-        uid: targetUid,
-        role,
-        email: (u && u.email) || "",
-        name: (u && u.displayName) || "",
-        branchIds: [],
-        status: "invited",
-        invitedBy: uid,
-        createdAt: FieldValue.serverTimestamp(),
-      }, {merge: true});
-    await notifyInvite(targetUid, role);
-    return {uid: targetUid, role, name: (u && u.displayName) || "", pending: false, invited: true};
+    const {isNew} = await upsertStaffInvite(bizId, targetUid, role, uid, {
+      email: (u && u.email) || "",
+      name: (u && u.displayName) || "",
+    });
+    if (isNew) await notifyInvite(targetUid, role);
+    return {
+      uid: targetUid, role, name: (u && u.displayName) || "", pending: false, invited: true,
+      alreadyInvited: !isNew,
+    };
   }
 
   if (!email) throw new HttpsError("invalid-argument", "Email or handle required.");
@@ -5442,21 +5488,17 @@ exports.inviteBusinessStaff = onCall(async (request) => {
 
   if (staff) {
     if (staff.uid === uid) {
-      throw new HttpsError("already-exists", "You're already the owner.");
+      throw new HttpsError("already-exists", "self");
     }
-    await db.collection("businesses").doc(bizId)
-      .collection("staff").doc(staff.uid).set({
-        uid: staff.uid,
-        role,
-        email,
-        name: staff.displayName || "",
-        branchIds: [],
-        status: "invited",
-        invitedBy: uid,
-        createdAt: FieldValue.serverTimestamp(),
-      }, {merge: true});
-    await notifyInvite(staff.uid, role);
-    return {uid: staff.uid, role, name: staff.displayName || "", email, pending: false, invited: true};
+    const {isNew} = await upsertStaffInvite(bizId, staff.uid, role, uid, {
+      email,
+      name: staff.displayName || "",
+    });
+    if (isNew) await notifyInvite(staff.uid, role);
+    return {
+      uid: staff.uid, role, name: staff.displayName || "", email, pending: false, invited: true,
+      alreadyInvited: !isNew,
+    };
   }
 
   // No account yet: store a pending invite keyed by email; it auto-links when
