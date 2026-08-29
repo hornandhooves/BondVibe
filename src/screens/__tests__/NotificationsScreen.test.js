@@ -249,3 +249,49 @@ describe("KIN-238 — staff_invite", () => {
     expect(navigation.navigate.mock.calls[0][0]).not.toBe("EventDetail");
   });
 });
+
+// ---------------------------------------------------------------------------
+// KIN-244/245/246 — aceptar, declinar y remover staff no notificaban a nadie;
+// ahora que sí lo hacen, los 3 tipos nuevos necesitan su propio case o caen
+// en el `default: break` — el mismo bug que KIN-238 cerró para staff_invite.
+// ---------------------------------------------------------------------------
+
+describe("KIN-244/246 — staff_accepted y staff_declined", () => {
+  for (const type of ["staff_accepted", "staff_declined"]) {
+    it(`${type} abre BusinessStaff para quien invitó`, async () => {
+      const utils = renderWith([cancelDoc(type, {
+        metadata: { bizId: "biz1", role: "reception" },
+      })]);
+      fireEvent.press(await utils.findByTestId("notification-card-0"));
+
+      await waitFor(() => expect(navigation.navigate).toHaveBeenCalled());
+      expect(navigation.navigate).toHaveBeenCalledWith("BusinessStaff");
+      expect(navigation.navigate).toHaveBeenCalledTimes(1);
+    });
+  }
+});
+
+describe("KIN-245 — staff_removed", () => {
+  it("abre Profile para quien fue removido", async () => {
+    // El removido ya no tiene por qué poder abrir la pantalla de staff de ese
+    // negocio — Profile es el destino neutral, no la ausencia de un case.
+    const utils = renderWith([cancelDoc("staff_removed", {
+      metadata: { bizId: "biz1" },
+    })]);
+    fireEvent.press(await utils.findByTestId("notification-card-0"));
+
+    await waitFor(() => expect(navigation.navigate).toHaveBeenCalled());
+    expect(navigation.navigate).toHaveBeenCalledWith("Profile");
+    expect(navigation.navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it("no se va a BusinessStaff por error", async () => {
+    const utils = renderWith([cancelDoc("staff_removed", {
+      metadata: { bizId: "biz1" },
+    })]);
+    fireEvent.press(await utils.findByTestId("notification-card-0"));
+
+    await waitFor(() => expect(navigation.navigate).toHaveBeenCalled());
+    expect(navigation.navigate.mock.calls[0][0]).not.toBe("BusinessStaff");
+  });
+});

@@ -365,6 +365,21 @@ export default function NotificationsScreen({ navigation }) {
         navigation.navigate("Inbox");
         break;
 
+      // KIN-244/246: quien invitó ve la respuesta en su lista de staff —
+      // mismo destino tanto si aceptaron como si declinaron.
+      case "staff_accepted":
+      case "staff_declined":
+        navigation.navigate("BusinessStaff");
+        break;
+
+      // KIN-245: a quien remueven ya no tiene nada que ver en la pantalla de
+      // staff de ese negocio (ni siquiera podría abrirla) — Profile es un
+      // destino neutral, siempre válido, en vez de dejar la navegación sin
+      // decidir (el bug KIN-238 que este ticket cierra en las otras tres).
+      case "staff_removed":
+        navigation.navigate("Profile");
+        break;
+
       case "membership_purchased":
       case "membership_low_credits":
       case "membership_expiring":
