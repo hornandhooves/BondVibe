@@ -50,6 +50,9 @@ const {
 const {sendBatchPushNotifications, sendPushNotification, unreadTotalForUser} =
   require("./notifications/pushService");
 const {tPush, baseLang} = require("./i18n"); // BUG 34: localized notification strings
+// KIN-244/245/246: the shared write-doc + send-push helper — staff lifecycle
+// routes only for now (see functions/notifications/createNotification.js).
+const {createNotification} = require("./notifications/createNotification");
 const bizAutomations = require("./business/automations");
 
 // Import event helpers (attendee/creator normalization)
@@ -5433,25 +5436,20 @@ exports.inviteBusinessStaff = onCall(async (request) => {
   } catch (e) {
     ownerName = "";
   }
-  // BUG 34: recipient = the INVITEE (in-app only). key+params; English fallback
-  // from the catalog.
-  const notifyInvite = (targetUid, roleVal) => {
-    const params = {business: bizName || "A business", role: roleVal};
-    return db.collection("notifications").add({
+  // KIN-244: recipient = the INVITEE. Now via the shared helper — write +
+  // push in one call, localized to the invitee's own language (previously
+  // hardcoded "en" for both the stored strings AND any push built from them).
+  const notifyInvite = (targetUid, roleVal) =>
+    createNotification({
       userId: targetUid,
+      actorUid: uid, // nadie se autonotifica (also already blocked earlier)
       type: "staff_invite",
-      title: tPush("notifications.staff.invite.title", "en", params),
-      message: tPush("notifications.staff.invite.body", "en", params),
       titleKey: "notifications.staff.invite.title",
       bodyKey: "notifications.staff.invite.body",
-      params,
-      icon: "👥",
-      read: false,
-      resolved: false,
-      createdAt: FieldValue.serverTimestamp(),
+      params: {business: bizName || "A business", role: roleVal},
       metadata: {bizId, role: roleVal, businessName: bizName || "", fromUid: uid, fromName: ownerName || ""},
+      icon: "👥",
     });
-  };
 
   // Add by @handle (spec 10): resolve the handle → an existing app user and
   // send them an invite (status:"invited" + notification).
@@ -5577,20 +5575,15 @@ exports.claimStaffInvites = onCall(async (request) => {
       invitedBy: inv.invitedBy || inv.bizId,
       createdAt: FieldValue.serverTimestamp(),
     }, {merge: true});
-    // BUG 34: recipient = the INVITEE. key+params; English fallback from catalog.
-    const inviteParams = {business: bizName || "A business", role: inv.role};
-    await db.collection("notifications").add({
+    // KIN-244: recipient = the INVITEE, via the shared helper (write + push,
+    // localized) — same as the handle/email invite branches above.
+    await createNotification({
       userId: uid,
+      actorUid: inv.invitedBy || inv.bizId, // nadie se autonotifica
       type: "staff_invite",
-      title: tPush("notifications.staff.invite.title", "en", inviteParams),
-      message: tPush("notifications.staff.invite.body", "en", inviteParams),
       titleKey: "notifications.staff.invite.title",
       bodyKey: "notifications.staff.invite.body",
-      params: inviteParams,
-      icon: "👥",
-      read: false,
-      resolved: false,
-      createdAt: FieldValue.serverTimestamp(),
+      params: {business: bizName || "A business", role: inv.role},
       metadata: {
         bizId: inv.bizId,
         role: inv.role,
@@ -5598,6 +5591,7 @@ exports.claimStaffInvites = onCall(async (request) => {
         fromUid: inv.invitedBy || inv.bizId,
         fromName: "",
       },
+      icon: "👥",
     });
     await d.ref.update({
       status: "claimed",
@@ -5632,18 +5626,67 @@ exports.respondToStaffInvite = onCall(async (request) => {
   if (!snap.exists) throw new HttpsError("not-found", "No invite found.");
   const data = snap.data();
   if (data.status !== "invited") {
-    // Already handled (or already active) — idempotent success.
+    // Already handled (or already active) — idempotent success. Nothing
+    // changed, so nothing to notify either.
     return {ok: true, status: data.status || "active"};
   }
+
+  // KIN-246: tell whoever invited this person that they responded. `data` was
+  // read above, BEFORE either branch below — the decline branch deletes the
+  // doc, so `invitedBy` has to come from this snapshot, not a re-read after.
+  // A notification failure here must never turn a successful accept/decline
+  // into an error response for the client — the staff-doc write already
+  // committed by the time this runs.
+  const notifyInviterOfResponse = async (accepted) => {
+    if (!data.invitedBy) {
+      console.warn(`respondToStaffInvite: staff doc ${bizId}/${uid} has no invitedBy, can't notify`);
+      return;
+    }
+    try {
+      let bizName = "";
+      try {
+        const b = await db.collection("businesses").doc(bizId).get();
+        bizName = b.exists ? (b.data().name || "") : "";
+      } catch (e) {
+        bizName = "";
+      }
+      let responderName = data.name || "";
+      try {
+        const ru = await admin.auth().getUser(uid);
+        responderName = ru.displayName || responderName;
+      } catch (e) {
+        // keep the staff-doc's stored name as fallback
+      }
+      const params = {
+        name: responderName || "Someone",
+        business: bizName || "your business",
+        role: data.role || "",
+      };
+      await createNotification({
+        userId: data.invitedBy,
+        actorUid: uid, // nadie se autonotifica
+        type: accepted ? "staff_accepted" : "staff_declined",
+        titleKey: accepted ? "notifications.staff.accepted.title" : "notifications.staff.declined.title",
+        bodyKey: accepted ? "notifications.staff.accepted.body" : "notifications.staff.declined.body",
+        params,
+        metadata: {bizId, role: data.role || "", staffUid: uid, staffName: responderName || ""},
+        icon: accepted ? "check" : "close",
+      });
+    } catch (e) {
+      console.error(`respondToStaffInvite: notify failed for ${bizId}/${uid}:`, e?.message || e);
+    }
+  };
 
   if (accept) {
     await ref.update({
       status: "active",
       acceptedAt: FieldValue.serverTimestamp(),
     });
+    await notifyInviterOfResponse(true);
     return {ok: true, status: "active", role: data.role || null};
   }
   await ref.delete();
+  await notifyInviterOfResponse(false);
   return {ok: true, status: "declined"};
 });
 
@@ -5657,11 +5700,14 @@ exports.onStaffWritten = onDocumentWritten(
   "businesses/{bizId}/staff/{staffUid}",
   async (event) => {
     const {bizId, staffUid} = event.params;
+    const before = event.data && event.data.before;
     const after = event.data && event.data.after;
     const active = after && after.exists && after.data().status === "active";
     const role = active ? (after.data().role || "instructor") : null;
 
     const userRef = db.collection("users").doc(staffUid);
+    // Indexing logic UNCHANGED (KIN-243 lesson: this is the mechanism that
+    // grants/revokes a user's access to a business — don't touch it here).
     await db.runTransaction(async (tx) => {
       const uSnap = await tx.get(userRef);
       if (!uSnap.exists) {
@@ -5674,6 +5720,47 @@ exports.onStaffWritten = onDocumentWritten(
       const next = active ? [...without, {bizId, role}] : without;
       tx.set(userRef, {staffOf: next}, {merge: true});
     });
+
+    // KIN-245: notify the removed person, but ONLY when this write is an
+    // owner-initiated removal, not the invitee's own decline.
+    //
+    // The trap: this trigger fires identically whether the invitee declines
+    // (the doc is deleted) or the owner removes them (also deleted) — same
+    // shape, different recipients, and respondToStaffInvite already sent its
+    // own notification for the decline case. Distinguished here by the
+    // PRIOR status: "active" -> a removal (notify); "invited" -> a decline,
+    // already handled by respondToStaffInvite, don't double it.
+    //
+    // Anything else on a delete (a doc with no recognized prior status) is
+    // deliberately left un-notified rather than guessed at — same stance as
+    // upsertStaffInvite's "unrecognized status" branch (KIN-243).
+    //
+    // No actorUid: a Firestore trigger has no request.auth, so this can't
+    // enforce "nadie se autonotifica" the way the other 3 transitions do.
+    // Today it can't fire as a self-notification anyway — StaffScreen hides
+    // the remove button on the current user's own row and never shows one on
+    // the owner's row — but that's a UI guarantee, not one this trigger
+    // enforces itself.
+    const wasDeleted = !!(before && before.exists) && !(after && after.exists);
+    const beforeStatus = wasDeleted ? before.data().status : null;
+    if (wasDeleted && beforeStatus === "active") {
+      try {
+        const beforeData = before.data();
+        const bizSnap = await db.collection("businesses").doc(bizId).get();
+        const bizName = bizSnap.exists ? (bizSnap.data().name || "") : "";
+        await createNotification({
+          userId: staffUid,
+          type: "staff_removed",
+          titleKey: "notifications.staff.removed.title",
+          bodyKey: "notifications.staff.removed.body",
+          params: {business: bizName || "the business"},
+          metadata: {bizId, businessName: bizName || "", role: beforeData.role || ""},
+          icon: "block",
+        });
+      } catch (e) {
+        console.error(`onStaffWritten: removal notify failed for ${bizId}/${staffUid}:`, e?.message || e);
+      }
+    }
   },
 );
 

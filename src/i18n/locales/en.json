@@ -2544,6 +2544,18 @@
       "invite": {
         "title": "Staff invitation 👥",
         "body": "{{business}} invited you to join as {{role}}."
+      },
+      "accepted": {
+        "title": "Invitation accepted ✅",
+        "body": "{{name}} accepted your invite to join as {{role}}."
+      },
+      "declined": {
+        "title": "Invitation declined",
+        "body": "{{name}} declined your invite to join as {{role}}."
+      },
+      "removed": {
+        "title": "Removed from the team",
+        "body": "You're no longer part of {{business}}'s team."
       }
     },
     "ownerTransfer": {

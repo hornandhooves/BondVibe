@@ -2544,6 +2544,18 @@
       "invite": {
         "title": "Invitación de personal 👥",
         "body": "{{business}} te invitó a unirte como {{role}}."
+      },
+      "accepted": {
+        "title": "Invitación aceptada ✅",
+        "body": "{{name}} aceptó tu invitación para unirse como {{role}}."
+      },
+      "declined": {
+        "title": "Invitación rechazada",
+        "body": "{{name}} rechazó tu invitación para unirse como {{role}}."
+      },
+      "removed": {
+        "title": "Ya no eres parte del equipo",
+        "body": "Ya no formas parte del equipo de {{business}}."
       }
     },
     "ownerTransfer": {
