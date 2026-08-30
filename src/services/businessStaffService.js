@@ -11,6 +11,7 @@ import {
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
 import { getMyBizId } from "./businessService";
+import { getUserProfiles } from "./hostGroupService";
 import { DEFAULT_ROLES, roleAllows } from "../constants/businessRoles";
 
 export const STAFF_ROLES = ["owner", "instructor", "reception"];
@@ -47,6 +48,46 @@ export async function listStaff(bizId = getMyBizId()) {
   } catch (e) {
     console.error("listStaff failed:", e?.message || e);
     return [];
+  }
+}
+
+/**
+ * KIN-256: inject each real staff member's LIVE name from `users/{uid}.fullName`
+ * — the name the person actually set, not the frozen `displayName` the server
+ * wrote from Firebase Auth at invite time (see staffDisplayName's doc comment
+ * for why that field is dead). Takes whatever `listStaff` returned and adds
+ * `fullName` to the entries that have a `uid` — a placeholder (KIN-190, no
+ * `uid`) has no Firestore profile to resolve and passes through unchanged.
+ *
+ * Reuses `getUserProfiles` (hostGroupService.js) rather than writing a second
+ * batch profile reader — same failure behavior: a missing/unreadable profile
+ * is dropped, not surfaced as a blank row.
+ *
+ * @param {Array<object>} staffList whatever `listStaff` returned
+ * @returns {Promise<Array<object>>} the same list; entries with a `uid` whose
+ *   profile has a non-empty `fullName` get it added. Never throws — returns
+ *   `staffList` unchanged on any failure, and never injects an empty `fullName`
+ *   (an absent/blank field on the profile just leaves the entry as-is, so the
+ *   staffDisplayName chain falls through to email/fallback instead of stopping
+ *   on a blank string).
+ */
+export async function resolveStaffFullNames(staffList) {
+  if (!Array.isArray(staffList) || staffList.length === 0) return staffList;
+  const uids = staffList.filter((s) => s && s.uid).map((s) => s.uid);
+  if (!uids.length) return staffList;
+  try {
+    const profiles = await getUserProfiles(uids);
+    const fullNameByUid = new Map();
+    profiles.forEach((p) => {
+      if (p && p.fullName) fullNameByUid.set(p.id, p.fullName);
+    });
+    if (!fullNameByUid.size) return staffList;
+    return staffList.map((s) =>
+      s && s.uid && fullNameByUid.has(s.uid) ? { ...s, fullName: fullNameByUid.get(s.uid) } : s
+    );
+  } catch (e) {
+    console.error("resolveStaffFullNames failed:", e?.message || e);
+    return staffList;
   }
 }
 
@@ -156,11 +197,29 @@ export async function setStaffName(staffUid, displayName, bizId = getMyBizId()) 
   });
 }
 
-/** The best display name for a staff record (BUG 32.3 fallback chain). */
+/**
+ * The best display name for a staff record (BUG 32.3 fallback chain; KIN-256
+ * fixed the branch for real accounts).
+ *
+ * A doc WITH a `uid` (a real account) never reads `s.name` — that field is the
+ * `displayName` the SERVER once wrote from Firebase Auth at invite time,
+ * frozen forever after: this app never calls `updateProfile()`, so Auth's
+ * `displayName` is stuck at whatever the identity provider set at signup and
+ * can be a completely different person's name on a shared/reused test login.
+ * Chain: `displayName` (the owner's deliberate label, setStaffName) →
+ * `fullName` (the LIVE value from users/{uid} — the caller must run the list
+ * through `resolveStaffFullNames` first, this function does no Firestore read
+ * itself) → `email` → fallback.
+ *
+ * A doc WITHOUT a `uid` (a KIN-190 placeholder, addPlaceholderStaff) has no
+ * account and no Firestore profile to resolve — `name` IS its only real name,
+ * so it stays in the chain for that branch only: `displayName` → `name` →
+ * fallback.
+ */
 export function staffDisplayName(s, fallback = "Staff member") {
-  return (
-    (s && (s.displayName || s.name || s.fullName || s.email)) || fallback
-  );
+  if (!s) return fallback;
+  if (s.uid) return s.displayName || s.fullName || s.email || fallback;
+  return s.displayName || s.name || fallback;
 }
 
 export async function removeStaff(staffUid, bizId = getMyBizId()) {

@@ -15,7 +15,7 @@ import { auth } from "../../services/firebase";
 import Icon from "../../components/Icon";
 import GradientBackground from "../../components/GradientBackground";
 import { useTheme } from "../../contexts/ThemeContext";
-import { listStaff, inviteStaff, inviteStaffByHandle, updateStaffRole, setStaffName, removeStaff, getWorkingHours, setWorkingHours, listRoles, listStaffInvites, isValidHM, staffDisplayName, requestOwnerTransfer, findUnclaimedPlaceholderByName, claimPlaceholderStaff } from "../../services/businessStaffService";
+import { listStaff, resolveStaffFullNames, inviteStaff, inviteStaffByHandle, updateStaffRole, setStaffName, removeStaff, getWorkingHours, setWorkingHours, listRoles, listStaffInvites, isValidHM, staffDisplayName, requestOwnerTransfer, findUnclaimedPlaceholderByName, claimPlaceholderStaff } from "../../services/businessStaffService";
 import UserSearchField from "../../components/UserSearchField";
 import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
@@ -79,7 +79,8 @@ export default function StaffScreen({ navigation }) {
     () =>
       run(async () => {
         const [st, rl, iv] = await Promise.all([listStaff(), listRoles(), listStaffInvites()]);
-        setStaff(st);
+        // KIN-256: resolve real accounts' live names before painting rows.
+        setStaff(await resolveStaffFullNames(st));
         setRoles(rl);
         setInvites(iv);
         setRole((cur) => (rl.some((r) => r.id === cur && r.id !== "owner") ? cur : (rl.find((r) => r.id !== "owner")?.id || "reception")));
@@ -184,7 +185,11 @@ export default function StaffScreen({ navigation }) {
   const openEdit = (s) => {
     setEditStaff({
       id: s.id,
-      name: s.displayName || s.name || "",
+      // KIN-256: same uid branching as staffDisplayName — a real account never
+      // prefills from `name` (the frozen, possibly-another-person's Auth
+      // displayName). No email fallback here: this feeds an editable text
+      // field, not a display label, and "" is the right empty default.
+      name: s.displayName || (s.uid ? s.fullName : s.name) || "",
       role: s.role,
       isOwner: s.role === "owner",
     });

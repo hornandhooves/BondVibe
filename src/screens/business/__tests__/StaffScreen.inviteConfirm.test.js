@@ -19,6 +19,8 @@ jest.mock("../../../services/firebase", () => ({
 }));
 jest.mock("../../../services/businessStaffService", () => ({
   listStaff: jest.fn(),
+  // KIN-256: identity passthrough — this file doesn't test name resolution.
+  resolveStaffFullNames: jest.fn(async (s) => s),
   listRoles: jest.fn(),
   listStaffInvites: jest.fn(),
   inviteStaff: jest.fn(),
@@ -29,7 +31,9 @@ jest.mock("../../../services/businessStaffService", () => ({
   getWorkingHours: jest.fn(() => ({ days: [1, 2, 3, 4, 5], start: "09:00", end: "18:00" })),
   setWorkingHours: jest.fn(),
   isValidHM: jest.fn(() => true),
-  staffDisplayName: jest.fn((s, fallback) => (s && s.name) || fallback),
+  // KIN-256: mirrors the real chain's uid branch (this file's fixtures are
+  // real accounts, not placeholders).
+  staffDisplayName: jest.fn((s, fallback) => (s && (s.displayName || s.fullName || s.name)) || fallback),
   requestOwnerTransfer: jest.fn(),
   findUnclaimedPlaceholderByName: jest.fn(),
   claimPlaceholderStaff: jest.fn(),

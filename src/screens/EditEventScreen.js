@@ -33,7 +33,7 @@ import {
 import { db, auth } from "../services/firebase";
 import { findUserByEmail } from "../services/hostGroupService";
 import { findUserByHandle } from "../services/userService";
-import { listStaff, staffDisplayName } from "../services/businessStaffService";
+import { listStaff, resolveStaffFullNames, staffDisplayName } from "../services/businessStaffService";
 import { checkInstructorAvailability, AGENDA_ITEM_KIND } from "../services/businessAgendaService";
 import InstructorPicker from "../components/business/InstructorPicker";
 import { parsePositiveNumber, isValidNumberInProgress } from "../utils/validation";
@@ -471,7 +471,10 @@ export default function EditEventScreen({ route, navigation }) {
       // omite a propósito); un staff real tiene uid y su doc se llama igual.
       // InstructorPicker SÍ los incluye, y esa diferencia es deliberada: un
       // instructor puede ser un nombre en una agenda, un co-anfitrión no.
-      if (alive) setBizStaff(rows.filter((r) => r && r.uid));
+      const realStaff = rows.filter((r) => r && r.uid);
+      // KIN-256: resolve live names before offering rows to pick a co-host from.
+      const resolved = await resolveStaffFullNames(realStaff);
+      if (alive) setBizStaff(resolved);
     })();
     return () => { alive = false; };
   }, [eventBizId]);
