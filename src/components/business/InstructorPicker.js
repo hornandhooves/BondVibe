@@ -26,6 +26,7 @@ import SelectDropdown from "../SelectDropdown";
 import { auth, db } from "../../services/firebase";
 import {
   listStaff,
+  resolveStaffFullNames,
   STAFF_ROLES,
   staffDisplayName,
   addPlaceholderStaff,
@@ -64,6 +65,9 @@ export default function InstructorPicker({ value, onChange, label, placeholder, 
       } catch (_e) {
         staff = [];
       }
+      // KIN-256: resolve live names for the real accounts in this list before
+      // staffDisplayName picks one — placeholders (no uid) pass through as-is.
+      staff = await resolveStaffFullNames(staff);
       const me = auth.currentUser?.uid;
 
       // The host's own name, so their row reads "Ana Torres" rather than a
@@ -84,8 +88,10 @@ export default function InstructorPicker({ value, onChange, label, placeholder, 
         .filter((s) => INSTRUCTOR_ROLES.includes(s.role))
         .map((s) => ({
           id: s.id,
-          // staffDisplayName covers displayName → name → fullName → email; the
-          // old inline chain here ignored displayName and fullName outright.
+          // KIN-256: for a real account (has uid), staffDisplayName chains
+          // displayName → fullName (resolved above, live) → email — it never
+          // reads the frozen Auth-displayName `name` field. A placeholder (no
+          // uid) has no profile to resolve, so it chains displayName → name.
           label: s.id === me
             ? meLabel
             : staffDisplayName(s, tr("business.instructor.staff", "Staff")),

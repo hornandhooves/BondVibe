@@ -5403,6 +5403,27 @@ async function upsertStaffInvite(bizId, targetUid, role, invitedBy, extra) {
 }
 
 /**
+ * KIN-256: a person's real name, from `users/{uid}.fullName` — never Firebase
+ * Auth's `displayName`. The app never calls `updateProfile()`; a user's edited
+ * name lives ONLY in Firestore, so Auth's `displayName` is stuck at whatever
+ * the identity provider set at signup (often another account's name from a
+ * shared/reused test login) and nothing ever keeps it in sync. Six call sites
+ * in the staff module used to read it anyway. Best-effort: never throws, "" on
+ * any absence or failure — every caller already has its own fallback for that.
+ * @param {string} uid
+ * @return {Promise<string>}
+ */
+async function getUserFullName(uid) {
+  if (!uid) return "";
+  try {
+    const snap = await db.collection("users").doc(uid).get();
+    return (snap.exists && snap.data().fullName) || "";
+  } catch (e) {
+    return "";
+  }
+}
+
+/**
  * Invite a staff member to a business (owner-only). Looks up the user by email
  * and grants a scoped role. kinlo_business/01 §7. v1: bizId === owner uid.
  */
@@ -5429,13 +5450,7 @@ exports.inviteBusinessStaff = onCall(async (request) => {
   // count "active") and notify them; they Accept/Decline via respondToStaffInvite.
   const bizSnap = await db.collection("businesses").doc(bizId).get();
   const bizName = bizSnap.exists ? (bizSnap.data().name || "") : "";
-  let ownerName = "";
-  try {
-    const ou = await admin.auth().getUser(uid);
-    ownerName = ou.displayName || "";
-  } catch (e) {
-    ownerName = "";
-  }
+  const ownerName = await getUserFullName(uid);
   // KIN-244: recipient = the INVITEE. Now via the shared helper — write +
   // push in one call, localized to the invitee's own language (previously
   // hardcoded "en" for both the stored strings AND any push built from them).
@@ -5460,17 +5475,18 @@ exports.inviteBusinessStaff = onCall(async (request) => {
     if (targetUid === uid) throw new HttpsError("already-exists", "self");
     let u = null;
     try {
-      u = await admin.auth().getUser(targetUid);
+      u = await admin.auth().getUser(targetUid); // still needed: Auth is the source for email
     } catch (e) {
       u = null;
     }
+    const targetName = await getUserFullName(targetUid);
     const {isNew} = await upsertStaffInvite(bizId, targetUid, role, uid, {
       email: (u && u.email) || "",
-      name: (u && u.displayName) || "",
+      name: targetName,
     });
     if (isNew) await notifyInvite(targetUid, role);
     return {
-      uid: targetUid, role, name: (u && u.displayName) || "", pending: false, invited: true,
+      uid: targetUid, role, name: targetName, pending: false, invited: true,
       alreadyInvited: !isNew,
     };
   }
@@ -5488,13 +5504,16 @@ exports.inviteBusinessStaff = onCall(async (request) => {
     if (staff.uid === uid) {
       throw new HttpsError("already-exists", "self");
     }
+    // getUserByEmail is still needed to RESOLVE THE UID (that's the whole point
+    // of this branch) — only the name's source changes.
+    const staffName = await getUserFullName(staff.uid);
     const {isNew} = await upsertStaffInvite(bizId, staff.uid, role, uid, {
       email,
-      name: staff.displayName || "",
+      name: staffName,
     });
     if (isNew) await notifyInvite(staff.uid, role);
     return {
-      uid: staff.uid, role, name: staff.displayName || "", email, pending: false, invited: true,
+      uid: staff.uid, role, name: staffName, email, pending: false, invited: true,
       alreadyInvited: !isNew,
     };
   }
@@ -5534,13 +5553,7 @@ exports.claimStaffInvites = onCall(async (request) => {
     .get();
   if (snap.empty) return {claimed: 0};
 
-  let name = "";
-  try {
-    const u = await admin.auth().getUser(uid);
-    name = u.displayName || "";
-  } catch (e) {
-    // best-effort
-  }
+  const name = await getUserFullName(uid);
 
   // BUG 32.1: a claimed email invite becomes an "invited" staff record (NOT
   // active) + a notification, so the new user still Accepts before gaining
@@ -5650,13 +5663,10 @@ exports.respondToStaffInvite = onCall(async (request) => {
       } catch (e) {
         bizName = "";
       }
-      let responderName = data.name || "";
-      try {
-        const ru = await admin.auth().getUser(uid);
-        responderName = ru.displayName || responderName;
-      } catch (e) {
-        // keep the staff-doc's stored name as fallback
-      }
+      // KIN-256: this is the site that produced the misattributed push (someone
+      // else's Auth displayName announced as "who accepted"). Falls back to the
+      // staff doc's own stored `name` only if the responder has no fullName.
+      const responderName = (await getUserFullName(uid)) || data.name || "";
       const params = {
         name: responderName || "Someone",
         business: bizName || "your business",

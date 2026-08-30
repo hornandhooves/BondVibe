@@ -15,7 +15,7 @@ import { auth } from "../../services/firebase";
 import Icon from "../../components/Icon";
 import GradientBackground from "../../components/GradientBackground";
 import { useTheme } from "../../contexts/ThemeContext";
-import { listStaff, inviteStaff, inviteStaffByHandle, updateStaffRole, setStaffName, removeStaff, getWorkingHours, setWorkingHours, listRoles, listStaffInvites, isValidHM, staffDisplayName, requestOwnerTransfer, findUnclaimedPlaceholderByName, claimPlaceholderStaff } from "../../services/businessStaffService";
+import { listStaff, resolveStaffFullNames, inviteStaff, inviteStaffByHandle, updateStaffRole, setStaffName, removeStaff, getWorkingHours, setWorkingHours, listRoles, listStaffInvites, isValidHM, staffDisplayName, requestOwnerTransfer, findUnclaimedPlaceholderByName, claimPlaceholderStaff } from "../../services/businessStaffService";
 import UserSearchField from "../../components/UserSearchField";
 import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
@@ -79,7 +79,8 @@ export default function StaffScreen({ navigation }) {
     () =>
       run(async () => {
         const [st, rl, iv] = await Promise.all([listStaff(), listRoles(), listStaffInvites()]);
-        setStaff(st);
+        // KIN-256: resolve real accounts' live names before painting rows.
+        setStaff(await resolveStaffFullNames(st));
         setRoles(rl);
         setInvites(iv);
         setRole((cur) => (rl.some((r) => r.id === cur && r.id !== "owner") ? cur : (rl.find((r) => r.id !== "owner")?.id || "reception")));
@@ -182,9 +183,18 @@ export default function StaffScreen({ navigation }) {
   // alert). Allowed for every row including the owner/self — the owner's role
   // stays locked (a business always needs an owner).
   const openEdit = (s) => {
+    // KIN-256: same uid branching as staffDisplayName — a real account never
+    // prefills from `name` (the frozen, possibly-another-person's Auth
+    // displayName). No email fallback here: this feeds an editable text
+    // field, not a display label, and "" is the right empty default.
+    const prefill = s.displayName || (s.uid ? s.fullName : s.name) || "";
     setEditStaff({
       id: s.id,
-      name: s.displayName || s.name || "",
+      name: prefill,
+      // KIN-259: kept alongside `name` so saveEdit can tell "the owner left
+      // this untouched" apart from "the owner typed the same thing back" —
+      // saving without editing must not freeze a displayName label.
+      initialName: prefill,
       role: s.role,
       isOwner: s.role === "owner",
     });
@@ -193,7 +203,14 @@ export default function StaffScreen({ navigation }) {
     if (!editStaff) return;
     setSavingEdit(true);
     try {
-      await setStaffName(editStaff.id, editStaff.name);
+      // KIN-259: only write displayName if the text actually changed — an
+      // unconditional write here silently undid KIN-256 row by row, freezing
+      // today's resolved name as a label that stops following the person's
+      // live profile forever. Emptying a field that HAD a label is still a
+      // change (falls through to "" on purpose, dropping the label).
+      if ((editStaff.name || "").trim() !== (editStaff.initialName || "").trim()) {
+        await setStaffName(editStaff.id, editStaff.name);
+      }
       if (!editStaff.isOwner && editStaff.role) {
         await updateStaffRole(editStaff.id, editStaff.role);
       }
@@ -280,7 +297,7 @@ export default function StaffScreen({ navigation }) {
                     <Text style={[styles.roleText, { color: s.role === "owner" ? colors.primary : colors.textSecondary }]}>{roleName(s.role)}</Text>
                   </View>
                   <View style={styles.actions}>
-                    <TouchableOpacity onPress={() => openEdit(s)}><Icon name="edit" size={18} color={colors.textSecondary} /></TouchableOpacity>
+                    <TouchableOpacity testID={`staff-edit-${s.id}`} onPress={() => openEdit(s)}><Icon name="edit" size={18} color={colors.textSecondary} /></TouchableOpacity>
                     {s.role !== "owner" && s.id !== me && (
                       <TouchableOpacity onPress={() => remove(s)}><Icon name="close" size={18} color={colors.error} /></TouchableOpacity>
                     )}
@@ -319,7 +336,7 @@ export default function StaffScreen({ navigation }) {
 
       {/* Transfer ownership sheet (32.4) — pick a validated host. */}
       <Modal visible={transferring} transparent animationType="slide" onRequestClose={() => setTransferring(false)}>
-        <KeyboardAvoidingView style={styles.sheetBackdrop} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <KeyboardAvoidingView style={styles.sheetBackdrop} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View style={[styles.sheet, { backgroundColor: colors.background }]}>
             <View style={styles.sheetHeader}>
               <Text style={[styles.sheetTitle, { color: colors.text }]}>{t("business.staff.transfer.entry")}</Text>
@@ -332,7 +349,7 @@ export default function StaffScreen({ navigation }) {
       </Modal>
 
       <Modal visible={inviting} transparent animationType="slide" onRequestClose={closeInviteSheet}>
-        <KeyboardAvoidingView style={styles.sheetBackdrop} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <KeyboardAvoidingView style={styles.sheetBackdrop} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View style={[styles.sheet, { backgroundColor: colors.background }]}>
             <View style={styles.sheetHeader}><Text style={[styles.sheetTitle, { color: colors.text }]}>{t("business.staff.invite")}</Text><TouchableOpacity testID="staff-invite-sheet-close" onPress={closeInviteSheet}><Icon name="close" size={22} color={colors.textSecondary} /></TouchableOpacity></View>
             <Text style={[styles.roleHint, { color: colors.textTertiary, marginTop: 0, marginBottom: 8 }]}>{t("business.staff.pickRole")}</Text>
@@ -374,7 +391,7 @@ export default function StaffScreen({ navigation }) {
 
       {/* Working-hours editor (frames the Agenda's default range) */}
       <Modal visible={!!whEdit} transparent animationType="slide" onRequestClose={() => setWhEdit(null)}>
-        <KeyboardAvoidingView style={styles.sheetBackdrop} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <KeyboardAvoidingView style={styles.sheetBackdrop} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View style={[styles.sheet, { backgroundColor: colors.background }]}>
             <View style={styles.sheetHeader}><Text style={[styles.sheetTitle, { color: colors.text }]}>{t("business.staff.workingHours")}</Text><TouchableOpacity onPress={() => setWhEdit(null)}><Icon name="close" size={22} color={colors.textSecondary} /></TouchableOpacity></View>
             <Text style={[styles.roleHint, { color: colors.textTertiary, marginTop: 0, marginBottom: 10 }]}>{t("business.staff.workingDays")}</Text>
@@ -406,7 +423,7 @@ export default function StaffScreen({ navigation }) {
 
       {/* Edit staff — name + role (BUG 32.3). Owner role is locked. */}
       <Modal visible={!!editStaff} transparent animationType="slide" onRequestClose={() => setEditStaff(null)}>
-        <KeyboardAvoidingView style={styles.sheetBackdrop} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <KeyboardAvoidingView style={styles.sheetBackdrop} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View style={[styles.sheet, { backgroundColor: colors.background }]}>
             <View style={styles.sheetHeader}>
               <Text style={[styles.sheetTitle, { color: colors.text }]}>{t("business.staff.editTitle")}</Text>
@@ -414,6 +431,7 @@ export default function StaffScreen({ navigation }) {
             </View>
             <Text style={[styles.roleHint, { color: colors.textTertiary, marginTop: 0, marginBottom: 8 }]}>{t("business.staff.nameLabel")}</Text>
             <TextInput
+              testID="staff-edit-name-input"
               style={[styles.input, inputStyle]}
               value={editStaff?.name}
               onChangeText={(v) => setEditStaff((e) => ({ ...e, name: v }))}
@@ -428,7 +446,7 @@ export default function StaffScreen({ navigation }) {
                   {assignable.map((r) => {
                     const on = editStaff?.role === r.id;
                     return (
-                      <TouchableOpacity key={r.id} onPress={() => setEditStaff((e) => ({ ...e, role: r.id }))} style={[styles.roleChip, { borderColor: on ? colors.primary : colors.border, backgroundColor: on ? `${colors.primary}14` : "transparent" }]}>
+                      <TouchableOpacity testID={`staff-edit-role-${r.id}`} key={r.id} onPress={() => setEditStaff((e) => ({ ...e, role: r.id }))} style={[styles.roleChip, { borderColor: on ? colors.primary : colors.border, backgroundColor: on ? `${colors.primary}14` : "transparent" }]}>
                         <Text style={[styles.segText, { color: on ? colors.primary : colors.textSecondary }]}>{r.name}</Text>
                       </TouchableOpacity>
                     );
@@ -436,7 +454,7 @@ export default function StaffScreen({ navigation }) {
                 </View>
               </>
             )}
-            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primary, opacity: savingEdit ? 0.6 : 1 }]} onPress={saveEdit} disabled={savingEdit}>
+            <TouchableOpacity testID="staff-edit-save" style={[styles.saveBtn, { backgroundColor: colors.primary, opacity: savingEdit ? 0.6 : 1 }]} onPress={saveEdit} disabled={savingEdit}>
               <Text style={styles.saveText}>{savingEdit ? t("business.agenda.saving") : t("business.agenda.save")}</Text>
             </TouchableOpacity>
           </View>

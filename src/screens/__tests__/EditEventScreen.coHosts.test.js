@@ -67,8 +67,13 @@ jest.mock("../../services/hostGroupService", () => ({ findUserByEmail: jest.fn()
 jest.mock("../../services/userService", () => ({ findUserByHandle: jest.fn() }));
 jest.mock("../../services/businessStaffService", () => ({
   listStaff: jest.fn(async () => []),
+  // KIN-256: identity passthrough — this file doesn't test name resolution.
+  resolveStaffFullNames: jest.fn(async (s) => s),
+  // Mirrors the real chain: a real account (has uid) never reads `name`.
   staffDisplayName: (s, f = "Staff member") =>
-    (s && (s.displayName || s.name || s.fullName || s.email)) || f,
+    s && s.uid
+      ? (s.displayName || s.fullName || s.email || f)
+      : ((s && (s.displayName || s.name)) || f),
 }));
 jest.mock("../../services/storageService", () => ({
   uploadEventImages: jest.fn(async () => []),

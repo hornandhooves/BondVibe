@@ -22,10 +22,12 @@ jest.mock("../../../services/firebase", () => ({
 }));
 jest.mock("../../../services/businessStaffService", () => ({
   listStaff: jest.fn(async () => []),
+  // KIN-256: identity passthrough — this file doesn't test name resolution.
+  resolveStaffFullNames: jest.fn(async (s) => s),
   getWorkingHours: jest.fn(async () => null),
   // El módulo lee STAFF_ROLES al cargar, no dentro de una función.
   STAFF_ROLES: ["owner", "instructor", "reception"],
-  staffDisplayName: (s) => s?.name || s?.id || "",
+  staffDisplayName: (s) => s?.fullName || s?.name || s?.id || "",
   addPlaceholderStaff: jest.fn(async () => ({ id: "new1" })),
 }));
 jest.mock("firebase/firestore", () => ({
