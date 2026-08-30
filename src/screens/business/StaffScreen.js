@@ -324,7 +324,7 @@ export default function StaffScreen({ navigation }) {
 
       {/* Transfer ownership sheet (32.4) — pick a validated host. */}
       <Modal visible={transferring} transparent animationType="slide" onRequestClose={() => setTransferring(false)}>
-        <KeyboardAvoidingView style={styles.sheetBackdrop} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <KeyboardAvoidingView style={styles.sheetBackdrop} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View style={[styles.sheet, { backgroundColor: colors.background }]}>
             <View style={styles.sheetHeader}>
               <Text style={[styles.sheetTitle, { color: colors.text }]}>{t("business.staff.transfer.entry")}</Text>
@@ -337,7 +337,7 @@ export default function StaffScreen({ navigation }) {
       </Modal>
 
       <Modal visible={inviting} transparent animationType="slide" onRequestClose={closeInviteSheet}>
-        <KeyboardAvoidingView style={styles.sheetBackdrop} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <KeyboardAvoidingView style={styles.sheetBackdrop} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View style={[styles.sheet, { backgroundColor: colors.background }]}>
             <View style={styles.sheetHeader}><Text style={[styles.sheetTitle, { color: colors.text }]}>{t("business.staff.invite")}</Text><TouchableOpacity testID="staff-invite-sheet-close" onPress={closeInviteSheet}><Icon name="close" size={22} color={colors.textSecondary} /></TouchableOpacity></View>
             <Text style={[styles.roleHint, { color: colors.textTertiary, marginTop: 0, marginBottom: 8 }]}>{t("business.staff.pickRole")}</Text>
@@ -379,7 +379,7 @@ export default function StaffScreen({ navigation }) {
 
       {/* Working-hours editor (frames the Agenda's default range) */}
       <Modal visible={!!whEdit} transparent animationType="slide" onRequestClose={() => setWhEdit(null)}>
-        <KeyboardAvoidingView style={styles.sheetBackdrop} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <KeyboardAvoidingView style={styles.sheetBackdrop} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View style={[styles.sheet, { backgroundColor: colors.background }]}>
             <View style={styles.sheetHeader}><Text style={[styles.sheetTitle, { color: colors.text }]}>{t("business.staff.workingHours")}</Text><TouchableOpacity onPress={() => setWhEdit(null)}><Icon name="close" size={22} color={colors.textSecondary} /></TouchableOpacity></View>
             <Text style={[styles.roleHint, { color: colors.textTertiary, marginTop: 0, marginBottom: 10 }]}>{t("business.staff.workingDays")}</Text>
@@ -411,7 +411,7 @@ export default function StaffScreen({ navigation }) {
 
       {/* Edit staff — name + role (BUG 32.3). Owner role is locked. */}
       <Modal visible={!!editStaff} transparent animationType="slide" onRequestClose={() => setEditStaff(null)}>
-        <KeyboardAvoidingView style={styles.sheetBackdrop} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <KeyboardAvoidingView style={styles.sheetBackdrop} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View style={[styles.sheet, { backgroundColor: colors.background }]}>
             <View style={styles.sheetHeader}>
               <Text style={[styles.sheetTitle, { color: colors.text }]}>{t("business.staff.editTitle")}</Text>
