@@ -50,6 +50,17 @@ dashboard). App scheme is `kinlo://`; the git repo is still `hornandhooves/BondV
   region of the file.
 - Commits Claude makes should end with a trailer, e.g.:
   `Co-Authored-By: Claude <noreply@anthropic.com>`
+- **`gh pr merge` with an explicit `--repo` requires the PR number as a
+  positional argument.** `gh pr merge --repo <owner>/<repo> --squash` fails
+  with "argument required when using the --repo flag" and does nothing —
+  harmless, but no merge either. When the command isn't run from the PR
+  branch's own checkout, always: `gh pr merge <N> --repo <owner>/<repo>
+  --squash`.
+- **An orphaned `.git/index.lock`: run `lsof` first, never assume the cause.**
+  Identify the PID with `lsof <path>/.git/index.lock`. Don't blame it on the
+  Android emulator just because the process belongs to
+  `com.apple.Virtualization.VirtualMachine` — any macOS VM uses that
+  framework. If the PID turns out to be a system service, don't kill it.
 
 ---
 
@@ -89,13 +100,15 @@ dashboard). App scheme is `kinlo://`; the git repo is still `hornandhooves/BondV
   `eas update --branch beta --platform ios` (and `--platform android`). Publish
   OTA **only from `main`**. Never `--branch production` while testing: the **last
   update on `production` wins** for every real user, and that channel exists for
-  launch. Omitting `--platform` exports `all`, which includes **web** — web has
-  never bundled (`@stripe/stripe-react-native` imports RN internals), so always
-  pass `--platform`.
-- **runtimeVersion is `{"policy": "appVersion"}`** → today `1.0.0`, from
-  `app.json` `version`. An update only reaches builds with the **same**
-  runtimeVersion, so bumping `version` orphans every installed build until it's
-  rebuilt. `autoIncrement` moves buildNumber/versionCode, not this.
+  launch. Always pass `--platform` — see the export block below for why.
+- **`runtimeVersion` is `{"policy": "fingerprint"}`.** Not `appVersion`, not
+  `1.0.0` — bumping `version` no longer orphans builds, but **any change to the
+  native tree does**, because it changes the fingerprint. Each platform has its
+  own: iOS and Android fingerprints are never compared to each other. An OTA
+  only reaches builds whose fingerprint matches the update's exactly — everyone
+  else gets nothing, with no error and no warning. Before publishing, compare
+  each platform's fingerprint against the installed build that's supposed to
+  receive it.
 - **Do NOT run `eas build`.** Simulator builds are fine (`expo run:ios`); native
   builds are handled separately. A change is OTA-able unless it adds a **native
   module** (e.g. `react-native-maps`) — those need a native build, not OTA.
@@ -105,6 +118,41 @@ dashboard). App scheme is `kinlo://`; the git repo is still `hornandhooves/BondV
   Internal testing: 100 testers, no Apple review. External: 10,000, one Beta App
   Review. The `preview` profile can't reach it: `distribution: internal` on iOS
   is ad-hoc, which needs every device's UDID registered.
+- **`eas update` packages the current working tree, not `origin/main`.** If the
+  checkout is on a stale branch, on a commit behind the last merge, or
+  mid-rebase, the OTA ships incomplete and looks exactly like a successful
+  publish. `scripts/preflight-clean.sh` blocks on uncommitted changes, but **it
+  does not check which branch you're on or that `HEAD` matches `origin/main`**
+  — verify that by hand before publishing: `git branch --show-current`,
+  `git rev-parse HEAD`, `git rev-parse origin/main`. Script gap tracked in
+  KIN-250.
+- **The asterisk `eas update` prints next to `Commit` means a dirty tree — and
+  a single UNTRACKED file is enough to trigger it.** It does not imply
+  uncommitted edits, and it does not mean the bundle carries anything it
+  shouldn't: Metro bundles from the import graph, so a stray `.bundle`,
+  `.worktrees/`, or `.md` at the repo root never gets pulled in. Before
+  assuming the worst: `git status --short | grep -v "^??"` — empty output
+  means the asterisk is cosmetic and there's nothing to investigate. Preflight
+  not distinguishing the two cases is part of KIN-250.
+- **`eas update` exports all three platforms by default, and web doesn't
+  compile.** `app.json` doesn't declare `expo.platforms`, so the export runs
+  as `--platform=all`. Web blows up bundling `@stripe/stripe-react-native`,
+  which imports React Native internals that don't exist on web — and the
+  export is atomic, so web's failure cancels iOS and Android even if they
+  bundled fine. Always publish in two commands, `--platform android` and
+  `--platform ios`, never `all`. **Don't** fix this by declaring
+  `expo.platforms` while live builds still depend on OTAs: `app.json` is
+  fingerprint input, and that change belongs to a new build. Full detail in
+  KIN-253.
+- **Deploy order: whichever side tolerates the other's absence goes first.**
+  There's no fixed order. Firestore rules before the OTA that depends on them
+  — new rules tolerate an old client; a new client against old rules eats
+  `permission-denied`. OTA before the functions deploy that emits new
+  notification types — a `case` with no matching type does nothing, but a
+  notification with no `case` falls to `default` and tapping it silently does
+  nothing either. The question before every two-layer deploy: which side
+  breaks if the other hasn't shipped yet? That one goes second — and it gets
+  written into the ticket before deploying.
 
 ---
 
@@ -136,6 +184,20 @@ dashboard). App scheme is `kinlo://`; the git repo is still `hornandhooves/BondV
   Shadows only on CTAs and the gradient hero cards (membership / P&L /
   attainment) — always set `elevation` too, for Android.
 - **Honest-null `"—"`** for anything without a real data source; never fabricate.
+- **Colors for native Android modules go in `#AARRGGBB`, not `rgba()`.** When a
+  theme color in `rgba(r,g,b,a)` reaches a prop that an Android native SDK
+  reads directly (e.g. `@stripe/stripe-react-native`'s `cardStyle`, which ends
+  up in `android.graphics.Color.parseColor`), it has to be converted. Getting
+  the byte order wrong produces a color that parses fine but is the wrong one
+  — a silent failure. Use `toAndroidColor()` from `src/utils/color.js`; don't
+  reinvent the conversion inline.
+- **Don't anchor a code insertion inside an unclosed multiline block.** A
+  `jest.mock(() => ({...}))`, a multi-line `import {...}`, any literal that
+  opens on one line and closes several lines later: anchoring there can drop
+  the new content in the middle of the block and break parsing, with the error
+  surfacing far from the actual insertion. Anchor on a line that's
+  unambiguously the start of a complete statement. This has already happened
+  twice in this repo.
 
 ---
 
@@ -189,6 +251,19 @@ dashboard). App scheme is `kinlo://`; the git repo is still `hornandhooves/BondV
   exact values.
 - No simulator in a headless Claude session → the human runs `expo run:ios` and
   reports pixel drift.
+- **The Firestore emulator suite requires Java 21.** The JDK on PATH may be
+  17. Point `JAVA_HOME` at a Temurin 21 for that one command only — don't
+  touch the system config.
+- **A local test count is not evidence by itself, and for two of the three
+  suites there's no CI count to compare it against.** `jest.config.js` already
+  excludes `/\.worktrees/`, so that specific contaminant is covered. But this
+  repo's CI has **one required job**, `CI / Lint + Jest + i18n parity`, and
+  that job runs only the app suite: it does **not** run the Firestore emulator
+  suite or the security-rules suite. Practical consequence: the app suite's
+  count DOES get compared against CI for the same commit and only counts as
+  green when they match; the emulator and rules counts are **local only**, and
+  must be reported as exactly that. Never present a local count as
+  CI-confirmed. Coverage gap tracked in KIN-252.
 
 ---
 
