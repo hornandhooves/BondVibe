@@ -101,9 +101,7 @@ export default function MyEventsScreen({ navigation, route }) {
       runPopular(async () => {
         try {
           const feat = await getFeaturedEvents(10);
-          setPopularEvents(
-            (feat || []).filter((e) => getEventCreatorId(e) !== auth.currentUser?.uid),
-          );
+          setPopularEvents(feat || []);
         } catch (e) {
           setPopularEvents([]);
           throw e;
