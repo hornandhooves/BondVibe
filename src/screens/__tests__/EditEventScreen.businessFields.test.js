@@ -63,6 +63,13 @@ jest.mock("firebase/firestore", () => ({
   arrayRemove: jest.fn(),
   serverTimestamp: jest.fn(() => "TS"),
 }));
+// useCities() returns { cities }, not an array — a bare-array mock makes
+// getCityLabel blow up on `.find` of undefined, and the failure surfaces as a
+// generic "Error" alert that looks nothing like a mocking problem.
+jest.mock("../../hooks/useCities", () => ({
+  __esModule: true,
+  default: () => ({ cities: [{ id: "tulum", label: "Tulum" }] }),
+}));
 jest.mock("../../services/businessAgendaService", () => ({
   checkInstructorAvailability: jest.fn(async () => ({ conflict: false, outOfHours: false })),
   AGENDA_ITEM_KIND: { EVENT: "event", BLOCKED: "blocked" },
