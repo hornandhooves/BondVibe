@@ -726,6 +726,8 @@
     "descriptionPlaceholder": "Tell people what to expect...",
     "communityLabel": "Community",
     "languageLabel": "Language",
+    "cityLabel": "City",
+    "selectCity": "Select a city",
     "dateLabel": "Date *",
     "timeLabel": "Time *",
     "recurringDateNote": "Note: Date/time changes only apply to this specific event.",

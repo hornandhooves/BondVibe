@@ -45,6 +45,7 @@ import GradientBackground from "../components/GradientBackground";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import EventImagePicker from "../components/EventImagePicker";
 import SelectDropdown from "../components/SelectDropdown";
+import useCities from "../hooks/useCities";
 import DurationWheelModal, { formatDuration } from "../components/DurationWheelModal";
 import RecurrenceModal from "../components/RecurrenceModal";
 import {
@@ -80,6 +81,8 @@ export default function EditEventScreen({ route, navigation }) {
   const { colors, isDark } = useTheme();
   const { t, i18n } = useTranslation();
   const { eventId } = route.params;
+  // KIN-266: mismo hook que usa Create para poblar el dropdown de ciudad.
+  const { cities: cityOptions } = useCities();
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -88,6 +91,7 @@ export default function EditEventScreen({ route, navigation }) {
     // SearchEvents filtra por ese campo; Edit escribía `language` (string), que
     // nadie más leía, así que editar un evento lo sacaba del filtro de idioma.
     languages: [],
+    city: "",
     date: new Date(),
     time: "",
     location: "",
@@ -201,6 +205,7 @@ export default function EditEventScreen({ route, navigation }) {
           // que ya quedaron guardados con el label.
           category: normalizeCategory(data.category) || "social",
           languages: Array.isArray(data.languages) ? data.languages : [],
+          city: data.city || "",
           date: eventDate,
           time: data.time || "",
           location: data.location || "",
@@ -779,6 +784,11 @@ export default function EditEventScreen({ route, navigation }) {
         description: form.description.trim(),
         category: form.category,
         languages: form.languages, // KIN-232: mismo campo que escribe Create
+        // KIN-266: Edit nunca escribía este campo — quedaba congelado en lo que
+        // se eligió al crear, así que la tarjeta y el filtro de Featured podían
+        // mostrar una ciudad vieja aunque el detalle ya reflejara la nueva
+        // ubicación.
+        city: form.city,
         location: form.location.trim(),
         locationCoords: resolvedCoords || null,
         venueAddress: form.venueAddress?.trim() || null,
@@ -1268,6 +1278,16 @@ export default function EditEventScreen({ route, navigation }) {
           placeholder={t("createEvent.selectLanguages")}
           type="language"
           multiSelect
+        />
+
+        {/* City — KIN-266 */}
+        <SelectDropdown
+          label={t("editEvent.cityLabel")}
+          value={form.city}
+          onValueChange={(v) => setForm({ ...form, city: v })}
+          options={cityOptions}
+          placeholder={t("editEvent.selectCity")}
+          type="location"
         />
 
         {/* Date & Time with Native Pickers */}

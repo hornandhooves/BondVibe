@@ -726,6 +726,8 @@
     "descriptionPlaceholder": "Cuéntale a la gente qué esperar...",
     "communityLabel": "Comunidad",
     "languageLabel": "Idioma",
+    "cityLabel": "Ciudad",
+    "selectCity": "Elige una ciudad",
     "dateLabel": "Fecha *",
     "timeLabel": "Hora *",
     "recurringDateNote": "Nota: los cambios de fecha/hora solo aplican a este evento específico.",
