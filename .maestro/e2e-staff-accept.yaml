@@ -1,0 +1,60 @@
+# E2E — Staff: recipient accepts a pending staff invite from the Inbox.
+#
+# Run order: this flow assumes a signed-in STAFF session — run p0-login.yaml
+# first with the STAFF account's credentials (KINLO_STAFF_EMAIL as
+# KINLO_EMAIL / KINLO_STAFF_PASSWORD as KINLO_PASSWORD for that job — see
+# .eas/workflows). Requires e2e-staff-invite.yaml to have run first (in the
+# HOST job) so a pending invite actually exists for this account.
+#
+# ASSUMPTION: exactly one pending staff invite for this account, so the
+# first row (index 0) is the one under test — inbox-staff-invite-accept-0.
+# If the test account accumulates invites from prior partial runs, this
+# picks whichever renders first; not deterministic across multiple pending
+# invites. Same re-run caveat as e2e-staff-invite.yaml.
+#
+# NOT COVERED (documented, not executed): host-side re-verification that the
+# staff member now shows as active (no "Pending acceptance" chip) in
+# StaffScreen. StaffScreen only refreshes on screen focus (useFocusEffect,
+# no live listener — KIN-254), so proving it live from the host's already-
+# open session isn't reliable without also re-navigating that session, which
+# this repo's flows don't attempt across two concurrent Maestro sessions.
+appId: com.kinlo.app
+---
+- launchApp:
+    clearState: false
+- repeat:
+    while:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 120000
+- extendedWaitUntil:
+    notVisible: "Error registering push token"
+    timeout: 15000
+    optional: true
+
+# --- Header inbox (Messages) ---
+- tapOn:
+    id: "header-messages"
+- extendedWaitUntil:
+    visible: "Messages" # inbox.title
+    timeout: 20000
+
+# --- Staff invite card is visible ---
+- extendedWaitUntil:
+    visible:
+      id: "inbox-staff-invite-accept-0"
+    timeout: 20000
+
+# --- Accept it ---
+- tapOn:
+    id: "inbox-staff-invite-accept-0"
+
+# --- Card is removed from the list (optimistic local filter on respond) ---
+- extendedWaitUntil:
+    notVisible:
+      id: "inbox-staff-invite-accept-0"
+    timeout: 15000
