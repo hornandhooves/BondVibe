@@ -1,8 +1,11 @@
 name: E2E - login (Maestro, alpha)
 
+# Trigger manual a proposito: cada corrida de "build_e2e_android" consume
+# cuota real de EAS builds. No se dispara solo en cada PR hasta que se
+# confirme la cuota disponible (ver comentario de Carlos en PR #177).
+# Correr con: eas workflow:run e2e-login.yml
 on:
-  pull_request:
-    branches: ['main']
+  workflow_dispatch: {}
 
 jobs:
   build_e2e_android:
