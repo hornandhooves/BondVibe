@@ -115,7 +115,7 @@ export default function InboxScreen({ navigation }) {
   const header = (
     <View>
       {/* Staff invites (BUG 32.1) — Accept grants access; Decline removes it. */}
-      {staffInvites.map((inv) => (
+      {staffInvites.map((inv, index) => (
         <View
           key={inv.id}
           style={[styles.inviteCard, ELEVATION.card, { backgroundColor: colors.surface, borderColor: colors.primary }]}
@@ -138,6 +138,7 @@ export default function InboxScreen({ navigation }) {
           </View>
           <View style={styles.inviteActions}>
             <TouchableOpacity
+              testID={`inbox-staff-invite-decline-${index}`}
               style={[styles.inviteBtn, { borderColor: colors.border }]}
               onPress={() => respondInvite(inv, false)}
               activeOpacity={0.85}
@@ -147,6 +148,7 @@ export default function InboxScreen({ navigation }) {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
+              testID={`inbox-staff-invite-accept-${index}`}
               style={[styles.inviteBtn, { backgroundColor: colors.primary, borderColor: colors.primary }]}
               onPress={() => respondInvite(inv, true)}
               activeOpacity={0.85}
