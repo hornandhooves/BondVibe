@@ -1,0 +1,24 @@
+name: E2E - login (Maestro, alpha)
+
+on:
+  pull_request:
+    branches: ['main']
+
+jobs:
+  build_e2e_android:
+    name: Build APK para E2E
+    type: build
+    params:
+      platform: android
+      profile: e2e-test
+
+  maestro_login:
+    name: Maestro - flujo de login
+    type: maestro
+    needs: [build_e2e_android]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path: .maestro/p0-login.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
