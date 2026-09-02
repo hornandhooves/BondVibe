@@ -314,6 +314,7 @@ export default function LoginScreen({ navigation }) {
               </TouchableOpacity>
 
               <Button
+                testID="login-submit"
                 label={t("auth.login.logIn")}
                 onPress={handleLogin}
                 loading={loading}
