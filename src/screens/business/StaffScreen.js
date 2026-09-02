@@ -376,7 +376,7 @@ export default function StaffScreen({ navigation }) {
               <UserSearchField placeholder={t("business.staff.handlePlaceholder")} onSelect={setSelectedUser} maxHeight={200} />
             )}
             <Text style={[styles.roleHint, { color: colors.textTertiary, marginTop: 14, marginBottom: 8 }]}>{t("business.staff.orByEmail")}</Text>
-            <TextInput style={[styles.input, inputStyle]} value={email} onChangeText={setEmail} placeholder={t("business.staff.emailPlaceholder")} placeholderTextColor={colors.textTertiary} keyboardType="email-address" autoCapitalize="none" />
+            <TextInput testID="staff-invite-email-input" style={[styles.input, inputStyle]} value={email} onChangeText={setEmail} placeholder={t("business.staff.emailPlaceholder")} placeholderTextColor={colors.textTertiary} keyboardType="email-address" autoCapitalize="none" />
             <TouchableOpacity
               testID="staff-send-invite"
               style={[styles.saveBtn, { backgroundColor: colors.primary, opacity: submitting ? 0.6 : 1 }]}
