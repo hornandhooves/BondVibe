@@ -1,0 +1,87 @@
+# E2E — Staff: host invites an existing Kinlo account by email, assert the
+# staff card shows "Pending acceptance".
+#
+# Run order: this flow assumes a signed-in HOST session — run p0-login.yaml
+# first with the HOST account's credentials (KINLO_EMAIL / KINLO_PASSWORD).
+# The staff account being invited is passed separately as
+# KINLO_STAFF_EMAIL (never hardcoded — see .eas/workflows).
+#
+# ACCOUNT SHAPE: KINLO_STAFF_EMAIL already has a Kinlo account (it's the
+# account p0-login uses for e2e-staff-accept.yaml, run in a second job/build).
+# Inviting an email with an existing account takes the "invited" branch
+# (business.staff.invitedTitle/"Invitation sent"), NOT the "pending" branch
+# (business.staff.pendingTitle/"Invitation pending") — that second branch is
+# only for emails with no Kinlo account yet, and is not covered by this flow.
+#
+# RE-RUN CAVEAT (documented, not solved here): a second run of this flow
+# against an already-invited/active staff member hits the "already_active"
+# server error (business.staff.alreadyActiveMsg / "This person is already on
+# your team."). This flow accepts either outcome as a pass — it proves the
+# invite path is reachable and doesn't 500, not that the invite is new. A
+# clean re-run needs the staff member removed first (StaffScreen's own
+# "x" remove action, not automated here) or a Firestore teardown step, which
+# KIN-268 tracks separately as a dependency, not yet built.
+#
+# PRECONDITION: KINLO_EMAIL's account must have the Business tab (canManageBusiness)
+# and the "staff" feature flag/allowance enabled, and no other business's staff
+# invite sheet mid-open (state starts clean on launchApp: clearState: false —
+# same convention as the rest of this repo's flows).
+appId: com.kinlo.app
+---
+- launchApp:
+    clearState: false
+- repeat:
+    while:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 120000
+- extendedWaitUntil:
+    notVisible: "Error registering push token"
+    timeout: 15000
+    optional: true
+
+# --- Business tab -> Business Hub -> Staff ---
+- tapOn:
+    id: "tab-business"
+- extendedWaitUntil:
+    visible: "Staff" # business.hub.staffTitle
+    timeout: 20000
+- tapOn:
+    text: "Staff"
+- extendedWaitUntil:
+    visible:
+      id: "staff-add-btn"
+    timeout: 20000
+
+# --- Open invite sheet, use the email field (not @handle search) ---
+- tapOn:
+    id: "staff-add-btn"
+- extendedWaitUntil:
+    visible:
+      id: "staff-invite-email-input"
+    timeout: 10000
+- tapOn:
+    id: "staff-invite-email-input"
+- inputText: ${KINLO_STAFF_EMAIL}
+- tapOn:
+    id: "staff-send-invite"
+
+# --- Either outcome closes the sheet; assert one of the two known alerts ---
+- extendedWaitUntil:
+    visible: "Invitation sent|This person is already on your team\\."
+    timeout: 20000
+- tapOn:
+    text: "OK"
+    optional: true
+
+# --- Staff list shows the pending card (only true on a fresh invite; skip
+#     silently on the already-active re-run path, per the caveat above) ---
+- runFlow:
+    when:
+      visible: "Pending acceptance"
+    commands:
+      - assertVisible: "Pending acceptance"

@@ -1,0 +1,49 @@
+name: E2E - staff invite/accept (Maestro, alpha)
+
+# Trigger manual a proposito, misma razon que e2e-login.yml: cada corrida de
+# "build_e2e_android" consume cuota real de EAS builds. No se dispara solo
+# hasta que Carlos lo autorice explicitamente (regla del proyecto, PR #177).
+# Correr con: eas workflow:run e2e-staff.yml
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build_e2e_android:
+    name: Build APK para E2E
+    type: build
+    params:
+      platform: android
+      profile: e2e-test
+
+  # Sesion HOST (jcpuntoduarte@gmail.com): login + invita a la cuenta de staff
+  # por email. flow_path acepta array -- corre los dos flujos en la misma
+  # sesion de Maestro (docs.expo.dev/eas/workflows/pre-packaged-jobs/).
+  maestro_staff_invite:
+    name: Maestro - host invita staff
+    type: maestro
+    needs: [build_e2e_android]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path:
+        - .maestro/p0-login.yaml
+        - .maestro/e2e-staff-invite.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
+      KINLO_STAFF_EMAIL: ${{ env.KINLO_E2E_STAFF_EMAIL }}
+
+  # Sesion STAFF (ahronyswow@gmail.com): login + acepta la invitacion desde
+  # el Inbox. needs incluye maestro_staff_invite para que corra DESPUES --
+  # depende de que la invitacion ya exista, no solo del build.
+  maestro_staff_accept:
+    name: Maestro - staff acepta invitacion
+    type: maestro
+    needs: [build_e2e_android, maestro_staff_invite]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path:
+        - .maestro/p0-login.yaml
+        - .maestro/e2e-staff-accept.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_STAFF_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_STAFF_PASSWORD }}
