@@ -38,7 +38,8 @@
       "channel": "e2e-test",
       "android": {
         "buildType": "apk"
-      }
+      },
+      "environment": "preview"
     }
   },
   "submit": {
