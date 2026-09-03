@@ -1,0 +1,86 @@
+name: E2E - batch 1 (smoke + attendee + create event + notifications, alpha)
+
+# Trigger manual a proposito, misma razon que e2e-login.yml y e2e-staff.yml:
+# cada corrida de "build_e2e_android" consume cuota real de EAS builds. No se
+# dispara solo hasta que Carlos lo autorice explicitamente.
+# Correr con: eas workflow:run e2e-batch1.yml
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build_e2e_android:
+    name: Build APK para E2E
+    type: build
+    params:
+      platform: android
+      profile: e2e-test
+
+  # No requiere login -- prueba el shell de Welcome antes de autenticar.
+  maestro_smoke_logged_out:
+    name: Maestro - smoke logueado fuera
+    type: maestro
+    needs: [build_e2e_android]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path: .maestro/p0-smoke-logged-out.yaml
+
+  # Los siguientes 4 corren independientes entre si (no hay needs cruzado --
+  # a diferencia de e2e-staff.yml, ninguno depende del resultado de otro).
+  # Todos usan la cuenta HOST (KINLO_E2E_EMAIL) porque p0-smoke-tabs y
+  # e2e-create-event necesitan canHostView.
+  maestro_smoke_tabs:
+    name: Maestro - smoke 5 tabs + toggle hosting/attending
+    type: maestro
+    needs: [build_e2e_android]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path:
+        - .maestro/p0-login.yaml
+        - .maestro/p0-smoke-tabs.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
+
+  # OJO: requiere la cuenta "AI-opted-in" (comentario del propio flujo,
+  # p0.smoke) para que el Smart Wall / "Ask Kinlo" pinte contenido. No
+  # verificado si KINLO_E2E_EMAIL tiene ese opt-in activo -- si no lo tiene,
+  # este job puede fallar en el assert de "Curated for you.*|AI picks..."
+  # (linea ~27 del flujo). Confirmar con Carlos antes de confiar en el rojo/verde.
+  maestro_attendee:
+    name: Maestro - journey de attendee
+    type: maestro
+    needs: [build_e2e_android]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path:
+        - .maestro/p0-login.yaml
+        - .maestro/e2e-attendee.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
+
+  maestro_create_event:
+    name: Maestro - host crea evento
+    type: maestro
+    needs: [build_e2e_android]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path:
+        - .maestro/p0-login.yaml
+        - .maestro/e2e-create-event.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
+
+  maestro_notifications:
+    name: Maestro - abre notificaciones
+    type: maestro
+    needs: [build_e2e_android]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path:
+        - .maestro/p0-login.yaml
+        - .maestro/e2e-notifications.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
