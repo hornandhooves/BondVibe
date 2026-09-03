@@ -1,0 +1,127 @@
+name: E2E - full suite (Maestro, alpha)
+
+# Consolidado de e2e-login.yml + e2e-staff.yml + e2e-batch1.yml (KIN-268):
+# un solo build_e2e_android compartido por los 8 jobs de Maestro en vez de
+# 3 builds separados -- el costo de EAS Build es por archivo de workflow,
+# no por job de Maestro dentro de el, asi que separarlos en 3 archivos no
+# compraba nada y triplicaba el gasto de cuota sin razon.
+#
+# Trigger manual a proposito: cada corrida consume 1 build real de EAS.
+# No se dispara solo hasta que Carlos lo autorice explicitamente.
+# Correr con: eas workflow:run e2e-full.yml
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build_e2e_android:
+    name: Build APK para E2E
+    type: build
+    params:
+      platform: android
+      profile: e2e-test
+
+  maestro_login:
+    name: Maestro - flujo de login
+    type: maestro
+    needs: [build_e2e_android]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path: .maestro/p0-login.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
+
+  # Sesion HOST (jcpuntoduarte@gmail.com): login + invita a la cuenta de staff
+  # por email. flow_path acepta array -- corre los dos flujos en la misma
+  # sesion de Maestro (docs.expo.dev/eas/workflows/pre-packaged-jobs/).
+  maestro_staff_invite:
+    name: Maestro - host invita staff
+    type: maestro
+    needs: [build_e2e_android]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path:
+        - .maestro/p0-login.yaml
+        - .maestro/e2e-staff-invite.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
+      KINLO_STAFF_EMAIL: ${{ env.KINLO_E2E_STAFF_EMAIL }}
+
+  # Sesion STAFF (ahronyswow@gmail.com): login + acepta la invitacion desde
+  # el Inbox. needs incluye maestro_staff_invite para que corra DESPUES --
+  # depende de que la invitacion ya exista, no solo del build.
+  maestro_staff_accept:
+    name: Maestro - staff acepta invitacion
+    type: maestro
+    needs: [build_e2e_android, maestro_staff_invite]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path:
+        - .maestro/p0-login.yaml
+        - .maestro/e2e-staff-accept.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_STAFF_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_STAFF_PASSWORD }}
+
+  # No requiere login -- prueba el shell de Welcome antes de autenticar.
+  maestro_smoke_logged_out:
+    name: Maestro - smoke logueado fuera
+    type: maestro
+    needs: [build_e2e_android]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path: .maestro/p0-smoke-logged-out.yaml
+
+  maestro_smoke_tabs:
+    name: Maestro - smoke 5 tabs + toggle hosting/attending
+    type: maestro
+    needs: [build_e2e_android]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path:
+        - .maestro/p0-login.yaml
+        - .maestro/p0-smoke-tabs.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
+
+  # Cuenta host confirmada con AI opt-in activo (Carlos, 2-sep-2026).
+  maestro_attendee:
+    name: Maestro - journey de attendee
+    type: maestro
+    needs: [build_e2e_android]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path:
+        - .maestro/p0-login.yaml
+        - .maestro/e2e-attendee.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
+
+  maestro_create_event:
+    name: Maestro - host crea evento
+    type: maestro
+    needs: [build_e2e_android]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path:
+        - .maestro/p0-login.yaml
+        - .maestro/e2e-create-event.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
+
+  maestro_notifications:
+    name: Maestro - abre notificaciones
+    type: maestro
+    needs: [build_e2e_android]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path:
+        - .maestro/p0-login.yaml
+        - .maestro/e2e-notifications.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
