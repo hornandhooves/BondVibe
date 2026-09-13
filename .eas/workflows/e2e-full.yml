@@ -125,3 +125,114 @@ jobs:
     env:
       KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
       KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
+
+  # =========================================================================
+  # KIN-275 — fixtures baratos para Maestro (seed -> maestro -> cleanup).
+  #
+  # join-event y membership-redeem comparten el mismo mecanismo de
+  # descubribilidad ("primer resultado de busqueda" = evento mas proximo
+  # publicamente listado) y por lo tanto el mismo riesgo de colision si sus
+  # fixtures coexisten. Cada script se auto-verifica y aborta si no hay hueco
+  # seguro (ver headers de scripts/e2e-seed-join-event.mjs y
+  # scripts/e2e-seed-membership-redeem.mjs), pero ademas los serializamos
+  # aqui con `needs` para que nunca esten vivos al mismo tiempo.
+  #
+  # PENDIENTE, sin resolver (KIN-275): estos scripts corren hoy con las
+  # credenciales locales de gcloud/Firebase CLI del operador via Application
+  # Default Credentials. Ese contexto no existe en un runner de EAS -- falta
+  # decidir e implementar autenticacion via service-account key (EAS
+  # Environment Variable / secret) antes de poder correr este workflow de
+  # punta a punta. Hasta entonces estos jobs fallaran en la autenticacion de
+  # firebase-admin -- de forma explicita, no en silencio.
+  # =========================================================================
+
+  seed_join_event:
+    name: KIN-275 - seed join-event
+    needs: [build_e2e_android]
+    env:
+      GOOGLE_CLOUD_PROJECT: kinlo-app-dev
+    steps:
+      - run: node scripts/e2e-seed-join-event.mjs
+
+  maestro_join_event:
+    name: Maestro - join-event
+    type: maestro
+    needs: [build_e2e_android, seed_join_event]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path:
+        - .maestro/p0-login.yaml
+        - .maestro/e2e-join-event.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
+
+  cleanup_join_event:
+    name: KIN-275 - cleanup join-event
+    needs: [maestro_join_event]
+    env:
+      GOOGLE_CLOUD_PROJECT: kinlo-app-dev
+    steps:
+      - run: node scripts/e2e-cleanup-join-event.mjs
+
+  seed_membership_redeem:
+    name: KIN-275 - seed membership-redeem
+    needs: [cleanup_join_event]
+    env:
+      GOOGLE_CLOUD_PROJECT: kinlo-app-dev
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+    steps:
+      - run: node scripts/e2e-seed-membership-redeem.mjs
+
+  maestro_membership_redeem:
+    name: Maestro - membership-redeem
+    type: maestro
+    needs: [build_e2e_android, seed_membership_redeem]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path:
+        - .maestro/p0-login.yaml
+        - .maestro/e2e-membership-redeem.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
+
+  cleanup_membership_redeem:
+    name: KIN-275 - cleanup membership-redeem
+    needs: [maestro_membership_redeem]
+    env:
+      GOOGLE_CLOUD_PROJECT: kinlo-app-dev
+    steps:
+      - run: node scripts/e2e-cleanup-membership-redeem.mjs
+
+  # email-gate no toca la coleccion events -- no comparte el riesgo de
+  # colision de arriba, corre en paralelo (solo depende del build).
+  # Requiere las EAS Environment Variables KINLO_UNVERIFIED_EMAIL /
+  # KINLO_UNVERIFIED_PASSWORD, todavia no creadas (pendiente KIN-275).
+  seed_email_gate:
+    name: KIN-275 - seed email-gate
+    needs: [build_e2e_android]
+    env:
+      GOOGLE_CLOUD_PROJECT: kinlo-app-dev
+    steps:
+      - run: node scripts/e2e-seed-email-gate.mjs
+
+  maestro_email_gate:
+    name: Maestro - email-gate
+    type: maestro
+    needs: [build_e2e_android, seed_email_gate]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path: .maestro/e2e-email-gate.yaml
+    env:
+      KINLO_UNVERIFIED_EMAIL: ${{ env.KINLO_UNVERIFIED_EMAIL }}
+      KINLO_UNVERIFIED_PASSWORD: ${{ env.KINLO_UNVERIFIED_PASSWORD }}
+
+  cleanup_email_gate:
+    name: KIN-275 - cleanup email-gate
+    needs: [maestro_email_gate]
+    env:
+      GOOGLE_CLOUD_PROJECT: kinlo-app-dev
+    steps:
+      - run: node scripts/e2e-cleanup-email-gate.mjs
+
