@@ -236,3 +236,138 @@ jobs:
     steps:
       - run: node scripts/e2e-cleanup-email-gate.mjs
 
+
+  # =========================================================================
+  # KIN-275 — fixtures medios para Maestro (seed -> maestro -> cleanup).
+  #
+  # rental-pay y service-pay dependen de una heuristica de prefijo de ID
+  # ("00_") sobre queries de Firestore SIN orderBy (vehicles, sessionTypes) --
+  # decision explicita de Carlos, riesgo documentado en Jira KIN-275
+  # (comentario 10446) y KIN-185 (comentario 10447), no repetido aqui.
+  #
+  # dm-send y wall-post-follow no comparten ese riesgo: dms tiene orderBy
+  # real (updatedAt) y wall-post-follow usa un usuario QA dedicado, no una
+  # cuenta real, para no ensuciar el grafo social de nadie.
+  #
+  # Los 4 pares corren en paralelo entre si y con los baratos -- solo
+  # dependen del build. Mismo PENDIENTE de autenticacion en runner de EAS
+  # que los baratos (linea 140 arriba).
+  # =========================================================================
+
+  seed_rental_pay:
+    name: KIN-275 - seed rental-pay
+    needs: [build_e2e_android]
+    env:
+      GOOGLE_CLOUD_PROJECT: kinlo-app-dev
+    steps:
+      - run: node scripts/e2e-seed-rental-pay.mjs
+
+  maestro_rental_pay:
+    name: Maestro - rental-pay
+    type: maestro
+    needs: [build_e2e_android, seed_rental_pay]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path:
+        - .maestro/p0-login.yaml
+        - .maestro/e2e-rental-pay.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
+
+  cleanup_rental_pay:
+    name: KIN-275 - cleanup rental-pay
+    needs: [maestro_rental_pay]
+    env:
+      GOOGLE_CLOUD_PROJECT: kinlo-app-dev
+    steps:
+      - run: node scripts/e2e-cleanup-rental-pay.mjs
+
+  seed_service_pay:
+    name: KIN-275 - seed service-pay
+    needs: [build_e2e_android]
+    env:
+      GOOGLE_CLOUD_PROJECT: kinlo-app-dev
+    steps:
+      - run: node scripts/e2e-seed-service-pay.mjs
+
+  maestro_service_pay:
+    name: Maestro - service-pay
+    type: maestro
+    needs: [build_e2e_android, seed_service_pay]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path:
+        - .maestro/p0-login.yaml
+        - .maestro/e2e-service-pay.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
+
+  cleanup_service_pay:
+    name: KIN-275 - cleanup service-pay
+    needs: [maestro_service_pay]
+    env:
+      GOOGLE_CLOUD_PROJECT: kinlo-app-dev
+    steps:
+      - run: node scripts/e2e-cleanup-service-pay.mjs
+
+  seed_dm_send:
+    name: KIN-275 - seed dm-send
+    needs: [build_e2e_android]
+    env:
+      GOOGLE_CLOUD_PROJECT: kinlo-app-dev
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+    steps:
+      - run: node scripts/e2e-seed-dm-send.mjs
+
+  maestro_dm_send:
+    name: Maestro - dm-send
+    type: maestro
+    needs: [build_e2e_android, seed_dm_send]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path:
+        - .maestro/p0-login.yaml
+        - .maestro/e2e-dm-send.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
+
+  cleanup_dm_send:
+    name: KIN-275 - cleanup dm-send
+    needs: [maestro_dm_send]
+    env:
+      GOOGLE_CLOUD_PROJECT: kinlo-app-dev
+    steps:
+      - run: node scripts/e2e-cleanup-dm-send.mjs
+
+  seed_wall_post_follow:
+    name: KIN-275 - seed wall-post-follow
+    needs: [build_e2e_android]
+    env:
+      GOOGLE_CLOUD_PROJECT: kinlo-app-dev
+    steps:
+      - run: node scripts/e2e-seed-wall-post-follow.mjs
+
+  maestro_wall_post_follow:
+    name: Maestro - wall-post-follow
+    type: maestro
+    needs: [build_e2e_android, seed_wall_post_follow]
+    params:
+      build_id: ${{ needs.build_e2e_android.outputs.build_id }}
+      flow_path:
+        - .maestro/p0-login.yaml
+        - .maestro/e2e-wall-post-follow.yaml
+    env:
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+      KINLO_PASSWORD: ${{ env.KINLO_E2E_PASSWORD }}
+
+  cleanup_wall_post_follow:
+    name: KIN-275 - cleanup wall-post-follow
+    needs: [maestro_wall_post_follow]
+    env:
+      GOOGLE_CLOUD_PROJECT: kinlo-app-dev
+      KINLO_EMAIL: ${{ env.KINLO_E2E_EMAIL }}
+    steps:
+      - run: node scripts/e2e-cleanup-wall-post-follow.mjs

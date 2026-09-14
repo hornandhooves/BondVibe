@@ -63,7 +63,7 @@ appId: com.kinlo.app
     timeout: 20000
 - tapOn:
     text: "Search @handle or name"  # userSearch.placeholder
-- inputText: "a"
+- inputText: "qa275"
 - tapOn:
     id: "user-search-result"        # NEW — first result row
 - extendedWaitUntil:
