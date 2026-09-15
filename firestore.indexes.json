@@ -511,6 +511,24 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "bizId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sessionTypeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "ratings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "hostId",
           "order": "ASCENDING"
         },

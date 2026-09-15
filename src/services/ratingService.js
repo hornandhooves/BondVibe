@@ -14,6 +14,7 @@ import {
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
 import { getMyRosterEvents } from "./rosterService";
+import { getMyServiceBookings } from "./marketplaceService";
 import { createNotification } from "../utils/notificationService";
 import { getEventCreatorId } from "../utils/eventHelpers";
 
@@ -38,6 +39,46 @@ export const getHostFeedbackInsights = async () => {
  * @returns {Promise<Object>} - Result with success status
  */
 export const submitRating = async (ratingData) => {
+  // KIN-285: services branch — own id scheme (bookingId_userId), own fields
+  // (bookingId/bizId/sessionTypeId), NEVER eventId/hostId, so onRatingCreated's
+  // existing `if (eventId)`/`if (hostId)` branches (and firestore.rules' event
+  // condition) can never fire for a service rating doc. Early-returns so the
+  // event path below is untouched, byte for byte.
+  if (ratingData.bookingId) {
+    try {
+      const { bookingId, bizId, sessionTypeId, sessionTypeName, rating, comment } = ratingData;
+      const userId = auth.currentUser.uid;
+
+      const userDoc = await getDoc(doc(db, "users", userId));
+      const userData = userDoc.data();
+      const userName = userData?.fullName || userData?.name || "Someone";
+
+      const ratingDoc = {
+        bookingId,
+        bizId,
+        sessionTypeId,
+        sessionTypeName,
+        userId,
+        userName,
+        userAvatar: userData?.avatar || userData?.emoji || null,
+        rating,
+        comment: comment?.trim() || "",
+        createdAt: serverTimestamp(),
+      };
+
+      // Deterministic id = one rating per user per booking (mirrors the event
+      // scheme). Averages are recomputed server-side by onRatingCreated.
+      const ratingId = `${bookingId}_${userId}`;
+      await setDoc(doc(db, "ratings", ratingId), ratingDoc);
+      console.log("✅ Service rating submitted:", ratingId);
+
+      return { success: true, ratingId };
+    } catch (error) {
+      console.error("❌ Error submitting service rating:", error);
+      return { success: false, error: error.message };
+    }
+  }
+
   try {
     const { eventId, eventTitle, hostId, rating, comment } = ratingData;
     const userId = auth.currentUser.uid;
@@ -144,6 +185,35 @@ export const getUserRatingForEvent = async (eventId, userId = null) => {
 };
 
 /**
+ * KIN-285: check if user already rated a service booking. Same shape as
+ * getUserRatingForEvent, filtered by bookingId instead.
+ * @param {string} bookingId - Booking ID
+ * @param {string} [userId] - User ID (defaults to the signed-in user)
+ * @returns {Promise<Object|null>} - Existing rating or null
+ */
+export const getUserRatingForBooking = async (bookingId, userId = null) => {
+  try {
+    const uid = userId || auth.currentUser?.uid;
+    if (!uid) return null;
+
+    const ratingsQuery = query(
+      collection(db, "ratings"),
+      where("bookingId", "==", bookingId),
+      where("userId", "==", uid)
+    );
+
+    const snapshot = await getDocs(ratingsQuery);
+    if (snapshot.empty) return null;
+
+    const d = snapshot.docs[0];
+    return { id: d.id, ...d.data() };
+  } catch (error) {
+    console.error("❌ Error checking existing service rating:", error);
+    return null;
+  }
+};
+
+/**
  * Get all ratings for an event
  * @param {string} eventId - Event ID
  * @returns {Promise<Array>} - Array of ratings
@@ -164,6 +234,34 @@ export const getEventRatings = async (eventId) => {
     }));
   } catch (error) {
     console.error("❌ Error getting event ratings:", error);
+    return [];
+  }
+};
+
+/**
+ * KIN-285: all ratings for one service (a business's sessionType). Same shape
+ * as getEventRatings, filtered by bizId + sessionTypeId instead.
+ * @param {string} bizId - Business ID
+ * @param {string} sessionTypeId - SessionType ID
+ * @returns {Promise<Array>} - Array of ratings
+ */
+export const getServiceRatings = async (bizId, sessionTypeId) => {
+  try {
+    const ratingsQuery = query(
+      collection(db, "ratings"),
+      where("bizId", "==", bizId),
+      where("sessionTypeId", "==", sessionTypeId),
+      orderBy("createdAt", "desc")
+    );
+
+    const snapshot = await getDocs(ratingsQuery);
+    return snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+      createdAt: d.data().createdAt?.toDate?.() || new Date(),
+    }));
+  } catch (error) {
+    console.error("❌ Error getting service ratings:", error);
     return [];
   }
 };
@@ -297,6 +395,40 @@ export const getPendingRatings = async () => {
     return unratedEvents;
   } catch (error) {
     console.error("❌ Error getting pending ratings:", error);
+    return [];
+  }
+};
+
+/**
+ * KIN-285: service bookings the user paid for, marked done, but hasn't rated
+ * yet. Mirrors getPendingRatings' shape/contract but reads from
+ * getMyServiceBookings (marketplaceService.js, KIN-278) instead of the event
+ * roster — a service booking's own `status` field already records "done"
+ * (set by the host's markDone), so there's no separate checkin doc to check.
+ * Not wired into a widget yet (not asked for by this ticket) — the function
+ * exists and works; a PendingRatingsCard-style surface is a follow-up.
+ * @returns {Promise<Array>} - Array of unrated done service bookings
+ */
+export const getPendingServiceRatings = async () => {
+  try {
+    const userId = auth.currentUser?.uid;
+    if (!userId) return [];
+
+    const bookings = await getMyServiceBookings();
+    const doneBookings = bookings.filter((b) => b.status === "done");
+
+    const unrated = [];
+    for (const b of doneBookings) {
+      const existingRating = await getUserRatingForBooking(b.id, userId);
+      if (!existingRating) unrated.push(b);
+    }
+
+    unrated.sort((a, b) => new Date(b.start || 0) - new Date(a.start || 0));
+
+    console.log(`📊 Found ${unrated.length} service bookings pending rating`);
+    return unrated;
+  } catch (error) {
+    console.error("❌ Error getting pending service ratings:", error);
     return [];
   }
 };

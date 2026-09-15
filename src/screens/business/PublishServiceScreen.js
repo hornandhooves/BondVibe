@@ -11,12 +11,13 @@
  * public listing and a verified + insured business for at-home (at_customer)
  * services. The UI mirrors that gate; the server is the guarantee.
  */
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View, Text, TextInput, ScrollView, StyleSheet, TouchableOpacity,
-  ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, AppState,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -54,6 +55,12 @@ export function ServiceHostGate({ navigation, onBack }) {
 }
 
 const MAX_PHOTOS = 5;
+// KIN-286 · P4 — same pattern as CreateEventScreen's EVENT_DRAFT_KEY /
+// DRAFT_SAVE_DEBOUNCE_MS (local to that file, so redefined here rather than
+// imported).
+const SERVICE_DRAFT_KEY = "serviceDraft";
+const DRAFT_SAVE_DEBOUNCE_MS = 3000;
+const DRAFT_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 
 export default function PublishServiceScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
@@ -105,6 +112,116 @@ export default function PublishServiceScreen({ navigation, route }) {
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [editId]);
+
+  // KIN-286 · P4 — draft, mirroring CreateEventScreen's pattern exactly.
+  // Create-only (step 4b): editing an existing service never reads or writes
+  // this key, same as CreateEventScreen doesn't interfere with editing an
+  // existing event.
+  const formStateRef = useRef({});
+  formStateRef.current = {
+    name, vertical, durationMin, capacityMax, description, photos,
+    locationMode, bookingMode, price, planPackageId, city,
+  };
+  const submittedRef = useRef(false);
+
+  const persistDraft = useCallback(() => {
+    if (editId) return Promise.resolve();
+    const s = formStateRef.current;
+    return AsyncStorage.setItem(
+      SERVICE_DRAFT_KEY,
+      JSON.stringify({ ...s, savedAt: Date.now() }),
+    ).catch(() => {});
+  }, [editId]);
+
+  const restoreDraft = useCallback((d) => {
+    if (typeof d.name === "string") setName(d.name);
+    if (d.vertical) setVertical(d.vertical);
+    if (typeof d.durationMin === "string") setDurationMin(d.durationMin);
+    if (typeof d.capacityMax === "number") setCapacityMax(d.capacityMax);
+    if (typeof d.description === "string") setDescription(d.description);
+    if (Array.isArray(d.photos)) setPhotos(d.photos);
+    if (typeof d.locationMode === "string") setLocationMode(d.locationMode);
+    if (typeof d.bookingMode === "string") setBookingMode(d.bookingMode);
+    if (typeof d.price === "string") setPrice(d.price);
+    if (d.planPackageId) setPlanPackageId(d.planPackageId);
+    if (typeof d.city === "string") setCity(d.city);
+  }, []);
+
+  // Restore-on-mount, same Alert resume/discard shape as CreateEventScreen —
+  // this screen has no membership-plan-style detour, so unlike that screen
+  // there's only one path (always ask, never silent-restore).
+  useFocusEffect(
+    useCallback(() => {
+      if (editId) return;
+      (async () => {
+        try {
+          const raw = await AsyncStorage.getItem(SERVICE_DRAFT_KEY);
+          if (!raw) return;
+          const d = JSON.parse(raw);
+          const fresh = d.savedAt && Date.now() - d.savedAt < DRAFT_MAX_AGE_MS;
+          if (!fresh) {
+            await AsyncStorage.removeItem(SERVICE_DRAFT_KEY);
+            return;
+          }
+          Alert.alert(
+            t("services.publish.draft.resumeTitle"),
+            t("services.publish.draft.resumeMsg"),
+            [
+              {
+                text: t("services.publish.draft.discard"),
+                style: "destructive",
+                onPress: () => AsyncStorage.removeItem(SERVICE_DRAFT_KEY).catch(() => {}),
+              },
+              {
+                text: t("services.publish.draft.resume"),
+                onPress: async () => {
+                  restoreDraft(d);
+                  await AsyncStorage.removeItem(SERVICE_DRAFT_KEY).catch(() => {});
+                },
+              },
+            ],
+          );
+        } catch {
+          // ignore
+        }
+      })();
+    }, [editId, restoreDraft, t])
+  );
+
+  // Back-out (header back / swipe) saves the in-progress form as a draft.
+  useEffect(() => {
+    const unsub = navigation.addListener("beforeRemove", () => {
+      if (editId || submittedRef.current) return;
+      const s = formStateRef.current;
+      if (s.name?.trim()) persistDraft();
+    });
+    return unsub;
+  }, [navigation, persistDraft, editId]);
+
+  // Debounced autosave — the backstop for a kill/crash beforeRemove never
+  // sees (KIN-153's reasoning, same as CreateEventScreen).
+  useEffect(() => {
+    if (editId || submittedRef.current) return;
+    const s = formStateRef.current;
+    if (!s.name?.trim()) return;
+    const timer = setTimeout(persistDraft, DRAFT_SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [
+    name, vertical, durationMin, capacityMax, description, photos,
+    locationMode, bookingMode, price, planPackageId, city, persistDraft, editId,
+  ]);
+
+  // AppState: save immediately on backgrounding (most real kills go through
+  // background/inactive before terminating).
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (nextState) => {
+      if (editId || submittedRef.current) return;
+      if (nextState !== "background" && nextState !== "inactive") return;
+      const s = formStateRef.current;
+      if (s.name?.trim()) persistDraft();
+    });
+    return () => sub.remove();
+  }, [persistDraft, editId]);
 
   const load = useCallback(async () => {
     const [plans, b] = await Promise.all([
@@ -164,6 +281,12 @@ export default function PublishServiceScreen({ navigation, route }) {
       let id = editId;
       if (editId) await updateSessionType(editId, { ...base });
       else id = (await createSessionType({ ...base, photos: [] })).id;
+
+      // KIN-286 · P4: the core publish/save succeeded — clear the draft here
+      // (before the best-effort photo upload below, same point CreateEventScreen
+      // clears EVENT_DRAFT_KEY relative to its own image upload).
+      submittedRef.current = true;
+      await AsyncStorage.removeItem(SERVICE_DRAFT_KEY).catch(() => {});
 
       // Best-effort photo upload — an undeployed storage rule (the service-photos
       // path is new in P1) must never block publishing. On failure the listing is

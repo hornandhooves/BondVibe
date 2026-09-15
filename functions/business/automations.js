@@ -138,6 +138,13 @@ async function resolveAudience(bizId, audience = {}) {
   const snap = await db().collection("businesses").doc(bizId)
     .collection("members").limit(2000).get();
   let members = snap.docs.map((d) => ({id: d.id, ...d.data()}));
+  // A marketplace one-off buyer (paymentWebhook.js's handleServiceBookingPayment
+  // creates these with no consent granted) shouldn't land in a broad marketing
+  // send by default — but a host targeting that ONE person specifically
+  // (type==="member") should still reach them.
+  if (audience.type !== "member") {
+    members = members.filter((m) => m.source !== "marketplace");
+  }
   const type = audience.type || "all";
   if (type === "member") {
     members = members.filter((m) => m.id === audience.value);

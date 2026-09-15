@@ -18,8 +18,11 @@ import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import Icon from "../../components/Icon";
 import GradientBackground from "../../components/GradientBackground";
+import PlaceAutocomplete from "../../components/PlaceAutocomplete";
 import { useTheme } from "../../contexts/ThemeContext";
-import { createBusiness, getBusiness, updateBusiness } from "../../services/businessService";
+import { createBusiness, getBusiness, updateBusiness, getMyBizId } from "../../services/businessService";
+import { setServiceLocation } from "../../services/businessLocationService";
+import { geocodeAddress } from "../../utils/geocode";
 import { VERTICAL_IDS, DEFAULT_VERTICAL, verticalLabelKey } from "../../constants/businessVerticals";
 
 export default function BusinessSetupScreen({ navigation }) {
@@ -32,6 +35,11 @@ export default function BusinessSetupScreen({ navigation }) {
   // The SAVED name, not the field. Titling with `name` would rewrite the header
   // on every keystroke — and blank it the moment the field is cleared.
   const [savedName, setSavedName] = useState("");
+  // KIN-284: business-level address, distinct from a branch's own address
+  // (BranchesScreen.js) — this is the one setServiceLocation gates on the
+  // marketplace listing.
+  const [address, setAddress] = useState("");
+  const [coords, setCoords] = useState(null);
 
   useEffect(() => {
     getBusiness().then((biz) => {
@@ -39,10 +47,27 @@ export default function BusinessSetupScreen({ navigation }) {
         setName(biz.name || "");
         setSavedName(biz.name || "");
         setVertical(biz.vertical || DEFAULT_VERTICAL);
+        setAddress(biz.address || "");
+        if (typeof biz.latitude === "number" && typeof biz.longitude === "number") {
+          setCoords({ latitude: biz.latitude, longitude: biz.longitude });
+        }
         setEditing(true);
       }
     });
   }, []);
+
+  // Mirrors CreateEventScreen's own free-text fallback: a Places pick already
+  // carries lat/lng; typed-with-no-suggestion (PlaceAutocomplete's
+  // handleUseTyped) hands back only { description }, so geocode it to still
+  // get coordinates.
+  const onSelectAddress = async (place) => {
+    setAddress(place.description || "");
+    if (typeof place.latitude === "number" && typeof place.longitude === "number") {
+      setCoords({ latitude: place.latitude, longitude: place.longitude });
+    } else {
+      setCoords(await geocodeAddress(place.description));
+    }
+  };
 
   const onSave = async () => {
     if (!name.trim()) {
@@ -51,13 +76,26 @@ export default function BusinessSetupScreen({ navigation }) {
     }
     setSaving(true);
     try {
+      const addressPatch = {
+        address: address.trim() || null,
+        latitude: coords?.latitude ?? null,
+        longitude: coords?.longitude ?? null,
+      };
       if (editing) {
-        await updateBusiness({ name: name.trim(), vertical });
-        navigation.goBack();
+        await updateBusiness({ name: name.trim(), vertical, ...addressPatch });
       } else {
         await createBusiness({ name: name.trim(), vertical });
-        navigation.replace("BusinessHub");
+        if (address.trim()) await updateBusiness(addressPatch);
       }
+      // KIN-284: computes the coarse/exact split for the marketplace listing
+      // (setServiceLocation, functions/index.js) — bizId only exists AFTER
+      // createBusiness resolves, so this runs after both branches, not inside
+      // the create one.
+      if (address.trim() && coords) {
+        await setServiceLocation({ bizId: getMyBizId(), address: address.trim(), exactCoords: coords });
+      }
+      if (editing) navigation.goBack();
+      else navigation.replace("BusinessHub");
     } catch (e) {
       setSaving(false);
       Alert.alert(t("business.common.errorTitle"), t("business.common.tryAgain"));
@@ -122,6 +160,12 @@ export default function BusinessSetupScreen({ navigation }) {
           })}
         </View>
         <Text style={[styles.presetHint, { color: colors.textTertiary }]}>{t("business.setup.presetHint")}</Text>
+
+        <Text style={[styles.label, { color: colors.textTertiary, marginTop: 20 }]}>
+          {t("business.setup.addressLabel")}
+        </Text>
+        <PlaceAutocomplete value={address} onSelect={onSelectAddress} />
+        <Text style={[styles.presetHint, { color: colors.textTertiary }]}>{t("business.setup.addressHint")}</Text>
       </ScrollView>
 
       <View style={styles.footer}>

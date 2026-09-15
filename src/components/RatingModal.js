@@ -14,9 +14,15 @@ import {
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import { submitRating } from "../services/ratingService";
-import { getEventCreatorId } from "../utils/eventHelpers";
 
-export default function RatingModal({ visible, onClose, onSuccess, event }) {
+/**
+ * KIN-285: `target` replaces the old `event`-only prop so this same modal can
+ * rate either an event or a marketplace service booking — the only thing
+ * that changes per type is the payload handSubmit builds for submitRating.
+ * @param {{type:"event"|"service", id:string, title?:string, hostId?:string,
+ *   bizId?:string, sessionTypeId?:string}} target
+ */
+export default function RatingModal({ visible, onClose, onSuccess, target }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const [rating, setRating] = useState(0);
@@ -33,13 +39,23 @@ export default function RatingModal({ visible, onClose, onSuccess, event }) {
     setLoading(true);
 
     try {
-      const result = await submitRating({
-        eventId: event.id,
-        eventTitle: event.title,
-        hostId: getEventCreatorId(event),
-        rating,
-        comment,
-      });
+      const payload = target?.type === "service"
+        ? {
+            bookingId: target.id,
+            bizId: target.bizId,
+            sessionTypeId: target.sessionTypeId,
+            sessionTypeName: target.title,
+            rating,
+            comment,
+          }
+        : {
+            eventId: target.id,
+            eventTitle: target.title,
+            hostId: target.hostId,
+            rating,
+            comment,
+          };
+      const result = await submitRating(payload);
 
       if (result.success) {
         onSuccess?.(rating, comment);
@@ -104,13 +120,14 @@ export default function RatingModal({ visible, onClose, onSuccess, event }) {
                   <Icon name="star" size={36} color={colors.primary} />
                 </View>
                 <Text style={[styles.title, { color: colors.text }]}>
-                  {t("ratingModal.rateThisEvent")}
+                  {t(target?.type === "service" ? "ratingModal.rateThisService" : "ratingModal.rateThisEvent")}
                 </Text>
                 <Text
                   style={[styles.eventTitle, { color: colors.textSecondary }]}
                   numberOfLines={2}
                 >
-                  {event?.title || t("ratingModal.eventFallback")}
+                  {target?.title ||
+                    t(target?.type === "service" ? "ratingModal.serviceFallback" : "ratingModal.eventFallback")}
                 </Text>
               </View>
 

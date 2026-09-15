@@ -135,7 +135,31 @@ export async function createBusiness({ name, vertical }) {
 }
 
 /**
- * Patch the business (name / vertical / settings / branches). Merge-safe.
+ * KIN-284: the business's own public projection (businesses/{bizId}/public/
+ * profile — name/verified/avatarUrl/vertical/area/approxCoords/
+ * locationLocked), mirrored server-side by onBusinessPublicProfileWritten.
+ * businesses/{bizId} itself is staff/owner-only readable, so a non-staff
+ * caller (any marketplace buyer) must read THIS doc instead to get the
+ * coarse location — reading getBusiness(bizId) as a buyer returns null
+ * (permission-denied, caught).
+ * @param {string} bizId
+ * @returns {Promise<object|null>}
+ */
+export async function getBusinessPublicProfile(bizId) {
+  if (!bizId) return null;
+  try {
+    const snap = await getDoc(doc(db, "businesses", bizId, "public", "profile"));
+    return snap.exists() ? snap.data() : null;
+  } catch (e) {
+    console.error("getBusinessPublicProfile failed:", e?.message || e);
+    return null;
+  }
+}
+
+/**
+ * Patch the business (name / vertical / settings / branches / KIN-284's
+ * nullable address+latitude+longitude — the business's own gated-location
+ * seed fields, distinct from a branch's address). Merge-safe.
  * @param {object} patch
  */
 export async function updateBusiness(patch = {}) {

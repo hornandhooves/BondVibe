@@ -24,6 +24,7 @@ import { EVENT_CATEGORIES } from "../utils/eventCategories";
 import Icon, { getCategoryIcon } from "../components/Icon";
 import RatingModal from "../components/RatingModal";
 import { getPendingRatings } from "../services/ratingService";
+import { getEventCreatorId } from "../utils/eventHelpers";
 import GradientBackground from "../components/GradientBackground";
 import { BVCard } from "../components/BoldPop";
 
@@ -338,7 +339,11 @@ export default function HomeScreen({ navigation }) {
           setSelectedEvent(null);
         }}
         onSuccess={handleRatingSuccess}
-        event={selectedEvent}
+        target={
+          selectedEvent
+            ? { type: "event", id: selectedEvent.id, title: selectedEvent.title, hostId: getEventCreatorId(selectedEvent) }
+            : null
+        }
       />
     </GradientBackground>
   );

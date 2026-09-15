@@ -584,10 +584,14 @@ const NOTIF_CATALOG = {
   // confirms a booking / nudges a rating after a done session. "open" is enough:
   // benign, rate-limited, link-stripped body. (A business-owner gate would be
   // tighter but optional.)
-  business_session_confirmed: {gate: "open", title: "Session confirmed",
-    fromMsg: true, icon: "calendar"},
-  business_session_rate: {gate: "open", title: "Rate your session",
-    fromMsg: true, icon: "star"},
+  business_session_confirmed: {gate: "open",
+    titleKey: "notifications.business.sessionConfirmed.title",
+    bodyKey: "notifications.business.sessionConfirmed.body",
+    keyParams: ["hostName"], icon: "calendar"},
+  business_session_rate: {gate: "open",
+    titleKey: "notifications.business.sessionRate.title",
+    bodyKey: "notifications.business.sessionRate.body",
+    keyParams: ["hostName"], icon: "star"},
 };
 
 // Output guard: strip anything clickable a phishing body could carry.
@@ -2366,7 +2370,7 @@ exports.onRatingCreated = onDocumentCreated(
     const snap = event.data;
     if (!snap) return;
     const rating = snap.data();
-    const {eventId, hostId} = rating;
+    const {eventId, hostId, bookingId, bizId, sessionTypeId} = rating;
     const round1 = (n) => Math.round(n * 10) / 10;
 
     try {
@@ -2384,6 +2388,45 @@ exports.onRatingCreated = onDocumentCreated(
             averageRating: round1(sum / n),
             totalRatings: n,
           });
+        }
+      } else if (bookingId) {
+        // KIN-285: service rating — a service doc never has eventId/hostId
+        // (ratingService.js's submitRating guarantees that), so it only ever
+        // reaches this branch. Two separate averages, same as events'
+        // event-average + host-average: the sessionType's own rating, and the
+        // business's rating across ALL its services (not filtered by
+        // sessionTypeId).
+        if (bizId && sessionTypeId) {
+          const svcRatings = await db
+            .collection("ratings")
+            .where("bizId", "==", bizId)
+            .where("sessionTypeId", "==", sessionTypeId)
+            .get();
+          let sum = 0;
+          svcRatings.forEach((d) => (sum += d.data().rating || 0));
+          const n = svcRatings.size;
+          if (n > 0) {
+            await db.collection("businesses").doc(bizId)
+              .collection("sessionTypes").doc(sessionTypeId).update({
+                averageRating: round1(sum / n),
+                totalRatings: n,
+              });
+          }
+        }
+        if (bizId) {
+          const bizRatings = await db
+            .collection("ratings")
+            .where("bizId", "==", bizId)
+            .get();
+          let sum = 0;
+          bizRatings.forEach((d) => (sum += d.data().rating || 0));
+          const n = bizRatings.size;
+          if (n > 0) {
+            await db.collection("businesses").doc(bizId).update({
+              averageRating: round1(sum / n),
+              totalRatings: n,
+            });
+          }
         }
       }
 
@@ -3110,6 +3153,82 @@ exports.setEventLocation = onCall(async (request) => {
   batch.set(ref, publicUpdate, {merge: true});
 
   // Private doc: the exact detail, participant-gated by rules.
+  const privateDoc = {updatedAt: FieldValue.serverTimestamp()};
+  if (venueName != null) privateDoc.venueName = venueName;
+  if (address != null) privateDoc.address = address;
+  if (approxCoords && exactCoords) {
+    privateDoc.exactCoords = {
+      latitude: exactCoords.latitude,
+      longitude: exactCoords.longitude,
+    };
+  }
+  if (entryNotes != null) privateDoc.entryNotes = entryNotes;
+  batch.set(ref.collection("private").doc("location"), privateDoc, {merge: true});
+
+  await batch.commit();
+  return {success: true, area: area.trim(), approxCoords: approxCoords || null};
+});
+
+/**
+ * KIN-284 — F2-equivalent for the marketplace. Calqued from setEventLocation
+ * line for line (same split: coarse on the public doc, exact on a
+ * server-write-only private doc) — setEventLocation itself is NOT touched or
+ * shared, per the ticket's isolation restriction. Only staff/owner may call
+ * this (isBizStaffOrOwner, already used by cancelServiceBooking/
+ * rescheduleServiceBooking — KIN-276/277).
+ *
+ * IMPORTANT difference from events: businesses/{bizId} is staff/owner-only
+ * readable (firestore.rules), NOT broadly readable like events/{eventId} — a
+ * buyer can never read the coarse fields written here directly. That's why
+ * publicProfileFields() below (consumed by the existing
+ * onBusinessPublicProfileWritten trigger) now also mirrors area/approxCoords/
+ * locationLocked onto businesses/{bizId}/public/profile, which IS readable by
+ * any signed-in user. Without that mirror, this callable would silently do
+ * nothing visible to a buyer.
+ */
+exports.setServiceLocation = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const {bizId, exactCoords, entryNotes} = request.data || {};
+  let {venueName, address, area} = request.data || {};
+  if (!bizId) throw new HttpsError("invalid-argument", "Missing bizId.");
+  // Deviation from setEventLocation: that CF requires the caller to collect
+  // venueName/area as their own explicit fields (the event-creation flow has
+  // dedicated inputs for them). BusinessSetupScreen.js's address field
+  // (KIN-284 step 2) only collects one PlaceAutocomplete string — so derive
+  // venueName/area from it server-side with the SAME pure helpers
+  // setEventLocation's own module already imports (deriveVenue/deriveArea),
+  // rather than inventing a second UI field nothing asked for.
+  if (!venueName && address) venueName = deriveVenue(address);
+  if (!area && address) area = deriveArea(address, null);
+  if (!area || typeof area !== "string" || !area.trim()) {
+    throw new HttpsError("invalid-argument",
+      "Missing area (coarse label) — provide one, or an address to derive it from.");
+  }
+
+  const ref = db.collection("businesses").doc(bizId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Business not found.");
+  if (!(await isBizStaffOrOwner(bizId, uid))) {
+    throw new HttpsError("permission-denied", "Only staff/owner can set the location.");
+  }
+
+  const approxCoords = snapApproxGrid(exactCoords);
+
+  const batch = db.batch();
+  // Public doc: coarse only. merge so unrelated business fields stay put.
+  const publicUpdate = {
+    area: area.trim(),
+    locationLocked: true,
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  if (approxCoords) publicUpdate.approxCoords = approxCoords;
+  batch.set(ref, publicUpdate, {merge: true});
+
+  // Private doc: the exact detail. firestore.rules gates its read to
+  // staff/owner only today (see the ticket's report — a rules-only "has a
+  // confirmed booking" gate isn't achievable without a new denormalized
+  // doc, which is out of this ticket's scope and flagged as blocking).
   const privateDoc = {updatedAt: FieldValue.serverTimestamp()};
   if (venueName != null) privateDoc.venueName = venueName;
   if (address != null) privateDoc.address = address;
@@ -5193,6 +5312,11 @@ exports.reserveServiceBooking = onCall({secrets: [stripeSecretKey]}, async (requ
       instructorUid: ownerUid,
       sessionTypeId,
       sessionTypeName: s.name || "",
+      // Denormalized so a buyer's own booking-detail read (KIN-280) never
+      // needs businesses/{bizId} directly — that doc is staff/owner-only
+      // (KIN-92 precedent). bizSnap is already read above for the payout
+      // account, no extra read here.
+      businessName: bizSnap.exists ? (bizSnap.data().name || "") : "",
       vertical: s.vertical || null,
       locationMode: s.locationMode || "at_business",
       start: startAt,
@@ -5200,6 +5324,14 @@ exports.reserveServiceBooking = onCall({secrets: [stripeSecretKey]}, async (requ
       durationMin,
       capacityMax,
       location: null,
+      // Same offsets as businessSessionsService.js's confirmBooking (24h
+      // attendee / 1h host) so sessionRemindersCron can find these too.
+      // startAt is a client-sent ISO string here, not a Date — convert
+      // before subtracting.
+      reminderAttendeeAt: new Date(
+        new Date(startAt).getTime() - 24 * 3600000).toISOString(),
+      reminderHostAt: new Date(
+        new Date(startAt).getTime() - 3600000).toISOString(),
       status: isFree ? "confirmed" : "reserved",
       paidWith: "stripe",
       priceCents: price,
@@ -5250,6 +5382,205 @@ exports.reserveServiceBooking = onCall({secrets: [stripeSecretKey]}, async (requ
     });
 
   return {success: true, bookingId: reserved.bookingId, clientSecret: pi.client_secret};
+});
+
+/**
+ * Same access model as firestore.rules' `bookings` match
+ * (isBizStaff(bizId) || isBizOwnerUid(bizId)) — mirrored here because no JS
+ * port of that check exists yet. An active staff member already
+ * cancels/declines bookings today via the direct client write; this must not
+ * regress that to owner-only.
+ * @param {string} bizId - business id
+ * @param {string} uid - caller uid
+ * @return {Promise<boolean>} true if uid may act on this business's bookings
+ */
+async function isBizStaffOrOwner(bizId, uid) {
+  const bizSnap = await db.collection("businesses").doc(bizId).get();
+  const ownerUid = bizSnap.exists ? (bizSnap.data().ownerUid || bizId) : bizId;
+  if (ownerUid === uid) return true;
+  const staffSnap = await db.collection("businesses").doc(bizId)
+    .collection("staff").doc(uid).get();
+  if (!staffSnap.exists) return false;
+  const d = staffSnap.data();
+  return ("status" in d ? d.status : "active") === "active";
+}
+
+/**
+ * Cancel or decline a booking (KIN-276), replacing the client's raw
+ * updateDoc: a paid marketplace booking needs a refund + freed slot + a
+ * ledger flip out of "held" — none of which a plain status write does.
+ * Idempotent (a terminal booking returns success without erroring). When the
+ * booking is paid and still has a live PaymentIntent, refunds 100% INCLUDING
+ * Stripe's own fee (the host absorbs it) — refundPercentage=1,
+ * includeFees=true, same policy as hostCancelEvent (refunds.js: "Host
+ * cancelled → refund 100% INCLUDING fees"). No per-date tier here: this
+ * callable is only reachable from host/staff screens, never a buyer
+ * self-cancel, so the user-initiated tiered policy doesn't apply.
+ * releaseServiceSlot is the exact inverse of reserveServiceBooking's
+ * bookedSlots write; harmless no-op for a
+ * non-marketplace booking that was never added to a sessionType's slots.
+ * data: { bizId, bookingId, action: "cancel"|"decline" }.
+ */
+exports.cancelServiceBooking = onCall({secrets: [stripeSecretKey]}, async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const {bizId, bookingId, action} = request.data || {};
+  if (!bizId || !bookingId) {
+    throw new HttpsError("invalid-argument", "Missing booking details.");
+  }
+  if (action !== "cancel" && action !== "decline") {
+    throw new HttpsError("invalid-argument", "Invalid action.");
+  }
+
+  const bookingRef = db.collection("businesses").doc(bizId)
+    .collection("bookings").doc(bookingId);
+  const snap = await bookingRef.get();
+  const TERMINAL = new Set(["cancelled", "declined", "done", "no_show"]);
+  if (!snap.exists || TERMINAL.has(snap.data().status)) {
+    return {success: true, alreadyTerminal: true};
+  }
+  const booking = snap.data();
+
+  if (!(await isBizStaffOrOwner(bizId, uid))) {
+    throw new HttpsError("permission-denied", "Not authorized for this business.");
+  }
+
+  if ((booking.priceCents || 0) > 0 && booking.stripePaymentIntentId) {
+    if (!stripe) stripe = require("stripe")(stripeSecretKey.value());
+    const result = await processRefund(
+      stripe, booking.stripePaymentIntentId, 1, "service_cancelled", true);
+    if (!result || result.success !== true) {
+      throw new HttpsError(
+        "failed-precondition", (result && result.error) || "refund_failed");
+    }
+  }
+
+  if (booking.sessionTypeId) {
+    await releaseServiceSlot(bizId, booking.sessionTypeId, bookingId);
+  }
+
+  const status = action === "decline" ? "declined" : "cancelled";
+  await bookingRef.update({status, cancelledAt: FieldValue.serverTimestamp()});
+
+  return {success: true};
+});
+
+/**
+ * Reschedule a booking (KIN-277) — moves the slot (exact re-run of
+ * reserveServiceBooking's capacity guard against the OTHER active slots),
+ * recomputes end from the booking's own durationMin, adjusts a still-HELD
+ * escrow ledger's releaseAt (replicates onEventWritten's "the end moved"
+ * block — not triggered from it, bookings aren't `events` docs), and tells
+ * the buyer. No money moves here (refunds are KIN-276, out of scope).
+ * data: { bizId, bookingId, newStart (ISO) }.
+ */
+exports.rescheduleServiceBooking = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const {bizId, bookingId, newStart} = request.data || {};
+  if (!bizId || !bookingId || !newStart) {
+    throw new HttpsError("invalid-argument", "Missing reschedule details.");
+  }
+  if (isNaN(new Date(newStart).getTime())) {
+    throw new HttpsError("invalid-argument", "Invalid start time.");
+  }
+  if (!(await isBizStaffOrOwner(bizId, uid))) {
+    throw new HttpsError("permission-denied", "Not authorized for this business.");
+  }
+
+  const bookingRef = db.collection("businesses").doc(bizId)
+    .collection("bookings").doc(bookingId);
+
+  const {booking, newEnd} = await db.runTransaction(async (tx) => {
+    const bSnap = await tx.get(bookingRef);
+    if (!bSnap.exists) throw new HttpsError("not-found", "Booking not found.");
+    const b = bSnap.data();
+    const durationMin = parseInt(b.durationMin, 10) || 60;
+    const end = new Date(
+      new Date(newStart).getTime() + durationMin * 60000).toISOString();
+
+    if (b.sessionTypeId) {
+      const stRef = db.collection("businesses").doc(bizId)
+        .collection("sessionTypes").doc(b.sessionTypeId);
+      const sSnap = await tx.get(stRef);
+      if (sSnap.exists) {
+        const s = sSnap.data();
+        const capacityMax = Math.max(1, parseInt(s.capacityMax, 10) || 1);
+        const slots = Array.isArray(s.bookedSlots) ? s.bookedSlots : [];
+        const others = slots.filter((r) => r.bookingId !== bookingId);
+        const overlapping = others.filter(
+          (r) => rentalRangesOverlap(newStart, end, r.start, r.end));
+        if (overlapping.length >= capacityMax) {
+          throw new HttpsError("failed-precondition", "slot_full");
+        }
+        tx.update(stRef, {bookedSlots: [...others, {start: newStart, end, bookingId}]});
+      }
+    }
+
+    tx.update(bookingRef, {start: newStart, end, updatedAt: FieldValue.serverTimestamp()});
+    return {booking: b, newEnd: end};
+  });
+
+  // Escrow: only a still-HELD ledger is safe to move — released/refunded/
+  // reversed are terminal money states (KIN-277 restriction: touch nothing
+  // on the ledger but deliveryEndAt/releaseAt, and only when state=="held").
+  let ledgerAdjusted = false;
+  let ledgerSkippedReason = null;
+  if (booking.stripePaymentIntentId) {
+    const ledgerRef = db.collection("paymentLedger").doc(booking.stripePaymentIntentId);
+    const ledgerSnap = await ledgerRef.get();
+    if (ledgerSnap.exists && ledgerSnap.data().state === "held") {
+      const l = ledgerSnap.data();
+      const hostSnap = await db.collection("users").doc(l.hostUid).get();
+      const hostData = hostSnap.exists ? hostSnap.data() : {};
+      const retention = await escrow.effectiveRetentionHours(db, hostData);
+      const newEndMs = new Date(newEnd).getTime();
+      await ledgerRef.update({
+        deliveryEndAt: newEnd,
+        releaseAt: escrow.computeReleaseAtISO(newEndMs, retention),
+      });
+      ledgerAdjusted = true;
+    } else if (ledgerSnap.exists) {
+      ledgerSkippedReason = ledgerSnap.data().state;
+    }
+  }
+
+  // Notify the buyer only — the host already sees the move on their own
+  // agenda (KIN-277 scope excludes a host notification). Mirrors
+  // notifyAttendees' member loop (businessSessionsService.js), server-side:
+  // a marketplace booking's linkedUid lives directly on the member entry
+  // (functions/index.js's reserveServiceBooking); a non-marketplace booking
+  // only has memberId, so fall back to a members-doc read.
+  const bizSnap = await db.collection("businesses").doc(bizId).get();
+  const bizName = bizSnap.exists ? (bizSnap.data().name || "") : "";
+  const notified = new Set();
+  for (const m of booking.members || []) {
+    let linkedUid = m.linkedUid || null;
+    if (!linkedUid && m.memberId) {
+      const memSnap = await db.collection("businesses").doc(bizId)
+        .collection("members").doc(m.memberId).get();
+      linkedUid = memSnap.exists ? (memSnap.data().linkedUid || null) : null;
+    }
+    if (!linkedUid || notified.has(linkedUid)) continue;
+    notified.add(linkedUid);
+    await createNotification({
+      userId: linkedUid,
+      type: "service_booking_rescheduled",
+      titleKey: "notifications.service.rescheduled.title",
+      bodyKey: "notifications.service.rescheduled.body",
+      params: {
+        service: booking.sessionTypeName || "your booking",
+        business: bizName || "the business",
+      },
+      metadata: {
+        bizId, bookingId, sessionTypeId: booking.sessionTypeId || null,
+        start: newStart, end: newEnd,
+      },
+      icon: "🔁",
+    });
+  }
+
+  return {success: true, newEnd, ledgerAdjusted, ledgerSkippedReason};
 });
 
 /**
@@ -5795,6 +6126,12 @@ function publicProfileFields(d) {
     verified: (d && d.verified) === true,
     avatarUrl: (d && d.avatarUrl) || null,
     vertical: (d && d.vertical) || null,
+    // KIN-284: businesses/{bizId} itself is staff/owner-only readable, so the
+    // coarse location setServiceLocation writes there needs a mirror here to
+    // ever reach a buyer — same reason name/verified/avatarUrl are mirrored.
+    area: (d && d.area) || null,
+    approxCoords: (d && d.approxCoords) || null,
+    locationLocked: (d && d.locationLocked) === true,
   };
 }
 exports.onBusinessPublicProfileWritten = onDocumentWritten(

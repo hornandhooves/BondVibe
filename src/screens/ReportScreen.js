@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
-import { reportUserOrEvent } from '../services/reportService';
+import { reportUserOrEvent, reportListing } from '../services/reportService';
 import { useTheme } from '../contexts/ThemeContext';
 import Colors from '../constants/Colors';
 import Sizes from '../constants/Sizes';
@@ -24,9 +24,16 @@ export default function ReportScreen({ route, navigation }) {
   // route.params can be {} (SafetyCenterScreen's entry point) or even
   // undefined depending on how React Navigation delivers it — never assume
   // it's populated.
-  const { targetUserId = null, targetEventId = null, targetName = null } =
-    route.params || {};
-  const type = targetUserId ? 'user' : targetEventId ? 'event' : 'general';
+  const {
+    targetUserId = null, targetEventId = null,
+    targetBizId = null, targetListingId = null,
+    targetName = null,
+  } = route.params || {};
+  // KIN-286: 'service' reports a marketplace listing/business — its own
+  // branch, not folded into 'event'. The header title below still falls back
+  // to reportUserTitle for it (same as it already did for 'general'); adding
+  // a dedicated title string is out of scope for this file-only change.
+  const type = targetUserId ? 'user' : targetEventId ? 'event' : targetBizId ? 'service' : 'general';
   // KIN-119: selectedReason stores the i18n KEY, never the translated label —
   // the label is only for display. Storing the label used to write e.g.
   // "Acoso o intimidación" / "Harassment or Bullying" to reports.reason
@@ -44,13 +51,21 @@ export default function ReportScreen({ route, navigation }) {
 
     setSubmitting(true);
     try {
-      const result = await reportUserOrEvent({
-        targetUserId,
-        targetEventId,
-        targetName,
-        reason: selectedReason,
-        details: details.trim(),
-      });
+      const result = targetBizId
+        ? await reportListing({
+            targetBizId,
+            targetListingId,
+            targetName,
+            reason: selectedReason,
+            details: details.trim(),
+          })
+        : await reportUserOrEvent({
+            targetUserId,
+            targetEventId,
+            targetName,
+            reason: selectedReason,
+            details: details.trim(),
+          });
 
       // reportUserOrEvent never throws — it returns {success:false} on
       // failure (network, rules rejection, etc). Branching on it is what

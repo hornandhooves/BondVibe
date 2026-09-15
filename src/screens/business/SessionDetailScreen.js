@@ -12,13 +12,15 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import Icon from "../../components/Icon";
 import GradientBackground from "../../components/GradientBackground";
 import DateField from "../../components/DateField";
 import { useTheme } from "../../contexts/ThemeContext";
 import { getMember } from "../../services/businessMembersService";
+import { getMyBizId } from "../../services/businessService";
 import {
-  getBooking, confirmBooking, declineBooking, cancelBooking, markDone, markNoShow, updateBooking, BOOKING_STATUS,
+  getBooking, confirmBooking, declineBooking, cancelBooking, markDone, markNoShow, BOOKING_STATUS,
 } from "../../services/businessSessionsService";
 
 export default function SessionDetailScreen({ route, navigation }) {
@@ -46,6 +48,14 @@ export default function SessionDetailScreen({ route, navigation }) {
   const onMessage = async () => {
     const first = (b.members || [])[0];
     if (!first) return;
+    // KIN-282: marketplace bookings store the buyer's uid directly on the
+    // member entry (memberId is null there — see functions/index.js:5190),
+    // so going through getMember(first.memberId) always missed. Use it when
+    // present; fall back to the member-lookup path otherwise.
+    if (first.linkedUid) {
+      navigation.navigate("DMChat", { otherUid: first.linkedUid, name: first.name });
+      return;
+    }
     const full = await getMember(first.memberId);
     if (full?.linkedUid) navigation.navigate("DMChat", { otherUid: full.linkedUid, name: full.name });
     else Alert.alert(t("business.session.noAppTitle"), t("business.session.noAppMsg"));
@@ -55,7 +65,11 @@ export default function SessionDetailScreen({ route, navigation }) {
     const start = new Date(reschedule.date);
     const [h, mn] = (reschedule.time || "10:00").split(":").map((n) => parseInt(n, 10) || 0);
     start.setHours(h, mn, 0, 0);
-    await updateBooking(bookingId, { start: start.toISOString() });
+    // KIN-277: a plain updateDoc({start}) can't move the sessionType's
+    // bookedSlots entry, recompute end, or adjust a HELD escrow ledger's
+    // releaseAt — moved to the Cloud Function that does all three atomically.
+    const fn = httpsCallable(getFunctions(), "rescheduleServiceBooking");
+    await fn({ bizId: getMyBizId(), bookingId, newStart: start.toISOString() });
     setReschedule(null);
     load();
   };
