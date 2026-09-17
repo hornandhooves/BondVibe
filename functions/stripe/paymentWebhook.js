@@ -9,6 +9,7 @@ const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const {FieldValue, Timestamp} = require("firebase-admin/firestore");
 const {tPush} = require("../i18n"); // BUG 34: localized notification strings
+const {createNotification} = require("../notifications/createNotification");
 
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET_PAYMENTS");
@@ -654,17 +655,110 @@ async function handleServiceBookingPayment(paymentIntent) {
     updatedAt: FieldValue.serverTimestamp(),
   });
 
+  // KIN-288: a deterministic doc per uid — same pattern as events/{id}/
+  // roster/{uid} (KIN-240's isEventParticipant) — so firestore.rules can
+  // gate businesses/{bizId}/private/{doc} with a single exists() check
+  // instead of a query rules can't express ("any booking of mine with
+  // status confirmed for this business"). This is the fix for the blocker
+  // flagged in KIN-284's response. Idempotent (this whole function
+  // early-returns on a re-delivered paymentIntentId, and .set(..., {merge})
+  // is itself idempotent besides).
+  const confirmedBuyerUid = buyerId || b.buyerUid;
+  if (confirmedBuyerUid) {
+    await db.collection("businesses").doc(bizId)
+      .collection("confirmedBuyers").doc(confirmedBuyerUid)
+      .set({confirmedAt: FieldValue.serverTimestamp()}, {merge: true});
+  }
+
+  // One read of the business doc, reused below by the member creation and by
+  // both notifications — KIN-283 (authorized follow-up) originally read this
+  // only for the notifications; moved up so the new member's businessName
+  // doesn't need a second read.
+  const svcBizSnap = await db.collection("businesses").doc(bizId).get();
+  const svcBizName = svcBizSnap.exists ? (svcBizSnap.data().name || "") : "";
+
+  // 2b. Resolve (or create) a real member doc for the buyer — a marketplace
+  // booking never had one (reserveServiceBooking always writes
+  // members:[{memberId: null, ...}], functions/index.js:5190). One-way door
+  // (product decision, already closed): no rollback/delete path here.
+  // source:"marketplace", no consent granted — resolveAudience (automations.js)
+  // excludes this source from broad marketing sends by default.
+  const svcMemberBuyerUid = buyerId || b.buyerUid;
+  if (svcMemberBuyerUid) {
+    const membersCol = db.collection("businesses").doc(bizId).collection("members");
+    const existingMemberSnap = await membersCol
+      .where("linkedUid", "==", svcMemberBuyerUid).limit(1).get();
+    let resolvedMemberId;
+    if (!existingMemberSnap.empty) {
+      // Reuse as-is — do not touch source/consent on a pre-existing member,
+      // even if it belongs to a different source.
+      resolvedMemberId = existingMemberSnap.docs[0].id;
+    } else {
+      const firstBookingMember = (b.members || [])[0] || {};
+      const newMemberRef = await membersCol.add({
+        name: firstBookingMember.name || "Guest",
+        businessName: svcBizName,
+        phone: null,
+        email: null,
+        dob: null,
+        status: "active",
+        tags: [],
+        notes: [],
+        planId: null,
+        creditBalance: 0,
+        pricingTier: "general",
+        balanceOwedCents: 0,
+        branchId: null,
+        inviteCode: null,
+        linkedUid: svcMemberBuyerUid,
+        redeemedAt: null,
+        qrPassId: null,
+        smsConsent: {
+          granted: false, at: null,
+          purpose: "class_and_account_notifications", source: "marketplace",
+        },
+        waConsent: {
+          granted: false, at: null,
+          purpose: "class_and_account_notifications", source: "marketplace",
+        },
+        source: "marketplace",
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      resolvedMemberId = newMemberRef.id;
+    }
+    await bRef.update({
+      members: [{...(b.members || [])[0], memberId: resolvedMemberId}],
+    });
+  }
+
   // 3. Notify the host.
+  // KIN-283: via the shared helper — write + push in one call, localized to
+  // the host's own language (previously hardcoded English title/message with
+  // no push at all).
   if (b.ownerUid) {
-    await db.collection("notifications").add({
+    await createNotification({
       userId: b.ownerUid,
       type: "service_booked",
-      title: "New booking",
-      message: `${b.sessionTypeName || "A service"} was just booked.`,
+      titleKey: "notifications.service.booked.title",
+      bodyKey: "notifications.service.booked.body",
+      params: {service: b.sessionTypeName || "A service", business: svcBizName || "your business"},
+      metadata: {bizId, bookingId, sessionTypeId: b.sessionTypeId || null, businessName: svcBizName || ""},
       icon: "📅",
-      read: false,
-      createdAt: FieldValue.serverTimestamp(),
-      metadata: {bizId, bookingId, sessionTypeId: b.sessionTypeId || null},
+    });
+  }
+
+  // 4. Notify the buyer — until now nobody confirmed the purchase to them.
+  const svcBuyerUid = buyerId || b.buyerUid;
+  if (svcBuyerUid) {
+    await createNotification({
+      userId: svcBuyerUid,
+      type: "service_booking_confirmed",
+      titleKey: "notifications.service.bookingConfirmed.title",
+      bodyKey: "notifications.service.bookingConfirmed.body",
+      params: {service: b.sessionTypeName || "A service", business: svcBizName || "the business"},
+      metadata: {bizId, bookingId, sessionTypeId: b.sessionTypeId || null, businessName: svcBizName || ""},
+      icon: "📅",
     });
   }
 

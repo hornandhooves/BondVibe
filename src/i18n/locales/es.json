@@ -467,6 +467,15 @@
     "locked": "Bloqueado",
     "unlocked": "Desbloqueado"
   },
+  "serviceLocation": {
+    "loading": "Cargando ubicación…",
+    "approxArea": "Zona aproximada",
+    "approxNote": "Zona aproximada — te compartimos la dirección exacta cuando se confirme tu reserva.",
+    "reserveToUnlock": "Reserva para ver la dirección exacta",
+    "exactLocation": "Ubicación exacta",
+    "locked": "Bloqueado",
+    "unlocked": "Desbloqueado"
+  },
   "eventDetail": {
     "errorNotFoundTitle": "Evento no encontrado",
     "errorNotFoundText": "Este evento pudo haber sido eliminado o cancelado",
@@ -1547,7 +1556,13 @@
       "saved": "Guardado",
       "savedMsg": "Tus cambios están activos.",
       "saveError": "No se pudo publicar",
-      "photosFailed": "Tu servicio se publicó, pero las fotos no se pudieron subir. Ábrelo desde Mis servicios para intentarlo de nuevo."
+      "photosFailed": "Tu servicio se publicó, pero las fotos no se pudieron subir. Ábrelo desde Mis servicios para intentarlo de nuevo.",
+      "draft": {
+        "resumeTitle": "¿Retomar borrador?",
+        "resumeMsg": "Tienes un servicio sin terminar. ¿Quieres continuar donde lo dejaste?",
+        "resume": "Retomar",
+        "discard": "Descartar"
+      }
     },
     "my": {
       "title": "Mis servicios",
@@ -1564,7 +1579,8 @@
       "emptyTitle": "Aún no tienes servicios",
       "emptyBody": "Publica tu primer servicio para aparecer en el marketplace.",
       "emptyCta": "Publicar servicio",
-      "actionError": "Algo salió mal. Inténtalo de nuevo."
+      "actionError": "Algo salió mal. Inténtalo de nuevo.",
+      "featuredUntil": "Destacado hasta {{date}}"
     },
     "gate": {
       "title": "Publica en Kinlo",
@@ -1644,6 +1660,29 @@
       "window": "Ventana horaria",
       "vehicle": "Tu vehículo",
       "symptom": "Qué falla"
+    },
+    "myBookings": {
+      "title": "Mis reservas",
+      "emptyTitle": "Aún no tienes reservas",
+      "emptyText": "Reserva un servicio para verlo aquí.",
+      "browse": "Explorar servicios"
+    },
+    "bookingStatus": {
+      "reserved": "Pago pendiente",
+      "confirmed": "Confirmada",
+      "cancelled": "Cancelada",
+      "declined": "Declinada",
+      "done": "Completada",
+      "no_show": "No-show"
+    },
+    "bookingDetail": {
+      "title": "Tu reserva",
+      "notFound": "Reserva no encontrada.",
+      "date": "Fecha",
+      "duration": "Duración",
+      "price": "Precio",
+      "rate": "Califica este servicio",
+      "yourRating": "Tu calificación"
     }
   },
   "adminDashboard": {
@@ -3417,6 +3456,8 @@
     "tapToRate": "Toca para calificar",
     "rateThisEvent": "Califica este evento",
     "eventFallback": "Evento",
+    "rateThisService": "Califica este servicio",
+    "serviceFallback": "Servicio",
     "shareExperience": "Comparte tu experiencia (opcional)",
     "commentPlaceholder": "¿Qué disfrutaste de este evento?",
     "later": "Más tarde",
@@ -3860,6 +3901,8 @@
       "namePlaceholder": "ej. Ritmo Studio",
       "verticalLabel": "Tipo de negocio",
       "presetHint": "Un preset solo cambia etiquetas y valores por defecto — nunca tus datos.",
+      "addressLabel": "Dirección del negocio (opcional)",
+      "addressHint": "Se muestra aproximada en tu ficha pública; la dirección exacta se mantiene privada.",
       "create": "Crear negocio",
       "saveChanges": "Guardar cambios",
       "nameRequiredTitle": "Falta el nombre",

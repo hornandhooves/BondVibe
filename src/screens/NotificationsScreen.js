@@ -329,6 +329,18 @@ export default function NotificationsScreen({ navigation }) {
         }
         break;
 
+      // KIN-285: was silently a no-op — no case existed for this type at all,
+      // so businessSessionsService.js's markDone rating nudge tapped to
+      // nothing regardless of what its metadata said.
+      case "business_session_rate":
+        if (notification.metadata?.bizId && notification.metadata?.bookingId) {
+          navigation.navigate("ServiceBookingDetail", {
+            bizId: notification.metadata.bizId,
+            bookingId: notification.metadata.bookingId,
+          });
+        }
+        break;
+
       case "event_rating":
       case "rating_reply":
         // Open the review detail (read + reply thread), not a modal.

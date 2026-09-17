@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
-import { getEventRatings } from "../services/ratingService";
+import { getEventRatings, getServiceRatings } from "../services/ratingService";
 import { AvatarDisplay } from "./AvatarPicker";
 import { formatDate as fmtDate } from "../utils/formatDate";
 
@@ -21,7 +21,12 @@ const normalizeAvatar = (a) => {
   return a;
 };
 
-export default function EventRatings({ eventId, isHost }) {
+/**
+ * KIN-285: reused as the ratings section on ServiceDetailScreen — pass
+ * bizId+sessionTypeId instead of eventId and it fetches via
+ * getServiceRatings. Existing eventId callers are unaffected.
+ */
+export default function EventRatings({ eventId, bizId, sessionTypeId, isHost }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const [ratings, setRatings] = useState([]);
@@ -30,13 +35,15 @@ export default function EventRatings({ eventId, isHost }) {
 
   useEffect(() => {
     loadRatings();
-  }, [eventId]);
+  }, [eventId, bizId, sessionTypeId]);
 
   const loadRatings = async () => {
     setLoading(true);
     try {
-      const eventRatings = await getEventRatings(eventId);
-      setRatings(eventRatings);
+      const list = eventId
+        ? await getEventRatings(eventId)
+        : await getServiceRatings(bizId, sessionTypeId);
+      setRatings(list);
     } catch (error) {
       console.error("Error loading ratings:", error);
     } finally {

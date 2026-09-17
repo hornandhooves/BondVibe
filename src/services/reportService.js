@@ -60,3 +60,22 @@ export const reportUserOrEvent = ({
     reason: String(reason || "").slice(0, 500),
     details: String(details || "").slice(0, 2000),
   });
+
+/**
+ * KIN-286: report a marketplace listing/business from ServiceDetailScreen.
+ * Own fields (targetBizId/targetListingId), not reusing targetEventId — a
+ * service listing isn't an event. Needs the matching whitelist entries in
+ * firestore.rules' reports/{reportId} hasOnly(...) (not deployed by this
+ * change — see the diff/warning in the ticket response).
+ */
+export const reportListing = ({
+  targetBizId, targetListingId, targetName, reason, details,
+}) =>
+  report({
+    type: "service",
+    targetBizId: targetBizId || null,
+    targetListingId: targetListingId || null,
+    targetName: targetName || null,
+    reason: String(reason || "").slice(0, 500),
+    details: String(details || "").slice(0, 2000),
+  });

@@ -36,7 +36,7 @@ import { createPayment } from "./businessPaymentsService";
  * community; rating nudge after a done session). Members without an app account
  * are skipped. Best-effort — never blocks the state change.
  */
-async function notifyAttendees(booking, { title, body, kind }, bizId = getMyBizId()) {
+async function notifyAttendees(booking, { type, params, metadata }, bizId = getMyBizId()) {
   try {
     const fn = httpsCallable(getFunctions(), "createNotification");
     for (const m of booking.members || []) {
@@ -45,10 +45,12 @@ async function notifyAttendees(booking, { title, body, kind }, bizId = getMyBizI
       if (!full?.linkedUid) continue;
       await fn({
         toUserId: full.linkedUid,
-        type: `business_session_${kind}`,
-        title,
-        body,
-        metadata: { screen: "UserProfile", userId: bizId },
+        type,
+        params,
+        // KIN-285: callers that need a real deep link (e.g. markDone's rating
+        // nudge) pass their own metadata; confirmBooking's "join the
+        // community" nudge keeps the original UserProfile default.
+        metadata: metadata || { screen: "UserProfile", userId: bizId },
       });
     }
   } catch (e) {
@@ -280,19 +282,27 @@ export async function confirmBooking(booking, bizId = getMyBizId()) {
   const hostName = biz.exists() ? biz.data().name || "Kinlo" : "Kinlo";
   await notifyAttendees(
     booking,
-    {
-      title: hostName,
-      body: `Your session is confirmed. Join ${hostName}'s community to stay in the loop.`,
-      kind: "confirmed",
-    },
+    { type: "business_session_confirmed", params: { hostName } },
     bizId
   );
 }
 
+/**
+ * KIN-276: cancel/decline go through a Cloud Function, not a plain updateDoc —
+ * a paid marketplace booking needs an atomic refund + freed slot + ledger
+ * update, which a client-side status write can't do safely. See
+ * functions/index.js's cancelServiceBooking (same access model this file's
+ * writes already relied on: staff or owner).
+ */
+async function cancelOrDeclineBooking(action, id, bizId) {
+  const fn = httpsCallable(getFunctions(), "cancelServiceBooking");
+  const res = await fn({ bizId, bookingId: id, action });
+  return res.data;
+}
 export const declineBooking = (id, bizId = getMyBizId()) =>
-  updateBooking(id, { status: BOOKING_STATUS.DECLINED }, bizId);
+  cancelOrDeclineBooking("decline", id, bizId);
 export const cancelBooking = (id, bizId = getMyBizId()) =>
-  updateBooking(id, { status: BOOKING_STATUS.CANCELLED }, bizId);
+  cancelOrDeclineBooking("cancel", id, bizId);
 export const markNoShow = (id, bizId = getMyBizId()) =>
   updateBooking(id, { status: BOOKING_STATUS.NO_SHOW }, bizId);
 
@@ -322,9 +332,18 @@ export async function markDone(booking, bizId = getMyBizId()) {
   if (full) {
     const biz = await getDoc(doc(db, "businesses", bizId));
     const hostName = biz.exists() ? biz.data().name || "Kinlo" : "Kinlo";
+    // KIN-285: was metadata:{screen:"UserProfile", userId:bizId} — that type
+    // has no case in NotificationsScreen.js's tap handler at all, so the tap
+    // was a silent no-op. Now points at the booking's own detail screen,
+    // which is where the "Rate" action actually lives (KIN-280's
+    // ServiceBookingDetailScreen).
     await notifyAttendees(
       full,
-      { title: hostName, body: `How was your session with ${hostName}? Tap to rate.`, kind: "rate" },
+      {
+        type: "business_session_rate",
+        params: { hostName },
+        metadata: { screen: "ServiceBookingDetail", bizId, bookingId: id },
+      },
       bizId
     );
   }

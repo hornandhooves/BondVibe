@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -13,9 +12,13 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import { FONTS } from "../constants/theme-tokens";
 import Icon from "../components/Icon";
+import EventImageGallery from "../components/EventImageGallery";
+import EventRatings from "../components/EventRatings";
+import ServiceLocationBlock from "../components/ServiceLocationBlock";
 import { formatCentavos } from "../utils/pricing";
-import { getListing } from "../services/marketplaceService";
+import { getListing, getMyServiceBookings } from "../services/marketplaceService";
 import { getMembershipPlan } from "../services/membershipService";
+import { getBusinessPublicProfile } from "../services/businessService";
 import { VERTICAL_META } from "./MarketplaceExploreScreen";
 
 const capacityKindKey = (n) =>
@@ -36,6 +39,17 @@ export default function ServiceDetailScreen({ route, navigation }) {
   const [listing, setListing] = useState(null);
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
+  // KIN-284: businesses/{bizId} itself is staff/owner-only readable — the
+  // gated coarse location lives on its public mirror instead (see
+  // businessService.js's getBusinessPublicProfile).
+  const [bizProfile, setBizProfile] = useState(null);
+  // Whether the signed-in buyer has a confirmed/done booking with this
+  // business — getMyServiceBookings (KIN-278, marketplaceService.js),
+  // filtered client-side by bizId + status. As of KIN-288 this is a real
+  // signal: paymentWebhook.js writes businesses/{bizId}/confirmedBuyers/{uid}
+  // on payment confirmation, and firestore.rules grants that uid read access
+  // to the exact address — see ServiceLocationBlock's header.
+  const [hasConfirmedBooking, setHasConfirmedBooking] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -57,6 +71,21 @@ export default function ServiceDetailScreen({ route, navigation }) {
         // which renders the existing "not found" state instead.
       } finally {
         setLoading(false);
+      }
+      // Best-effort, independent of the listing load above — a failure here
+      // must never block the screen (mirrors the plan-fetch try/catch).
+      try {
+        setBizProfile(await getBusinessPublicProfile(bizId));
+      } catch {
+        /* location block just won't render */
+      }
+      try {
+        const mine = await getMyServiceBookings();
+        setHasConfirmedBooking(
+          mine.some((b) => b.bizId === bizId && ["confirmed", "done"].includes(b.status))
+        );
+      } catch {
+        /* stays false — locked view */
       }
     })();
   }, [bizId, listingId]);
@@ -108,19 +137,45 @@ export default function ServiceDetailScreen({ route, navigation }) {
 
   return (
     <View style={[s.fill, { backgroundColor: colors.background }]}>
-      <StatusBar style="light" />
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
-        {/* Hero */}
-        <View style={[s.hero, { backgroundColor: meta.bg }]}>
-          {listing.photos[0] ? (
-            <Image source={{ uri: listing.photos[0] }} style={s.heroImg} resizeMode="cover" />
-          ) : (
-            <Icon name={meta.icon} size={64} color={meta.fg} />
-          )}
-          <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
-            <Icon name="back" size={22} color="#171523" />
+      <StatusBar style={isDark ? "light" : "dark"} />
+      {/* KIN-286: same composition as EventDetailScreen — a fixed header above
+          the scroll (not a button floated over the hero), so the header can
+          host both back and report without fighting the gallery's own paging
+          UI for space. */}
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <View style={[s.headerButton, { backgroundColor: colors.surface, borderColor: colors.borderStrong }]}>
+            <Icon name="back" size={24} color={colors.text} />
+          </View>
+        </TouchableOpacity>
+        <View style={s.headerActions}>
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate("Report", {
+                targetBizId: bizId,
+                targetListingId: listing.id,
+                targetName: listing.name,
+              })
+            }
+          >
+            <View style={[s.headerButton, { backgroundColor: colors.surface, borderColor: colors.borderStrong }]}>
+              <Icon name="report" size={20} color={colors.text} />
+            </View>
           </TouchableOpacity>
         </View>
+      </View>
+
+      <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Gallery — EventImageGallery returns null on an empty array, so a
+            listing with no photos falls back to the same icon block the old
+            single-image hero showed. */}
+        {listing.photos && listing.photos.length > 0 ? (
+          <EventImageGallery images={listing.photos} />
+        ) : (
+          <View style={[s.heroFallback, { backgroundColor: meta.bg }]}>
+            <Icon name={meta.icon} size={64} color={meta.fg} />
+          </View>
+        )}
 
         <View style={s.body}>
           <Text style={[s.eyebrow, { color: meta.fg }]}>
@@ -128,8 +183,21 @@ export default function ServiceDetailScreen({ route, navigation }) {
             {t(locationKey(listing.locationMode))}
           </Text>
           <Text style={[s.title, { color: colors.text }]}>{listing.name}</Text>
-          {!!listing.city && (
-            <Text style={[s.sub, { color: colors.textSecondary }]}>{listing.city}</Text>
+          {/* KIN-284: the gated business location replaces the plain city
+              text ONLY when the business actually has one set — falls back
+              to listing.city (unchanged) for the common case today (no
+              business has ever set a location yet), so nothing regresses. */}
+          {bizProfile && (bizProfile.area || bizProfile.approxCoords) ? (
+            <ServiceLocationBlock
+              business={{ id: bizId, ...bizProfile }}
+              bizId={bizId}
+              hasConfirmedBooking={hasConfirmedBooking}
+              onReserve={onBook}
+            />
+          ) : (
+            !!listing.city && (
+              <Text style={[s.sub, { color: colors.textSecondary }]}>{listing.city}</Text>
+            )
           )}
 
           {/* Spec tiles */}
@@ -178,6 +246,10 @@ export default function ServiceDetailScreen({ route, navigation }) {
               </View>
             </View>
           )}
+
+          {/* KIN-285: reviews for this service (EventRatings.js genericized
+              to also accept bizId+sessionTypeId). */}
+          <EventRatings bizId={bizId} sessionTypeId={listing.id} />
         </View>
       </ScrollView>
 
@@ -223,20 +295,27 @@ function SpecTile({ s, colors, emoji, label }) {
 function createStyles(colors, isDark) {
   return StyleSheet.create({
     fill: { flex: 1 },
-    hero: { height: 210, alignItems: "center", justifyContent: "center" },
-    heroImg: { width: "100%", height: "100%" },
-    backBtn: {
-      position: "absolute",
-      top: 52,
-      left: 16,
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: "rgba(255,255,255,0.92)",
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
       alignItems: "center",
-      justifyContent: "center",
+      paddingHorizontal: 24,
+      paddingTop: 60,
+      paddingBottom: 20,
     },
-    body: { paddingHorizontal: 18, paddingTop: 18 },
+    headerButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      borderWidth: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      marginLeft: 8,
+    },
+    headerActions: { flexDirection: "row" },
+    scrollContent: { paddingHorizontal: 24, paddingBottom: 120 },
+    heroFallback: { height: 220, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+    body: { paddingTop: 18 },
     eyebrow: { fontFamily: FONTS.bodyBold, fontSize: 10.5, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 },
     title: { fontFamily: FONTS.display, fontSize: 22, letterSpacing: -0.5, color: colors.text },
     sub: { fontFamily: FONTS.bodyMedium, fontSize: 13.5, marginTop: 3 },

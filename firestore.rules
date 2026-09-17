@@ -476,13 +476,32 @@ service cloud.firestore {
       // Only an attendee (not the host) of the rated event may create a rating,
       // as themselves, and hostId MUST be the event's real creator (prevents
       // aiming a bad rating at an arbitrary host to tank their average).
+      //
+      // KIN-285: a second, independent OR branch for marketplace SERVICE
+      // ratings — ratingService.js's submitRating never sets eventId/hostId
+      // on a service doc, so the event branch above can't (and shouldn't)
+      // evaluate it; without this branch a service rating write would be
+      // rejected outright (isEventAttendeeNotCreator would receive an absent
+      // eventId). Same shape of guarantee: only the booking's actual buyer,
+      // as themselves, one rating per user per booking (deterministic id).
       allow create: if isSignedIn() &&
                        request.resource.data.userId == request.auth.uid &&
-                       isEventAttendeeNotCreator(request.resource.data.eventId) &&
-                       request.resource.data.hostId ==
-                         get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.creatorId &&
-                       // One rating per user per event: deterministic doc id.
-                       ratingId == request.resource.data.eventId + '_' + request.auth.uid;
+                       (
+                         (
+                           isEventAttendeeNotCreator(request.resource.data.eventId) &&
+                           request.resource.data.hostId ==
+                             get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.creatorId &&
+                           // One rating per user per event: deterministic doc id.
+                           ratingId == request.resource.data.eventId + '_' + request.auth.uid
+                         ) ||
+                         (
+                           'bookingId' in request.resource.data &&
+                           !('eventId' in request.resource.data) &&
+                           !('hostId' in request.resource.data) &&
+                           ratingId == request.resource.data.bookingId + '_' + request.auth.uid &&
+                           get(/databases/$(database)/documents/businesses/$(request.resource.data.bizId)/bookings/$(request.resource.data.bookingId)).data.buyerUid == request.auth.uid
+                         )
+                       );
       // Ratings are immutable from the client (averages are recomputed by a
       // Cloud Function); the host can't edit/inflate them.
       allow update, delete: if false;
@@ -665,7 +684,8 @@ service cloud.firestore {
                        request.resource.data.keys().hasOnly([
                          'reporterId', 'status', 'createdAt', 'type', 'reason',
                          'details', 'content', 'groupId', 'eventId',
-                         'targetUserId', 'targetEventId', 'targetName', 'evidenceUrl'
+                         'targetUserId', 'targetEventId', 'targetName', 'evidenceUrl',
+                         'targetBizId', 'targetListingId'
                        ]);
       allow read: if isSignedIn() &&
                      (resource.data.reporterId == request.auth.uid || isAdmin());
@@ -1286,6 +1306,49 @@ service cloud.firestore {
                          .affectedKeys()
                          .hasAny(['ownerUid', 'verified', 'insured']);
       allow delete: if isBizOwnerUid(bizId);
+
+      // KIN-284 — F2-equivalent for the marketplace. BLOCKED AS SPECIFIED: the
+      // ticket asked for "a confirmed buyer of this business" as the read
+      // gate, mirroring isEventParticipant. That function only works because
+      // event roster membership is provable via a DETERMINISTIC doc path —
+      // events/{id}/roster/{uid}, checked with a single exists() — so rules
+      // never need to query. There is no equivalent path here: a booking's id
+      // is auto-generated (reserveServiceBooking), never the buyer's uid, and
+      // Firestore rules cannot query "does any booking of mine exist with
+      // status confirmed for this business" — only exists()/get() on a KNOWN
+      // path. The only way to make that gate real is a NEW denormalized doc
+      // (e.g. businesses/{bizId}/confirmedBuyers/{uid}, written server-side
+      // when a booking reaches confirmed/done — mirroring exactly how
+      // events/{id}/roster/{uid} is written by joinEvent) — new write logic in
+      // payment-adjacent code (paymentWebhook.js / markDone) that's out of
+      // this ticket's scope and needs its own review, not a rushed addition
+      // buried in a rules diff. Reported as blocking per the ticket's own
+      // instruction, not guessed at.
+      //
+      // What ships instead: staff/owner only (isBizStaff/isBizOwnerUid,
+      // already used everywhere else in this match block) — the same safe
+      // default every other business sub-collection uses when nothing more
+      // specific is provable.
+      //
+      // KIN-288: staff/owner is AUGMENTED, never replaced (Carlos's decision,
+      // 2026-09-15) — a confirmed buyer now also reads the exact address, via
+      // the confirmedBuyers/{uid} doc paymentWebhook.js's
+      // handleServiceBookingPayment writes (Admin SDK only; see that
+      // collection's own note below — it has no client-facing match block on
+      // purpose, and must never get one). Deterministic per-uid doc, same
+      // shape as events/{id}/roster/{uid} — a single exists() check, no query.
+      match /private/{doc} {
+        allow read: if isBizStaff(bizId) || isBizOwnerUid(bizId) ||
+                       exists(/databases/$(database)/documents/businesses/$(bizId)/confirmedBuyers/$(request.auth.uid));
+        allow write: if false;
+      }
+
+      // confirmedBuyers/{uid}: deliberately NO match block here. It's written
+      // exclusively by the Admin SDK (paymentWebhook.js), which ignores these
+      // rules entirely — a client-facing rule isn't needed for the write to
+      // work, and adding one (even a locked-down `allow write: if false`)
+      // would be pure surface area for a future edit to loosen by accident.
+      // The absence IS the safeguard: default-deny, permanently.
 
       // KIN-97: public projection (name/verified/avatarUrl/vertical) mirrored
       // server-side by onBusinessPublicProfileWritten — any signed-in user may

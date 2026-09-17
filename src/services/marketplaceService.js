@@ -19,6 +19,7 @@ import {
   doc,
   getDoc,
 } from "firebase/firestore";
+import { logger } from "../utils/logger";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth } from "./firebase";
 import { shapeListing, SERVICE_VERTICALS, MARKETPLACE_VERTICALS } from "../utils/marketplaceShape";
@@ -76,5 +77,48 @@ export async function reserveServiceBooking({ bizId, sessionTypeId, startAt, buy
     return { success: true, ...(res.data || {}) };
   } catch (e) {
     return { success: false, error: (e && e.message) || "error" };
+  }
+}
+
+/**
+ * A buyer's own marketplace service bookings, across every business
+ * (collectionGroup), most recent first. Firestore-side filter is just
+ * buyerUid — no orderBy, since only the simple-field index exists (no
+ * composite for buyerUid + start), so the sort happens here after fetch.
+ * @return {Promise<Array>}
+ */
+export async function getMyServiceBookings() {
+  try {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return [];
+    const q = query(
+      collectionGroup(db, "bookings"),
+      where("buyerUid", "==", uid),
+      qLimit(50)
+    );
+    const snap = await getDocs(q);
+    const list = snap.docs.map((d) => ({
+      id: d.id,
+      bizId: d.ref.parent.parent.id,
+      ...d.data(),
+    }));
+    list.sort((a, b) => new Date(b.start || 0) - new Date(a.start || 0));
+    return list;
+  } catch (e) {
+    logger.error("getMyServiceBookings:", e);
+    return [];
+  }
+}
+
+/** One of the buyer's own bookings, by business + id (detail screen). */
+export async function getServiceBooking(bizId, bookingId) {
+  if (!bizId || !bookingId) return null;
+  try {
+    const snap = await getDoc(doc(db, "businesses", bizId, "bookings", bookingId));
+    if (!snap.exists()) return null;
+    return { id: snap.id, bizId, ...snap.data() };
+  } catch (e) {
+    logger.error("getServiceBooking:", e);
+    return null;
   }
 }

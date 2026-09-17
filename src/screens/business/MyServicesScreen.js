@@ -27,6 +27,7 @@ import { ServiceHostGate } from "./PublishServiceScreen";
 import { listSessionTypes, updateSessionType, deleteSessionType } from "../../services/businessSessionsService";
 import { getBusiness } from "../../services/businessService";
 import { formatCentavos } from "../../utils/pricing";
+import { formatDate } from "../../utils/formatDate";
 import { VERTICAL_META } from "../MarketplaceExploreScreen";
 
 const FILTERS = ["all", "live", "paused"];
@@ -56,6 +57,13 @@ export default function MyServicesScreen({ navigation }) {
   useFocusEffect(useCallback(() => { if (approved) load(); }, [approved, load]));
 
   const isLive = (s) => s.publicListing === true;
+  // KIN-287: nothing turns `featured` back off when featuredUntil passes (no
+  // cron, no Cloud Function — confirmed by grepping functions/ for
+  // "featuredUntil": the webhook only ever WRITES it). The boolean alone is
+  // stale forever once a promotion expires, so the gate has to be by date,
+  // client-side, on every render.
+  const isFeatured = (s) =>
+    s.featured === true && !!s.featuredUntil?.toDate && s.featuredUntil.toDate() > new Date();
   const filtered = services.filter((s) =>
     filter === "all" ? true : filter === "live" ? isLive(s) : !isLive(s)
   );
@@ -197,6 +205,14 @@ export default function MyServicesScreen({ navigation }) {
                     <View style={[styles.badgeDot, { backgroundColor: badge }]} />
                     <Text style={[styles.badgeTxt, { color: badge }]}>{t(live ? "services.my.live" : "services.my.paused")}</Text>
                   </View>
+                  {isFeatured(s) && (
+                    <View style={[styles.badge, { backgroundColor: `${colors.primary}1F` }]}>
+                      <View style={[styles.badgeDot, { backgroundColor: colors.primary }]} />
+                      <Text style={[styles.badgeTxt, { color: colors.primary }]}>
+                        {t("services.my.featuredUntil", { date: formatDate(s.featuredUntil.toDate()) })}
+                      </Text>
+                    </View>
+                  )}
                 </View>
                 <TouchableOpacity onPress={() => openMenu(s)} hitSlop={hit} testID={`service-menu-${s.id}`}>
                   <Icon name="more" size={22} color={colors.textSecondary} />

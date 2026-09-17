@@ -654,7 +654,11 @@ export default function MyEventsScreen({ navigation, route }) {
           setSelectedEvent(null);
         }}
         onSuccess={handleRatingSuccess}
-        event={selectedEvent}
+        target={
+          selectedEvent
+            ? { type: "event", id: selectedEvent.id, title: selectedEvent.title, hostId: getEventCreatorId(selectedEvent) }
+            : null
+        }
       />
     </GradientBackground>
   );

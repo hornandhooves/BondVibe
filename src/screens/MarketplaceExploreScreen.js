@@ -16,6 +16,7 @@ import { useMode } from "../contexts/ModeContext";
 import { FONTS } from "../constants/theme-tokens";
 import GradientBackground from "../components/GradientBackground";
 import Icon from "../components/Icon";
+import useCities from "../hooks/useCities";
 import { formatCentavos } from "../utils/pricing";
 import {
   getMarketplaceListings,
@@ -57,6 +58,12 @@ export default function MarketplaceExploreScreen({ navigation, route }) {
   const showHostTools = !pushed && isHosting;
 
   const [vertical, setVertical] = useState(null); // null = all service verticals
+  // KIN-286 · P3: null = every city. getMarketplaceListings already accepted
+  // `city` (client-side filter over what's already downloaded) — this screen
+  // just never passed it. { id, label } from useCities; the query/filter
+  // matches on `label` (what SessionType.city stores), not the slug `id`.
+  const { cities: CITY_OPTIONS } = useCities({ includeAll: true });
+  const [city, setCity] = useState(null);
   const [q, setQ] = useState("");
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -68,13 +75,13 @@ export default function MarketplaceExploreScreen({ navigation, route }) {
     try {
       // Rentals is not a SessionType — it never comes from this query.
       const v = vertical && vertical !== "rentals" ? vertical : undefined;
-      const list = await getMarketplaceListings({ vertical: v });
+      const list = await getMarketplaceListings({ vertical: v, city: city || undefined });
       setListings(list);
     } catch {
       setError(true);
     }
     setLoading(false);
-  }, [vertical]);
+  }, [vertical, city]);
 
   useFocusEffect(
     useCallback(() => {
@@ -105,7 +112,9 @@ export default function MarketplaceExploreScreen({ navigation, route }) {
           <Text style={[s.headerTitle, s.headerTitlePushed, { color: colors.text }]}>
             {t("marketplace.tab")}
           </Text>
-          <View style={{ width: 26 }} />
+          <TouchableOpacity onPress={() => navigation.navigate("MyServiceBookings")} hitSlop={hit}>
+            <Text style={[s.myServicesTxt, { color: colors.primary }]}>{t("marketplace.myBookings.title")}</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -120,6 +129,49 @@ export default function MarketplaceExploreScreen({ navigation, route }) {
             onChangeText={setQ}
           />
         </View>
+
+        {/* City filter (KIN-286 · P3) — server/client-side filter already
+            existed in getMarketplaceListings, just never wired up here. Out
+            of scope for this ticket: price/language/category/date filters,
+            list/map toggle (needs KIN-284 coordinates). */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={s.cityRow}
+          contentContainerStyle={s.cityRowContent}
+        >
+          {CITY_OPTIONS.map((c) => {
+            const active = c.id === "all" ? !city : city === c.label;
+            return (
+              <TouchableOpacity
+                key={c.id}
+                style={[
+                  s.cityChip,
+                  { borderColor: active ? "#7C3AED" : colors.border, backgroundColor: active ? "#7C3AED" : "transparent" },
+                ]}
+                activeOpacity={0.8}
+                onPress={() => setCity(c.id === "all" ? null : c.label)}
+                testID={`marketplace-city-${c.id}`}
+              >
+                <Text style={[s.cityChipTxt, { color: active ? "#fff" : colors.textSecondary }]}>{c.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Buyer's own bookings entry point (tab root only — the pushed
+            "Marketplace" route puts this in its header instead). */}
+        {!pushed && (
+          <TouchableOpacity
+            style={[s.myServicesLink, { alignSelf: "flex-end", marginBottom: 16 }]}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate("MyServiceBookings")}
+            testID="marketplace-my-bookings-link"
+          >
+            <Text style={[s.myServicesTxt, { color: colors.primary }]}>{t("marketplace.myBookings.title")}</Text>
+            <Icon name="forward" size={15} color={colors.primary} />
+          </TouchableOpacity>
+        )}
 
         {/* Vertical grid */}
         <View style={s.grid}>
@@ -329,6 +381,10 @@ function createStyles(colors, isDark) {
       marginBottom: 16,
     },
     searchInput: { flex: 1, fontFamily: FONTS.bodyMedium, fontSize: 14.5 },
+    cityRow: { marginBottom: 14 },
+    cityRowContent: { gap: 8, paddingRight: 4 },
+    cityChip: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 8 },
+    cityChipTxt: { fontFamily: FONTS.bodySemibold, fontSize: 12.5 },
     grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", marginBottom: 18 },
     gridItem: { width: "18%", alignItems: "center", marginBottom: 8 },
     tile: {
