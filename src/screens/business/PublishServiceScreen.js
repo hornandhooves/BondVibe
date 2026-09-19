@@ -261,6 +261,12 @@ export default function PublishServiceScreen({ navigation, route }) {
     if (locationMode === "at_customer" && !(biz && biz.verified && biz.insured)) {
       return Alert.alert(t("services.publish.verifyBlock"));
     }
+    // KIN-290: the business needs an exact location set (same field
+    // ServiceDetailScreen.js:190 checks) before a service "at my studio" can
+    // go live — otherwise KIN-284/288's gate has nothing to unlock.
+    if (locationMode === "at_business" && !(biz && (biz.area || biz.approxCoords))) {
+      return Alert.alert(t("services.publish.businessLocationRequired"));
+    }
     setSaving(true);
     const bizId = getMyBizId();
     // Publishing sets publicListing:true implicitly — there is no toggle.

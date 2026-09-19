@@ -1551,6 +1551,7 @@
       "nameRequired": "Ponle un nombre a tu servicio.",
       "categoryRequired": "Elige una categoría.",
       "verifyBlock": "Verifica y asegura tu negocio para publicar servicios a domicilio.",
+      "businessLocationRequired": "Primero cargá la dirección exacta de tu negocio (Business Hub → Configuración) para que las reservas confirmadas puedan desbloquearla.",
       "published": "Publicado",
       "publishedMsg": "Tu servicio está activo en el marketplace.",
       "saved": "Guardado",

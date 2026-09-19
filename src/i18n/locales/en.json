@@ -1551,6 +1551,7 @@
       "nameRequired": "Give your service a name.",
       "categoryRequired": "Pick a category.",
       "verifyBlock": "Get your business verified + insured to publish at-home services.",
+      "businessLocationRequired": "Set your business's exact address first (Business Hub → Settings) so confirmed bookings can unlock it.",
       "published": "Published",
       "publishedMsg": "Your service is live on the marketplace.",
       "saved": "Saved",
