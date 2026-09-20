@@ -5462,6 +5462,24 @@ exports.cancelServiceBooking = onCall({secrets: [stripeSecretKey]}, async (reque
   const status = action === "decline" ? "declined" : "cancelled";
   await bookingRef.update({status, cancelledAt: FieldValue.serverTimestamp()});
 
+  // KIN-289: revocar el desbloqueo de ubicación exacta sólo si el
+  // comprador no conserva ninguna otra reserva activa con este negocio
+  // (desbloqueo es por-negocio, decisión de KIN-290/19-sep-2026).
+  if (booking.buyerUid) {
+    const stillActive = await db
+      .collection("businesses").doc(bizId)
+      .collection("bookings")
+      .where("buyerUid", "==", booking.buyerUid)
+      .where("status", "in", ["confirmed", "done"])
+      .limit(1)
+      .get();
+    if (stillActive.empty) {
+      await db.collection("businesses").doc(bizId)
+        .collection("confirmedBuyers").doc(booking.buyerUid)
+        .delete();
+    }
+  }
+
   return {success: true};
 });
 
