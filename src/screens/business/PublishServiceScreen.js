@@ -105,6 +105,16 @@ export default function PublishServiceScreen({ navigation, route }) {
 
   const { cities: cityOptions } = useCities();
   const getCityLabel = (cityId) => cityOptions.find((loc) => loc.id === cityId)?.label || "";
+  // KIN-292 fix: svc.city (the LABEL) can't be resolved to a dropdown id
+  // inside the fetch effect below — useCities() starts with STATIC_CITIES
+  // (src/utils/locations.js's fallback: only Tulum/Playa del Carmen/Cancún),
+  // and the real config/cities catalog arrives later via its own Firestore
+  // listener. Editing a service whose city isn't in that fallback would
+  // resolve against an incomplete list and leave the dropdown blank forever
+  // (cityRequired then blocks saving). The fetch effect just stashes the raw
+  // label here; the effect right after it resolves label→id once cityOptions
+  // is whatever it currently is, and re-tries whenever cityOptions changes.
+  const [pendingCityLabel, setPendingCityLabel] = useState(null);
 
   // Fetch the service being edited once, by id, then populate the form.
   useEffect(() => {
@@ -122,22 +132,23 @@ export default function PublishServiceScreen({ navigation, route }) {
         setBookingMode(svc.bookingMode || "slot");
         setPrice(svc.priceCents ? String(svc.priceCents / 100) : "");
         setPlanPackageId(svc.planPackageId || null);
-        // svc.city is the LABEL (see the `city` state comment above) — resolve
-        // the matching option id to populate the dropdown; no match leaves it
-        // empty rather than showing a broken/mismatched selection.
-        const cityMatch = cityOptions.find((loc) => loc.label === svc.city);
-        setCity(cityMatch ? cityMatch.id : "");
+        setPendingCityLabel(svc.city || null);
       })
       .catch(() => {})
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-    // cityOptions deliberately excluded: it's populated synchronously at
-    // mount (useCities' initial state, before any Firestore listener fires),
-    // so it's already correct for this one-time load. Re-running this whole
-    // fetch whenever the admin-managed city list changes mid-edit would
-    // silently clobber whatever the host has typed since.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editId]);
+
+  // Resolves pendingCityLabel → a dropdown id as soon as a matching option
+  // shows up in cityOptions — whether that's already true on the first run
+  // (fallback happens to include it) or only once the real catalog snapshot
+  // lands. Only fires while `city` is still empty, so it can never clobber a
+  // choice the host has since made themselves.
+  useEffect(() => {
+    if (!pendingCityLabel || city) return;
+    const match = cityOptions.find((loc) => loc.label === pendingCityLabel);
+    if (match) setCity(match.id);
+  }, [cityOptions, pendingCityLabel, city]);
 
   // KIN-286 · P4 — draft, mirroring CreateEventScreen's pattern exactly.
   // Create-only (step 4b): editing an existing service never reads or writes

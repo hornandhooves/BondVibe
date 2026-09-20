@@ -14,9 +14,9 @@
  *    dirección (updateBusiness + setServiceLocation) no debe correr.
  */
 import React from "react";
-import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
 import { Alert } from "react-native";
-import { createSessionType } from "../../../services/businessSessionsService";
+import { createSessionType, updateSessionType, getSessionType } from "../../../services/businessSessionsService";
 import { getBusiness, updateBusiness } from "../../../services/businessService";
 import { setServiceLocation } from "../../../services/businessLocationService";
 import PublishServiceScreen from "../PublishServiceScreen";
@@ -40,10 +40,20 @@ jest.mock("expo-image-picker", () => ({
 jest.mock("../../../hooks/useUserRole", () => () => ({
   role: "host", hostApproved: true, loading: false,
 }));
-jest.mock("../../../hooks/useCities", () => () => ({
-  cities: [{ id: "tulum", label: "Tulum" }, { id: "cdmx", label: "Ciudad de México" }],
-  loading: false,
-}));
+// A plain fixed-return mock can't exercise the late-snapshot fix — this one
+// carries real React state so a test can simulate config/cities arriving
+// AFTER the initial (fallback) render, via mockSetCityOptions below.
+let mockSetCityOptions = null;
+jest.mock("../../../hooks/useCities", () => {
+  const ReactActual = require("react");
+  return () => {
+    const [cities, setCities] = ReactActual.useState([
+      { id: "tulum", label: "Tulum" }, { id: "cdmx", label: "Ciudad de México" },
+    ]);
+    mockSetCityOptions = setCities;
+    return { cities, loading: false };
+  };
+});
 jest.mock("../../../utils/geocode", () => ({ geocodeAddress: jest.fn(() => Promise.resolve(null)) }));
 jest.mock("../../../services/businessSessionsService", () => ({
   createSessionType: jest.fn(() => Promise.resolve({ id: "svc1" })),
@@ -194,5 +204,36 @@ describe("PublishServiceScreen (KIN-292)", () => {
     await waitFor(() => expect(createSessionType).toHaveBeenCalled());
     expect(updateBusiness).not.toHaveBeenCalled();
     expect(setServiceLocation).not.toHaveBeenCalled();
+  });
+
+  it("resolves a late-arriving city catalog when editing a service whose city isn't in the initial fallback", async () => {
+    // "Oaxaca" is absent from the initial mock cityOptions (Tulum/CDMX only)
+    // — mirrors useCities() actually starting from STATIC_CITIES
+    // (Tulum/Playa del Carmen/Cancún) before config/cities' real snapshot
+    // arrives.
+    getSessionType.mockResolvedValue({
+      name: "Temazcal ceremony", vertical: "wellness", durationMin: 90,
+      locationMode: "online", bookingMode: "slot", priceCents: 50000,
+      city: "Oaxaca",
+    });
+    const utils = setup({ serviceId: "svc1" });
+    await waitFor(() => expect(getSessionType).toHaveBeenCalled());
+    await waitFor(() => expect(utils.queryByTestId("service-name")).toBeTruthy());
+
+    // Still unresolved: saving now must be blocked by cityRequired, not
+    // silently write an empty/wrong city.
+    fireEvent.press(utils.getByTestId("service-publish-cta"));
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith("services.publish.cityRequired"));
+    expect(updateSessionType).not.toHaveBeenCalled();
+    Alert.alert.mockClear();
+
+    // The real catalog snapshot lands late, now including Oaxaca.
+    act(() => {
+      mockSetCityOptions([{ id: "tulum", label: "Tulum" }, { id: "oaxaca", label: "Oaxaca" }]);
+    });
+
+    fireEvent.press(utils.getByTestId("service-publish-cta"));
+    await waitFor(() => expect(updateSessionType).toHaveBeenCalled());
+    expect(updateSessionType.mock.calls[0][1].city).toBe("Oaxaca");
   });
 });
