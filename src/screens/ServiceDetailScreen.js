@@ -21,8 +21,6 @@ import { getMembershipPlan } from "../services/membershipService";
 import { getBusinessPublicProfile } from "../services/businessService";
 import { VERTICAL_META } from "./MarketplaceExploreScreen";
 
-const capacityKindKey = (n) =>
-  n <= 1 ? "marketplace.detail.oneToOne" : n === 2 ? "marketplace.detail.couple" : "marketplace.detail.group";
 const locationKey = (m) =>
   m === "at_customer"
     ? "marketplace.detail.atCustomer"
@@ -179,8 +177,7 @@ export default function ServiceDetailScreen({ route, navigation }) {
 
         <View style={s.body}>
           <Text style={[s.eyebrow, { color: meta.fg }]}>
-            {t(`marketplace.vertical.${listing.vertical || "wellness"}`)} · {t(capacityKindKey(listing.capacityMax))} ·{" "}
-            {t(locationKey(listing.locationMode))}
+            {t(`marketplace.vertical.${listing.vertical || "wellness"}`)} · {t(locationKey(listing.locationMode))}
           </Text>
           <Text style={[s.title, { color: colors.text }]}>{listing.name}</Text>
           {/* KIN-284: the gated business location replaces the plain city
@@ -203,7 +200,6 @@ export default function ServiceDetailScreen({ route, navigation }) {
           {/* Spec tiles */}
           <View style={s.specs}>
             <SpecTile s={s} colors={colors} emoji="⏱️" label={t("marketplace.detail.duration", { min: listing.durationMin })} />
-            <SpecTile s={s} colors={colors} emoji="👤" label={t(capacityKindKey(listing.capacityMax))} />
             <SpecTile s={s} colors={colors} emoji="📍" label={t(locationKey(listing.locationMode))} />
           </View>
 

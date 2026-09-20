@@ -24,12 +24,17 @@ import { useTranslation } from "react-i18next";
 import Icon from "../../components/Icon";
 import GradientBackground from "../../components/GradientBackground";
 import BecomeHostGate from "../../components/BecomeHostGate";
+import PlaceAutocomplete from "../../components/PlaceAutocomplete";
+import SelectDropdown from "../../components/SelectDropdown";
 import { useTheme } from "../../contexts/ThemeContext";
 import { FONTS } from "../../constants/theme-tokens";
 import useUserRole from "../../hooks/useUserRole";
+import useCities from "../../hooks/useCities";
 import { isApprovedHost } from "../../utils/hostGate";
+import { geocodeAddress } from "../../utils/geocode";
 import { createSessionType, updateSessionType, getSessionType } from "../../services/businessSessionsService";
-import { getMyBizId, getBusiness } from "../../services/businessService";
+import { getMyBizId, getBusiness, updateBusiness } from "../../services/businessService";
+import { setServiceLocation } from "../../services/businessLocationService";
 import { getHostMembershipPlans } from "../../services/membershipService";
 import { SERVICE_VERTICALS } from "../../services/marketplaceService";
 import { uploadServicePhotos } from "../../services/storageService";
@@ -76,18 +81,40 @@ export default function PublishServiceScreen({ navigation, route }) {
   const [name, setName] = useState("");
   const [vertical, setVertical] = useState(null);
   const [durationMin, setDurationMin] = useState("60");
-  const [capacityMax, setCapacityMax] = useState(1);
   const [description, setDescription] = useState("");
   const [photos, setPhotos] = useState([]);
   const [locationMode, setLocationMode] = useState("at_business");
   const [bookingMode, setBookingMode] = useState("slot");
   const [price, setPrice] = useState("");
   const [planPackageId, setPlanPackageId] = useState(null);
+  // KIN-292: holds the SELECTED CITY ID (SelectDropdown's own contract) —
+  // SessionType.city stores the LABEL (MarketplaceExploreScreen's city
+  // filter matches on the label, not the slug), so it's resolved via
+  // getCityLabel() only at save time, never stored as the id.
   const [city, setCity] = useState("");
 
   const [hostPlans, setHostPlans] = useState([]);
   const [biz, setBiz] = useState(null);
   const [saving, setSaving] = useState(false);
+  // KIN-292: the business's OWN studio address — not the service's, and
+  // deliberately not part of the draft (see formStateRef/restoreDraft below).
+  // Prefilled from `biz` in load(); editable inline via PlaceAutocomplete
+  // when locationMode is "at_business".
+  const [address, setAddress] = useState("");
+  const [coords, setCoords] = useState(null);
+
+  const { cities: cityOptions } = useCities();
+  const getCityLabel = (cityId) => cityOptions.find((loc) => loc.id === cityId)?.label || "";
+  // KIN-292 fix: svc.city (the LABEL) can't be resolved to a dropdown id
+  // inside the fetch effect below — useCities() starts with STATIC_CITIES
+  // (src/utils/locations.js's fallback: only Tulum/Playa del Carmen/Cancún),
+  // and the real config/cities catalog arrives later via its own Firestore
+  // listener. Editing a service whose city isn't in that fallback would
+  // resolve against an incomplete list and leave the dropdown blank forever
+  // (cityRequired then blocks saving). The fetch effect just stashes the raw
+  // label here; the effect right after it resolves label→id once cityOptions
+  // is whatever it currently is, and re-tries whenever cityOptions changes.
+  const [pendingCityLabel, setPendingCityLabel] = useState(null);
 
   // Fetch the service being edited once, by id, then populate the form.
   useEffect(() => {
@@ -99,19 +126,29 @@ export default function PublishServiceScreen({ navigation, route }) {
         setName(svc.name || "");
         setVertical(svc.vertical || null);
         setDurationMin(String(svc.durationMin || 60));
-        setCapacityMax(svc.capacityMax || 1);
         setDescription(svc.description || "");
         setPhotos(Array.isArray(svc.photos) ? svc.photos : []);
         setLocationMode(svc.locationMode || "at_business");
         setBookingMode(svc.bookingMode || "slot");
         setPrice(svc.priceCents ? String(svc.priceCents / 100) : "");
         setPlanPackageId(svc.planPackageId || null);
-        setCity(svc.city || "");
+        setPendingCityLabel(svc.city || null);
       })
       .catch(() => {})
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [editId]);
+
+  // Resolves pendingCityLabel → a dropdown id as soon as a matching option
+  // shows up in cityOptions — whether that's already true on the first run
+  // (fallback happens to include it) or only once the real catalog snapshot
+  // lands. Only fires while `city` is still empty, so it can never clobber a
+  // choice the host has since made themselves.
+  useEffect(() => {
+    if (!pendingCityLabel || city) return;
+    const match = cityOptions.find((loc) => loc.label === pendingCityLabel);
+    if (match) setCity(match.id);
+  }, [cityOptions, pendingCityLabel, city]);
 
   // KIN-286 · P4 — draft, mirroring CreateEventScreen's pattern exactly.
   // Create-only (step 4b): editing an existing service never reads or writes
@@ -119,7 +156,7 @@ export default function PublishServiceScreen({ navigation, route }) {
   // existing event.
   const formStateRef = useRef({});
   formStateRef.current = {
-    name, vertical, durationMin, capacityMax, description, photos,
+    name, vertical, durationMin, description, photos,
     locationMode, bookingMode, price, planPackageId, city,
   };
   const submittedRef = useRef(false);
@@ -137,7 +174,6 @@ export default function PublishServiceScreen({ navigation, route }) {
     if (typeof d.name === "string") setName(d.name);
     if (d.vertical) setVertical(d.vertical);
     if (typeof d.durationMin === "string") setDurationMin(d.durationMin);
-    if (typeof d.capacityMax === "number") setCapacityMax(d.capacityMax);
     if (typeof d.description === "string") setDescription(d.description);
     if (Array.isArray(d.photos)) setPhotos(d.photos);
     if (typeof d.locationMode === "string") setLocationMode(d.locationMode);
@@ -207,7 +243,7 @@ export default function PublishServiceScreen({ navigation, route }) {
     const timer = setTimeout(persistDraft, DRAFT_SAVE_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [
-    name, vertical, durationMin, capacityMax, description, photos,
+    name, vertical, durationMin, description, photos,
     locationMode, bookingMode, price, planPackageId, city, persistDraft, editId,
   ]);
 
@@ -230,6 +266,14 @@ export default function PublishServiceScreen({ navigation, route }) {
     ]);
     setHostPlans(Array.isArray(plans) ? plans : []);
     setBiz(b);
+    // KIN-292: prefill the inline studio-address field from the business
+    // itself (not the draft — see formStateRef/restoreDraft).
+    if (b) {
+      setAddress(b.address || "");
+      if (typeof b.latitude === "number" && typeof b.longitude === "number") {
+        setCoords({ latitude: b.latitude, longitude: b.longitude });
+      }
+    }
   }, []);
   useFocusEffect(useCallback(() => { if (approved) load(); }, [approved, load]));
 
@@ -249,41 +293,96 @@ export default function PublishServiceScreen({ navigation, route }) {
   };
   const removePhoto = (uri) => setPhotos((prev) => prev.filter((p) => p !== uri));
 
-  const capKind = capacityMax <= 1 ? "one" : "group";
-  const GROUP_DEFAULT = 8, GROUP_MIN = 2, GROUP_MAX = 20;
-  const setCap = (kind) => setCapacityMax(kind === "one" ? 1 : capacityMax > 1 ? capacityMax : GROUP_DEFAULT);
-  const stepCap = (delta) => setCapacityMax((c) => Math.min(GROUP_MAX, Math.max(GROUP_MIN, c + delta)));
+  // KIN-292: mirrors CreateEventScreen's own free-text fallback (grep
+  // "geocodeAddress" there) via BusinessSetupScreen.js:63's exact pattern —
+  // a Places pick already carries lat/lng; typed-with-no-suggestion
+  // (PlaceAutocomplete's handleUseTyped) hands back only { description }, so
+  // geocode it to still get coordinates.
+  const onSelectAddress = async (place) => {
+    setAddress(place.description || "");
+    if (typeof place.latitude === "number" && typeof place.longitude === "number") {
+      setCoords({ latitude: place.latitude, longitude: place.longitude });
+    } else {
+      setCoords(await geocodeAddress(place.description));
+    }
+  };
 
   const save = async () => {
     if (!name.trim()) return Alert.alert(t("services.publish.nameRequired"));
     if (!vertical) return Alert.alert(t("services.publish.categoryRequired"));
+    const cityLabel = getCityLabel(city);
+    if (!cityLabel) return Alert.alert(t("services.publish.cityRequired"));
     // Mirror the firestore.rules gate: an at-home service needs verified+insured.
     if (locationMode === "at_customer" && !(biz && biz.verified && biz.insured)) {
       return Alert.alert(t("services.publish.verifyBlock"));
     }
-    // KIN-290: the business needs an exact location set (same field
-    // ServiceDetailScreen.js:190 checks) before a service "at my studio" can
-    // go live — otherwise KIN-284/288's gate has nothing to unlock.
-    if (locationMode === "at_business" && !(biz && (biz.area || biz.approxCoords))) {
-      return Alert.alert(t("services.publish.businessLocationRequired"));
-    }
     setSaving(true);
     const bizId = getMyBizId();
-    // Publishing sets publicListing:true implicitly — there is no toggle.
-    const base = {
-      name: name.trim(),
-      capacityMax,
-      durationMin: parseInt(durationMin, 10) || 60,
-      price,
-      description: description.trim() || null,
-      publicListing: true,
-      vertical,
-      locationMode,
-      bookingMode,
-      city: city.trim(),
-      planPackageId: planPackageId || null,
-    };
+    // Local, not React state: setBiz() below doesn't take effect until the
+    // next render, so the businessLocationRequired check further down (same
+    // function execution) needs its OWN synchronous handle on the freshest
+    // biz, not the `biz` closure variable.
+    let effectiveBiz = biz;
     try {
+      // KIN-292: the studio address is the BUSINESS's own, synced here —
+      // BEFORE the businessLocationRequired gate below and BEFORE
+      // create/updateSessionType — whenever it changed, so a host who just
+      // typed it on THIS screen doesn't hit a gate that only the (stale,
+      // pre-sync) `biz` would fail. updateBusiness alone would NOT be enough:
+      // it never writes area/approxCoords (functions/index.js:3189) — only
+      // the setServiceLocation Cloud Function does, in its batch (lines
+      // 3218-3244) — so the CF has to actually run.
+      if (locationMode === "at_business" && address.trim() && address.trim() !== (biz?.address || "")) {
+        await updateBusiness({
+          address: address.trim(),
+          latitude: coords?.latitude ?? null,
+          longitude: coords?.longitude ?? null,
+        });
+        // setServiceLocation never throws — businessLocationService.js:30-38
+        // catches internally and resolves {success:false, error} instead, so
+        // a try/catch around this wouldn't see a failure. res.success is the
+        // only signal (BusinessSetupScreen.js:95 ignores it today — a known
+        // gap, not fixed here, see the report).
+        const locRes = await setServiceLocation({ bizId, address: address.trim(), exactCoords: coords });
+        if (!locRes.success) {
+          setSaving(false);
+          Alert.alert(t("services.publish.saveError"), locRes.error || "");
+          return;
+        }
+        // Refresh both the React state (for the rest of the screen) and the
+        // local handle this same call uses right below — setBiz() alone
+        // wouldn't be visible until the next render.
+        const freshBiz = await getBusiness(bizId).catch(() => null);
+        if (freshBiz) {
+          setBiz(freshBiz);
+          effectiveBiz = freshBiz;
+        }
+      }
+
+      // KIN-290: the business needs an exact location set (same field
+      // ServiceDetailScreen.js:190 checks) before a service "at my studio" can
+      // go live — otherwise KIN-284/288's gate has nothing to unlock. Reads
+      // effectiveBiz (see above), so a host who just entered an address in
+      // THIS save doesn't get blocked by their own stale state.
+      if (locationMode === "at_business" && !(effectiveBiz && (effectiveBiz.area || effectiveBiz.approxCoords))) {
+        setSaving(false);
+        return Alert.alert(t("services.publish.businessLocationRequired"));
+      }
+
+      // Publishing sets publicListing:true implicitly — there is no toggle.
+      const base = {
+        name: name.trim(),
+        capacityMax: 1,
+        durationMin: parseInt(durationMin, 10) || 60,
+        price,
+        description: description.trim() || null,
+        publicListing: true,
+        vertical,
+        locationMode,
+        bookingMode,
+        city: cityLabel,
+        planPackageId: planPackageId || null,
+      };
       let id = editId;
       if (editId) await updateSessionType(editId, { ...base });
       else id = (await createSessionType({ ...base, photos: [] })).id;
@@ -408,54 +507,19 @@ export default function PublishServiceScreen({ navigation, route }) {
 
           {/* DETAILS */}
           <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>{t("services.publish.detailsTitle")}</Text>
-          <View style={styles.detailsRow}>
-            <View style={[styles.durationBox, inputStyle]}>
-              <Text style={[styles.durationLabel, { color: colors.textTertiary }]}>{t("services.publish.duration")}</Text>
-              <View style={styles.durationInner}>
-                <TextInput
-                  style={[styles.durationInput, { color: colors.text }]}
-                  value={durationMin}
-                  onChangeText={setDurationMin}
-                  keyboardType="number-pad"
-                  testID="service-duration"
-                />
-                <Text style={[styles.durationUnit, { color: colors.textSecondary }]}>{t("services.publish.durationUnit")}</Text>
-              </View>
+          <View style={[styles.durationBox, inputStyle]}>
+            <Text style={[styles.durationLabel, { color: colors.textTertiary }]}>{t("services.publish.duration")}</Text>
+            <View style={styles.durationInner}>
+              <TextInput
+                style={[styles.durationInput, { color: colors.text }]}
+                value={durationMin}
+                onChangeText={setDurationMin}
+                keyboardType="number-pad"
+                testID="service-duration"
+              />
+              <Text style={[styles.durationUnit, { color: colors.textSecondary }]}>{t("services.publish.durationUnit")}</Text>
             </View>
-            <Segment
-              options={[
-                { key: "one", label: t("services.publish.capOne"), testID: "cap-one" },
-                { key: "group", label: t("services.publish.capGroup"), testID: "cap-group" },
-              ]}
-              value={capKind}
-              onChange={setCap}
-            />
           </View>
-          {/* Group size is explicit (S-obs-3): never persist an invented 8 silently. */}
-          {capKind === "group" && (
-            <View style={[styles.stepperRow, inputStyle]}>
-              <Text style={[styles.stepperLabel, { color: colors.text }]}>{t("services.publish.groupSize")}</Text>
-              <View style={styles.stepperCtrls}>
-                <TouchableOpacity
-                  style={[styles.stepperBtn, { borderColor: colors.border }, capacityMax <= GROUP_MIN && { opacity: 0.4 }]}
-                  onPress={() => stepCap(-1)}
-                  disabled={capacityMax <= GROUP_MIN}
-                  testID="cap-minus"
-                >
-                  <Text style={[styles.stepperSign, { color: colors.text }]}>−</Text>
-                </TouchableOpacity>
-                <Text style={[styles.stepperValue, { color: colors.text }]} testID="cap-value">{capacityMax}</Text>
-                <TouchableOpacity
-                  style={[styles.stepperBtn, { borderColor: colors.border }, capacityMax >= GROUP_MAX && { opacity: 0.4 }]}
-                  onPress={() => stepCap(1)}
-                  disabled={capacityMax >= GROUP_MAX}
-                  testID="cap-plus"
-                >
-                  <Text style={[styles.stepperSign, { color: colors.text }]}>+</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
           <TextInput
             style={[styles.input, styles.textarea, inputStyle]}
             value={description}
@@ -496,6 +560,29 @@ export default function PublishServiceScreen({ navigation, route }) {
               <Text style={[styles.amberTxt, { color: colors.warning }]}>{t("services.publish.verifyNote")}</Text>
             </View>
           )}
+          {/* KIN-292: the studio address is the BUSINESS's own (BusinessSetupScreen
+              also has this field) — editable inline here so a host publishing an
+              "at my studio" service doesn't have to leave this screen first. */}
+          {locationMode === "at_business" && (
+            <>
+              <PlaceAutocomplete
+                label={t("services.publish.studioAddressLabel")}
+                value={address}
+                onSelect={onSelectAddress}
+              />
+              <Text style={[styles.locationHint, { color: colors.textTertiary }]}>
+                {t("services.publish.studioAddressHint")}
+              </Text>
+            </>
+          )}
+          <SelectDropdown
+            label={t("services.publish.city")}
+            value={city}
+            onValueChange={setCity}
+            options={cityOptions}
+            placeholder={t("services.publish.city")}
+            type="location"
+          />
 
           {/* BOOKING & PRICE */}
           <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>{t("services.publish.bookingTitle")}</Text>
@@ -536,14 +623,6 @@ export default function PublishServiceScreen({ navigation, route }) {
               </View>
             </View>
           )}
-          <TextInput
-            style={[styles.input, inputStyle, { marginTop: 12 }]}
-            value={city}
-            onChangeText={setCity}
-            placeholder={t("services.publish.city")}
-            placeholderTextColor={colors.textTertiary}
-            testID="service-city"
-          />
           {/* KIN-185 — paid placement. Only offered while EDITING: a service
               that hasn't been created yet has no id to feature, and the
               server refuses to promote one that isn't publicListing:true
@@ -619,18 +698,12 @@ function createStyles(colors, isDark) {
     chip: { borderWidth: 1.5, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 8 },
     chipTxt: { fontSize: 13 },
 
-    detailsRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
-    stepperRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12 },
-    stepperLabel: { fontFamily: FONTS.bodySemibold, fontSize: 14 },
-    stepperCtrls: { flexDirection: "row", alignItems: "center", gap: 14 },
-    stepperBtn: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-    stepperSign: { fontFamily: FONTS.display, fontSize: 20, lineHeight: 22 },
-    stepperValue: { fontFamily: FONTS.display, fontSize: 18, letterSpacing: -0.4, minWidth: 26, textAlign: "center" },
-    durationBox: { flex: 1, borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, paddingVertical: 9, justifyContent: "center" },
+    durationBox: { borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, paddingVertical: 9, justifyContent: "center", marginBottom: 12 },
     durationLabel: { fontFamily: FONTS.bodyMedium, fontSize: 11 },
     durationInner: { flexDirection: "row", alignItems: "baseline", gap: 5, marginTop: 2 },
     durationInput: { fontFamily: FONTS.display, fontSize: 18, letterSpacing: -0.4, padding: 0, minWidth: 34 },
     durationUnit: { fontFamily: FONTS.bodyMedium, fontSize: 13 },
+    locationHint: { fontFamily: FONTS.bodyMedium, fontSize: 12, marginTop: 8, marginBottom: 4, lineHeight: 16 },
 
     segment: { flex: 1, flexDirection: "row", borderWidth: 1, borderRadius: 13, padding: 3 },
     segmentItem: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 9, borderRadius: 10 },
