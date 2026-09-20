@@ -3904,7 +3904,9 @@
       "create": "Create business",
       "saveChanges": "Save changes",
       "nameRequiredTitle": "Name required",
-      "nameRequiredMsg": "Give your business a name to continue."
+      "nameRequiredMsg": "Give your business a name to continue.",
+      "addressSuggestionRequiredMsg": "Pick a suggestion from the address list so we can save your exact location.",
+      "locationSaveErrorMsg": "We couldn't save your business location. Please try again."
     },
     "instructor": {
       "me": "Me",
