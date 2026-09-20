@@ -87,12 +87,30 @@ export default function BusinessSetupScreen({ navigation }) {
         await createBusiness({ name: name.trim(), vertical });
         if (address.trim()) await updateBusiness(addressPatch);
       }
+      // KIN-294: an address typed without picking a suggestion never resolved
+      // to coords (onSelectAddress's geocode fallback failed) — silently
+      // skipping setServiceLocation here left area/approxCoords unset on
+      // businesses/{bizId} forever, with no error and no way for the host to
+      // notice, because the screen still navigated away.
+      if (address.trim() && !coords) {
+        setSaving(false);
+        Alert.alert(t("business.common.errorTitle"), t("business.setup.addressSuggestionRequiredMsg"));
+        return;
+      }
       // KIN-284: computes the coarse/exact split for the marketplace listing
       // (setServiceLocation, functions/index.js) — bizId only exists AFTER
       // createBusiness resolves, so this runs after both branches, not inside
       // the create one.
       if (address.trim() && coords) {
-        await setServiceLocation({ bizId: getMyBizId(), address: address.trim(), exactCoords: coords });
+        // KIN-294: setServiceLocation never throws — it catches internally and
+        // resolves {success:false, error} — so a try/catch around it can't
+        // detect failure; only reading res.success can.
+        const res = await setServiceLocation({ bizId: getMyBizId(), address: address.trim(), exactCoords: coords });
+        if (!res.success) {
+          setSaving(false);
+          Alert.alert(t("business.common.errorTitle"), t("business.setup.locationSaveErrorMsg"));
+          return;
+        }
       }
       if (editing) navigation.goBack();
       else navigation.replace("BusinessHub");

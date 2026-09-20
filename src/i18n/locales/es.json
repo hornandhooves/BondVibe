@@ -3905,7 +3905,9 @@
       "create": "Crear negocio",
       "saveChanges": "Guardar cambios",
       "nameRequiredTitle": "Falta el nombre",
-      "nameRequiredMsg": "Dale un nombre a tu negocio para continuar."
+      "nameRequiredMsg": "Dale un nombre a tu negocio para continuar.",
+      "addressSuggestionRequiredMsg": "Elige una sugerencia de la lista de direcciones para poder guardar tu ubicación exacta.",
+      "locationSaveErrorMsg": "No pudimos guardar la ubicación de tu negocio. Intenta de nuevo."
     },
     "instructor": {
       "me": "Yo",
