@@ -310,7 +310,8 @@ export default function PublishServiceScreen({ navigation, route }) {
   const save = async () => {
     if (!name.trim()) return Alert.alert(t("services.publish.nameRequired"));
     if (!vertical) return Alert.alert(t("services.publish.categoryRequired"));
-    if (!city) return Alert.alert(t("services.publish.cityRequired"));
+    const cityLabel = getCityLabel(city);
+    if (!cityLabel) return Alert.alert(t("services.publish.cityRequired"));
     // Mirror the firestore.rules gate: an at-home service needs verified+insured.
     if (locationMode === "at_customer" && !(biz && biz.verified && biz.insured)) {
       return Alert.alert(t("services.publish.verifyBlock"));
@@ -379,7 +380,7 @@ export default function PublishServiceScreen({ navigation, route }) {
         vertical,
         locationMode,
         bookingMode,
-        city: getCityLabel(city),
+        city: cityLabel,
         planPackageId: planPackageId || null,
       };
       let id = editId;

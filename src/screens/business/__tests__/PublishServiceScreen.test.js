@@ -16,6 +16,7 @@
 import React from "react";
 import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
 import { Alert } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createSessionType, updateSessionType, getSessionType } from "../../../services/businessSessionsService";
 import { getBusiness, updateBusiness } from "../../../services/businessService";
 import { setServiceLocation } from "../../../services/businessLocationService";
@@ -235,5 +236,29 @@ describe("PublishServiceScreen (KIN-292)", () => {
     fireEvent.press(utils.getByTestId("service-publish-cta"));
     await waitFor(() => expect(updateSessionType).toHaveBeenCalled());
     expect(updateSessionType.mock.calls[0][1].city).toBe("Oaxaca");
+  });
+
+  it("blocks publishing a restored draft whose city id is absent from the live catalog", async () => {
+    // The draft remembers a city ID from a previous session; the catalog
+    // that resolves ids to labels only has Tulum/CDMX at this point (mirrors
+    // useCities() never having received config/cities' real snapshot).
+    AsyncStorage.getItem.mockResolvedValueOnce(JSON.stringify({
+      name: "Reiki session", vertical: "wellness", city: "stale-city-id", savedAt: Date.now(),
+    }));
+    const utils = setup();
+
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(
+      "services.publish.draft.resumeTitle",
+      "services.publish.draft.resumeMsg",
+      expect.any(Array),
+    ));
+    const [, , buttons] = Alert.alert.mock.calls[0];
+    const resumeBtn = buttons.find((b) => b.text === "services.publish.draft.resume");
+    await act(async () => resumeBtn.onPress());
+    Alert.alert.mockClear();
+
+    fireEvent.press(utils.getByTestId("service-publish-cta"));
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith("services.publish.cityRequired"));
+    expect(createSessionType).not.toHaveBeenCalled();
   });
 });
