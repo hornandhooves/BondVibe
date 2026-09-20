@@ -37,6 +37,7 @@ import {
   GROUP_SIZES,
 } from "../constants/hostOnboarding";
 import GradientBackground from "../components/GradientBackground";
+import Button from "../components/Button";
 import { approveHostRequest, rejectHostRequest } from "../services/hostService";
 import AdminMessageModal from "../components/AdminMessageModal";
 import AdminConfirmModal from "../components/AdminConfirmModal";
@@ -988,7 +989,12 @@ export default function AdminDashboardScreen({ navigation }) {
       </View>
 
       {/* Tabs */}
-      <View style={styles.tabsContainer}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabsScroll}
+        contentContainerStyle={styles.tabsContainer}
+      >
         <TouchableOpacity
           style={styles.tab}
           onPress={() => setActiveTab("requests")}
@@ -1018,9 +1024,7 @@ export default function AdminDashboardScreen({ navigation }) {
               {t("adminDashboard.tabHostRequests")}
             </Text>
             {stats.pending > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{stats.pending}</Text>
-              </View>
+              <View style={[styles.tabDot, { backgroundColor: colors.error }]} />
             )}
           </View>
         </TouchableOpacity>
@@ -1129,7 +1133,7 @@ export default function AdminDashboardScreen({ navigation }) {
             )}
           </View>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
 
       <ScrollView
         style={styles.scrollView}
@@ -1174,7 +1178,7 @@ export default function AdminDashboardScreen({ navigation }) {
           >
             <View style={styles.statIcon}>
               <Icon
-                name={activeTab === "requests" ? "party" : "pro"}
+                name={activeTab === "requests" ? "broadcast" : "pro"}
                 size={28}
                 color={colors.primary}
               />
@@ -1415,53 +1419,30 @@ export default function AdminDashboardScreen({ navigation }) {
                     </View>
 
                     <View style={styles.actionsRow}>
-                      <TouchableOpacity
-                        style={styles.rejectButton}
+                      <Button
+                        label={
+                          hostRequestsProcessing === request.id
+                            ? t("adminDashboard.processing")
+                            : t("adminDashboard.reject")
+                        }
                         onPress={() => handleRejectClick(request)}
                         disabled={hostRequestsProcessing === request.id}
-                      >
-                        <View
-                          style={[
-                            styles.rejectGlass,
-                            {
-                              backgroundColor: "rgba(255, 69, 58, 0.1)",
-                              borderColor: "rgba(255, 69, 58, 0.3)",
-                              opacity:
-                                hostRequestsProcessing === request.id ? 0.5 : 1,
-                            },
-                          ]}
-                        >
-                          <Text style={styles.rejectText}>
-                            {hostRequestsProcessing === request.id
-                              ? t("adminDashboard.processing")
-                              : t("adminDashboard.reject")}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.approveButton}
+                        variant="secondary"
+                        color={colors.error}
+                        fullWidth
+                        style={styles.requestActionButton}
+                      />
+                      <Button
+                        label={
+                          hostRequestsProcessing === request.id
+                            ? t("adminDashboard.processing")
+                            : t("adminDashboard.approve")
+                        }
                         onPress={() => handleApproveClick(request)}
                         disabled={hostRequestsProcessing === request.id}
-                      >
-                        <View
-                          style={[
-                            styles.approveGlass,
-                            {
-                              backgroundColor: "rgba(52, 199, 89, 0.1)",
-                              borderColor: "rgba(52, 199, 89, 0.3)",
-                              opacity:
-                                hostRequestsProcessing === request.id ? 0.5 : 1,
-                            },
-                          ]}
-                        >
-                          <Text style={styles.approveText}>
-                            {hostRequestsProcessing === request.id
-                              ? t("adminDashboard.processing")
-                              : t("adminDashboard.approve")}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
+                        fullWidth
+                        style={styles.requestActionButton}
+                      />
                     </View>
                   </View>
                 </View>
@@ -1872,16 +1853,17 @@ function createStyles(colors) {
       paddingBottom: 20,
     },
     headerTitle: { fontFamily: FONTS.display, fontSize: 20, letterSpacing: -0.3 },
+    tabsScroll: { flexGrow: 0, marginBottom: 20 },
     tabsContainer: {
       flexDirection: "row",
       paddingHorizontal: 24,
-      marginBottom: 20,
       gap: 12,
     },
-    tab: { flex: 1, borderRadius: RADII.tile, overflow: "hidden" },
+    tab: { borderRadius: RADII.tile, overflow: "hidden" },
     tabGlass: {
       borderWidth: 1,
       paddingVertical: 12,
+      paddingHorizontal: 18,
       alignItems: "center",
       flexDirection: "row",
       justifyContent: "center",
@@ -1902,6 +1884,7 @@ function createStyles(colors) {
       fontFamily: FONTS.bodyBold,
       fontSize: 11,
     },
+    tabDot: { width: 7, height: 7, borderRadius: 3.5 },
     scrollView: { flex: 1 },
     scrollContent: { paddingHorizontal: 24, paddingBottom: 40 },
     statsRow: { flexDirection: "row", gap: 12, marginBottom: 28 },
@@ -1913,8 +1896,9 @@ function createStyles(colors) {
       alignItems: "center",
     },
     statIcon: { marginBottom: 8 },
-    statValue: { fontSize: 28, fontWeight: "700", marginBottom: 4 },
+    statValue: { fontFamily: FONTS.display, fontSize: 28, marginBottom: 4 },
     statLabel: {
+      fontFamily: FONTS.bodySemibold,
       fontSize: 12,
       textTransform: "uppercase",
       letterSpacing: 0.5,
@@ -1938,8 +1922,8 @@ function createStyles(colors) {
     },
     transferBtnText: { fontSize: 14, fontWeight: "800" },
     sectionTitle: {
+      fontFamily: FONTS.display,
       fontSize: 20,
-      fontWeight: "700",
       marginBottom: 16,
       letterSpacing: -0.3,
     },
@@ -1981,25 +1965,20 @@ function createStyles(colors) {
       marginBottom: 16,
     },
     requestInfo: { flex: 1 },
-    requestName: { fontSize: 16, fontWeight: "700", marginBottom: 4 },
-    requestDate: { fontSize: 12 },
+    requestName: { fontFamily: FONTS.bodyBold, fontSize: 16, marginBottom: 4 },
+    requestDate: { fontFamily: FONTS.body, fontSize: 12 },
     requestDetails: { marginBottom: 16 },
     detailRow: { marginBottom: 12 },
     detailLabel: {
+      fontFamily: FONTS.bodySemibold,
       fontSize: 11,
-      fontWeight: "600",
       marginBottom: 4,
       textTransform: "uppercase",
       letterSpacing: 0.5,
     },
-    detailValue: { fontSize: 14, lineHeight: 20 },
+    detailValue: { fontFamily: FONTS.body, fontSize: 14, lineHeight: 20 },
     actionsRow: { flexDirection: "row", gap: 12 },
-    rejectButton: { flex: 1, borderRadius: 12, overflow: "hidden" },
-    rejectGlass: { borderWidth: 1, paddingVertical: 12, alignItems: "center" },
-    rejectText: { fontSize: 15, fontWeight: "600", color: colors.error },
-    approveButton: { flex: 1, borderRadius: 12, overflow: "hidden" },
-    approveGlass: { borderWidth: 1, paddingVertical: 12, alignItems: "center" },
-    approveText: { fontSize: 15, fontWeight: "600", color: "#34C759" },
+    requestActionButton: { flex: 1 },
     // User Card Styles
     userCard: { marginBottom: 16, borderRadius: 16, overflow: "hidden" },
     userGlass: { borderWidth: 1, padding: 16 },
