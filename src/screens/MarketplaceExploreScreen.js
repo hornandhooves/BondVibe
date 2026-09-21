@@ -184,7 +184,9 @@ export default function MarketplaceExploreScreen({ navigation, route }) {
                 onPress={() => setCity(c.id === "all" ? null : c.label)}
                 testID={`marketplace-city-${c.id}`}
               >
-                <Text style={[s.cityChipTxt, { color: active ? "#fff" : colors.textSecondary }]}>{c.label}</Text>
+                <Text style={[s.cityChipTxt, { color: active ? "#fff" : colors.textSecondary }]}>
+                  {c.id === "all" ? t("common.allCities") : c.label}
+                </Text>
               </TouchableOpacity>
             );
           })}
