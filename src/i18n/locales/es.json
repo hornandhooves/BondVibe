@@ -1557,6 +1557,7 @@
       "saved": "Guardado",
       "savedMsg": "Tus cambios están activos.",
       "saveError": "No se pudo publicar",
+      "saveErrorMsg": "Algo salió mal al guardar. Intenta de nuevo.",
       "photosFailed": "Tu servicio se publicó, pero las fotos no se pudieron subir. Ábrelo desde Mis servicios para intentarlo de nuevo.",
       "draft": {
         "resumeTitle": "¿Retomar borrador?",

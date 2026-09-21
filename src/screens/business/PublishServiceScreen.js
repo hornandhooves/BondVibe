@@ -355,7 +355,11 @@ export default function PublishServiceScreen({ navigation, route }) {
         const locRes = await setServiceLocation({ bizId, address: address.trim(), exactCoords: coords });
         if (!locRes.success) {
           setSaving(false);
-          Alert.alert(t("services.publish.saveError"), locRes.error || "");
+          console.warn("setServiceLocation failed:", locRes.error);
+          // KIN-300: shares BusinessSetupScreen's own copy for this exact
+          // failure (KIN-294) — same underlying error, same message on
+          // purpose, instead of the raw API error text.
+          Alert.alert(t("services.publish.saveError"), t("business.setup.locationSaveErrorMsg"));
           return;
         }
         // Refresh both the React state (for the rest of the screen) and the
@@ -425,7 +429,12 @@ export default function PublishServiceScreen({ navigation, route }) {
         );
       }
     } catch (e) {
-      Alert.alert(t("services.publish.saveError"), e?.message || "");
+      console.warn("PublishServiceScreen save failed:", e?.message);
+      // KIN-300: this catch wraps the whole function, not just the location
+      // call above — a location-specific message would be wrong when
+      // something else failed, so this is a generic save-error body, not
+      // business.setup.locationSaveErrorMsg.
+      Alert.alert(t("services.publish.saveError"), t("services.publish.saveErrorMsg"));
       setSaving(false);
     }
   };
