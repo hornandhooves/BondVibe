@@ -350,8 +350,7 @@ export default function PublishServiceScreen({ navigation, route }) {
         // setServiceLocation never throws — businessLocationService.js:30-38
         // catches internally and resolves {success:false, error} instead, so
         // a try/catch around this wouldn't see a failure. res.success is the
-        // only signal (BusinessSetupScreen.js:95 ignores it today — a known
-        // gap, not fixed here, see the report).
+        // only signal (BusinessSetupScreen does the same read since KIN-294).
         const locRes = await setServiceLocation({ bizId, address: address.trim(), exactCoords: coords });
         if (!locRes.success) {
           setSaving(false);
