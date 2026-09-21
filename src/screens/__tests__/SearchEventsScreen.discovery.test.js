@@ -84,7 +84,7 @@ jest.mock("../../contexts/ThemeContext", () => ({
 }));
 jest.mock("../../hooks/useCities", () => ({
   __esModule: true,
-  default: () => ({ cities: [{ id: "tulum", label: "Tulum" }] }),
+  default: () => ({ cities: [{ id: "tulum", label: "Tulum" }], allCities: [{ id: "tulum", label: "Tulum" }] }),
 }));
 jest.mock("../../components/GradientBackground", () => {
   const { View } = require("react-native");

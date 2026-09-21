@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -56,7 +56,7 @@ const mapEventDocs = (docs) =>
 export default function SearchEventsScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
-  const { cities: LOCATIONS } = useCities({ includeAll: true });
+  const { cities: LOCATIONS, allCities: ALL_CITIES } = useCities({ includeAll: true });
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState("list"); // F1: "list" | "map" (default list)
   const [filtersSheetOpen, setFiltersSheetOpen] = useState(false);
@@ -94,6 +94,32 @@ export default function SearchEventsScreen({ navigation, route }) {
   const [dateFrom, setDateFrom] = useState(null);
   const [dateTo, setDateTo] = useState(null);
   const [datePicker, setDatePicker] = useState(null); // "from" | "to" | null
+
+  // KIN-295: unlike sessionTypes.city (which stores the LABEL —
+  // SelectDropdown.js:76 hands onValueChange the option's id, but
+  // PublishServiceScreen resolves it to a label before saving), events.city
+  // stores the dropdown id as-is: CreateEventScreen.js:1445 wires
+  // onValueChange straight to setSelectedCity, and :968 writes that id
+  // directly as `city`. So an inactive city's events can be keyed by either
+  // its id (current CreateEventScreen) or, conceivably, its label (an older
+  // write path, unverified) — check both, cheaply, rather than assume.
+  // `events` itself is never re-queried by city — baseConstraints() only
+  // bounds by date/search, and selectedLocation filters client-side via
+  // filterEvents() — so it's already a load unaffected by the active city
+  // filter, safe to use directly as the "values in use" source.
+  const usedEventCityValues = useMemo(
+    () => new Set(events.map((e) => e.city).filter(Boolean)),
+    [events]
+  );
+  const CHIP_LOCATIONS = useMemo(
+    () => [
+      ...LOCATIONS,
+      ...ALL_CITIES.filter(
+        (c) => c.inactive === true && (usedEventCityValues.has(c.id) || usedEventCityValues.has(c.label))
+      ),
+    ],
+    [LOCATIONS, ALL_CITIES, usedEventCityValues]
+  );
 
   // ✅ FIX: Update selected category when route params change
   useEffect(() => {
@@ -326,7 +352,7 @@ export default function SearchEventsScreen({ navigation, route }) {
     setSearchQuery,
     selectedLocation,
     setSelectedLocation,
-    locations: LOCATIONS,
+    locations: CHIP_LOCATIONS,
     selectedCategory,
     onCategoryChange: handleCategoryChange,
     categoryOptions,
