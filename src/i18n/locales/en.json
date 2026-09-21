@@ -26,7 +26,8 @@
     "continue": "Continue",
     "close": "Close",
     "seeOriginal": "See original",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "allCities": "All cities"
   },
   "language": {
     "title": "Language",
@@ -1557,6 +1558,7 @@
       "saved": "Saved",
       "savedMsg": "Your changes are live.",
       "saveError": "Couldn't publish",
+      "saveErrorMsg": "Something went wrong while saving. Please try again.",
       "photosFailed": "Your service was published, but the photos couldn't be uploaded. Open it from My services to try again.",
       "draft": {
         "resumeTitle": "Resume draft?",
