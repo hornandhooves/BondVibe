@@ -103,8 +103,14 @@ export default function PublishServiceScreen({ navigation, route }) {
   const [address, setAddress] = useState("");
   const [coords, setCoords] = useState(null);
 
-  const { cities: cityOptions } = useCities();
-  const getCityLabel = (cityId) => cityOptions.find((loc) => loc.id === cityId)?.label || "";
+  const { cities: cityOptions, allCities } = useCities();
+  // KIN-295: resolves a STORED id (this service's own city, or a restored
+  // draft's) against allCities (active + inactive) — never against
+  // cityOptions (active only), or a service left on a city an admin has
+  // since deactivated would lose its label and save() would block it with
+  // cityRequired for the wrong reason. The dropdown at :582 still offers
+  // only `cityOptions`: a host can't newly PICK an inactive city.
+  const getCityLabel = (cityId) => allCities.find((loc) => loc.id === cityId)?.label || "";
   // KIN-292 fix: svc.city (the LABEL) can't be resolved to a dropdown id
   // inside the fetch effect below — useCities() starts with STATIC_CITIES
   // (src/utils/locations.js's fallback: only Tulum/Playa del Carmen/Cancún),
@@ -146,9 +152,12 @@ export default function PublishServiceScreen({ navigation, route }) {
   // choice the host has since made themselves.
   useEffect(() => {
     if (!pendingCityLabel || city) return;
-    const match = cityOptions.find((loc) => loc.label === pendingCityLabel);
+    // KIN-295: allCities, not cityOptions — same reasoning as getCityLabel
+    // above, the id being resolved here may belong to a since-deactivated
+    // city.
+    const match = allCities.find((loc) => loc.label === pendingCityLabel);
     if (match) setCity(match.id);
-  }, [cityOptions, pendingCityLabel, city]);
+  }, [allCities, pendingCityLabel, city]);
 
   // KIN-286 · P4 — draft, mirroring CreateEventScreen's pattern exactly.
   // Create-only (step 4b): editing an existing service never reads or writes

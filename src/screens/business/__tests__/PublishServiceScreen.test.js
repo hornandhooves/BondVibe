@@ -43,16 +43,18 @@ jest.mock("../../../hooks/useUserRole", () => () => ({
 }));
 // A plain fixed-return mock can't exercise the late-snapshot fix — this one
 // carries real React state so a test can simulate config/cities arriving
-// AFTER the initial (fallback) render, via mockSetCityOptions below.
-let mockSetCityOptions = null;
+// AFTER the initial (fallback) render, via mockSetAllCities below. Mirrors
+// the real hook's own active/all split (KIN-295): `cities` is derived by
+// filtering out `inactive` entries, `allCities` is the raw list.
+let mockSetAllCities = null;
 jest.mock("../../../hooks/useCities", () => {
   const ReactActual = require("react");
   return () => {
-    const [cities, setCities] = ReactActual.useState([
+    const [allCities, setAllCities] = ReactActual.useState([
       { id: "tulum", label: "Tulum" }, { id: "cdmx", label: "Ciudad de México" },
     ]);
-    mockSetCityOptions = setCities;
-    return { cities, loading: false };
+    mockSetAllCities = setAllCities;
+    return { cities: allCities.filter((c) => c.inactive !== true), allCities, loading: false };
   };
 });
 jest.mock("../../../utils/geocode", () => ({ geocodeAddress: jest.fn(() => Promise.resolve(null)) }));
@@ -230,7 +232,7 @@ describe("PublishServiceScreen (KIN-292)", () => {
 
     // The real catalog snapshot lands late, now including Oaxaca.
     act(() => {
-      mockSetCityOptions([{ id: "tulum", label: "Tulum" }, { id: "oaxaca", label: "Oaxaca" }]);
+      mockSetAllCities([{ id: "tulum", label: "Tulum" }, { id: "oaxaca", label: "Oaxaca" }]);
     });
 
     fireEvent.press(utils.getByTestId("service-publish-cta"));
@@ -260,5 +262,34 @@ describe("PublishServiceScreen (KIN-292)", () => {
     fireEvent.press(utils.getByTestId("service-publish-cta"));
     await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith("services.publish.cityRequired"));
     expect(createSessionType).not.toHaveBeenCalled();
+  });
+
+  it("resolves an inactive city's label when editing, and save() does not fire cityRequired", async () => {
+    // KIN-295: the admin deactivated "Tulum" (baja lógica — it stays in the
+    // catalog with inactive:true, off the active dropdown, but still
+    // resolvable for a service that's already on it). getCityLabel/the
+    // pending-label effect must read allCities (active + inactive), not
+    // cityOptions (active only) — else this service's label resolves to ""
+    // and save() blocks it with cityRequired for the wrong reason (KIN-292's
+    // fix firing on an inactive city instead of a stale draft id).
+    act(() => {
+      mockSetAllCities([
+        { id: "tulum", label: "Tulum", inactive: true },
+        { id: "cdmx", label: "Ciudad de México" },
+      ]);
+    });
+    getSessionType.mockResolvedValue({
+      name: "Sunset yoga", vertical: "wellness", durationMin: 60,
+      locationMode: "online", bookingMode: "slot", priceCents: 30000,
+      city: "Tulum",
+    });
+    const utils = setup({ serviceId: "svc1" });
+    await waitFor(() => expect(getSessionType).toHaveBeenCalled());
+    await waitFor(() => expect(utils.queryByTestId("service-name")).toBeTruthy());
+
+    fireEvent.press(utils.getByTestId("service-publish-cta"));
+    await waitFor(() => expect(updateSessionType).toHaveBeenCalled());
+    expect(updateSessionType.mock.calls[0][1].city).toBe("Tulum");
+    expect(Alert.alert).not.toHaveBeenCalledWith("services.publish.cityRequired");
   });
 });

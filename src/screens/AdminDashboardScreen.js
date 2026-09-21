@@ -307,6 +307,11 @@ export default function AdminDashboardScreen({ navigation }) {
     }
   };
 
+  // KIN-295: this is the ONLY writer of config/cities, and it writes with
+  // merge:false — `next` fully replaces the stored array, including every
+  // entry's `inactive` flag. A future write to this doc that isn't built
+  // from the current citiesList (a raw import/build script, e.g.) would
+  // silently wipe every deactivated city's flag and resurrect it as active.
   const persistCities = async (next) => {
     setCitySaving(true);
     try {
@@ -332,9 +337,34 @@ export default function AdminDashboardScreen({ navigation }) {
     persistCities([...(citiesList || []), { id, label }]);
   };
 
-  const removeCity = (city) => {
-    if ((citiesList || []).length <= 1) {
-      Alert.alert(t("adminDashboard.cantRemove"), t("adminDashboard.cantRemoveMessage"));
+  // KIN-295: baja lógica. Deactivating no longer removes the entry from
+  // config/cities — published services/events store the city LABEL, not the
+  // id, so dropping the entry entirely would orphan them (unresolvable in
+  // their own edit screen, invisible to every filter). The entry stays,
+  // flagged `inactive: true`, and addCity's duplicate-id guard is what makes
+  // reactivating here the only way back in — there's no other path.
+  const toggleCityActive = (city) => {
+    const reactivating = city.inactive === true;
+    if (!reactivating) {
+      const activeCount = (citiesList || []).filter((c) => c.inactive !== true).length;
+      if (activeCount <= 1) {
+        Alert.alert(t("adminDashboard.cantRemove"), t("adminDashboard.cantRemoveMessage"));
+        return;
+      }
+    }
+    const applyToggle = () =>
+      persistCities(
+        (citiesList || []).map((c) => {
+          if (c.id !== city.id) return c;
+          if (reactivating) {
+            const { inactive, ...rest } = c;
+            return rest;
+          }
+          return { ...c, inactive: true };
+        })
+      );
+    if (reactivating) {
+      applyToggle();
       return;
     }
     Alert.alert(
@@ -342,11 +372,7 @@ export default function AdminDashboardScreen({ navigation }) {
       t("adminDashboard.removeCityMessage", { label: city.label }),
       [
         { text: t("adminDashboard.cancel"), style: "cancel" },
-        {
-          text: t("adminDashboard.remove"),
-          style: "destructive",
-          onPress: () => persistCities(citiesList.filter((c) => c.id !== city.id)),
-        },
+        { text: t("adminDashboard.remove"), style: "destructive", onPress: applyToggle },
       ]
     );
   };
@@ -1717,17 +1743,36 @@ export default function AdminDashboardScreen({ navigation }) {
                 ) : (
                   <>
                     <View style={styles.cityChips}>
-                      {citiesList.map((c) => (
-                        <View
-                          key={c.id}
-                          style={[styles.cityChip, { backgroundColor: colors.surfaceGlass, borderColor: colors.border }]}
-                        >
-                          <Text style={[styles.cityChipText, { color: colors.text }]}>{c.label}</Text>
-                          <TouchableOpacity onPress={() => removeCity(c)} hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}>
-                            <Icon name="close" size={14} color={colors.textTertiary} />
-                          </TouchableOpacity>
-                        </View>
-                      ))}
+                      {citiesList.map((c) => {
+                        const isInactive = c.inactive === true;
+                        return (
+                          <View
+                            key={c.id}
+                            style={[
+                              styles.cityChip,
+                              { backgroundColor: colors.surfaceGlass, borderColor: colors.border },
+                              isInactive && styles.cityChipInactive,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.cityChipText,
+                                { color: isInactive ? colors.textTertiary : colors.text },
+                                isInactive && styles.cityChipTextInactive,
+                              ]}
+                            >
+                              {c.label}{isInactive ? ` (${t("adminDashboard.cityInactive")})` : ""}
+                            </Text>
+                            <TouchableOpacity
+                              onPress={() => toggleCityActive(c)}
+                              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                              testID={`admin-city-toggle-${c.id}`}
+                            >
+                              <Icon name={isInactive ? "rotate" : "close"} size={14} color={colors.textTertiary} />
+                            </TouchableOpacity>
+                          </View>
+                        );
+                      })}
                     </View>
                     <View style={styles.cityAddRow}>
                       <TextInput
@@ -1836,6 +1881,8 @@ function createStyles(colors) {
       borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8,
     },
     cityChipText: { fontSize: 14, fontWeight: "600" },
+    cityChipInactive: { opacity: 0.55 },
+    cityChipTextInactive: { textDecorationLine: "line-through" },
     cityAddRow: { flexDirection: "row", alignItems: "center", gap: 10 },
     container: { flex: 1 },
     loadingContainer: {

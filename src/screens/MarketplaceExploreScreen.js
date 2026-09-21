@@ -20,6 +20,7 @@ import useCities from "../hooks/useCities";
 import { formatCentavos } from "../utils/pricing";
 import {
   getMarketplaceListings,
+  getMarketplaceCities,
   MARKETPLACE_VERTICALS,
 } from "../services/marketplaceService";
 
@@ -62,12 +63,19 @@ export default function MarketplaceExploreScreen({ navigation, route }) {
   // `city` (client-side filter over what's already downloaded) — this screen
   // just never passed it. { id, label } from useCities; the query/filter
   // matches on `label` (what SessionType.city stores), not the slug `id`.
-  const { cities: CITY_OPTIONS } = useCities({ includeAll: true });
+  const { cities: CITY_OPTIONS, allCities } = useCities({ includeAll: true });
   const [city, setCity] = useState(null);
   const [q, setQ] = useState("");
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  // KIN-295: which city LABELS have at least one published listing, from a
+  // load that never takes `city` as a filter. Kept in its own state, on
+  // purpose: `listings` (below) gets REPLACED on every load() with only the
+  // active filter's results, so a Set built from `listings` would shrink to
+  // one city the moment a filter is picked — silently hiding every other
+  // inactive-city chip that should stay visible.
+  const [usedCityLabels, setUsedCityLabels] = useState(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -83,11 +91,34 @@ export default function MarketplaceExploreScreen({ navigation, route }) {
     setLoading(false);
   }, [vertical, city]);
 
+  const loadUsedCities = useCallback(async () => {
+    try {
+      const labels = await getMarketplaceCities();
+      setUsedCityLabels(new Set(labels));
+    } catch {
+      // best-effort — worst case an inactive city with listings doesn't show
+      // up as a filter chip this session; it never blocks browsing.
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       load();
     }, [load])
   );
+
+  useFocusEffect(
+    useCallback(() => {
+      loadUsedCities();
+    }, [loadUsedCities])
+  );
+
+  // Inactive cities are ordinary chips to a buyer — no visual distinction —
+  // they just don't show up unless a published listing still uses them.
+  const CHIP_OPTIONS = [
+    ...CITY_OPTIONS,
+    ...allCities.filter((c) => c.inactive === true && usedCityLabels.has(c.label)),
+  ];
 
   const filtered = q.trim()
     ? listings.filter((l) => l.name.toLowerCase().includes(q.trim().toLowerCase()))
@@ -140,7 +171,7 @@ export default function MarketplaceExploreScreen({ navigation, route }) {
           style={s.cityRow}
           contentContainerStyle={s.cityRowContent}
         >
-          {CITY_OPTIONS.map((c) => {
+          {CHIP_OPTIONS.map((c) => {
             const active = c.id === "all" ? !city : city === c.label;
             return (
               <TouchableOpacity
