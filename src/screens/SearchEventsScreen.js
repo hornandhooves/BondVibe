@@ -113,12 +113,15 @@ export default function SearchEventsScreen({ navigation, route }) {
   );
   const CHIP_LOCATIONS = useMemo(
     () => [
-      ...LOCATIONS,
+      // KIN-301: LOCATIONS' first entry is ALL_OPTION (locations.js's
+      // hardcoded { id: "all", label: "All Locations" }) — translated here,
+      // in the screen, rather than in the hook or the data itself.
+      ...LOCATIONS.map((c) => (c.id === "all" ? { ...c, label: t("common.allCities") } : c)),
       ...ALL_CITIES.filter(
         (c) => c.inactive === true && (usedEventCityValues.has(c.id) || usedEventCityValues.has(c.label))
       ),
     ],
-    [LOCATIONS, ALL_CITIES, usedEventCityValues]
+    [LOCATIONS, ALL_CITIES, usedEventCityValues, t]
   );
 
   // ✅ FIX: Update selected category when route params change
